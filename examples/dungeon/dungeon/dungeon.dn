@@ -2,6 +2,10 @@
 context Dungeon
 
 publish {
+    SetUpRooms,
+    PlayTurn,
+    FIRST_ROOM,
+    GAME_TITLE,
     RoomId,
     EnemyId,
     Position,

@@ -1,10 +1,9 @@
-# The Dungeon project: which service runs first, and the adapter that fills
-# each port on each machine.
+# The Dungeon project: the adapter that fills each port on each machine.
+# The program runs `domain Game`, in game.dn.
 
 [package]
 name = "dungeon"
 version = "0.1.0"
-main = "Main"
 
 [target.spectrum_48k]
 native = ["platform/spectrum.c"]

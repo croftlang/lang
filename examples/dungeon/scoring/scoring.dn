@@ -1,6 +1,8 @@
 // Points for the player, kept apart from the dungeon itself.
 context Scoring {
-    use { Room.EnemyDefeated, Storage } from Dungeon
+    publish { SetUpScoring }
+
+    use { Room.EnemyDefeated, Storage, StorageError } from Dungeon
 
     identity ScoreboardId: Int where Range(1, 4)
 
@@ -24,6 +26,11 @@ context Scoring {
     }
 
     repository Scoreboards for Scoreboard in Storage
+
+    // Saves an empty scoreboard, for the points to go on.
+    service SetUpScoring(): Result<Unit, StorageError> {
+        uses Scoreboards
+    } = scoreboards.save(Scoreboard { id: MAIN_SCOREBOARD, points: 0 })
 
     policy ScoreOnDefeat when Room.EnemyDefeated {
         issue AddPoints(amount: POINTS_PER_ENEMY) on Scoreboard(MAIN_SCOREBOARD)
