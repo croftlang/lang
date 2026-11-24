@@ -1,6 +1,7 @@
 //! Reading dn source code: tokens, syntax tree and parser.
 
 pub mod ast;
+pub mod keyword;
 pub mod lexer;
 pub mod parser;
 pub mod span;

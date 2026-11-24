@@ -1,0 +1,95 @@
+use super::{only_context, parse_error, parse_ok};
+use crate::ast::{ContextItem, FunctionKind, TopItem};
+
+#[test]
+fn reads_a_context_header_as_the_rest_of_the_file() {
+    let file = parse_ok("context Dungeon\n\nconst MAX: Int = 16\nidentity RoomId: Int");
+    let context = only_context(&file);
+    assert_eq!(context.name.name, "Dungeon");
+    assert_eq!(context.items.len(), 2);
+}
+
+#[test]
+fn reads_an_aggregate_header_as_the_rest_of_the_file() {
+    let source = "context Dungeon\naggregate Room\n\nidentity id: RoomId\nerror NotFound\n\
+                  command Reset = {\n    set lives = 3\n}";
+    let file = parse_ok(source);
+    let [ContextItem::Aggregate(room)] = &only_context(&file).items[..] else {
+        panic!("expected one aggregate");
+    };
+    assert_eq!(room.name.name, "Room");
+    assert!(room.fields[0].is_identity);
+    assert_eq!(room.errors.len(), 1);
+    assert_eq!(room.commands[0].kind, FunctionKind::Command);
+    assert!(room.commands[0].parameters.is_none());
+}
+
+#[test]
+fn needs_braces_for_an_aggregate_inside_a_braced_context() {
+    let message = parse_error("context Dungeon {\n    aggregate Room\n    error NotFound\n}");
+    assert_eq!(message, "expected `{`, found `error`");
+}
+
+#[test]
+fn reads_rules_on_fields_and_parameters() {
+    let source = "context Dungeon {\n    value Room {\n        enemies: List<Enemy> where Length(0, 16), each Alive\n    }\n\
+                  fn heal(amount: Int where Range(1, 50), times: Int): Int\n}";
+    let file = parse_ok(source);
+    let items = &only_context(&file).items;
+    let ContextItem::Value(room) = &items[0] else {
+        panic!("expected a value")
+    };
+    let rules = &room.fields[0].rules;
+    assert_eq!(rules.len(), 2);
+    assert!(rules[1].each);
+    let ContextItem::Function(heal) = &items[1] else {
+        panic!("expected a function")
+    };
+    let parameters = heal.parameters.as_ref().unwrap();
+    assert_eq!(parameters.len(), 2);
+    assert_eq!(parameters[0].rules.len(), 1);
+}
+
+#[test]
+fn reads_a_contract_with_preconditions_and_uses() {
+    let source = "context Dungeon {\n    service Play(id: RoomId): Unit {\n        uses Keyboard, Screen\n        \
+                  id > 0 or NotFound\n    } = Unit\n}";
+    let file = parse_ok(source);
+    let ContextItem::Function(play) = &only_context(&file).items[0] else {
+        panic!("expected a service")
+    };
+    assert_eq!(play.uses.len(), 2);
+    assert_eq!(play.preconditions.len(), 1);
+}
+
+#[test]
+fn reads_enums_with_data_and_includes() {
+    let source = "context Dungeon {\n    enum GameError {\n        include Room.Error\n        \
+                  Coins(count: Int where Range(1, 99))\n        Flask\n    }\n}";
+    let file = parse_ok(source);
+    let ContextItem::Enum(error) = &only_context(&file).items[0] else {
+        panic!("expected an enum")
+    };
+    assert_eq!(error.includes[0].text(), "Room.Error");
+    assert_eq!(error.variants.len(), 2);
+    assert_eq!(error.variants[0].fields[0].rules.len(), 1);
+}
+
+#[test]
+fn reads_an_application() {
+    let file = parse_ok("application Dungeon {\n    start PlayGame\n    target test {\n        Screen -> NullScreen\n    }\n}");
+    let [TopItem::Application(application)] = &file.items[..] else {
+        panic!("expected an application")
+    };
+    assert_eq!(application.start.text(), "PlayGame");
+    assert_eq!(application.targets[0].bindings.len(), 1);
+}
+
+#[test]
+fn keeps_doc_comments() {
+    let file = parse_ok("context Dungeon {\n    // Moves the player.\n    fn walk(): Unit\n}");
+    let ContextItem::Function(walk) = &only_context(&file).items[0] else {
+        panic!("expected a function")
+    };
+    assert_eq!(walk.doc, vec!["Moves the player.".to_string()]);
+}
