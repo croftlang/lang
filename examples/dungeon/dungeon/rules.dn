@@ -28,6 +28,7 @@ fn direction_for(key: Key): Option<Direction> = match key {
     Left -> Some(West)
     Right -> Some(East)
     Fire -> None
+    Quit -> None
 }
 
 policy DropLootOnDefeat when Room.EnemyDefeated {

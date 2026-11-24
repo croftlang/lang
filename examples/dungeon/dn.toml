@@ -1,0 +1,20 @@
+# The Dungeon project: which service runs first, and the adapter that fills
+# each port on each machine.
+
+[package]
+name = "dungeon"
+version = "0.1.0"
+main = "Main"
+
+[target.spectrum_48k]
+native = ["platform/spectrum.c"]
+
+[target.spectrum_48k.adapters]
+Screen = "SpectrumScreen"
+Keyboard = "SpectrumKeyboard"
+Storage = "DivmmcStorage"
+
+[target.test.adapters]
+Screen = "NullScreen"
+Keyboard = "ScriptedKeyboard"
+Storage = "MemoryStorage"

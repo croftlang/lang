@@ -28,7 +28,7 @@ identity SpriteId: Int where Range(0, 63)
 
 enum Direction { North, East, South, West }
 
-enum Key { Up, Down, Left, Right, Fire }
+enum Key { Up, Down, Left, Right, Fire, Quit }
 
 enum TreasureKind {
     Coins(count: Int where Range(1, 99))

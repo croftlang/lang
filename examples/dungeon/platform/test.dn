@@ -1,26 +1,26 @@
 // Adapters written in dn, for running the game in tests.
 context Platform
 
-adapter NullScreen for Screen on target test {
+adapter NullScreen for Screen {
     fn clear() = Unit
     fn draw_sprite(sprite, at) = Unit
     fn draw_text(text, at) = Unit
 }
 
-adapter ScriptedKeyboard for Keyboard on target test {
+adapter ScriptedKeyboard for Keyboard {
     keys: List<Key> where Length(0, 32)
 
-    // Gives the next scripted key, then forgets it.
+    // Gives the next scripted key, then forgets it. Quits when none are left.
     fn pressed() = match keys.first {
         Some(next) -> {
             set keys = keys.drop(1)
             Some(next)
         }
-        None -> None
+        None -> Some(Quit)
     }
 }
 
-adapter MemoryStorage for Storage on target test {
+adapter MemoryStorage for Storage {
     files: List<Int> where Length(0, 256)
 
     fn load(name) = Ok(files)

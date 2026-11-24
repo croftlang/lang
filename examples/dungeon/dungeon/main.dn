@@ -1,0 +1,33 @@
+// Where the program starts: sets up the first room in memory, then plays.
+context Dungeon
+
+// Plays turn after turn until the player quits or a turn fails. `--title`
+// shows the title first.
+service Main(): Result<Unit, GameError> {
+    uses Rooms, Screen, Keyboard, Arguments
+} = {
+    rooms.save(first_room())?
+    screen.clear()
+    if arguments.all().contains("--title") {
+        screen.draw_text(GAME_TITLE, Position { x: 0, y: 0 })
+    }
+    loop {
+        let pressed = keyboard.pressed()
+        if pressed == Some(Quit) {
+            break
+        }
+        PlayTurn(FIRST_ROOM, pressed)?
+    }
+}
+
+// The room the player starts in, with two enemies between them and the exit.
+fn first_room(): Room = Room {
+    id: FIRST_ROOM
+    player: Room.Player { id: 1, position: Position { x: 16, y: 16 }, lives: 3 }
+    enemies: [
+        Room.Enemy { id: 0, position: Position { x: 64, y: 64 }, hit_points: 20 },
+        Room.Enemy { id: 1, position: Position { x: 128, y: 96 }, hit_points: 30 }
+    ]
+    treasure: []
+    exit: Position { x: 232, y: 168 }
+}

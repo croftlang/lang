@@ -3,17 +3,17 @@ context Platform
 
 use { Screen, Keyboard, Storage, Key } from Dungeon
 
-adapter SpectrumScreen for Screen on target spectrum_48k {
+adapter SpectrumScreen for Screen {
     fn clear() = native zx_cls()
     fn draw_sprite(sprite, at) = native sprite_draw(sprite, at.x, at.y)
     fn draw_text(text, at) = native zx_print_at(at.y / 8, at.x / 8, text)
 }
 
-adapter SpectrumKeyboard for Keyboard on target spectrum_48k {
+adapter SpectrumKeyboard for Keyboard {
     fn pressed() = native read_key()
 }
 
-adapter DivmmcStorage for Storage on target spectrum_48k {
+adapter DivmmcStorage for Storage {
     fn load(name) = native divmmc_load(name)
     fn store(name, data) = native divmmc_store(name, data)
 }
