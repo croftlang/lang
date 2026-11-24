@@ -3,7 +3,7 @@ use crate::token::{Token, TokenKind};
 
 /// Turns source text into tokens. Whitespace and `//` comments are skipped.
 pub fn tokenize(source: &str, source_id: SourceId) -> Result<Vec<Token>, Diagnostic> {
-    Lexer::new(source, source_id).run()
+    Lexer::new(source, source_id).tokenize_all()
 }
 
 struct Lexer<'a> {
@@ -23,7 +23,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn span(&self) -> Span {
+    fn current_span(&self) -> Span {
         Span {
             source: self.source_id,
             line: self.line,
@@ -51,11 +51,11 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn run(mut self) -> Result<Vec<Token>, Diagnostic> {
+    fn tokenize_all(mut self) -> Result<Vec<Token>, Diagnostic> {
         let mut tokens = Vec::new();
         loop {
             self.skip_whitespace_and_comments();
-            let span = self.span();
+            let span = self.current_span();
             let Some(current) = self.advance() else {
                 tokens.push(Token {
                     kind: TokenKind::EndOfFile,
@@ -87,9 +87,9 @@ impl<'a> Lexer<'a> {
                 '!' => TokenKind::Not,
                 '&' if self.advance_if('&') => TokenKind::And,
                 '|' if self.advance_if('|') => TokenKind::Or,
-                '"' => self.string(span)?,
-                c if c.is_ascii_digit() => self.number(c, span)?,
-                c if c.is_alphabetic() || c == '_' => self.word(c),
+                '"' => self.read_string(span)?,
+                c if c.is_ascii_digit() => self.read_number(c, span)?,
+                c if c.is_alphabetic() || c == '_' => self.read_word(c),
                 other => {
                     return Err(Diagnostic::new(
                         format!("unexpected character `{other}`"),
@@ -125,7 +125,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn string(&mut self, start: Span) -> Result<TokenKind, Diagnostic> {
+    fn read_string(&mut self, start: Span) -> Result<TokenKind, Diagnostic> {
         let mut value = String::new();
         loop {
             match self.advance() {
@@ -138,7 +138,7 @@ impl<'a> Lexer<'a> {
                     Some(other) => {
                         return Err(Diagnostic::new(
                             format!("unknown escape `\\{other}`"),
-                            self.span(),
+                            self.current_span(),
                         ))
                     }
                     None => break,
@@ -150,7 +150,7 @@ impl<'a> Lexer<'a> {
         Err(Diagnostic::new("unterminated string", start))
     }
 
-    fn number(&mut self, first: char, start: Span) -> Result<TokenKind, Diagnostic> {
+    fn read_number(&mut self, first: char, start: Span) -> Result<TokenKind, Diagnostic> {
         let mut text = first.to_string();
         let mut is_float = false;
         while let Some(&c) = self.chars.peek() {
@@ -187,7 +187,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn word(&mut self, first: char) -> TokenKind {
+    fn read_word(&mut self, first: char) -> TokenKind {
         let mut text = first.to_string();
         while let Some(&c) = self.chars.peek() {
             if c.is_alphanumeric() || c == '_' {
@@ -205,7 +205,7 @@ impl<'a> Lexer<'a> {
 mod tests {
     use super::*;
 
-    fn kinds(source: &str) -> Vec<TokenKind> {
+    fn token_kinds(source: &str) -> Vec<TokenKind> {
         tokenize(source, SourceId(0))
             .unwrap()
             .into_iter()
@@ -216,7 +216,7 @@ mod tests {
     #[test]
     fn reads_keywords_and_punctuation() {
         assert_eq!(
-            kinds("struct Money { amount: Int } // comment"),
+            token_kinds("struct Money { amount: Int } // comment"),
             vec![
                 TokenKind::Struct,
                 TokenKind::Identifier("Money".into()),
@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn reads_numbers_and_operators() {
         assert_eq!(
-            kinds("1_000 >= 2.5 -> !="),
+            token_kinds("1_000 >= 2.5 -> !="),
             vec![
                 TokenKind::Int(1000),
                 TokenKind::GreaterEqual,

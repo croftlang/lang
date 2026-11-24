@@ -38,8 +38,8 @@ The design is still being decided. The terms are in
 
 The compiler in this repository is an early trial. It reads an older subset of
 the language (`struct`, `enum`, `const`, `constraint`, `port`, `adapter` and
-`fn` with `requires`/`ensures`) and compiles it to Rust. It will be updated to
-the current design and switched to a C backend.
+`fn` with `requires`/`ensures`) and compiles it to Rust. Next, it moves to the
+current design and a C backend.
 
 ## Usage
 

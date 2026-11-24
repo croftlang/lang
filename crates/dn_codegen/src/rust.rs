@@ -42,13 +42,13 @@ pub fn generate_rust(program: &Program) -> String {
     for item in &program.items {
         generator.out.push('\n');
         match item {
-            Item::Const(decl) => generator.constant(decl),
-            Item::Enum(decl) => generator.enumeration(decl),
-            Item::Struct(decl) => generator.structure(decl),
-            Item::Constraint(decl) => generator.constraint(decl),
-            Item::Port(decl) => generator.port(decl),
-            Item::Adapter(decl) => generator.adapter(decl),
-            Item::Function(decl) => generator.function(decl),
+            Item::Const(decl) => generator.generate_const(decl),
+            Item::Enum(decl) => generator.generate_enum(decl),
+            Item::Struct(decl) => generator.generate_struct(decl),
+            Item::Constraint(decl) => generator.generate_constraint(decl),
+            Item::Port(decl) => generator.generate_port(decl),
+            Item::Adapter(decl) => generator.generate_adapter(decl),
+            Item::Function(decl) => generator.generate_function(decl),
         }
     }
     generator.out
@@ -100,7 +100,7 @@ fn doc_comment(out: &mut String, indent: &str, text: &str) {
 }
 
 impl<'a> RustGenerator<'a> {
-    fn resolve(&self, ty: &TypeExpr, generics: &[Identifier]) -> Type {
+    fn resolve_type(&self, ty: &TypeExpr, generics: &[Identifier]) -> Type {
         self.program
             .resolve_type(ty, generics)
             .expect("program has been checked")
@@ -114,16 +114,16 @@ impl<'a> RustGenerator<'a> {
 
     // ---- items ----
 
-    fn constant(&mut self, decl: &ConstDecl) {
-        let ty = match self.resolve(&decl.ty, &[]) {
+    fn generate_const(&mut self, decl: &ConstDecl) {
+        let ty = match self.resolve_type(&decl.ty, &[]) {
             Type::String => "&str".to_string(),
             other => rust_type(&other),
         };
-        let value = self.expression(&decl.value, &Scope::new());
+        let value = self.generate_expression(&decl.value, &Scope::new());
         let _ = writeln!(self.out, "pub const {}: {ty} = {value};", decl.name.name);
     }
 
-    fn enumeration(&mut self, decl: &EnumDecl) {
+    fn generate_enum(&mut self, decl: &EnumDecl) {
         let _ = writeln!(
             self.out,
             "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]"
@@ -135,12 +135,12 @@ impl<'a> RustGenerator<'a> {
         let _ = writeln!(self.out, "}}");
     }
 
-    fn structure(&mut self, decl: &StructDecl) {
+    fn generate_struct(&mut self, decl: &StructDecl) {
         let name = &decl.name.name;
         let _ = writeln!(self.out, "#[derive(Debug, Clone, PartialEq)]");
         let _ = writeln!(self.out, "pub struct {name} {{");
         for field in &decl.fields {
-            let ty = rust_type(&self.resolve(&field.ty, &[]));
+            let ty = rust_type(&self.resolve_type(&field.ty, &[]));
             let _ = writeln!(
                 self.out,
                 "    pub {}: {ty},",
@@ -157,16 +157,16 @@ impl<'a> RustGenerator<'a> {
         for field in &decl.fields {
             let field_name = rust_identifier(&field.name.name);
             let place = format!("self.{field_name}");
-            let ty = self.resolve(&field.ty, &[]);
+            let ty = self.resolve_type(&field.ty, &[]);
             let path = format!("{name}.{}", field.name.name);
             for constraint_use in &field.constraints {
-                self.constraint_check(constraint_use, &place, &ty, &path);
+                self.generate_constraint_check(constraint_use, &place, &ty, &path);
             }
-            self.nested_validation(&place, &ty);
+            self.generate_nested_validation(&place, &ty);
         }
         for constraint_use in &decl.constraints {
             let ty = Type::Struct(name.clone());
-            self.constraint_check(constraint_use, "self", &ty, name);
+            self.generate_constraint_check(constraint_use, "self", &ty, name);
         }
         let _ = writeln!(self.out, "        Ok(())");
         let _ = writeln!(self.out, "    }}");
@@ -174,7 +174,7 @@ impl<'a> RustGenerator<'a> {
     }
 
     /// Emits `if !constraint(subject, arguments...) { return Err(...) }`.
-    fn constraint_check(
+    fn generate_constraint_check(
         &mut self,
         constraint_use: &ConstraintUse,
         place: &str,
@@ -190,7 +190,7 @@ impl<'a> RustGenerator<'a> {
         };
         let mut arguments = vec![subject];
         for argument in &constraint_use.arguments {
-            arguments.push(self.argument(argument, &Scope::new()));
+            arguments.push(self.generate_argument(argument, &Scope::new()));
         }
         let _ = writeln!(
             self.out,
@@ -207,7 +207,7 @@ impl<'a> RustGenerator<'a> {
     }
 
     /// Validates struct values held in a field, directly or inside a List or Option.
-    fn nested_validation(&mut self, place: &str, ty: &Type) {
+    fn generate_nested_validation(&mut self, place: &str, ty: &Type) {
         match ty {
             Type::Struct(_) => {
                 let _ = writeln!(self.out, "        {place}.validate()?;");
@@ -226,11 +226,11 @@ impl<'a> RustGenerator<'a> {
         }
     }
 
-    fn constraint(&mut self, decl: &ConstraintDecl) {
+    fn generate_constraint(&mut self, decl: &ConstraintDecl) {
         let mut scope = Scope::new();
         let mut parameters = Vec::new();
         for parameter in &decl.parameters {
-            let ty = self.resolve(&parameter.ty, &decl.generics);
+            let ty = self.resolve_type(&parameter.ty, &decl.generics);
             parameters.push(format!(
                 "{}: {}",
                 rust_identifier(&parameter.name.name),
@@ -248,7 +248,7 @@ impl<'a> RustGenerator<'a> {
                 .collect();
             format!("<{}>", bounds.join(", "))
         };
-        let body = self.expression(&decl.body, &scope);
+        let body = self.generate_expression(&decl.body, &scope);
         let _ = writeln!(
             self.out,
             "/// Constraint `{}`: `{}`",
@@ -265,31 +265,31 @@ impl<'a> RustGenerator<'a> {
         let _ = writeln!(self.out, "}}");
     }
 
-    fn signature_parts(&self, signature: &Signature) -> (Vec<(String, Type)>, Type) {
+    fn resolve_signature(&self, signature: &Signature) -> (Vec<(String, Type)>, Type) {
         let parameters = signature
             .parameters
             .iter()
             .map(|parameter| {
                 (
                     parameter.name.name.clone(),
-                    self.resolve(&parameter.ty, &[]),
+                    self.resolve_type(&parameter.ty, &[]),
                 )
             })
             .collect();
-        (parameters, self.resolve(&signature.output, &[]))
+        (parameters, self.resolve_type(&signature.output, &[]))
     }
 
-    fn port(&mut self, decl: &PortDecl) {
+    fn generate_port(&mut self, decl: &PortDecl) {
         let _ = writeln!(self.out, "pub trait {} {{", decl.name.name);
         for operation in &decl.operations {
-            let line = self.operation_signature(operation);
+            let line = self.generate_operation_signature(operation);
             let _ = writeln!(self.out, "    {line};");
         }
         let _ = writeln!(self.out, "}}");
     }
 
-    fn operation_signature(&self, operation: &Signature) -> String {
-        let (parameters, output) = self.signature_parts(operation);
+    fn generate_operation_signature(&self, operation: &Signature) -> String {
+        let (parameters, output) = self.resolve_signature(operation);
         let mut list = vec!["&self".to_string()];
         list.extend(
             parameters
@@ -304,7 +304,7 @@ impl<'a> RustGenerator<'a> {
         )
     }
 
-    fn adapter(&mut self, decl: &AdapterDecl) {
+    fn generate_adapter(&mut self, decl: &AdapterDecl) {
         let port = self
             .program
             .port_decl(&decl.port.name)
@@ -321,7 +321,7 @@ impl<'a> RustGenerator<'a> {
             port.name.name, decl.name.name
         );
         for operation in &port.operations {
-            let line = self.operation_signature(operation);
+            let line = self.generate_operation_signature(operation);
             let _ = writeln!(self.out, "    {line} {{");
             let _ = writeln!(
                 self.out,
@@ -335,10 +335,10 @@ impl<'a> RustGenerator<'a> {
 
     /// A function becomes two Rust functions: a public one that checks the
     /// contract, and a private `_body` one holding the implementation.
-    fn function(&mut self, decl: &FunctionDecl) {
+    fn generate_function(&mut self, decl: &FunctionDecl) {
         let name = rust_identifier(&decl.signature.name.name);
         let body_name = format!("{}_body", decl.signature.name.name);
-        let (parameters, output) = self.signature_parts(&decl.signature);
+        let (parameters, output) = self.resolve_signature(&decl.signature);
 
         let mut declared = Vec::new();
         let mut passed = Vec::new();
@@ -385,7 +385,7 @@ impl<'a> RustGenerator<'a> {
             }
         }
         for requirement in &decl.requires {
-            let check = self.expression(requirement, &scope);
+            let check = self.generate_expression(requirement, &scope);
             let _ = writeln!(
                 self.out,
                 "    debug_assert!({check}, {:?});",
@@ -399,7 +399,7 @@ impl<'a> RustGenerator<'a> {
             let _ = writeln!(self.out, "    let {OUTPUT_NAME} = {call};");
             scope.insert(OUTPUT_NAME.to_string(), output.clone());
             for guarantee in &decl.ensures {
-                let check = self.expression(guarantee, &scope);
+                let check = self.generate_expression(guarantee, &scope);
                 let _ = writeln!(
                     self.out,
                     "    debug_assert!({check}, {:?});",
@@ -424,8 +424,8 @@ impl<'a> RustGenerator<'a> {
     /// An argument to a constraint call: by value for copy types, otherwise
     /// borrowed. Borrowing a value that is already a reference is fine, as
     /// Rust's deref coercion turns `&&str` into `&str`, `&&[T]` into `&[T]`.
-    fn argument(&self, expr: &Expr, scope: &Scope) -> String {
-        let code = self.expression(expr, scope);
+    fn generate_argument(&self, expr: &Expr, scope: &Scope) -> String {
+        let code = self.generate_expression(expr, scope);
         if self.type_of(expr, scope).is_copy() {
             code
         } else {
@@ -433,7 +433,7 @@ impl<'a> RustGenerator<'a> {
         }
     }
 
-    fn expression(&self, expr: &Expr, scope: &Scope) -> String {
+    fn generate_expression(&self, expr: &Expr, scope: &Scope) -> String {
         match &expr.kind {
             ExprKind::Int(value) => value.to_string(),
             ExprKind::Float(value) => format!("{value:?}"),
@@ -448,7 +448,7 @@ impl<'a> RustGenerator<'a> {
             }
             ExprKind::Field(base, field) => {
                 let base_type = self.type_of(base, scope);
-                let base_code = self.expression(base, scope);
+                let base_code = self.generate_expression(base, scope);
                 match (&base_type, field.name.as_str()) {
                     (Type::EnumName(enum_name), variant) => format!("{enum_name}::{variant}"),
                     (Type::List(_), "length") => format!("({base_code}.len() as i64)"),
@@ -462,7 +462,7 @@ impl<'a> RustGenerator<'a> {
             ExprKind::Call(name, arguments) => {
                 let arguments: Vec<String> = arguments
                     .iter()
-                    .map(|argument| self.argument(argument, scope))
+                    .map(|argument| self.generate_argument(argument, scope))
                     .collect();
                 format!(
                     "{}({})",
@@ -475,13 +475,13 @@ impl<'a> RustGenerator<'a> {
                     UnaryOp::Not => "!",
                     UnaryOp::Negate => "-",
                 };
-                format!("{symbol}({})", self.expression(operand, scope))
+                format!("{symbol}({})", self.generate_expression(operand, scope))
             }
             ExprKind::Binary(op, left, right) => format!(
                 "({} {} {})",
-                self.expression(left, scope),
+                self.generate_expression(left, scope),
                 op.symbol(),
-                self.expression(right, scope)
+                self.generate_expression(right, scope)
             ),
         }
     }

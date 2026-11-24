@@ -10,7 +10,7 @@ pub fn parse(source: &str, source_id: SourceId) -> Result<Module, Diagnostic> {
         tokens,
         position: 0,
     }
-    .module()
+    .parse_module()
 }
 
 struct Parser {
@@ -56,11 +56,11 @@ impl Parser {
         if self.check(&kind) {
             Ok(self.advance())
         } else {
-            Err(self.error_expected(&kind.describe(), context))
+            Err(self.expected_error(&kind.describe(), context))
         }
     }
 
-    fn error_expected(&self, expected: &str, context: &str) -> Diagnostic {
+    fn expected_error(&self, expected: &str, context: &str) -> Diagnostic {
         let found = self.peek();
         Diagnostic::new(
             format!(
@@ -71,52 +71,52 @@ impl Parser {
         )
     }
 
-    fn identifier(&mut self, context: &str) -> ParseResult<Identifier> {
+    fn parse_identifier(&mut self, context: &str) -> ParseResult<Identifier> {
         match self.peek_kind().clone() {
             TokenKind::Identifier(name) => {
                 let span = self.advance().span;
                 Ok(Identifier { name, span })
             }
-            _ => Err(self.error_expected("a name", context)),
+            _ => Err(self.expected_error("a name", context)),
         }
     }
 
     // ---- items ----
 
-    fn module(mut self) -> ParseResult<Module> {
+    fn parse_module(mut self) -> ParseResult<Module> {
         let mut items = Vec::new();
         while !self.check(&TokenKind::EndOfFile) {
-            items.push(self.item()?);
+            items.push(self.parse_item()?);
         }
         Ok(Module { items })
     }
 
-    fn item(&mut self) -> ParseResult<Item> {
+    fn parse_item(&mut self) -> ParseResult<Item> {
         match self.peek_kind() {
-            TokenKind::Struct => self.struct_decl().map(Item::Struct),
-            TokenKind::Enum => self.enum_decl().map(Item::Enum),
-            TokenKind::Const => self.const_decl().map(Item::Const),
-            TokenKind::Constraint => self.constraint_decl().map(Item::Constraint),
-            TokenKind::Port => self.port_decl().map(Item::Port),
-            TokenKind::Adapter => self.adapter_decl().map(Item::Adapter),
-            TokenKind::Fn => self.function_decl().map(Item::Function),
-            _ => Err(self.error_expected(
+            TokenKind::Struct => self.parse_struct().map(Item::Struct),
+            TokenKind::Enum => self.parse_enum().map(Item::Enum),
+            TokenKind::Const => self.parse_const().map(Item::Const),
+            TokenKind::Constraint => self.parse_constraint().map(Item::Constraint),
+            TokenKind::Port => self.parse_port().map(Item::Port),
+            TokenKind::Adapter => self.parse_adapter().map(Item::Adapter),
+            TokenKind::Fn => self.parse_function().map(Item::Function),
+            _ => Err(self.expected_error(
                 "`struct`, `enum`, `const`, `constraint`, `port`, `adapter` or `fn`",
                 "at the start of a declaration",
             )),
         }
     }
 
-    fn struct_decl(&mut self) -> ParseResult<StructDecl> {
+    fn parse_struct(&mut self) -> ParseResult<StructDecl> {
         self.expect(TokenKind::Struct, "")?;
-        let name = self.identifier("after `struct`")?;
+        let name = self.parse_identifier("after `struct`")?;
         self.expect(TokenKind::LeftBrace, "to open the struct")?;
         let mut fields = Vec::new();
         while !self.check(&TokenKind::RightBrace) {
-            let field_name = self.identifier("for a field")?;
+            let field_name = self.parse_identifier("for a field")?;
             self.expect(TokenKind::Colon, "after the field name")?;
-            let ty = self.type_expr()?;
-            let constraints = self.constraint_uses()?;
+            let ty = self.parse_type()?;
+            let constraints = self.parse_constraint_uses()?;
             fields.push(Field {
                 name: field_name,
                 ty,
@@ -124,7 +124,7 @@ impl Parser {
             });
         }
         self.expect(TokenKind::RightBrace, "to close the struct")?;
-        let constraints = self.constraint_uses()?;
+        let constraints = self.parse_constraint_uses()?;
         Ok(StructDecl {
             name,
             fields,
@@ -133,15 +133,15 @@ impl Parser {
     }
 
     /// Reads an optional `is A, B(1)` list.
-    fn constraint_uses(&mut self) -> ParseResult<Vec<ConstraintUse>> {
+    fn parse_constraint_uses(&mut self) -> ParseResult<Vec<ConstraintUse>> {
         let mut uses = Vec::new();
         if !self.advance_if(&TokenKind::Is) {
             return Ok(uses);
         }
         loop {
-            let name = self.identifier("for a constraint after `is`")?;
+            let name = self.parse_identifier("for a constraint after `is`")?;
             let arguments = if self.check(&TokenKind::LeftParen) {
-                self.arguments()?
+                self.parse_arguments()?
             } else {
                 Vec::new()
             };
@@ -152,45 +152,45 @@ impl Parser {
         }
     }
 
-    fn enum_decl(&mut self) -> ParseResult<EnumDecl> {
+    fn parse_enum(&mut self) -> ParseResult<EnumDecl> {
         self.expect(TokenKind::Enum, "")?;
-        let name = self.identifier("after `enum`")?;
+        let name = self.parse_identifier("after `enum`")?;
         self.expect(TokenKind::LeftBrace, "to open the enum")?;
         let mut variants = Vec::new();
         while !self.check(&TokenKind::RightBrace) {
-            variants.push(self.identifier("for an enum variant")?);
+            variants.push(self.parse_identifier("for an enum variant")?);
             self.advance_if(&TokenKind::Comma);
         }
         self.expect(TokenKind::RightBrace, "to close the enum")?;
         Ok(EnumDecl { name, variants })
     }
 
-    fn const_decl(&mut self) -> ParseResult<ConstDecl> {
+    fn parse_const(&mut self) -> ParseResult<ConstDecl> {
         self.expect(TokenKind::Const, "")?;
-        let name = self.identifier("after `const`")?;
+        let name = self.parse_identifier("after `const`")?;
         self.expect(TokenKind::Colon, "after the constant name")?;
-        let ty = self.type_expr()?;
+        let ty = self.parse_type()?;
         self.expect(TokenKind::Equal, "before the constant value")?;
-        let value = self.expression()?;
+        let value = self.parse_expression()?;
         Ok(ConstDecl { name, ty, value })
     }
 
-    fn constraint_decl(&mut self) -> ParseResult<ConstraintDecl> {
+    fn parse_constraint(&mut self) -> ParseResult<ConstraintDecl> {
         self.expect(TokenKind::Constraint, "")?;
-        let name = self.identifier("after `constraint`")?;
+        let name = self.parse_identifier("after `constraint`")?;
         let mut generics = Vec::new();
         if self.advance_if(&TokenKind::Less) {
             loop {
-                generics.push(self.identifier("for a type parameter")?);
+                generics.push(self.parse_identifier("for a type parameter")?);
                 if !self.advance_if(&TokenKind::Comma) {
                     break;
                 }
             }
             self.expect(TokenKind::Greater, "to close the type parameters")?;
         }
-        let parameters = self.parameters()?;
+        let parameters = self.parse_parameters()?;
         self.expect(TokenKind::Equal, "before the constraint body")?;
-        let body = self.expression()?;
+        let body = self.parse_expression()?;
         Ok(ConstraintDecl {
             name,
             generics,
@@ -199,30 +199,30 @@ impl Parser {
         })
     }
 
-    fn port_decl(&mut self) -> ParseResult<PortDecl> {
+    fn parse_port(&mut self) -> ParseResult<PortDecl> {
         self.expect(TokenKind::Port, "")?;
-        let name = self.identifier("after `port`")?;
+        let name = self.parse_identifier("after `port`")?;
         self.expect(TokenKind::LeftBrace, "to open the port")?;
         let mut operations = Vec::new();
         while !self.check(&TokenKind::RightBrace) {
             self.expect(TokenKind::Fn, "to start a port operation")?;
-            operations.push(self.signature()?);
+            operations.push(self.parse_signature()?);
         }
         self.expect(TokenKind::RightBrace, "to close the port")?;
         Ok(PortDecl { name, operations })
     }
 
-    fn adapter_decl(&mut self) -> ParseResult<AdapterDecl> {
+    fn parse_adapter(&mut self) -> ParseResult<AdapterDecl> {
         self.expect(TokenKind::Adapter, "")?;
-        let name = self.identifier("after `adapter`")?;
+        let name = self.parse_identifier("after `adapter`")?;
         self.expect(TokenKind::For, "after the adapter name")?;
-        let port = self.identifier("for the port this adapter implements")?;
+        let port = self.parse_identifier("for the port this adapter implements")?;
         Ok(AdapterDecl { name, port })
     }
 
-    fn function_decl(&mut self) -> ParseResult<FunctionDecl> {
+    fn parse_function(&mut self) -> ParseResult<FunctionDecl> {
         self.expect(TokenKind::Fn, "")?;
-        let signature = self.signature()?;
+        let signature = self.parse_signature()?;
         let mut function = FunctionDecl {
             signature,
             uses: Vec::new(),
@@ -244,7 +244,7 @@ impl Parser {
                     loop {
                         function
                             .uses
-                            .push(self.identifier("for a port after `uses`")?);
+                            .push(self.parse_identifier("for a port after `uses`")?);
                         if !self.advance_if(&TokenKind::Comma) {
                             break;
                         }
@@ -252,11 +252,11 @@ impl Parser {
                 }
                 "requires" => {
                     self.advance();
-                    function.requires.push(self.expression()?);
+                    function.requires.push(self.parse_expression()?);
                 }
                 "ensures" => {
                     self.advance();
-                    function.ensures.push(self.expression()?);
+                    function.ensures.push(self.parse_expression()?);
                 }
                 "description" => {
                     let span = self.advance().span;
@@ -271,11 +271,11 @@ impl Parser {
                             self.advance();
                             function.description = Some(text);
                         }
-                        _ => return Err(self.error_expected("a string", "after `description`")),
+                        _ => return Err(self.expected_error("a string", "after `description`")),
                     }
                 }
                 _ => {
-                    return Err(self.error_expected(
+                    return Err(self.expected_error(
                         "`uses`, `requires`, `ensures`, `description` or `}`",
                         "in the function contract",
                     ))
@@ -286,11 +286,11 @@ impl Parser {
         Ok(function)
     }
 
-    fn signature(&mut self) -> ParseResult<Signature> {
-        let name = self.identifier("for the function name")?;
-        let parameters = self.parameters()?;
+    fn parse_signature(&mut self) -> ParseResult<Signature> {
+        let name = self.parse_identifier("for the function name")?;
+        let parameters = self.parse_parameters()?;
         self.expect(TokenKind::Arrow, "before the output type")?;
-        let output = self.type_expr()?;
+        let output = self.parse_type()?;
         Ok(Signature {
             name,
             parameters,
@@ -298,13 +298,13 @@ impl Parser {
         })
     }
 
-    fn parameters(&mut self) -> ParseResult<Vec<Parameter>> {
+    fn parse_parameters(&mut self) -> ParseResult<Vec<Parameter>> {
         self.expect(TokenKind::LeftParen, "to open the parameter list")?;
         let mut parameters = Vec::new();
         while !self.check(&TokenKind::RightParen) {
-            let name = self.identifier("for a parameter")?;
+            let name = self.parse_identifier("for a parameter")?;
             self.expect(TokenKind::Colon, "after the parameter name")?;
-            let ty = self.type_expr()?;
+            let ty = self.parse_type()?;
             parameters.push(Parameter { name, ty });
             if !self.advance_if(&TokenKind::Comma) {
                 break;
@@ -314,12 +314,12 @@ impl Parser {
         Ok(parameters)
     }
 
-    fn type_expr(&mut self) -> ParseResult<TypeExpr> {
-        let name = self.identifier("for a type")?;
+    fn parse_type(&mut self) -> ParseResult<TypeExpr> {
+        let name = self.parse_identifier("for a type")?;
         let mut arguments = Vec::new();
         if self.advance_if(&TokenKind::Less) {
             loop {
-                arguments.push(self.type_expr()?);
+                arguments.push(self.parse_type()?);
                 if !self.advance_if(&TokenKind::Comma) {
                     break;
                 }
@@ -331,11 +331,11 @@ impl Parser {
 
     // ---- expressions ----
 
-    fn expression(&mut self) -> ParseResult<Expr> {
-        self.binary(0)
+    fn parse_expression(&mut self) -> ParseResult<Expr> {
+        self.parse_binary(0)
     }
 
-    fn binary_op(kind: &TokenKind) -> Option<(BinaryOp, u8)> {
+    fn binary_operator(kind: &TokenKind) -> Option<(BinaryOp, u8)> {
         let pair = match kind {
             TokenKind::Or => (BinaryOp::Or, 1),
             TokenKind::And => (BinaryOp::And, 2),
@@ -356,14 +356,14 @@ impl Parser {
     }
 
     /// Precedence climbing. All binary operators are left-associative.
-    fn binary(&mut self, min_precedence: u8) -> ParseResult<Expr> {
-        let mut left = self.unary()?;
-        while let Some((op, precedence)) = Self::binary_op(self.peek_kind()) {
+    fn parse_binary(&mut self, min_precedence: u8) -> ParseResult<Expr> {
+        let mut left = self.parse_unary()?;
+        while let Some((op, precedence)) = Self::binary_operator(self.peek_kind()) {
             if precedence <= min_precedence {
                 break;
             }
             let span = self.advance().span;
-            let right = self.binary(precedence)?;
+            let right = self.parse_binary(precedence)?;
             left = Expr {
                 kind: ExprKind::Binary(op, Box::new(left), Box::new(right)),
                 span,
@@ -372,24 +372,24 @@ impl Parser {
         Ok(left)
     }
 
-    fn unary(&mut self) -> ParseResult<Expr> {
+    fn parse_unary(&mut self) -> ParseResult<Expr> {
         let op = match self.peek_kind() {
             TokenKind::Not => UnaryOp::Not,
             TokenKind::Minus => UnaryOp::Negate,
-            _ => return self.postfix(),
+            _ => return self.parse_postfix(),
         };
         let span = self.advance().span;
-        let operand = self.unary()?;
+        let operand = self.parse_unary()?;
         Ok(Expr {
             kind: ExprKind::Unary(op, Box::new(operand)),
             span,
         })
     }
 
-    fn postfix(&mut self) -> ParseResult<Expr> {
-        let mut expr = self.primary()?;
+    fn parse_postfix(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.parse_primary()?;
         while self.advance_if(&TokenKind::Dot) {
-            let field = self.identifier("after `.`")?;
+            let field = self.parse_identifier("after `.`")?;
             let span = field.span;
             expr = Expr {
                 kind: ExprKind::Field(Box::new(expr), field),
@@ -399,7 +399,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn primary(&mut self) -> ParseResult<Expr> {
+    fn parse_primary(&mut self) -> ParseResult<Expr> {
         let token = self.peek().clone();
         let span = token.span;
         let kind = match token.kind {
@@ -425,29 +425,29 @@ impl Parser {
             }
             TokenKind::LeftParen => {
                 self.advance();
-                let inner = self.expression()?;
+                let inner = self.parse_expression()?;
                 self.expect(TokenKind::RightParen, "to close the parenthesis")?;
                 return Ok(inner);
             }
             TokenKind::Identifier(name) => {
                 self.advance();
                 if self.check(&TokenKind::LeftParen) {
-                    let arguments = self.arguments()?;
+                    let arguments = self.parse_arguments()?;
                     ExprKind::Call(Identifier { name, span }, arguments)
                 } else {
                     ExprKind::Name(name)
                 }
             }
-            _ => return Err(self.error_expected("an expression", "")),
+            _ => return Err(self.expected_error("an expression", "")),
         };
         Ok(Expr { kind, span })
     }
 
-    fn arguments(&mut self) -> ParseResult<Vec<Expr>> {
+    fn parse_arguments(&mut self) -> ParseResult<Vec<Expr>> {
         self.expect(TokenKind::LeftParen, "to open the argument list")?;
         let mut arguments = Vec::new();
         while !self.check(&TokenKind::RightParen) {
-            arguments.push(self.expression()?);
+            arguments.push(self.parse_expression()?);
             if !self.advance_if(&TokenKind::Comma) {
                 break;
             }

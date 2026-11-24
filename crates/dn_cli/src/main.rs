@@ -1,7 +1,7 @@
 //! The `dn` command-line tool.
 
+mod diagnostics;
 mod project;
-mod report;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,8 +9,8 @@ use std::process::{Command, ExitCode};
 
 use dn_codegen::{cargo_manifest, crate_name, generate_rust};
 
+use crate::diagnostics::print_diagnostics;
 use crate::project::Project;
-use crate::report::print_diagnostics;
 
 const USAGE: &str = "\
 dn - a domain language that compiles through Rust

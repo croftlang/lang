@@ -37,11 +37,11 @@ enum Casing {
 }
 
 impl<'a> Checker<'a> {
-    fn report(&mut self, message: impl Into<String>, span: Span) {
+    fn report_error(&mut self, message: impl Into<String>, span: Span) {
         self.errors.push(Diagnostic::new(message, span));
     }
 
-    fn report_result<T>(&mut self, result: Result<T, Diagnostic>) -> Option<T> {
+    fn report_if_error<T>(&mut self, result: Result<T, Diagnostic>) -> Option<T> {
         match result {
             Ok(value) => Some(value),
             Err(error) => {
@@ -77,11 +77,11 @@ impl<'a> Checker<'a> {
             ),
         };
         if matches!(name.name.as_str(), "self" | "crate" | "super" | "Self") {
-            self.report(format!("`{}` is a reserved name", name.name), name.span);
+            self.report_error(format!("`{}` is a reserved name", name.name), name.span);
             return;
         }
         if !valid {
-            self.report(
+            self.report_error(
                 format!("{what} `{}` should be {style}, like `{example}`", name.name),
                 name.span,
             );
@@ -92,7 +92,7 @@ impl<'a> Checker<'a> {
         let mut seen = HashSet::new();
         for name in names {
             if !seen.insert(name.name.as_str()) {
-                self.report(
+                self.report_error(
                     format!("{what} `{}` is declared more than once", name.name),
                     name.span,
                 );
@@ -105,7 +105,7 @@ impl<'a> Checker<'a> {
         self.check_unique(decl.fields.iter().map(|field| &field.name), "field");
         for field in &decl.fields {
             self.check_casing(&field.name, Casing::Snake, "field");
-            let Some(field_type) = self.report_result(self.program.resolve_type(&field.ty, &[]))
+            let Some(field_type) = self.report_if_error(self.program.resolve_type(&field.ty, &[]))
             else {
                 continue;
             };
@@ -123,12 +123,12 @@ impl<'a> Checker<'a> {
     fn check_constraint_use(&mut self, constraint_use: &ConstraintUse, subject: &Type) {
         let name = &constraint_use.name;
         let Some(constraint) = self.program.constraint_decl(&name.name) else {
-            self.report(format!("unknown constraint `{}`", name.name), name.span);
+            self.report_error(format!("unknown constraint `{}`", name.name), name.span);
             return;
         };
         let expected = constraint.parameters.len().saturating_sub(1);
         if constraint_use.arguments.len() != expected {
-            self.report(
+            self.report_error(
                 format!(
                     "constraint `{}` needs {expected} argument(s) here but {} were given",
                     name.name,
@@ -141,7 +141,7 @@ impl<'a> Checker<'a> {
         let mut types = vec![subject.clone()];
         for argument in &constraint_use.arguments {
             if matches!(argument.kind, ExprKind::Call(..)) {
-                self.report(
+                self.report_error(
                     "constraint arguments must be values, not calls",
                     argument.span,
                 );
@@ -158,13 +158,13 @@ impl<'a> Checker<'a> {
         let result = self
             .program
             .match_constraint_parameters(constraint, &types, name.span);
-        self.report_result(result);
+        self.report_if_error(result);
     }
 
     fn check_enum(&mut self, decl: &EnumDecl) {
         self.check_casing(&decl.name, Casing::Pascal, "enum");
         if decl.variants.is_empty() {
-            self.report(
+            self.report_error(
                 format!("enum `{}` needs at least one variant", decl.name.name),
                 decl.name.span,
             );
@@ -177,26 +177,27 @@ impl<'a> Checker<'a> {
 
     fn check_const(&mut self, decl: &ConstDecl) {
         self.check_casing(&decl.name, Casing::UpperSnake, "constant");
-        let Some(declared) = self.report_result(self.program.resolve_type(&decl.ty, &[])) else {
+        let Some(declared) = self.report_if_error(self.program.resolve_type(&decl.ty, &[])) else {
             return;
         };
         if !matches!(
             declared,
             Type::Int | Type::Float | Type::Bool | Type::String
         ) {
-            self.report(
+            self.report_error(
                 format!("constants must be Int, Float, Bool or String, found {declared}"),
                 decl.ty.name.span,
             );
             return;
         }
         if contains_call(&decl.value) {
-            self.report("constant values cannot call constraints", decl.value.span);
+            self.report_error("constant values cannot call constraints", decl.value.span);
             return;
         }
-        if let Some(actual) = self.report_result(self.program.type_of(&decl.value, &Scope::new())) {
+        if let Some(actual) = self.report_if_error(self.program.type_of(&decl.value, &Scope::new()))
+        {
             if actual != declared {
-                self.report(
+                self.report_error(
                     format!("constant is declared as {declared} but its value is {actual}"),
                     decl.value.span,
                 );
@@ -208,7 +209,7 @@ impl<'a> Checker<'a> {
         self.check_casing(&decl.name, Casing::Pascal, "constraint");
         self.check_unique(&decl.generics, "type parameter");
         if decl.parameters.is_empty() {
-            self.report(
+            self.report_error(
                 format!(
                     "constraint `{}` needs at least one parameter: the value it checks",
                     decl.name.name
@@ -237,7 +238,7 @@ impl<'a> Checker<'a> {
         for parameter in parameters {
             self.check_casing(&parameter.name, Casing::Snake, "parameter");
             if parameter.name.name == OUTPUT_NAME {
-                self.report(
+                self.report_error(
                     "`output` is reserved for a function's output in `ensures`",
                     parameter.name.span,
                 );
@@ -256,9 +257,9 @@ impl<'a> Checker<'a> {
     }
 
     fn expect_bool(&mut self, expr: &Expr, scope: &Scope, context: &str) {
-        if let Some(ty) = self.report_result(self.program.type_of(expr, scope)) {
+        if let Some(ty) = self.report_if_error(self.program.type_of(expr, scope)) {
             if ty != Type::Bool {
-                self.report(format!("{context} must be a Bool, found {ty}"), expr.span);
+                self.report_error(format!("{context} must be a Bool, found {ty}"), expr.span);
             }
         }
     }
@@ -266,7 +267,7 @@ impl<'a> Checker<'a> {
     fn check_signature(&mut self, signature: &Signature) -> Option<(Scope, Type)> {
         self.check_casing(&signature.name, Casing::Snake, "function");
         let scope = self.parameter_scope(&signature.parameters, &[]);
-        let output = self.report_result(self.program.resolve_type(&signature.output, &[]));
+        let output = self.report_if_error(self.program.resolve_type(&signature.output, &[]));
         Some((scope?, output?))
     }
 
@@ -284,7 +285,7 @@ impl<'a> Checker<'a> {
     fn check_adapter(&mut self, decl: &AdapterDecl) {
         self.check_casing(&decl.name, Casing::Pascal, "adapter");
         if self.program.port_decl(&decl.port.name).is_none() {
-            self.report(format!("unknown port `{}`", decl.port.name), decl.port.span);
+            self.report_error(format!("unknown port `{}`", decl.port.name), decl.port.span);
         }
     }
 
@@ -293,7 +294,7 @@ impl<'a> Checker<'a> {
         self.check_unique(&decl.uses, "port");
         for port in &decl.uses {
             if self.program.port_decl(&port.name).is_none() {
-                self.report(format!("unknown port `{}`", port.name), port.span);
+                self.report_error(format!("unknown port `{}`", port.name), port.span);
                 continue;
             }
             let parameter_name = to_snake_case(&port.name);
@@ -303,7 +304,7 @@ impl<'a> Checker<'a> {
                 .iter()
                 .any(|parameter| parameter.name.name == parameter_name)
             {
-                self.report(
+                self.report_error(
                     format!(
                         "parameter `{parameter_name}` clashes with the name generated for port `{}`",
                         port.name
@@ -313,7 +314,7 @@ impl<'a> Checker<'a> {
             }
         }
         if decl.description.is_none() {
-            self.report(
+            self.report_error(
                 format!(
                     "function `{}` needs a `description` saying what it does",
                     decl.signature.name.name
@@ -344,7 +345,7 @@ impl<'a> Checker<'a> {
                 let mut members = path.clone();
                 members.sort();
                 if reported.insert(members) {
-                    self.report(
+                    self.report_error(
                         format!(
                             "struct `{}` contains itself ({}); wrap the field in a List",
                             decl.name.name,
