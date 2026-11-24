@@ -92,3 +92,26 @@ fn reads_event_as_a_name_in_a_policy() {
     let body = statements("issue DropTreasure(at: event.at) on Room(event.source)");
     assert_eq!(body.len(), 1);
 }
+
+#[test]
+fn reads_a_loop_that_runs_until_break() {
+    let body =
+        statements("loop {\n    if done {\n        break\n    }\n    set turns = turns + 1\n}");
+    let Statement::Expr(value) = &body[0] else {
+        panic!("expected a loop")
+    };
+    assert!(matches!(value.kind, ExprKind::Loop(None, _)));
+}
+
+#[test]
+fn reads_a_counted_loop() {
+    let body = statements("loop (let i where Range(0, 99)) {\n    screen.draw(i)\n}");
+    let Statement::Expr(value) = &body[0] else {
+        panic!("expected a loop")
+    };
+    let ExprKind::Loop(Some(counter), _) = &value.kind else {
+        panic!("expected a counter")
+    };
+    assert_eq!(counter.name.name, "i");
+    assert_eq!(counter.rules.len(), 1);
+}

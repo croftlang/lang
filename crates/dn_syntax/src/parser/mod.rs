@@ -11,6 +11,7 @@ mod expression;
 mod file;
 mod postfix;
 mod primary;
+mod repeat;
 mod rules;
 #[cfg(test)]
 mod tests;

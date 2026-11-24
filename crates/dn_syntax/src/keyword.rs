@@ -28,6 +28,8 @@ pub enum Keyword {
     Application,
     Let,
     Set,
+    Loop,
+    Break,
     Emit,
     Issue,
     If,
@@ -42,7 +44,7 @@ pub enum Keyword {
     False,
 }
 
-const KEYWORDS: [(&str, Keyword); 36] = [
+const KEYWORDS: [(&str, Keyword); 38] = [
     ("context", Keyword::Context),
     ("publish", Keyword::Publish),
     ("use", Keyword::Use),
@@ -66,6 +68,8 @@ const KEYWORDS: [(&str, Keyword); 36] = [
     ("translation", Keyword::Translation),
     ("application", Keyword::Application),
     ("let", Keyword::Let),
+    ("loop", Keyword::Loop),
+    ("break", Keyword::Break),
     ("set", Keyword::Set),
     ("emit", Keyword::Emit),
     ("issue", Keyword::Issue),

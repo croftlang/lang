@@ -1,4 +1,4 @@
-use super::{Identifier, Path};
+use super::{Identifier, Path, Rule};
 use crate::span::Span;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -30,6 +30,9 @@ pub enum ExprKind {
     /// A guard: when the condition holds, the block is the result.
     If(Box<Expr>, Box<Expr>),
     Match(Box<Expr>, Vec<MatchArm>),
+    /// `loop { ... }`, or `loop (let i where Range(0, 99)) { ... }` with a counter.
+    Loop(Option<LoopCounter>, Box<Expr>),
+    Break,
     Block(Vec<Statement>),
     Issue(Issue),
     Emit(Path, Vec<FieldValue>),
@@ -56,6 +59,13 @@ pub struct Argument {
 pub struct FieldValue {
     pub name: Identifier,
     pub value: Option<Expr>,
+}
+
+/// The counter of a counted loop: it takes every value its rules allow, in order.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LoopCounter {
+    pub name: Identifier,
+    pub rules: Vec<Rule>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

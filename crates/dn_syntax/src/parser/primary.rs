@@ -23,6 +23,8 @@ impl Parser {
             TokenKind::LeftBrace => return self.parse_block(),
             TokenKind::Keyword(Keyword::If) => return self.parse_if(),
             TokenKind::Keyword(Keyword::Match) => return self.parse_match(),
+            TokenKind::Keyword(Keyword::Loop) => return self.parse_loop(),
+            TokenKind::Keyword(Keyword::Break) => self.literal(ExprKind::Break),
             TokenKind::Keyword(Keyword::Issue) => ExprKind::Issue(self.parse_issue()?),
             TokenKind::Keyword(Keyword::Emit) => {
                 self.advance();
