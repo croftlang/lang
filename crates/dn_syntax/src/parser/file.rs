@@ -12,8 +12,12 @@ impl Parser {
     pub(super) fn parse_file(&mut self) -> ParseResult<File> {
         let mut file = File::default();
         while !self.check(&TokenKind::EndOfFile) {
+            if self.check_keyword(Keyword::Domain) {
+                file.domains.push(self.parse_domain()?);
+                continue;
+            }
             if !self.check_keyword(Keyword::Context) {
-                return Err(self.unexpected("`context`"));
+                return Err(self.unexpected("`context` or `domain`"));
             }
             file.contexts.push(self.parse_context()?);
         }
@@ -72,7 +76,7 @@ impl Parser {
     }
 
     /// `use { EnemyId, Room.EnemyDefeated } from Dungeon`
-    fn parse_use(&mut self) -> ParseResult<UseDecl> {
+    pub(super) fn parse_use(&mut self) -> ParseResult<UseDecl> {
         self.expect_keyword(Keyword::Use)?;
         let names = self.parse_path_list()?;
         self.expect_word("from")?;

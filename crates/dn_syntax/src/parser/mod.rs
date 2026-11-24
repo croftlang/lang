@@ -6,6 +6,7 @@ mod behaviour;
 mod block;
 mod boundary;
 mod data;
+mod domain;
 mod expression;
 mod file;
 mod postfix;

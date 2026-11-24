@@ -104,3 +104,16 @@ pub struct ConstraintDecl {
     pub parameters: Vec<Parameter>,
     pub body: Expr,
 }
+
+/// `domain Game { ... } = { ... }`: the whole program. It lists the contexts
+/// the domain is divided into, uses what they publish, and its body runs first.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DomainDecl {
+    pub doc: Vec<String>,
+    pub name: Identifier,
+    pub contexts: Vec<Identifier>,
+    pub uses_from: Vec<UseDecl>,
+    /// The ports the body calls, as a service lists them.
+    pub uses: Vec<Path>,
+    pub body: Expr,
+}

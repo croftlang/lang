@@ -5,6 +5,7 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Keyword {
     Context,
+    Domain,
     Publish,
     Use,
     Value,
@@ -43,8 +44,9 @@ pub enum Keyword {
     False,
 }
 
-const KEYWORDS: [(&str, Keyword); 37] = [
+const KEYWORDS: [(&str, Keyword); 38] = [
     ("context", Keyword::Context),
+    ("domain", Keyword::Domain),
     ("publish", Keyword::Publish),
     ("use", Keyword::Use),
     ("value", Keyword::Value),

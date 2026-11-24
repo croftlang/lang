@@ -93,3 +93,16 @@ fn keeps_doc_comments() {
     };
     assert_eq!(walk.doc, vec!["Moves the player.".to_string()]);
 }
+
+#[test]
+fn reads_a_domain() {
+    let source = "domain Game {\n    contexts { Dungeon, Scoring }\n    use { PlayTurn } from Dungeon\n    uses Keyboard\n} = {\n    PlayTurn()?\n}";
+    let file = parse_ok(source);
+    let [domain] = &file.domains[..] else {
+        panic!("expected one domain")
+    };
+    assert_eq!(domain.name.name, "Game");
+    assert_eq!(domain.contexts.len(), 2);
+    assert_eq!(domain.uses_from[0].from.name, "Dungeon");
+    assert_eq!(domain.uses[0].text(), "Keyboard");
+}

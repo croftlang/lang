@@ -83,4 +83,5 @@ pub struct Parameter {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct File {
     pub contexts: Vec<ContextDecl>,
+    pub domains: Vec<DomainDecl>,
 }

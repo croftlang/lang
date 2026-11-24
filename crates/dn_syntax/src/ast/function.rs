@@ -9,6 +9,8 @@ pub enum FunctionKind {
     Translation,
     Command,
     Operation,
+    /// The body of a `domain`, which runs first.
+    Domain,
 }
 
 /// Anything with a signature: functions, services, translations, commands and
