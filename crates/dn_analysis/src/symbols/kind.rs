@@ -1,6 +1,6 @@
 //! The kinds of thing a name can refer to.
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SymbolKind {
     Value,
     Entity,

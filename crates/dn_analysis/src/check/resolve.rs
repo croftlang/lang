@@ -9,20 +9,13 @@ use dn_syntax::ast::Path;
 use super::Checker;
 use crate::program::Context;
 use crate::symbols::SymbolKind;
+pub(crate) use crate::types::Resolved;
 
 /// Where a name is being looked up from.
 #[derive(Clone, Copy)]
 pub(crate) struct Scope<'a> {
     pub context: &'a Context,
     pub aggregate: Option<&'a str>,
-}
-
-/// A declaration a name refers to: its context, its full name there, and its kind.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Resolved {
-    pub context: String,
-    pub name: String,
-    pub kind: SymbolKind,
 }
 
 impl<'a> Checker<'a> {

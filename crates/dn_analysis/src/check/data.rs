@@ -83,7 +83,7 @@ impl<'a> Checker<'a> {
 }
 
 /// The name an expression spells, if it is just a name: `ExitBlocked`, `Room.NotFound`.
-fn expr_path(value: &Expr) -> Option<Path> {
+pub(super) fn expr_path(value: &Expr) -> Option<Path> {
     match &value.kind {
         ExprKind::Name(name) => {
             let segment = Identifier {
