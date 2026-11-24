@@ -115,3 +115,16 @@ fn reads_a_counted_loop() {
     assert_eq!(counter.name.name, "i");
     assert_eq!(counter.rules.len(), 1);
 }
+
+#[test]
+fn reads_list_literals() {
+    let body = statements("let empty = []\nlet three = [1, 2,\n    3]");
+    let Statement::Let(_, empty) = &body[0] else {
+        panic!("expected let")
+    };
+    assert!(matches!(empty.kind, ExprKind::List(ref items) if items.is_empty()));
+    let Statement::Let(_, three) = &body[1] else {
+        panic!("expected let")
+    };
+    assert!(matches!(three.kind, ExprKind::List(ref items) if items.len() == 3));
+}

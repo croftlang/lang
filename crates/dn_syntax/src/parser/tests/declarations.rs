@@ -1,5 +1,5 @@
 use super::{only_context, parse_error, parse_ok};
-use crate::ast::{ContextItem, FunctionKind, TopItem};
+use crate::ast::{ContextItem, FunctionKind};
 
 #[test]
 fn reads_a_context_header_as_the_rest_of_the_file() {
@@ -76,13 +76,13 @@ fn reads_enums_with_data_and_includes() {
 }
 
 #[test]
-fn reads_an_application() {
-    let file = parse_ok("application Dungeon {\n    start PlayGame\n    target test {\n        Screen -> NullScreen\n    }\n}");
-    let [TopItem::Application(application)] = &file.items[..] else {
-        panic!("expected an application")
+fn reads_an_adapter_without_a_target() {
+    let file = parse_ok("context Platform {\n    adapter NullScreen for Screen {\n        fn clear() = Unit\n    }\n}");
+    let ContextItem::Adapter(adapter) = &only_context(&file).items[0] else {
+        panic!("expected an adapter")
     };
-    assert_eq!(application.start.text(), "PlayGame");
-    assert_eq!(application.targets[0].bindings.len(), 1);
+    assert_eq!(adapter.port.text(), "Screen");
+    assert_eq!(adapter.operations.len(), 1);
 }
 
 #[test]

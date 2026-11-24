@@ -57,4 +57,18 @@ impl Parser {
         self.allow_records = previous;
         result
     }
+
+    /// `[a, b, c]`: items separated by commas, across lines if need be.
+    pub(super) fn parse_list(&mut self) -> ParseResult<Vec<crate::ast::Expr>> {
+        self.expect(&TokenKind::LeftBracket)?;
+        let mut items = Vec::new();
+        while !self.eat(&TokenKind::RightBracket) {
+            items.push(self.with_records(true, Self::parse_expression)?);
+            if !self.eat(&TokenKind::Comma) {
+                self.expect(&TokenKind::RightBracket)?;
+                break;
+            }
+        }
+        Ok(items)
+    }
 }

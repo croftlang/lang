@@ -21,6 +21,7 @@ impl Parser {
                 return Ok(inner);
             }
             TokenKind::LeftBrace => return self.parse_block(),
+            TokenKind::LeftBracket => ExprKind::List(self.parse_list()?),
             TokenKind::Keyword(Keyword::If) => return self.parse_if(),
             TokenKind::Keyword(Keyword::Match) => return self.parse_match(),
             TokenKind::Keyword(Keyword::Loop) => return self.parse_loop(),

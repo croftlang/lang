@@ -23,6 +23,8 @@ impl Lexer<'_> {
             '}' => TokenKind::RightBrace,
             '(' => TokenKind::LeftParen,
             ')' => TokenKind::RightParen,
+            '[' => TokenKind::LeftBracket,
+            ']' => TokenKind::RightBracket,
             ',' => TokenKind::Comma,
             ':' => TokenKind::Colon,
             '.' => TokenKind::Dot,

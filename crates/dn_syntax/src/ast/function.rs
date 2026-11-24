@@ -41,13 +41,12 @@ pub struct PortDecl {
     pub operations: Vec<FunctionDecl>,
 }
 
-/// `adapter SpectrumScreen for Screen on target spectrum_48k { ... }`
+/// `adapter SpectrumScreen for Screen { ... }`
 #[derive(Debug, Clone, PartialEq)]
 pub struct AdapterDecl {
     pub doc: Vec<String>,
     pub name: Identifier,
     pub port: Path,
-    pub target: Identifier,
     pub fields: Vec<Field>,
     pub operations: Vec<FunctionDecl>,
 }
@@ -59,19 +58,4 @@ pub struct RepositoryDecl {
     pub name: Identifier,
     pub aggregate: Path,
     pub storage: Option<Path>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ApplicationDecl {
-    pub doc: Vec<String>,
-    pub name: Identifier,
-    pub start: Path,
-    pub targets: Vec<TargetDecl>,
-}
-
-/// One target's port to adapter choices: `Screen -> SpectrumScreen`.
-#[derive(Debug, Clone, PartialEq)]
-pub struct TargetDecl {
-    pub name: Identifier,
-    pub bindings: Vec<(Path, Path)>,
 }

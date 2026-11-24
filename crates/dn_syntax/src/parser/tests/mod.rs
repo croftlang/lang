@@ -2,7 +2,7 @@ mod declarations;
 mod examples;
 mod expressions;
 
-use crate::ast::{ContextDecl, ContextItem, Expr, File, Statement, TopItem};
+use crate::ast::{ContextDecl, ContextItem, Expr, File, Statement};
 use crate::span::SourceId;
 
 fn parse_ok(source: &str) -> File {
@@ -22,8 +22,8 @@ fn parse_error(source: &str) -> String {
 }
 
 fn only_context(file: &File) -> &ContextDecl {
-    match file.items.as_slice() {
-        [TopItem::Context(context)] => context,
+    match file.contexts.as_slice() {
+        [context] => context,
         other => panic!("expected one context, found {other:?}"),
     }
 }

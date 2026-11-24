@@ -1,7 +1,6 @@
 //! Turns tokens into a syntax tree.
 
 mod aggregate;
-mod application;
 mod arguments;
 mod behaviour;
 mod block;

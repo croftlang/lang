@@ -23,16 +23,14 @@ impl Parser {
         })
     }
 
-    /// `adapter SpectrumScreen for Screen on target spectrum_48k { ... }`
+    /// `adapter SpectrumScreen for Screen { ... }`. Which targets use it is
+    /// chosen in `dn.toml`.
     pub(super) fn parse_adapter(&mut self) -> ParseResult<AdapterDecl> {
         let doc = self.doc();
         self.expect_keyword(Keyword::Adapter)?;
         let name = self.expect_identifier()?;
         self.expect_word("for")?;
         let port = self.parse_path()?;
-        self.expect_word("on")?;
-        self.expect_word("target")?;
-        let target = self.expect_identifier()?;
         self.expect(&TokenKind::LeftBrace)?;
         let (mut fields, mut operations) = (Vec::new(), Vec::new());
         while !self.eat(&TokenKind::RightBrace) {
@@ -46,7 +44,6 @@ impl Parser {
             doc,
             name,
             port,
-            target,
             fields,
             operations,
         })

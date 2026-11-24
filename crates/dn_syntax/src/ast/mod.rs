@@ -78,14 +78,9 @@ pub struct Parameter {
     pub rules: Vec<Rule>,
 }
 
-/// Everything read from one source file.
+/// Everything read from one source file: the contexts, or parts of
+/// contexts, it declares.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct File {
-    pub items: Vec<TopItem>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum TopItem {
-    Context(ContextDecl),
-    Application(ApplicationDecl),
+    pub contexts: Vec<ContextDecl>,
 }

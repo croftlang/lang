@@ -29,6 +29,8 @@ pub enum ExprKind {
     Record(Path, Vec<FieldValue>),
     /// `start with { x: 11 }`
     With(Box<Expr>, Vec<FieldValue>),
+    /// `[a, b, c]`, or `[]` for an empty list.
+    List(Vec<Expr>),
     Unary(UnaryOp, Box<Expr>),
     Binary(BinaryOp, Box<Expr>, Box<Expr>),
     /// `value or Error`: the error to fail with when `value` fails.

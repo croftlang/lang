@@ -1,5 +1,0 @@
-application Checks {
-    start Start
-    target test {
-    }
-}

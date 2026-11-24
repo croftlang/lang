@@ -4,7 +4,7 @@
 //! `context Dungeon`, which claims the rest of the file.
 
 use super::{ParseResult, Parser};
-use crate::ast::{ContextDecl, ContextItem, File, TopItem, UseDecl};
+use crate::ast::{ContextDecl, ContextItem, File, UseDecl};
 use crate::keyword::Keyword;
 use crate::token::TokenKind;
 
@@ -12,14 +12,10 @@ impl Parser {
     pub(super) fn parse_file(&mut self) -> ParseResult<File> {
         let mut file = File::default();
         while !self.check(&TokenKind::EndOfFile) {
-            let item = if self.check_keyword(Keyword::Application) {
-                TopItem::Application(self.parse_application()?)
-            } else if self.check_keyword(Keyword::Context) {
-                TopItem::Context(self.parse_context()?)
-            } else {
-                return Err(self.unexpected("`context` or `application`"));
-            };
-            file.items.push(item);
+            if !self.check_keyword(Keyword::Context) {
+                return Err(self.unexpected("`context`"));
+            }
+            file.contexts.push(self.parse_context()?);
         }
         Ok(file)
     }
