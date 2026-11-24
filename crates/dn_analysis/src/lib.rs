@@ -1,10 +1,9 @@
-//! Checking dn programs: name resolution, type checking and naming rules.
+//! Checking dn programs: merging files, resolving names and checking declarations.
 
-pub mod checker;
+pub mod check;
 pub mod naming;
 pub mod program;
-pub mod types;
+pub mod symbols;
 
-pub use checker::check;
-pub use program::{Program, Scope, OUTPUT_NAME};
-pub use types::Type;
+pub use check::check;
+pub use program::{Context, Program};
