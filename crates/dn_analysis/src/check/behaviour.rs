@@ -37,7 +37,10 @@ impl<'a> Checker<'a> {
         if function.kind == FunctionKind::Service {
             let kinds = [SymbolKind::Port, SymbolKind::Repository];
             for port in &function.uses {
-                self.expect_kind(scope, port, &kinds, "a port or repository");
+                let is_builtin = port.text() == "Arguments" && self.resolve(scope, port).is_none();
+                if !is_builtin {
+                    self.expect_kind(scope, port, &kinds, "a port or repository");
+                }
             }
         } else if let Some(port) = function.uses.first() {
             self.error("only a service can use ports", port.span());

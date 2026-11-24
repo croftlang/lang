@@ -1,0 +1,95 @@
+//! Calls on the ports and repositories a service uses.
+
+use dn_syntax::ast::{Argument, Identifier};
+
+use super::BodyChecker;
+use crate::types::{Resolved, Type};
+
+impl<'c, 'a> BodyChecker<'c, 'a> {
+    pub(super) fn port_operation(
+        &mut self,
+        port: &Resolved,
+        method: &Identifier,
+        arguments: &[Argument],
+    ) -> Type {
+        if port.context.is_empty() {
+            if method.name == "all" {
+                return self
+                    .fixed("all", arguments, &[], Type::list(Type::String), method.span)
+                    .unwrap();
+            }
+            self.error(
+                format!("port `Arguments` has no operation `{}`", method.name),
+                method.span,
+            );
+            return Type::Unknown;
+        }
+        let scope = self.checker.scope_of(port);
+        let decl = scope
+            .context
+            .ports
+            .iter()
+            .find(|p| p.name.name == port.name);
+        let operation =
+            decl.and_then(|p| p.operations.iter().find(|op| op.name.name == method.name));
+        let Some(operation) = operation else {
+            self.error(
+                format!("port `{}` has no operation `{}`", port.name, method.name),
+                method.span,
+            );
+            return Type::Unknown;
+        };
+        let parameters: Vec<(String, Type)> = (operation.parameters.iter().flatten())
+            .map(|p| (p.name.name.clone(), self.checker.parameter_type(&scope, p)))
+            .collect();
+        self.check_arguments(arguments, &parameters, &method.name, method.span, false);
+        operation
+            .return_type
+            .as_ref()
+            .map_or(Type::Unit, |ty| self.checker.lower_type(&scope, ty))
+    }
+
+    /// A repository gives `find(id)` and `save(aggregate)`.
+    pub(super) fn repository_operation(
+        &mut self,
+        repository: &Resolved,
+        method: &Identifier,
+        arguments: &[Argument],
+    ) -> Type {
+        let Some(aggregate) = self.checker.repository_aggregate(repository) else {
+            return Type::Unknown;
+        };
+        let errors = self
+            .checker
+            .lookup(&aggregate.context, &format!("{}.Error", aggregate.name));
+        let errors = errors.map_or(Type::Unknown, Type::Named);
+        let span = method.span;
+        let found = match method.name.as_str() {
+            "find" => {
+                let identity = self.checker.identity_of(&aggregate);
+                let found = Type::result(Type::Named(aggregate.clone()), errors);
+                self.fixed("find", arguments, &[identity], found, span)
+            }
+            "save" => {
+                let storage = self.checker.storage_error(repository);
+                let found = Type::result(Type::Unit, storage);
+                self.fixed(
+                    "save",
+                    arguments,
+                    &[Type::Named(aggregate.clone())],
+                    found,
+                    span,
+                )
+            }
+            _ => None,
+        };
+        found.unwrap_or_else(|| {
+            let message = format!(
+                "repository `{}` only has `find` and `save`",
+                repository.name
+            );
+            self.error(message, span);
+            Type::Unknown
+        })
+    }
+}

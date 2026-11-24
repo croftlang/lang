@@ -4,17 +4,23 @@
 mod adapter;
 mod aggregate;
 mod application;
+mod assign;
 mod behaviour;
+mod body;
 mod boundary;
 mod data;
+mod declared;
 mod find;
+mod identity;
 mod names;
 mod publish;
+mod repository;
 mod resolve;
 mod rules;
 #[cfg(test)]
 mod tests;
 mod types;
+mod variant;
 
 use std::collections::HashMap;
 
@@ -45,6 +51,11 @@ pub fn check(files: Vec<File>) -> Result<Program, Vec<Diagnostic>> {
     }
     for application in &program.applications {
         checker.check_application(application);
+    }
+    if checker.errors.is_empty() {
+        for context in program.contexts.values() {
+            checker.check_bodies(context);
+        }
     }
     let mut errors = checker.errors;
     if errors.is_empty() {
