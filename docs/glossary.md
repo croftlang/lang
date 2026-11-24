@@ -122,14 +122,25 @@ The outer layer, where the program meets the world. Lists the ports it uses,
 loads aggregates, issues commands and calls ports.
 
 ### Body
-Everything after `=`. Bodies are expressions: no loops, no mutable variables
-and no `else`.
+Everything after `=`. Bodies are expressions with no `else`. Domain bodies
+(commands, functions, constraints, translations) have no loops, so they
+always finish; list methods such as `map` and `sum` do their iterating.
 
 ### Let
 Names a value that never changes. Works in every body.
 
 ### Set
-Changes an aggregate's field. Only allowed in command bodies (and adapters).
+Changes an aggregate's field in a command, an adapter's field, or a
+service's own `let` name. Not allowed anywhere else.
+
+### Loop
+Repeats a block, in services and adapters only. `loop { ... }` runs until
+`break`. `loop (let i where Range(0, 99)) { ... }` runs once for each value the
+counter's rules allow, in order; `Range` includes both ends, so that loop runs
+100 times. A loop gives back `Unit`, and `?` inside it leaves the whole service.
+
+### Break
+Ends the loop it is in. Written alone on its line, usually inside a guard.
 
 ### Guard
 An `if` without `else`. When its condition holds, its value is returned and

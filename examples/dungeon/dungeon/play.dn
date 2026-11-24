@@ -20,11 +20,14 @@ service PlayTurn(room_id: RoomId): Result<Unit, GameError> {
     screen.draw_sprite(PLAYER_SPRITE, changed.player.position)
 }
 
+// Plays turn after turn until a turn fails.
 service PlayGame(): Result<Unit, GameError> {
     uses Screen
 } = {
     screen.clear()
-    PlayTurn(FIRST_ROOM)
+    loop {
+        PlayTurn(FIRST_ROOM)?
+    }
 }
 
 fn act(room: Room, key: Key): Result<Room, Room.Error> = match direction_for(key) {
