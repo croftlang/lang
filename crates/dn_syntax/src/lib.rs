@@ -1,4 +1,4 @@
-//! Reading sp source code: tokens, syntax tree and parser.
+//! Reading dn source code: tokens, syntax tree and parser.
 
 pub mod ast;
 pub mod lexer;

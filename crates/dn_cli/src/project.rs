@@ -1,17 +1,17 @@
-//! Finding, reading and checking the `.sp` files of a project.
+//! Finding, reading and checking the `.dn` files of a project.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use sp_analysis::Program;
-use sp_syntax::{parse, Diagnostic, SourceId};
+use dn_analysis::Program;
+use dn_syntax::{parse, Diagnostic, SourceId};
 
 pub struct SourceFile {
     pub path: PathBuf,
     pub text: String,
 }
 
-/// A project is a folder of `.sp` files, or a single `.sp` file.
+/// A project is a folder of `.dn` files, or a single `.dn` file.
 pub struct Project {
     pub root: PathBuf,
     pub files: Vec<SourceFile>,
@@ -36,7 +36,7 @@ impl Project {
             (path.to_path_buf(), paths)
         };
         if paths.is_empty() {
-            return Err(format!("no .sp files found in `{}`", path.display()));
+            return Err(format!("no .dn files found in `{}`", path.display()));
         }
         let mut files = Vec::new();
         for path in paths {
@@ -60,7 +60,7 @@ impl Project {
         if !errors.is_empty() {
             return Err(errors);
         }
-        sp_analysis::check(modules)
+        dn_analysis::check(modules)
     }
 
     /// The name of the project folder, used for the generated crate.
@@ -68,11 +68,11 @@ impl Project {
         let root = fs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());
         root.file_name()
             .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "sp_project".to_string())
+            .unwrap_or_else(|| "dn_project".to_string())
     }
 
     pub fn output_dir(&self) -> PathBuf {
-        self.root.join("target").join("sp")
+        self.root.join("target").join("dn")
     }
 }
 
@@ -88,7 +88,7 @@ fn find_source_files(dir: &Path, found: &mut Vec<PathBuf>) -> std::io::Result<()
         }
         if path.is_dir() {
             find_source_files(&path, found)?;
-        } else if path.extension().is_some_and(|extension| extension == "sp") {
+        } else if path.extension().is_some_and(|extension| extension == "dn") {
             found.push(path);
         }
     }

@@ -4,10 +4,10 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use sp_codegen::generate_rust;
-use sp_syntax::{parse, SourceId};
+use dn_codegen::generate_rust;
+use dn_syntax::{parse, SourceId};
 
-const EXAMPLE: &str = include_str!("../../../examples/invoicing/invoicing.sp");
+const EXAMPLE: &str = include_str!("../../../examples/invoicing/invoicing.dn");
 
 const BEHAVIOUR_TESTS: &str = r#"
 #[cfg(test)]
@@ -67,7 +67,7 @@ mod behaviour {
 #[test]
 fn example_compiles_and_behaves() {
     let module = parse(EXAMPLE, SourceId(0)).expect("example parses");
-    let program = sp_analysis::check(vec![module]).expect("example checks");
+    let program = dn_analysis::check(vec![module]).expect("example checks");
     let source = generate_rust(&program) + BEHAVIOUR_TESTS;
 
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("generated_code");

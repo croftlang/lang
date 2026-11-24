@@ -121,7 +121,7 @@ pub struct Signature {
     pub output: TypeExpr,
 }
 
-/// A function: its signature and contract. The body is not written in sp.
+/// A function: its signature and contract. The body is not written in dn.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDecl {
     pub signature: Signature,

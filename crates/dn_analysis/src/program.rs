@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use sp_syntax::ast::*;
-use sp_syntax::{Diagnostic, Span};
+use dn_syntax::ast::*;
+use dn_syntax::{Diagnostic, Span};
 
 use crate::types::{unify, Type};
 

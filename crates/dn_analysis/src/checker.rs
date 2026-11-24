@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use sp_syntax::ast::*;
-use sp_syntax::{Diagnostic, Span};
+use dn_syntax::ast::*;
+use dn_syntax::{Diagnostic, Span};
 
 use crate::naming::{is_pascal_case, is_snake_case, is_upper_snake_case, to_snake_case};
 use crate::program::{Program, Scope, OUTPUT_NAME};
@@ -404,7 +404,7 @@ fn contains_call(expr: &Expr) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sp_syntax::{parse, SourceId};
+    use dn_syntax::{parse, SourceId};
 
     fn check_source(source: &str) -> Result<Program, Vec<Diagnostic>> {
         check(vec![

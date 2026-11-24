@@ -1,4 +1,4 @@
-//! Turning checked sp programs into Rust.
+//! Turning checked dn programs into Rust.
 
 pub mod cargo;
 pub mod rust;

@@ -1,6 +1,6 @@
-//! Prints sp expressions back as sp source, for messages and doc comments.
+//! Prints dn expressions back as dn source, for messages and doc comments.
 
-use sp_syntax::ast::{Expr, ExprKind, UnaryOp};
+use dn_syntax::ast::{Expr, ExprKind, UnaryOp};
 
 pub fn expression_text(expr: &Expr) -> String {
     match &expr.kind {

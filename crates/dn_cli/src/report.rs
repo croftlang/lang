@@ -1,6 +1,6 @@
 //! Printing diagnostics with the offending source line.
 
-use sp_syntax::Diagnostic;
+use dn_syntax::Diagnostic;
 
 use crate::project::Project;
 

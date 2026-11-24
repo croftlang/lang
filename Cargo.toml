@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/sp_syntax",
-    "crates/sp_analysis",
-    "crates/sp_codegen",
-    "crates/sp_cli",
+    "crates/dn_syntax",
+    "crates/dn_analysis",
+    "crates/dn_codegen",
+    "crates/dn_cli",
 ]
 
 [workspace.package]

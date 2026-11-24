@@ -1,4 +1,4 @@
-//! The `sp` command-line tool.
+//! The `dn` command-line tool.
 
 mod project;
 mod report;
@@ -7,24 +7,24 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-use sp_codegen::{cargo_manifest, crate_name, generate_rust};
+use dn_codegen::{cargo_manifest, crate_name, generate_rust};
 
 use crate::project::Project;
 use crate::report::print_diagnostics;
 
 const USAGE: &str = "\
-sp - a specification language that compiles through Rust
+dn - a domain language that compiles through Rust
 
 Usage:
-    sp check [path]               Check the .sp files in a folder (default: .)
-    sp compile [path] [options]   Check, generate Rust and build it with cargo
+    dn check [path]               Check the .dn files in a folder (default: .)
+    dn compile [path] [options]   Check, generate Rust and build it with cargo
 
 Options for compile:
     --release    Build with optimisations
     --no-build   Generate the Rust crate without running cargo
 
-    sp help       Show this message
-    sp version    Show the version
+    dn help       Show this message
+    dn version    Show the version
 ";
 
 struct CompileOptions {
@@ -53,7 +53,7 @@ fn main() -> ExitCode {
             Ok(())
         }
         "version" | "--version" | "-V" => {
-            println!("sp {}", env!("CARGO_PKG_VERSION"));
+            println!("dn {}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
         other => Err(format!("unknown command `{other}`\n\n{USAGE}")),
@@ -106,7 +106,7 @@ fn compile_options(flags: &[String]) -> Result<CompileOptions, String> {
     Ok(options)
 }
 
-fn load_and_check(path: &Path) -> Result<(Project, sp_analysis::Program), String> {
+fn load_and_check(path: &Path) -> Result<(Project, dn_analysis::Program), String> {
     let project = Project::load(path)?;
     match project.check() {
         Ok(program) => Ok((project, program)),

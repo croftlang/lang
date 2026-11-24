@@ -1,4 +1,4 @@
-//! Checking sp programs: name resolution, type checking and naming rules.
+//! Checking dn programs: name resolution, type checking and naming rules.
 
 pub mod checker;
 pub mod naming;

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-/// A resolved sp type.
+/// A resolved dn type.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Int,
