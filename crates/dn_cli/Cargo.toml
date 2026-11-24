@@ -12,4 +12,3 @@ path = "src/main.rs"
 [dependencies]
 dn_syntax = { path = "../dn_syntax" }
 dn_analysis = { path = "../dn_analysis" }
-dn_codegen = { path = "../dn_codegen" }

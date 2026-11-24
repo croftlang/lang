@@ -14,15 +14,6 @@ name = "dn_cli"
 version = "0.1.0"
 dependencies = [
  "dn_analysis",
- "dn_codegen",
- "dn_syntax",
-]
-
-[[package]]
-name = "dn_codegen"
-version = "0.1.0"
-dependencies = [
- "dn_analysis",
  "dn_syntax",
 ]
 

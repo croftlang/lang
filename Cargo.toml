@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "crates/dn_syntax",
     "crates/dn_analysis",
-    "crates/dn_codegen",
     "crates/dn_cli",
 ]
 
