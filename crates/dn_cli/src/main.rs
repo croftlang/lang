@@ -1,5 +1,6 @@
 //! The `dn` command-line tool.
 
+mod compile;
 mod diagnostics;
 mod project;
 
@@ -14,7 +15,8 @@ dn - a domain language that compiles to portable C
 
 Usage:
     dn check [path]      Check the .dn files in a folder (default: .)
-    dn compile [path]    Check and generate C (not available yet)
+    dn compile [path] --target <name>
+                         Check, then write C for one target to target/dn/<name>
     dn help              Show this message
     dn version           Show the version
 ";
@@ -31,10 +33,7 @@ fn main() -> ExitCode {
             reject_flags(&flags)?;
             check(&path)
         }),
-        "compile" => parse_path(rest).and_then(|(path, flags)| {
-            reject_flags(&flags)?;
-            compile(&path)
-        }),
+        "compile" => compile::compile(rest),
         "help" | "--help" | "-h" => {
             print!("{USAGE}");
             Ok(())
@@ -78,7 +77,7 @@ fn reject_flags(flags: &[String]) -> Result<(), String> {
     }
 }
 
-fn load_and_check(path: &Path) -> Result<(Project, dn_analysis::Program), String> {
+pub(crate) fn load_and_check(path: &Path) -> Result<(Project, dn_analysis::Program), String> {
     let project = Project::load(path)?;
     match project.check() {
         Ok(program) => Ok((project, program)),
@@ -99,12 +98,6 @@ fn check(path: &Path) -> Result<(), String> {
         plural(contexts),
     );
     Ok(())
-}
-
-/// The C backend is not written yet, so compiling stops after the checks.
-fn compile(path: &Path) -> Result<(), String> {
-    load_and_check(path)?;
-    Err("the C backend is not available yet; `dn check` runs the checks".to_string())
 }
 
 fn plural(count: usize) -> &'static str {
