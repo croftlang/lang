@@ -107,7 +107,10 @@ by identity. Arguments are always named.
 
 ### Event
 Something that happened, named in the past tense, declared inside the
-aggregate that raises it. Raised in a command body with `emit`.
+aggregate that raises it. Raised in a command body with `emit`. An event
+only counts once its aggregate is saved: if the changed aggregate is never
+saved, its events are dropped, so policies never react to a change that was
+not kept.
 
 ### Policy
 A reaction to an event that issues a command, often in another aggregate or
@@ -203,6 +206,11 @@ Implements a port, usually in a `Platform` context: `adapter NullScreen for
 Screen { ... }`. Must provide every operation the port declares. Which
 targets use it is chosen in `dn.toml`, so one adapter can serve several.
 
+### Starting value
+What an adapter's field holds when the program starts, written after its
+type and rules: `keys: List<Key> where Length(0, 32) = [Right, Fire]`. Every
+adapter field needs one; no other field has one.
+
 ### Native
 Calls a C function from an adapter: `native sprite_draw(sprite, at.x, at.y)`.
 Only allowed inside adapters.
@@ -225,12 +233,17 @@ instead of the domain.
 ### Domain
 The whole program: `domain Game { ... } = { ... }`, one per program, outside
 every context. Like a function, it has a contract and a body. The contract
-lists the contexts the domain is divided into (`contexts { Dungeon, Scoring }`,
-its context map, which must name every context), imports what it needs from
-them with `use`, and names the ports it calls with `uses`. The body runs
+holds the context map, imports what the body needs from the contexts with
+`use`, and names the ports it calls with `uses`. The body runs
 first: it sets up each context's starting data through services those
 contexts publish, then runs the program. It can pass up any error with `?`;
 the program then prints the error's name and stops with exit code 1.
+
+### Context map
+The `contexts` block of the domain: every context, and arrows from upstream
+to downstream, `Dungeon -> Scoring`. A context may only `use` contexts
+directly upstream of it, and the arrows may not go round in a circle. A
+context with no relationships is written on its own.
 
 ### Main
 A service a target runs instead of the domain, named by `main` under that

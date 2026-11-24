@@ -110,13 +110,18 @@ Storage = "DivmmcStorage"
 ## The domain
 
 The program starts in its `domain`, declared once, outside every context.
-Like a function, it has a contract and a body. The contract lists the
-contexts the domain is divided into, which must be every context in the
-program, and imports what it needs from them. The body runs first.
+Like a function, it has a contract and a body. The contract holds the
+context map: every context in the program, with arrows from upstream to
+downstream. A context may only use contexts upstream of it, and the arrows
+may not form a circle. The contract also imports what the body needs. The
+body runs first.
 
 ```dn
 domain Game {
-    contexts { Dungeon, Scoring, Platform }
+    contexts {
+        Dungeon -> Scoring
+        Dungeon -> Platform
+    }
 
     use { SetUpRooms, PlayTurn, FIRST_ROOM, Keyboard } from Dungeon
     use { SetUpScoring } from Scoring
@@ -162,8 +167,9 @@ cc -std=c89 *.c -o dungeon
   room for the longest string any rule allows (32 by default). A whole
   number field with a `Range` rule takes the smallest C type that fits.
 - **Errors** share one C type, `dn_error`, which holds a code and the error's fields.
-- **Events** are queued by commands, dropped if the command fails, and handed
-  to policies when the service that raised them finishes.
+- **Events** are queued by commands and kept once the aggregate that raised
+  them is saved. When a service ends, its kept events go to the policies;
+  events from a failed command, or from a change that was never saved, are dropped.
 - **Repositories** keep their aggregates in memory for now. Saving through
   the storage port comes later.
 - **Contracts** are checked at run time when built with `-DDN_DEBUG`.
