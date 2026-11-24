@@ -13,7 +13,8 @@ use dn_syntax::ast::*;
 #[derive(Debug, Default)]
 pub struct Program {
     pub contexts: BTreeMap<String, Context>,
-    pub applications: Vec<ApplicationDecl>,
+    /// The project file, when there is one.
+    pub manifest: Option<crate::manifest::Manifest>,
     /// Types and meanings of expressions, filled in by checking.
     pub facts: crate::facts::Facts,
 }
@@ -40,18 +41,13 @@ pub struct Context {
 impl Program {
     pub fn from_files(files: Vec<File>) -> Program {
         let mut program = Program::default();
-        for item in files.into_iter().flat_map(|file| file.items) {
-            match item {
-                TopItem::Application(application) => program.applications.push(application),
-                TopItem::Context(part) => {
-                    let name = part.name.name.clone();
-                    let context = program
-                        .contexts
-                        .entry(name)
-                        .or_insert_with(|| Context::new(part.name.clone()));
-                    context.add_items(part.items);
-                }
-            }
+        for part in files.into_iter().flat_map(|file| file.contexts) {
+            let name = part.name.name.clone();
+            let context = program
+                .contexts
+                .entry(name)
+                .or_insert_with(|| Context::new(part.name.clone()));
+            context.add_items(part.items);
         }
         program
     }

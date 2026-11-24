@@ -97,4 +97,31 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             );
         }
     }
+
+    /// `[a, b]`: every item has the same type. `[]` takes its item type from
+    /// where it is used.
+    pub(super) fn list_literal(
+        &mut self,
+        items: &[dn_syntax::ast::Expr],
+        expected: Option<&Type>,
+    ) -> Type {
+        let expected_item = match expected {
+            Some(Type::List(item)) if !item.is_unknown() => Some((**item).clone()),
+            _ => None,
+        };
+        let Some((first, rest)) = items.split_first() else {
+            return Type::list(expected_item.unwrap_or(Type::Unknown));
+        };
+        let item = match expected_item {
+            Some(item) => {
+                self.expect(first, &item);
+                item
+            }
+            None => self.expr(first, None),
+        };
+        for other in rest {
+            self.expect(other, &item);
+        }
+        Type::list(item)
+    }
 }

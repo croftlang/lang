@@ -4,6 +4,7 @@ mod declarations;
 mod effects;
 mod files;
 mod functions;
+mod manifest;
 
 use dn_syntax::{parse, SourceId};
 
@@ -16,7 +17,8 @@ fn check_files(sources: &[&str]) -> Result<Program, Vec<String>> {
         .enumerate()
         .map(|(index, source)| parse(source, SourceId(index as u32)).expect("valid syntax"))
         .collect();
-    super::check(files).map_err(|errors| errors.into_iter().map(|error| error.message).collect())
+    super::check(files, None)
+        .map_err(|errors| errors.into_iter().map(|error| error.message).collect())
 }
 
 fn errors(source: &str) -> Vec<String> {

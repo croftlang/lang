@@ -4,7 +4,7 @@ const SCREEN: &str = "port Screen {\n fn clear(): Unit\n fn draw(at: Position): 
 
 fn with_adapter(operations: &str) -> String {
     dungeon(&format!(
-        "{SCREEN}\nadapter TestScreen for Screen on target test {{\n{operations}\n}}"
+        "{SCREEN}\nadapter TestScreen for Screen {{\n{operations}\n}}"
     ))
 }
 
@@ -66,25 +66,4 @@ fn checks_publish_and_use() {
         &super::dungeon("publish { Door }"),
         "cannot publish `Door`: context `Dungeon` does not declare it",
     );
-}
-
-#[test]
-fn checks_the_application_binds_every_port() {
-    let adapter = "adapter TestScreen for Screen on target test {\n fn clear() = Unit\n fn draw(at) = Unit\n}";
-    let service = "service Play(): Unit {\n uses Screen\n} = Unit";
-    let context = dungeon(&format!("{SCREEN}\n{adapter}\n{service}"));
-    let application = |bindings: &str| {
-        format!("application Game {{\n start Play\n target test {{\n{bindings}\n }}\n target zx {{\n{bindings}\n }}\n}}")
-    };
-    let errors = super::check_files(&[&context, &application("Screen -> TestScreen")])
-        .err()
-        .unwrap();
-    assert_eq!(
-        errors,
-        vec!["adapter `TestScreen` is for target `test`, not `zx`"]
-    );
-    let errors = super::check_files(&[&context, &application("")])
-        .err()
-        .unwrap();
-    assert!(errors.contains(&"target `test` has no adapter for port `Screen`".to_string()));
 }

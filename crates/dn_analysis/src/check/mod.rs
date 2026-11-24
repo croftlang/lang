@@ -3,7 +3,6 @@
 
 mod adapter;
 mod aggregate;
-mod application;
 mod assign;
 mod behaviour;
 mod body;
@@ -12,9 +11,11 @@ mod data;
 mod declared;
 mod find;
 mod identity;
+mod manifest;
 mod model;
 mod model_types;
 mod names;
+mod ports;
 mod publish;
 mod repository;
 mod resolve;
@@ -30,15 +31,17 @@ use dn_syntax::ast::File;
 use dn_syntax::{Diagnostic, Span};
 
 use crate::facts::{Facts, Meaning};
+use crate::manifest::Manifest;
 use crate::program::{Context, Program};
 use crate::symbols::{build_table, SymbolTable};
 
 pub use model::{Model, VariantInfo};
 pub(crate) use resolve::{Resolved, Scope};
 
-/// Merges the files into one program and checks its declarations.
-pub fn check(files: Vec<File>) -> Result<Program, Vec<Diagnostic>> {
+/// Merges the files into one program and checks it, with the project file if there is one.
+pub fn check(files: Vec<File>, manifest: Option<Manifest>) -> Result<Program, Vec<Diagnostic>> {
     let mut program = Program::from_files(files);
+    program.manifest = manifest;
     let mut errors = Vec::new();
     let tables = program
         .contexts
@@ -54,8 +57,8 @@ pub fn check(files: Vec<File>) -> Result<Program, Vec<Diagnostic>> {
     for context in program.contexts.values() {
         checker.check_context(context);
     }
-    for application in &program.applications {
-        checker.check_application(application);
+    if let Some(manifest) = &program.manifest {
+        checker.check_manifest(manifest);
     }
     if checker.errors.is_empty() {
         for context in program.contexts.values() {

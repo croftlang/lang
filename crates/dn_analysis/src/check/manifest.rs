@@ -1,0 +1,110 @@
+//! Checking `dn.toml` against the program: the main service, and an adapter
+//! for every port each target needs.
+
+use std::collections::BTreeSet;
+
+use dn_syntax::ast::Identifier;
+
+use super::{Checker, Resolved, Scope};
+use crate::manifest::{to_path, Manifest, TargetConfig};
+use crate::symbols::SymbolKind;
+
+impl<'a> Checker<'a> {
+    pub(super) fn check_manifest(&mut self, manifest: &Manifest) {
+        self.check_main(&manifest.main);
+        let needed = self.ports_used_by_services();
+        for target in &manifest.targets {
+            if let Some(main) = &target.main {
+                self.check_main(main);
+            }
+            self.check_target(target, &needed);
+        }
+    }
+
+    /// The main service runs first, so it takes no parameters.
+    fn check_main(&mut self, main: &Identifier) {
+        let Some(service) = self.find_anywhere(&to_path(main), SymbolKind::Service, "a service")
+        else {
+            return;
+        };
+        let context = &self.program.contexts[&service.context];
+        let decl = context
+            .functions
+            .iter()
+            .find(|f| f.name.name == service.name);
+        if decl
+            .and_then(|f| f.parameters.as_ref())
+            .is_some_and(|p| !p.is_empty())
+        {
+            self.error(
+                format!("the main service `{}` must take no parameters", main.name),
+                main.span,
+            );
+        }
+    }
+
+    fn check_target(&mut self, target: &TargetConfig, needed: &BTreeSet<(String, String)>) {
+        let mut bound = BTreeSet::new();
+        for (port_name, adapter_name) in &target.adapters {
+            if port_name.name == "Arguments"
+                && self.find_quietly(port_name, SymbolKind::Port).is_none()
+            {
+                self.error(
+                    "`Arguments` is built in, so it needs no adapter",
+                    port_name.span,
+                );
+                continue;
+            }
+            let Some(port) = self.find_anywhere(&to_path(port_name), SymbolKind::Port, "a port")
+            else {
+                continue;
+            };
+            if !bound.insert((port.context.clone(), port.name.clone())) {
+                let message = format!(
+                    "port `{}` already has an adapter on target `{}`",
+                    port.name, target.name.name
+                );
+                self.error(message, port_name.span);
+            }
+            let Some(adapter) =
+                self.find_anywhere(&to_path(adapter_name), SymbolKind::Adapter, "an adapter")
+            else {
+                continue;
+            };
+            let context = &self.program.contexts[&adapter.context];
+            let decl = context
+                .adapters
+                .iter()
+                .find(|a| a.name.name == adapter.name)
+                .expect("a resolved adapter");
+            let scope = Scope {
+                context,
+                aggregate: None,
+            };
+            if self.resolve(&scope, &decl.port).as_ref() != Some(&port) {
+                let message = format!(
+                    "adapter `{}` is for port `{}`, not `{}`",
+                    adapter.name,
+                    decl.port.text(),
+                    port.name
+                );
+                self.error(message, adapter_name.span);
+            }
+        }
+        for (_, port) in needed.difference(&bound) {
+            let message = format!(
+                "target `{}` has no adapter for port `{port}`",
+                target.name.name
+            );
+            self.error(message, target.name.span);
+        }
+    }
+
+    fn find_quietly(&self, name: &Identifier, kind: SymbolKind) -> Option<Resolved> {
+        let path = to_path(name);
+        self.tables
+            .keys()
+            .filter_map(|context| self.lookup(context, &path.text()))
+            .find(|r| r.kind == kind)
+    }
+}

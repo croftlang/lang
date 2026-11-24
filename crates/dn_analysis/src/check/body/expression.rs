@@ -26,6 +26,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             ExprKind::Call(callee, arguments) => {
                 self.call(value.id, callee, arguments, span, expected)
             }
+            ExprKind::List(items) => self.list_literal(items, expected),
             ExprKind::Record(path, fields) => self.record(path, fields),
             ExprKind::With(base, fields) => self.with(base, fields),
             ExprKind::Unary(op, operand) => self.unary(*op, operand),
