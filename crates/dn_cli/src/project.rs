@@ -13,7 +13,6 @@ pub struct SourceFile {
 
 /// A project is a folder of `.dn` files, or a single `.dn` file.
 pub struct Project {
-    pub root: PathBuf,
     pub files: Vec<SourceFile>,
 }
 
@@ -21,19 +20,14 @@ impl Project {
     pub fn load(path: &Path) -> Result<Project, String> {
         let metadata = fs::metadata(path)
             .map_err(|error| format!("cannot open `{}`: {error}", path.display()))?;
-        let (root, paths) = if metadata.is_file() {
-            let root = path
-                .parent()
-                .filter(|parent| !parent.as_os_str().is_empty())
-                .unwrap_or(Path::new("."))
-                .to_path_buf();
-            (root, vec![path.to_path_buf()])
+        let paths = if metadata.is_file() {
+            vec![path.to_path_buf()]
         } else {
             let mut paths = Vec::new();
             find_source_files(path, &mut paths)
                 .map_err(|error| format!("cannot read `{}`: {error}", path.display()))?;
             paths.sort();
-            (path.to_path_buf(), paths)
+            paths
         };
         if paths.is_empty() {
             return Err(format!("no .dn files found in `{}`", path.display()));
@@ -44,7 +38,7 @@ impl Project {
                 .map_err(|error| format!("cannot read `{}`: {error}", path.display()))?;
             files.push(SourceFile { path, text });
         }
-        Ok(Project { root, files })
+        Ok(Project { files })
     }
 
     /// Parses and checks every file as one program.
@@ -61,18 +55,6 @@ impl Project {
             return Err(errors);
         }
         dn_analysis::check(modules)
-    }
-
-    /// The name of the project folder, used for the generated crate.
-    pub fn name(&self) -> String {
-        let root = fs::canonicalize(&self.root).unwrap_or_else(|_| self.root.clone());
-        root.file_name()
-            .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "dn_project".to_string())
-    }
-
-    pub fn output_dir(&self) -> PathBuf {
-        self.root.join("target").join("dn")
     }
 }
 
