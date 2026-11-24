@@ -1,0 +1,6 @@
+[package]
+name = "game"
+main = "Start"
+
+[target.test.adapters]
+Storage = "NoStorage"

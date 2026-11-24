@@ -16,7 +16,7 @@ pub struct Generator<'a> {
     pub(crate) target: String,
     /// Which adapter fills each port on this target.
     pub(crate) bindings: HashMap<Resolved, Resolved>,
-    /// The service the program starts with.
+    /// The main service, which runs first.
     pub(crate) start: Resolved,
     pub(crate) sizes: Sizes,
     /// Every C type used, in the order first seen; defined later in dependency order.
@@ -30,38 +30,31 @@ pub struct Generator<'a> {
 impl<'a> Generator<'a> {
     pub fn new(program: &'a Program, target: &str) -> Result<Generator<'a>, String> {
         let model = Model::new(program);
-        let Some(application) = program.applications.first() else {
-            return Err(
-                "the program has no `application`, so there is nothing to compile".to_string(),
-            );
+        let Some(manifest) = &program.manifest else {
+            return Err("the program has no dn.toml, so there is nothing to compile".to_string());
         };
-        let Some(target_decl) = application.targets.iter().find(|t| t.name.name == target) else {
-            let names: Vec<String> = application
+        let Some(target_config) = manifest.target(target) else {
+            let names: Vec<String> = manifest
                 .targets
                 .iter()
                 .map(|t| format!("`{}`", t.name.name))
                 .collect();
             return Err(format!(
-                "application `{}` has no target `{target}`; it has {}",
-                application.name.name,
+                "dn.toml has no target `{target}`; it has {}",
                 names.join(", ")
             ));
         };
         let mut bindings = HashMap::new();
-        for (port, adapter) in &target_decl.bindings {
-            let port = find(&model, &port.text(), SymbolKind::Port);
-            let adapter = find(&model, &adapter.text(), SymbolKind::Adapter);
+        for (port, adapter) in &target_config.adapters {
+            let port = find(&model, &port.name, SymbolKind::Port);
+            let adapter = find(&model, &adapter.name, SymbolKind::Adapter);
             if let (Some(port), Some(adapter)) = (port, adapter) {
                 bindings.insert(port, adapter);
             }
         }
-        let start =
-            find(&model, &application.start.text(), SymbolKind::Service).ok_or_else(|| {
-                format!(
-                    "cannot find the start service `{}`",
-                    application.start.text()
-                )
-            })?;
+        let main = &manifest.main_for(target_config).name;
+        let start = find(&model, main, SymbolKind::Service)
+            .ok_or_else(|| format!("cannot find the main service `{main}`"))?;
         let sizes = Sizes::measure(program, &model);
         Ok(Generator {
             program,

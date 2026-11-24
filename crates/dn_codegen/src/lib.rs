@@ -20,12 +20,3 @@ pub struct GeneratedFile {
 pub fn generate(program: &Program, target: &str) -> Result<Vec<GeneratedFile>, String> {
     Generator::new(program, target)?.generate()
 }
-
-/// The targets an application declares, for error messages and `--target` help.
-pub fn targets(program: &Program) -> Vec<String> {
-    let targets = program
-        .applications
-        .iter()
-        .flat_map(|application| &application.targets);
-    targets.map(|target| target.name.name.clone()).collect()
-}

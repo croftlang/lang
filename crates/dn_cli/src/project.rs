@@ -1,9 +1,9 @@
-//! Finding, reading and checking the `.dn` files of a project.
+//! Finding, reading and checking a project: its `.dn` files and its `dn.toml`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use dn_analysis::Program;
+use dn_analysis::{Manifest, Program, MANIFEST_FILE};
 use dn_syntax::{parse, Diagnostic, SourceId};
 
 pub struct SourceFile {
@@ -11,15 +11,26 @@ pub struct SourceFile {
     pub text: String,
 }
 
-/// A project is a folder of `.dn` files, or a single `.dn` file.
+/// A project is a folder of `.dn` files with a `dn.toml`, or a single `.dn` file.
 pub struct Project {
+    pub folder: PathBuf,
+    /// The `.dn` files, then `dn.toml` last when there is one.
     pub files: Vec<SourceFile>,
+    has_manifest: bool,
 }
 
 impl Project {
     pub fn load(path: &Path) -> Result<Project, String> {
         let metadata = fs::metadata(path)
             .map_err(|error| format!("cannot open `{}`: {error}", path.display()))?;
+        let folder = if metadata.is_file() {
+            path.parent()
+                .filter(|parent| !parent.as_os_str().is_empty())
+                .unwrap_or(Path::new("."))
+                .to_path_buf()
+        } else {
+            path.to_path_buf()
+        };
         let paths = if metadata.is_file() {
             vec![path.to_path_buf()]
         } else {
@@ -38,15 +49,38 @@ impl Project {
                 .map_err(|error| format!("cannot read `{}`: {error}", path.display()))?;
             files.push(SourceFile { path, text });
         }
-        Ok(Project { files })
+        let manifest_path = folder.join(MANIFEST_FILE);
+        let has_manifest = metadata.is_dir() && manifest_path.is_file();
+        if has_manifest {
+            let text = fs::read_to_string(&manifest_path)
+                .map_err(|error| format!("cannot read `{}`: {error}", manifest_path.display()))?;
+            files.push(SourceFile {
+                path: manifest_path,
+                text,
+            });
+        }
+        Ok(Project {
+            folder,
+            files,
+            has_manifest,
+        })
     }
 
     /// Parses and checks every file as one program.
     pub fn check(&self) -> Result<Program, Vec<Diagnostic>> {
         let mut modules = Vec::new();
         let mut errors = Vec::new();
+        let mut manifest = None;
         for (index, file) in self.files.iter().enumerate() {
-            match parse(&file.text, SourceId(index as u32)) {
+            let source = SourceId(index as u32);
+            if self.has_manifest && index + 1 == self.files.len() {
+                match Manifest::parse(&file.text, source) {
+                    Ok(parsed) => manifest = Some(parsed),
+                    Err(error) => errors.push(error),
+                }
+                continue;
+            }
+            match parse(&file.text, source) {
                 Ok(module) => modules.push(module),
                 Err(error) => errors.push(error),
             }
@@ -54,7 +88,7 @@ impl Project {
         if !errors.is_empty() {
             return Err(errors);
         }
-        dn_analysis::check(modules)
+        dn_analysis::check(modules, manifest)
     }
 }
 

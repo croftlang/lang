@@ -42,6 +42,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 _ => self.name(value, &field.name, &ty),
             },
             ExprKind::Call(callee, arguments) => self.call(value, callee, arguments, &ty),
+            ExprKind::List(items) => self.list_literal(items, &ty),
             ExprKind::Record(_, fields) => self.record(&ty, fields),
             ExprKind::With(base, fields) => {
                 let base = self.value(base, &ty);
