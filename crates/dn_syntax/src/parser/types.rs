@@ -48,7 +48,13 @@ impl Parser {
         self.expect(&TokenKind::Colon)?;
         let ty = self.parse_type()?;
         let rules = self.parse_rules()?;
+        let value = if self.eat(&TokenKind::Equal) {
+            Some(self.parse_expression()?)
+        } else {
+            None
+        };
         Ok(Field {
+            value,
             doc,
             name,
             ty,

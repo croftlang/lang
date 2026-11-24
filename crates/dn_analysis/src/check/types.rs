@@ -66,6 +66,9 @@ impl<'a> Checker<'a> {
             }
             self.check_type(scope, &field.ty, false);
             self.check_rules(scope, &field.rules, Some(&field.ty));
+            if let Some(value) = &field.value {
+                self.error("only an adapter's fields have starting values", value.span);
+            }
         }
     }
 

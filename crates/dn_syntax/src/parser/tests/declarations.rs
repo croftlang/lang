@@ -121,3 +121,17 @@ fn reads_a_context_map() {
         .collect();
     assert_eq!(arrows, [("Dungeon", "Scoring"), ("Scoring", "Reports")]);
 }
+
+#[test]
+fn reads_the_starting_value_of_an_adapter_field() {
+    let source = "context Platform {\n    adapter ScriptedKeyboard for Keyboard {\n        keys: List<Key> where Length(0, 32) = [Up, Fire]\n    }\n}";
+    let file = parse_ok(source);
+    let ContextItem::Adapter(adapter) = &only_context(&file).items[0] else {
+        panic!("expected an adapter")
+    };
+    let field = &adapter.fields[0];
+    assert_eq!(field.rules.len(), 1);
+    assert!(
+        matches!(field.value.as_ref().map(|v| &v.kind), Some(crate::ast::ExprKind::List(items)) if items.len() == 2)
+    );
+}

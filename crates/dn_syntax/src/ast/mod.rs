@@ -67,6 +67,8 @@ pub struct Field {
     pub ty: TypeExpr,
     pub rules: Vec<Rule>,
     pub is_identity: bool,
+    /// The starting value of an adapter's field: `keys: List<Key> = []`.
+    pub value: Option<Expr>,
 }
 
 /// A parameter. Adapter operations leave out the type, which comes from the port.

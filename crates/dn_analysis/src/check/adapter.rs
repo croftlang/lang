@@ -1,6 +1,6 @@
 //! Adapters: one port's operations, written for one target.
 
-use dn_syntax::ast::{AdapterDecl, FunctionDecl};
+use dn_syntax::ast::{AdapterDecl, Field, FunctionDecl};
 
 use super::{Checker, Scope};
 use crate::symbols::SymbolKind;
@@ -8,7 +8,22 @@ use crate::symbols::SymbolKind;
 impl<'a> Checker<'a> {
     /// An adapter provides every operation of its port, and nothing else.
     pub(super) fn check_adapter(&mut self, scope: &Scope, adapter: &AdapterDecl) {
-        self.check_fields(scope, &adapter.fields);
+        let without_values: Vec<_> = adapter
+            .fields
+            .iter()
+            .map(|f| Field {
+                value: None,
+                ..f.clone()
+            })
+            .collect();
+        self.check_fields(scope, &without_values);
+        for field in adapter.fields.iter().filter(|f| f.value.is_none()) {
+            let message = format!(
+                "adapter field `{}` needs a starting value: `{}: ... = ...`",
+                field.name.name, field.name.name
+            );
+            self.error(message, field.name.span);
+        }
         let Some(found) = self.expect_kind(scope, &adapter.port, &[SymbolKind::Port], "a port")
         else {
             return;
