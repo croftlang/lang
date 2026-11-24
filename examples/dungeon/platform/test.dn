@@ -10,13 +10,13 @@ adapter NullScreen for Screen on target test {
 adapter ScriptedKeyboard for Keyboard on target test {
     keys: List<Key> where Length(0, 32)
 
-    fn pressed() = {
-        if keys.is_empty {
-            None
+    // Gives the next scripted key, then forgets it.
+    fn pressed() = match keys.first {
+        Some(next) -> {
+            set keys = keys.drop(1)
+            Some(next)
         }
-        let next = keys.first
-        set keys = keys.drop(1)
-        Some(next)
+        None -> None
     }
 }
 

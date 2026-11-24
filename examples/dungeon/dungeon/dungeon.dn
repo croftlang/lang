@@ -16,6 +16,7 @@ publish {
 const SCREEN_WIDTH: Int = 256
 const SCREEN_HEIGHT: Int = 192
 const MAX_ENEMIES: Int = 16
+const GAME_TITLE: String = "Dungeon"
 const FIRST_ROOM: RoomId = 1
 const PLAYER_SPRITE: SpriteId = 0
 

@@ -20,11 +20,14 @@ service PlayTurn(room_id: RoomId): Result<Unit, GameError> {
     screen.draw_sprite(PLAYER_SPRITE, changed.player.position)
 }
 
-// Plays turn after turn until a turn fails.
+// Plays turn after turn until a turn fails. `--title` shows the title first.
 service PlayGame(): Result<Unit, GameError> {
-    uses Screen
+    uses Screen, Arguments
 } = {
     screen.clear()
+    if arguments.all().contains("--title") {
+        screen.draw_text(GAME_TITLE, Position { x: 0, y: 0 })
+    }
     loop {
         PlayTurn(FIRST_ROOM)?
     }
