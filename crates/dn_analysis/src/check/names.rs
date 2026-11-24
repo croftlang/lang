@@ -89,6 +89,7 @@ impl<'a> Checker<'a> {
         for function in &context.functions {
             let (case, what) = match function.kind {
                 FunctionKind::Service => (Case::Pascal, "service"),
+                FunctionKind::Domain => (Case::Pascal, "domain"),
                 FunctionKind::Translation => (Case::Pascal, "translation"),
                 _ => (Case::Snake, "function"),
             };

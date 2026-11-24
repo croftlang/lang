@@ -22,6 +22,7 @@ impl Context {
             ports: Vec::new(),
             adapters: Vec::new(),
             repositories: Vec::new(),
+            is_domain: false,
         }
     }
 
@@ -65,5 +66,25 @@ impl Context {
         aggregate.errors.extend(part.errors);
         aggregate.events.extend(part.events);
         aggregate.commands.extend(part.commands);
+    }
+
+    /// The domain as a context of its own: it imports what it uses, and its
+    /// body is a service named after it, so it is checked and compiled like one.
+    pub(super) fn from_domain(domain: &DomainDecl) -> Context {
+        let mut context = Context::new(domain.name.clone());
+        context.is_domain = true;
+        context.uses = domain.uses_from.clone();
+        context.functions.push(FunctionDecl {
+            doc: domain.doc.clone(),
+            kind: FunctionKind::Domain,
+            name: domain.name.clone(),
+            parameters: Some(Vec::new()),
+            return_type: None,
+            return_rules: Vec::new(),
+            preconditions: Vec::new(),
+            uses: domain.uses.clone(),
+            body: Some(domain.body.clone()),
+        });
+        context
     }
 }

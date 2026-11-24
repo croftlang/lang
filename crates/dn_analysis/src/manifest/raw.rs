@@ -22,7 +22,6 @@ struct RawManifest {
 struct RawPackage {
     name: Spanned<String>,
     version: Option<String>,
-    main: Spanned<String>,
 }
 
 #[derive(Deserialize)]
@@ -66,7 +65,6 @@ pub fn parse(text: &str, source: SourceId) -> Result<Manifest, Diagnostic> {
     Ok(Manifest {
         name: name(&raw.package.name),
         version: raw.package.version,
-        main: name(&raw.package.main),
         targets: targets.collect(),
     })
 }

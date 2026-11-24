@@ -1,6 +1,7 @@
 mod bodies;
 mod boundary;
 mod declarations;
+mod domain;
 mod effects;
 mod files;
 mod functions;

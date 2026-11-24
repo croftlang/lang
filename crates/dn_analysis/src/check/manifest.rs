@@ -1,5 +1,5 @@
-//! Checking `dn.toml` against the program: the main service, and an adapter
-//! for every port each target needs.
+//! Checking `dn.toml` against the program: what each target runs, and an
+//! adapter for every port each target needs.
 
 use std::collections::BTreeSet;
 
@@ -11,17 +11,21 @@ use crate::symbols::SymbolKind;
 
 impl<'a> Checker<'a> {
     pub(super) fn check_manifest(&mut self, manifest: &Manifest) {
-        self.check_main(&manifest.main);
         let needed = self.ports_used_by_services();
         for target in &manifest.targets {
-            if let Some(main) = &target.main {
-                self.check_main(main);
+            match &target.main {
+                Some(main) => self.check_main(main),
+                None if self.program.domains.is_empty() => {
+                    let message = format!("target `{}` has nothing to run: declare a `domain`, or name a service with `main`", target.name.name);
+                    self.error(message, target.name.span);
+                }
+                None => {}
             }
             self.check_target(target, &needed);
         }
     }
 
-    /// The main service runs first, so it takes no parameters.
+    /// A target's `main` service runs instead of the domain, so it takes no parameters.
     fn check_main(&mut self, main: &Identifier) {
         let Some(service) = self.find_anywhere(&to_path(main), SymbolKind::Service, "a service")
         else {

@@ -24,54 +24,61 @@ fn check_with(toml: &str) -> Vec<String> {
     }
 }
 
+/// `[package]`, then `extra` from line 4 on.
+fn toml(extra: &str) -> String {
+    format!("[package]\nname = \"game\"\n\n{extra}")
+}
+
 #[test]
 fn accepts_a_target_that_fills_every_port() {
-    let toml = "[package]\nname = \"game\"\nmain = \"Main\"\n\n[target.test.adapters]\nScreen = \"TestScreen\"\n";
-    assert_eq!(check_with(toml), Vec::<String>::new());
+    let file =
+        toml("[target.test]\nmain = \"Main\"\n\n[target.test.adapters]\nScreen = \"TestScreen\"\n");
+    assert_eq!(check_with(&file), Vec::<String>::new());
 }
 
 #[test]
 fn reports_a_port_without_an_adapter() {
-    let toml = "[package]\nname = \"game\"\nmain = \"Main\"\n\n[target.test]\nnative = []\n";
+    let file = toml("[target.test]\nmain = \"Main\"\n");
     assert_eq!(
-        check_with(toml),
-        vec!["5: target `test` has no adapter for port `Screen`"]
+        check_with(&file),
+        vec!["4: target `test` has no adapter for port `Screen`"]
     );
 }
 
 #[test]
 fn reports_an_adapter_for_the_wrong_port() {
-    let toml = "[package]\nname = \"game\"\nmain = \"Main\"\n\n[target.test.adapters]\nScreen = \"TestClock\"\n";
+    let file =
+        toml("[target.test]\nmain = \"Main\"\n\n[target.test.adapters]\nScreen = \"TestClock\"\n");
     assert_eq!(
-        check_with(toml),
-        vec!["6: adapter `TestClock` is for port `Clock`, not `Screen`"]
+        check_with(&file),
+        vec!["8: adapter `TestClock` is for port `Clock`, not `Screen`"]
     );
 }
 
 #[test]
-fn checks_the_main_service() {
-    let toml = "[package]\nname = \"game\"\nmain = \"Turn\"\n";
+fn checks_what_each_target_runs() {
+    let adapters = "\n[target.test.adapters]\nScreen = \"TestScreen\"\n";
+    let file = toml(&format!("[target.test]\nmain = \"Turn\"\n{adapters}"));
     assert_eq!(
-        check_with(toml),
-        vec!["3: the main service `Turn` must take no parameters"]
+        check_with(&file),
+        vec!["5: the main service `Turn` must take no parameters"]
     );
-    let toml = "[package]\nname = \"game\"\nmain = \"Start\"\n";
+    let file = toml(&format!("[target.test]\nmain = \"Start\"\n{adapters}"));
     assert_eq!(
-        check_with(toml),
-        vec!["3: cannot find a service named `Start`"]
+        check_with(&file),
+        vec!["5: cannot find a service named `Start`"]
     );
+    let file = toml("[target.test.adapters]\nScreen = \"TestScreen\"\n");
+    assert_eq!(check_with(&file), vec!["4: target `test` has nothing to run: declare a `domain`, or name a service with `main`"]);
 }
 
 #[test]
 fn reports_unknown_keys_in_the_file() {
-    let error = Manifest::parse(
-        "[package]\nname = \"game\"\nmain = \"Main\"\nstart = \"Main\"\n",
-        SourceId(1),
-    )
-    .unwrap_err();
-    assert_eq!(error.span.line, 4);
+    let error =
+        Manifest::parse("[package]\nname = \"game\"\nmain = \"Main\"\n", SourceId(1)).unwrap_err();
+    assert_eq!(error.span.line, 3);
     assert!(
-        error.message.contains("unknown field `start`"),
+        error.message.contains("unknown field `main`"),
         "{}",
         error.message
     );

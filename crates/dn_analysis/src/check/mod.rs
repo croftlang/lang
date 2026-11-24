@@ -9,6 +9,7 @@ mod body;
 mod boundary;
 mod data;
 mod declared;
+mod domain;
 mod find;
 mod identity;
 mod manifest;
@@ -57,6 +58,7 @@ pub fn check(files: Vec<File>, manifest: Option<Manifest>) -> Result<Program, Ve
     for context in program.contexts.values() {
         checker.check_context(context);
     }
+    checker.check_domain();
     if let Some(manifest) = &program.manifest {
         checker.check_manifest(manifest);
     }

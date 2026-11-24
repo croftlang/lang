@@ -1,6 +1,7 @@
-//! The project file, `dn.toml`: the program's name, the service it starts
-//! with (`main`), and for each target the adapter that fills each port and the C
-//! files that hold its native functions.
+//! The project file, `dn.toml`: the program's name, and for each target the
+//! adapter that fills each port and the C files that hold its native
+//! functions. The program runs its `domain`, unless a target names a service
+//! to run instead with `main`.
 
 mod raw;
 
@@ -13,7 +14,6 @@ pub const MANIFEST_FILE: &str = "dn.toml";
 pub struct Manifest {
     pub name: Identifier,
     pub version: Option<String>,
-    pub main: Identifier,
     pub targets: Vec<TargetConfig>,
 }
 
@@ -21,7 +21,7 @@ pub struct Manifest {
 #[derive(Debug, Clone)]
 pub struct TargetConfig {
     pub name: Identifier,
-    /// Runs a different main service on this target, such as a test entry point.
+    /// A service to run instead of the domain on this target, such as a test entry point.
     pub main: Option<Identifier>,
     /// C files, relative to the project folder, holding the native functions.
     pub native: Vec<Identifier>,
@@ -36,11 +36,6 @@ impl Manifest {
 
     pub fn target(&self, name: &str) -> Option<&TargetConfig> {
         self.targets.iter().find(|target| target.name.name == name)
-    }
-
-    /// The service a target runs first: its own `main`, or the package's.
-    pub fn main_for<'m>(&'m self, target: &'m TargetConfig) -> &'m Identifier {
-        target.main.as_ref().unwrap_or(&self.main)
     }
 }
 

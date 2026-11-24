@@ -26,7 +26,7 @@ impl<'a> Checker<'a> {
         }
         for function in &context.functions {
             let kind = match function.kind {
-                FunctionKind::Service => BodyKind::Service,
+                FunctionKind::Service | FunctionKind::Domain => BodyKind::Service,
                 _ => BodyKind::Function,
             };
             self.check_function_body(scope, kind, function);
@@ -68,11 +68,15 @@ impl<'a> Checker<'a> {
                 Type::result(Type::Unit, errors)
             }
             (_, Some(ty)) => self.lower_type(&scope, ty),
+            // A domain's body can pass up any error; the program then stops with it.
+            (_, None) if function.kind == FunctionKind::Domain => {
+                Type::result(Type::Unit, Type::Errors(Vec::new()))
+            }
             (_, None) => Type::Unit,
         };
         let mut body = BodyChecker::new(self, scope, kind, result.clone());
         body.bind_parameters(function.parameters.as_deref().unwrap_or(&[]));
-        if function.kind == FunctionKind::Service {
+        if matches!(function.kind, FunctionKind::Service | FunctionKind::Domain) {
             body.bind_uses(&function.uses);
         }
         for precondition in &function.preconditions {

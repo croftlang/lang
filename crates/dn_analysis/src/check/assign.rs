@@ -45,7 +45,15 @@ impl<'a> Checker<'a> {
     pub(super) fn accepts(&self, to: &Type, from: &Type) -> bool {
         match (to, from) {
             (Type::Unknown, _) | (_, Type::Unknown) => true,
-            (_, Type::Errors(errors)) => errors.iter().all(|error| self.accepts(to, error)),
+            (_, Type::Errors(errors)) if !errors.is_empty() => {
+                errors.iter().all(|error| self.accepts(to, error))
+            }
+            // `Errors([])` is any error at all, which a domain's body can pass up.
+            (Type::Errors(errors), from) if errors.is_empty() => match from {
+                Type::Named(named) => !self.error_members(named).is_empty(),
+                Type::Errors(_) => true,
+                _ => false,
+            },
             (Type::List(to), Type::List(from)) | (Type::Option(to), Type::Option(from)) => {
                 self.accepts(to, from)
             }

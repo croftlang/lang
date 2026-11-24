@@ -34,7 +34,7 @@ impl<'a> Checker<'a> {
             }
             (None, _) => {}
         }
-        if function.kind == FunctionKind::Service {
+        if matches!(function.kind, FunctionKind::Service | FunctionKind::Domain) {
             let kinds = [SymbolKind::Port, SymbolKind::Repository];
             for port in &function.uses {
                 let is_builtin = port.text() == "Arguments" && self.resolve(scope, port).is_none();
