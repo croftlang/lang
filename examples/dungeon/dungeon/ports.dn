@@ -1,0 +1,19 @@
+// What the dungeon needs from the machine it runs on.
+context Dungeon
+
+port Screen {
+    fn clear(): Unit
+    fn draw_sprite(sprite: SpriteId, at: Position): Unit
+    fn draw_text(text: String where Length(0, 32), at: Position): Unit
+}
+
+port Keyboard {
+    fn pressed(): Option<Key>
+}
+
+port Storage {
+    fn load(name: String where Length(1, 12)): Result<List<Int>, StorageError>
+    fn store(name: String where Length(1, 12), data: List<Int>): Result<Unit, StorageError>
+}
+
+repository Rooms for Room in Storage

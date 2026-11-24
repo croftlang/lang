@@ -1,0 +1,46 @@
+// The outer layer: reads the keyboard, changes rooms and draws them.
+context Dungeon
+
+enum GameError {
+    include Room.Error
+    include StorageError
+    KeyboardUnavailable
+}
+
+// Reads input, applies one command to the room and redraws it.
+service PlayTurn(room_id: RoomId): Result<Unit, GameError> {
+    uses Keyboard, Screen, Rooms
+} = {
+    let room = rooms.find(room_id)?
+    let changed = match keyboard.pressed() {
+        Some(key) -> act(room, key)?
+        None -> room
+    }
+    rooms.save(changed)?
+    draw_room(screen, changed)
+}
+
+service PlayGame(): Result<Unit, GameError> {
+    uses Screen
+} = {
+    screen.clear()
+    PlayTurn(FIRST_ROOM)
+}
+
+fn act(room: Room, key: Key): Result<Room, Room.Error> = match direction_for(key) {
+    Some(direction) -> issue Move(direction: direction) on room
+    None -> attack_nearest(room)
+}
+
+fn attack_nearest(room: Room): Result<Room, Room.Error> = match nearest_enemy(room.player.position, room.enemies) {
+    Some(target) -> issue Attack(enemy_id: target, damage: 5) on room
+    None -> Ok(room)
+}
+
+fn message(error: GameError): String = match error {
+    EnemyMissing(enemy_id) -> "That enemy has gone."
+    NotFound -> "Room missing."
+    ExitBlocked -> "Something blocks the exit."
+    StorageError(name) -> "Cannot read the disk."
+    KeyboardUnavailable -> "No keyboard."
+}

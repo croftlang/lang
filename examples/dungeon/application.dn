@@ -1,0 +1,16 @@
+// Which adapter fills each port on each machine.
+application Dungeon {
+    start PlayGame
+
+    target spectrum_48k {
+        Screen -> SpectrumScreen
+        Keyboard -> SpectrumKeyboard
+        Storage -> DivmmcStorage
+    }
+
+    target test {
+        Screen -> NullScreen
+        Keyboard -> ScriptedKeyboard
+        Storage -> MemoryStorage
+    }
+}

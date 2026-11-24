@@ -1,0 +1,35 @@
+// Calculations and reactions that belong to no single room.
+context Dungeon
+
+// Manhattan distance between two positions.
+fn distance(start: Position, end: Position): Int where Range(0, SCREEN_WIDTH + SCREEN_HEIGHT) =
+    abs(start.x - end.x) + abs(start.y - end.y)
+
+// The position one step away in a direction, kept on the screen.
+fn step(start: Position, direction: Direction): Position = match direction {
+    North -> start with { y: max(0, start.y - 8) }
+    East -> start with { x: min(SCREEN_WIDTH - 8, start.x + 8) }
+    South -> start with { y: min(SCREEN_HEIGHT - 8, start.y + 8) }
+    West -> start with { x: max(0, start.x - 8) }
+}
+
+// Walls run round the edge of every room.
+fn walkable(position: Position): Bool =
+    position.x > 0 && position.y > 0 && position.x < SCREEN_WIDTH - 8 && position.y < SCREEN_HEIGHT - 8
+
+// The enemy closest to a position, or none if there are no enemies.
+fn nearest_enemy(start: Position, enemies: List<Room.Enemy>): Option<EnemyId> = enemies
+    .min_by(e -> distance(start, e.position))
+    .map(e -> e.id)
+
+fn direction_for(key: Key): Option<Direction> = match key {
+    Up -> Some(North)
+    Down -> Some(South)
+    Left -> Some(West)
+    Right -> Some(East)
+    Fire -> None
+}
+
+policy DropLootOnDefeat when Room.EnemyDefeated {
+    issue DropTreasure(at: event.at) on Room(event.source)
+}
