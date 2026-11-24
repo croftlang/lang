@@ -33,9 +33,38 @@ impl<'a> Generator<'a> {
             let value = writer.value(&constant.value, &ty);
             writer.line(format!("{name} = {value};"));
         }
+        self.adapter_starting_values(&mut writer);
         if !defines.is_empty() {
             defines.push('\n');
         }
         (defines, globals, writer.finish("void dn_init(void)"))
+    }
+
+    /// Sets each adapter's fields to their starting values.
+    fn adapter_starting_values(&self, writer: &mut Writer) {
+        let mut adapters: Vec<_> = self.bindings.values().collect();
+        adapters.sort_by_key(|adapter| c_name(adapter));
+        adapters.dedup();
+        for adapter in adapters {
+            let context = &self.program.contexts[&adapter.context];
+            let Some(decl) = context
+                .adapters
+                .iter()
+                .find(|a| a.name.name == adapter.name)
+            else {
+                continue;
+            };
+            writer.context = adapter.context.clone();
+            for field in &decl.fields {
+                let Some(value) = &field.value else { continue };
+                let ty = self.model.lower_type(&adapter.context, None, &field.ty);
+                let value = writer.value(value, &ty);
+                writer.line(format!(
+                    "{}_state.{} = {value};",
+                    c_name(adapter),
+                    field.name.name
+                ));
+            }
+        }
     }
 }

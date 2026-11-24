@@ -48,6 +48,50 @@ fn runs_the_dungeon_example_until_it_quits() {
     );
 }
 
+/// The scripted keys move the player, then defeat the nearest enemy, whose
+/// `EnemyDefeated` event makes Dungeon drop treasure and Scoring add points.
+#[test]
+fn plays_the_dungeon_as_scripted() {
+    if !has_c_compiler() {
+        return;
+    }
+    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/dungeon");
+    let output = generate(&example, "test", "dungeon_outcome");
+    let harness = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/harness/dungeon_outcome.c");
+    fs::copy(harness, output.join("outcome.c")).unwrap();
+    let renamed = compile(&output, &["-c", "-Dmain=dn_program_main", "program.c"]);
+    assert!(
+        renamed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&renamed.stderr)
+    );
+    let built = compile(
+        &output,
+        &[
+            "-I.",
+            "outcome.c",
+            "program.o",
+            "dn_runtime.c",
+            "-o",
+            "outcome",
+        ],
+    );
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("outcome"))
+        .output()
+        .expect("the harness runs");
+    let printed = String::from_utf8_lossy(&ran.stdout);
+    assert_eq!(
+        printed,
+        "status 0\nplayer 32,24\nenemies 1 treasure 1\npoints 100\n"
+    );
+    fs::remove_dir_all(output).ok();
+}
+
 #[test]
 fn compiles_the_dungeon_example_for_every_target() {
     if !has_c_compiler() {
