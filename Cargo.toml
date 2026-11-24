@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/sp_syntax",
+    "crates/sp_analysis",
+    "crates/sp_codegen",
+    "crates/sp_cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"

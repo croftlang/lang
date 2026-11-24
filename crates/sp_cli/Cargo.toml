@@ -1,0 +1,15 @@
+[package]
+name = "sp_cli"
+description = "The sp command-line tool"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "sp"
+path = "src/main.rs"
+
+[dependencies]
+sp_syntax = { path = "../sp_syntax" }
+sp_analysis = { path = "../sp_analysis" }
+sp_codegen = { path = "../sp_codegen" }

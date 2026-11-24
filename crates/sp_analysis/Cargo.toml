@@ -1,0 +1,9 @@
+[package]
+name = "sp_analysis"
+description = "Name resolution and type checking for the sp language"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+sp_syntax = { path = "../sp_syntax" }

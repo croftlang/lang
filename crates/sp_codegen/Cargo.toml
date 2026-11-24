@@ -1,0 +1,10 @@
+[package]
+name = "sp_codegen"
+description = "Rust code generation for the sp language"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+sp_syntax = { path = "../sp_syntax" }
+sp_analysis = { path = "../sp_analysis" }
