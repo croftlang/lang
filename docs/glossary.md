@@ -143,15 +143,39 @@ counter's rules allow, in order; `Range` includes both ends, so that loop runs
 Ends the loop it is in. Written alone on its line, usually inside a guard.
 
 ### Guard
-An `if` without `else`. When its condition holds, its value is returned and
-the body ends. Every body ends with an unconditional line.
+An `if` without `else`. When its condition holds and its block gives back a
+value, that value is returned and the body ends. A block that only takes
+steps (`set`, `emit`, `break`, a port call) runs them and the body carries on.
+Every body ends with an unconditional line.
 
 ### Match
 Chooses by enum variant and must handle every variant.
 
 ### `?` and `or`
 How failure is handled. `?` passes a failure up when the body's error type
-includes it. `or` replaces it with a more specific error.
+includes it. `or` fails with a more specific error instead. `or` works on a
+`Result`, on an `Option` (failing when it is `None`) and on a `Bool` check.
+A `Result` that is neither passed up nor the body's result doesn't compile.
+
+### Result
+What a body that can fail gives back: `Result<Room, Room.Error>`. A body
+whose last line is a plain value counts as success, so a service returning
+`Result<Unit, GameError>` can end with a port call.
+
+### Error set
+All of an aggregate's errors at once, written `Room.Error`. An enum can
+`include` error sets and single errors, so one type covers every way a
+service can fail.
+
+### Built-ins
+Functions and methods every program has. Functions: `max`, `min`, `abs`,
+`Some`, `None`, `Ok`, `Err`, and the constraints `Range` and `Length`.
+Strings: `length`, `is_empty`, `contains`, `starts_with`, `ends_with`,
+`to_upper`, `to_lower`, `trim`, `slice`, `split`, `to_int`. Numbers:
+`to_string`. Lists: `length`, `is_empty`, `first`, `last`, `contains`, `get`,
+`add`, `drop`, `take`, `filter`, `map`, `all`, `any`, `count`, `find`, `sum`,
+`min_by`, `max_by`; a list of entities also has `get`, `contains`, `replace`
+and `remove` by identity. Options: `is_some`, `is_none`, `map`, `unwrap_or`.
 
 ## The outside world
 
@@ -160,7 +184,15 @@ What the domain needs from the outside world, by signature only.
 
 ### Repository
 A port for loading and saving one aggregate, built on another port:
-`repository Rooms for Room in Storage`. The compiler writes `find` and `save`.
+`repository Rooms for Room in Storage`. The compiler writes `find`, which
+fails with the aggregate's errors, and `save`, which fails with the storage
+port's error.
+
+### Arguments
+The built-in port that gives a program its command-line arguments. A
+service lists it in `uses` and calls `arguments.all()` for a
+`List<String>`. Every target supplies it; targets without a command line,
+such as the ZX Spectrum, give an empty list.
 
 ### Adapter
 Implements a port for one target, usually in a `Platform` context. Must

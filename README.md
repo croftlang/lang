@@ -58,9 +58,14 @@ The design is still being decided. The terms are in
 The compiler reads the current syntax and checks declarations: every name
 resolves, rules and invariants name real constraints and errors, aggregates
 and entities have one identity, adapters provide their port's operations, and
-the application has an adapter for every port its services use. Bodies are
-parsed but not type-checked yet, and there is no C backend yet, so
-`dn compile` stops after the checks.
+the application has an adapter for every port its services use.
+
+It also type-checks bodies. Every expression gets a type, failures must be
+handled with `?` or `or`, `match` must handle every variant, and each kind of
+body can only do what its kind allows: only commands `set` fields and `emit`
+events, only services and adapters loop, and only adapters call native code.
+
+There is no C backend yet, so `dn compile` stops after the checks.
 
 ## Usage
 
@@ -81,7 +86,7 @@ dn check examples/dungeon
 | Crate | Responsibility |
 |---|---|
 | `dn_syntax` | Lexer, parser and syntax tree |
-| `dn_analysis` | Merging files, name resolution and declaration checks |
+| `dn_analysis` | Merging files, name resolution, declaration checks and type checking |
 | `dn_cli` | The `dn` command |
 
 ## Development
