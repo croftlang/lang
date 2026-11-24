@@ -21,6 +21,11 @@ pub fn event_kind(event: &Resolved) -> String {
     format!("DN_EVENT_{}", c_name(event))
 }
 
+/// The C name for an aggregate's kind, which its queued events carry.
+pub fn aggregate_kind(aggregate: &Resolved) -> String {
+    format!("DN_AGGREGATE_{}", c_name(aggregate))
+}
+
 /// Escapes text for a C string literal.
 pub fn c_string(text: &str) -> String {
     let mut escaped = String::from("\"");

@@ -65,6 +65,13 @@ service Play(board: Board): Result<Unit, GameError> {
     Unit
 }
 
+// Changes a board but never saves it, so its Scored event must not reach
+// the policy when this service ends.
+service Tamper(board: Board): Result<Unit, GameError> = {
+    let changed = issue Score(amount: 10) on board?
+    check(changed.points == board.points + 10)?
+}
+
 service Start(): Result<Unit, GameError> {
     uses Boards
 } = {
@@ -80,6 +87,9 @@ service Start(): Result<Unit, GameError> {
     let saved = boards.find(1)?
     check(saved.points == 12)?
     check(saved.bonus == 2)?
+    Tamper(saved)?
+    let after = boards.find(1)?
+    check(after.points == 12 && after.bonus == 2)?
     let missing = match boards.find(2) {
         Ok(board) -> false
         Err(error) -> true

@@ -6,7 +6,7 @@ use dn_analysis::{Meaning, Type};
 use dn_syntax::ast::{Expr, ExprKind, FieldValue, Issue, Path};
 
 use super::Writer;
-use crate::names::{c_name, event_kind};
+use crate::names::{aggregate_kind, c_name, event_kind};
 
 impl<'g, 'a> Writer<'g, 'a> {
     pub fn issue(&mut self, value: &Expr, issue: &Issue, ty: &Type) -> String {
@@ -61,7 +61,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         result
     }
 
-    /// `emit EnemyDamaged { ... }`: queued, and handled once the service ends.
+    /// `emit EnemyDamaged { ... }`: queued until its aggregate is saved, and
+    /// handled once the service ends.
     pub fn emit(&mut self, event: &Path, fields: &[FieldValue]) -> String {
         let Some(aggregate) = self.aggregate.clone() else {
             return "0".to_string();
@@ -96,6 +97,11 @@ impl<'g, 'a> Writer<'g, 'a> {
         };
         let identity = self.gen.identity_field(&owner);
         self.line(format!("{queued}.as.{name}.source = self.{identity};"));
+        self.line(format!("{queued}.aggregate = {};", aggregate_kind(&owner)));
+        self.line(format!(
+            "{queued}.key = {};",
+            self.gen.event_key(&owner, &format!("self.{identity}"))
+        ));
         self.line(format!("dn_events_push(&{queued});"));
         "0".to_string()
     }

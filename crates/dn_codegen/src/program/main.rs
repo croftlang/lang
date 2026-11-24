@@ -22,7 +22,7 @@ impl<'a> Generator<'a> {
         };
         format!(
             "int main(int argc, char **argv)\n{{\n    {} result;\n\n    dn_arguments_set(argc, argv);\n    dn_init();\n    \
-             {}(&result);\n    dn_events_dispatch();\n{failure}    return 0;\n}}\n",
+             {}(&result);\n    dn_events_dispatch_from(0);\n{failure}    return 0;\n}}\n",
             self.c_type(&result),
             c_name(&self.start)
         )

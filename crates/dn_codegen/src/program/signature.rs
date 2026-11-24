@@ -79,6 +79,26 @@ impl<'a> Generator<'a> {
         }
     }
 
+    /// What a queued event is filed under, so saving its aggregate finds it:
+    /// the identity, when it is a number. Text identities share one key.
+    pub fn event_key(&self, aggregate: &Resolved, identity: &str) -> String {
+        let is_number = match self.model.identity_of(aggregate) {
+            Type::Named(named) => {
+                let context = &self.program.contexts[&named.context];
+                context
+                    .identities
+                    .iter()
+                    .any(|i| i.name.name == named.name && i.ty.path.text() == "Int")
+            }
+            other => other == Type::Int,
+        };
+        if is_number {
+            format!("(dn_int) {identity}")
+        } else {
+            "0".to_string()
+        }
+    }
+
     /// The name of an aggregate's identity field.
     pub fn identity_field(&self, aggregate: &Resolved) -> String {
         let fields = self.model.fields(aggregate);

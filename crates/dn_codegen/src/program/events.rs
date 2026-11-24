@@ -1,14 +1,16 @@
-//! Events and policies. Commands queue their events; once a service ends,
-//! the queue is handed to the policies that react to each event.
+//! Events and policies. Commands queue their events; saving the aggregate
+//! that raised them keeps them; once a service ends, the kept ones are handed
+//! to the policies that react to each event.
 
 use dn_analysis::symbols::SymbolKind;
 use dn_analysis::Type;
 
 use crate::function::{Returns, Writer};
-use crate::names::{c_name, event_kind};
+use crate::names::{aggregate_kind, c_name, event_kind};
 use crate::Generator;
 
 const EVENT_CAPACITY: usize = 16;
+const EVENT_QUEUE: &str = include_str!("../runtime/events.c");
 
 impl<'a> Generator<'a> {
     /// `dn_event`, which holds any one event, for the header.
@@ -20,14 +22,23 @@ impl<'a> Generator<'a> {
             let c_type = self.c_type(&Type::Named(event.clone()));
             cases.push_str(&format!("        {c_type} {};\n", c_name(event)));
         }
-        let body =
-            format!("    dn_u16 kind;\n    union {{\n{cases}        dn_u8 none;\n    }} as;\n");
+        for (index, aggregate) in self.model.all(SymbolKind::Aggregate).iter().enumerate() {
+            out.push_str(&format!(
+                "#define {} {}\n",
+                aggregate_kind(aggregate),
+                index + 1
+            ));
+        }
+        let body = format!(
+            "    dn_u16 kind;\n    dn_u16 aggregate;\n    dn_int key;\n    dn_bool kept;\n    \
+             union {{\n{cases}        dn_u8 none;\n    }} as;\n"
+        );
         out.push('\n');
         out.push_str(&crate::types::define::struct_definition("dn_event", &body));
         out.push_str("dn_u16 dn_events_mark(void);\nvoid dn_events_rollback(dn_u16 mark);\n");
-        out.push_str(
-            "void dn_events_push(const dn_event *event);\nvoid dn_events_dispatch(void);\n\n",
-        );
+        out.push_str("void dn_events_push(const dn_event *event);\n");
+        out.push_str("void dn_events_keep(dn_u16 aggregate, dn_int key);\n");
+        out.push_str("void dn_events_dispatch_from(dn_u16 mark);\n\n");
         out
     }
 
@@ -62,17 +73,9 @@ impl<'a> Generator<'a> {
                 c_name(&event)
             ));
         }
-        out.push_str(&format!(
-            "dn_event dn_events[{EVENT_CAPACITY}];\ndn_u16 dn_event_count = 0;\n\n\
-             dn_u16 dn_events_mark(void)\n{{\n    return dn_event_count;\n}}\n\n\
-             void dn_events_rollback(dn_u16 mark)\n{{\n    dn_event_count = mark;\n}}\n\n\
-             void dn_events_push(const dn_event *event)\n{{\n    DN_CHECK(dn_event_count < {EVENT_CAPACITY}, \"too many events at once\");\n    \
-             if (dn_event_count < {EVENT_CAPACITY}) {{\n        dn_events[dn_event_count] = *event;\n        dn_event_count++;\n    }}\n}}\n\n\
-             static void dn_events_handle(const dn_event *event)\n{{\n{handlers}    (void) event;\n}}\n\n\
-             void dn_events_dispatch(void)\n{{\n    dn_event event;\n    dn_u16 index;\n\n    while (dn_event_count > 0) {{\n        \
-             event = dn_events[0];\n        for (index = 1; index < dn_event_count; index++) {{\n            dn_events[index - 1] = dn_events[index];\n        }}\n        \
-             dn_event_count--;\n        dn_events_handle(&event);\n    }}\n}}\n\n"
-        ));
+        out.push_str(&format!("#define DN_EVENT_CAPACITY {EVENT_CAPACITY}\n\n"));
+        out.push_str(&EVENT_QUEUE.replace("/* HANDLERS */", &handlers));
+        out.push('\n');
         out
     }
 }
