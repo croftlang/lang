@@ -2,7 +2,11 @@
 // each context's starting data, then plays turn after turn until the player
 // quits or a turn fails. `--title` shows the title first.
 domain Game {
-    contexts { Dungeon, Scoring, Platform }
+    // Scoring reacts to Dungeon's events; Platform fills Dungeon's ports.
+    contexts {
+        Dungeon -> Scoring
+        Dungeon -> Platform
+    }
 
     use { SetUpRooms, PlayTurn, FIRST_ROOM, GAME_TITLE, Position, Screen, Keyboard } from Dungeon
     use { SetUpScoring } from Scoring

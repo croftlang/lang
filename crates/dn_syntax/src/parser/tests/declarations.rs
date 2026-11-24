@@ -106,3 +106,18 @@ fn reads_a_domain() {
     assert_eq!(domain.uses_from[0].from.name, "Dungeon");
     assert_eq!(domain.uses[0].text(), "Keyboard");
 }
+
+#[test]
+fn reads_a_context_map() {
+    let source = "domain Game {\n    contexts {\n        Dungeon -> Scoring -> Reports\n        Settings\n    }\n} = Unit";
+    let file = parse_ok(source);
+    let domain = &file.domains[0];
+    let names: Vec<&str> = domain.contexts.iter().map(|c| c.name.as_str()).collect();
+    assert_eq!(names, ["Dungeon", "Scoring", "Reports", "Settings"]);
+    let arrows: Vec<(&str, &str)> = domain
+        .relations
+        .iter()
+        .map(|(a, b)| (a.name.as_str(), b.name.as_str()))
+        .collect();
+    assert_eq!(arrows, [("Dungeon", "Scoring"), ("Scoring", "Reports")]);
+}

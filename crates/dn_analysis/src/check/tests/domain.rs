@@ -25,16 +25,40 @@ fn reports_a_context_left_out_of_the_domain() {
 }
 
 #[test]
-fn reports_an_unknown_or_repeated_context() {
-    let errors = check_files(&[SHOP, STOCK, &domain("Shop, Stock, Stock, Till", "Open()?")])
+fn reports_an_unknown_context() {
+    let errors = check_files(&[SHOP, STOCK, &domain("Shop, Stock, Till", "Open()?")])
+        .err()
+        .unwrap();
+    assert_eq!(errors, vec!["cannot find a context named `Till`"]);
+}
+
+const TILL: &str = "context Till {\n use { Open } from Shop\n}";
+
+#[test]
+fn lets_a_context_use_only_contexts_upstream_of_it() {
+    assert!(check_files(&[SHOP, STOCK, TILL, &domain("Shop -> Till, Stock", "Open()?")]).is_ok());
+    let errors = check_files(&[SHOP, STOCK, TILL, &domain("Shop, Stock, Till", "Open()?")])
         .err()
         .unwrap();
     assert_eq!(
         errors,
-        vec![
-            "context `Stock` is listed more than once",
-            "cannot find a context named `Till`"
-        ]
+        vec!["`Till` uses `Shop`, so `contexts` needs `Shop -> Till`"]
+    );
+}
+
+#[test]
+fn reports_arrows_that_go_round_in_a_circle() {
+    let errors = check_files(&[
+        SHOP,
+        STOCK,
+        TILL,
+        &domain("Shop -> Till -> Stock -> Shop", "Open()?"),
+    ])
+    .err()
+    .unwrap();
+    assert_eq!(
+        errors,
+        vec!["the arrows in `contexts` go round in a circle through `Shop`"]
     );
 }
 

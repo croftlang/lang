@@ -111,7 +111,11 @@ pub struct ConstraintDecl {
 pub struct DomainDecl {
     pub doc: Vec<String>,
     pub name: Identifier,
+    /// Every context named in `contexts`, once for each time it is written.
     pub contexts: Vec<Identifier>,
+    /// The context map: `Dungeon -> Scoring` means Scoring is downstream of
+    /// Dungeon, so Scoring may use what Dungeon publishes.
+    pub relations: Vec<(Identifier, Identifier)>,
     pub uses_from: Vec<UseDecl>,
     /// The ports the body calls, as a service lists them.
     pub uses: Vec<Path>,
