@@ -65,21 +65,50 @@ handled with `?` or `or`, `match` must handle every variant, and each kind of
 body can only do what its kind allows: only commands `set` fields and `emit`
 events, only services and adapters loop, and only adapters call native code.
 
-There is no C backend yet, so `dn compile` stops after the checks.
+`dn compile` writes portable C89 for one target. It has been tested with gcc
+and clang in strict C89 mode; building with cc65 and z88dk is next.
 
 ## Usage
 
 ```sh
 cargo install --path crates/dn_cli
 
-dn check .        # check every .dn file in the folder and its subfolders
+dn check .                       # check every .dn file in the folder and its subfolders
+dn compile . --target desktop    # check, then write C to target/dn/desktop/
 ```
 
 Try it on the example, a small dungeon game split across ten files:
 
 ```sh
 dn check examples/dungeon
+dn compile examples/dungeon --target spectrum_48k
 ```
+
+## The generated C
+
+`dn compile` writes four files: the runtime (`dn.h`, `dn_runtime.c`), and the
+program (`program.h`, `program.c`). Build them with the target's own C
+compiler, together with C files for the `native` functions its adapters call.
+`program.h` lists their prototypes.
+
+```sh
+cd examples/dungeon/target/dn/test
+cc -std=c89 dn_runtime.c program.c -o dungeon
+```
+
+- **C89 only.** No `//` comments, no declarations after statements, no
+  floating point unless the program uses `Float`, and structs are passed by
+  pointer, since cc65 can only pass 1, 2 and 4 byte structs by value.
+- **Fixed sizes.** A list holds as many items as the largest `Length` rule
+  on any list of its item type (16 when there is none), and every string has
+  room for the longest string any rule allows (32 by default). A whole
+  number field with a `Range` rule takes the smallest C type that fits.
+- **Errors** share one C type, `dn_error`, which holds a code and the error's fields.
+- **Events** are queued by commands, dropped if the command fails, and handed
+  to policies when the service that raised them finishes.
+- **Repositories** keep their aggregates in memory for now. Saving through
+  the storage port comes later.
+- **Contracts** are checked at run time when built with `-DDN_DEBUG`.
 
 ## Layout
 
@@ -87,6 +116,7 @@ dn check examples/dungeon
 |---|---|
 | `dn_syntax` | Lexer, parser and syntax tree |
 | `dn_analysis` | Merging files, name resolution, declaration checks and type checking |
+| `dn_codegen` | C89 generation for one target |
 | `dn_cli` | The `dn` command |
 
 ## Development
@@ -94,3 +124,6 @@ dn check examples/dungeon
 ```sh
 cargo test
 ```
+
+The `dn_codegen` tests generate C for small programs, build it with `cc` in
+strict C89 mode with every warning as an error, and run it.
