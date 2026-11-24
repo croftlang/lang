@@ -22,9 +22,6 @@ impl Parser {
             counter = Some(LoopCounter { name, rules });
         }
         let body = self.parse_block()?;
-        Ok(Expr {
-            kind: ExprKind::Loop(counter, Box::new(body)),
-            span,
-        })
+        Ok(self.make_expr(ExprKind::Loop(counter, Box::new(body)), span))
     }
 }

@@ -9,15 +9,23 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     /// The type of an expression. `expected`, when known, lets bare enum
     /// variants such as `North` be found.
     pub(super) fn expr(&mut self, value: &Expr, expected: Option<&Type>) -> Type {
+        let ty = self.expr_kind(value, expected);
+        self.checker.facts.types.insert(value.id, ty.clone());
+        ty
+    }
+
+    fn expr_kind(&mut self, value: &Expr, expected: Option<&Type>) -> Type {
         let span = value.span;
         match &value.kind {
             ExprKind::Int(_) => Type::Int,
             ExprKind::Float(_) => Type::Float,
             ExprKind::String(_) => Type::String,
             ExprKind::Bool(_) => Type::Bool,
-            ExprKind::Name(name) => self.name(name, span, expected),
+            ExprKind::Name(name) => self.name(Some(value.id), name, span, expected),
             ExprKind::Field(inner, field) => self.field(value, inner, field, expected),
-            ExprKind::Call(callee, arguments) => self.call(callee, arguments, span, expected),
+            ExprKind::Call(callee, arguments) => {
+                self.call(value.id, callee, arguments, span, expected)
+            }
             ExprKind::Record(path, fields) => self.record(path, fields),
             ExprKind::With(base, fields) => self.with(base, fields),
             ExprKind::Unary(op, operand) => self.unary(*op, operand),
@@ -38,7 +46,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             ExprKind::Match(subject, arms) => self.check_match(subject, arms, expected),
             ExprKind::Block(statements) => self.block(statements, expected),
-            ExprKind::Issue(issue) => self.issue(issue, span),
+            ExprKind::Issue(issue) => self.issue(value.id, issue, span),
             ExprKind::Emit(event, fields) => self.emit(event, fields, span),
             ExprKind::Native(function, arguments) => {
                 self.native(function, arguments, span, expected)

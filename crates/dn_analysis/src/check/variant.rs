@@ -11,6 +11,8 @@ pub(super) struct Variant<'a> {
     pub name: String,
     pub fields: &'a [Field],
     pub scope: Scope<'a>,
+    /// The error this variant stands for, when it comes from an included error.
+    pub error: Option<Resolved>,
 }
 
 impl<'a> Checker<'a> {
@@ -31,6 +33,7 @@ impl<'a> Checker<'a> {
                     name: variant.name.name.clone(),
                     fields: &variant.fields,
                     scope,
+                    error: None,
                 });
             }
             for include in &decl.includes {
@@ -51,6 +54,7 @@ impl<'a> Checker<'a> {
                     name,
                     fields,
                     scope: self.scope_of(&error),
+                    error: Some(error.clone()),
                 });
             }
         }

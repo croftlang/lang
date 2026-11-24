@@ -1,10 +1,19 @@
 use super::{Identifier, Path, Rule};
-use crate::span::Span;
+use crate::span::{SourceId, Span};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
+    /// Tells this expression apart from every other in the program, so later
+    /// passes can record facts about it, such as its type.
+    pub id: ExprId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ExprId {
+    pub source: SourceId,
+    pub index: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]

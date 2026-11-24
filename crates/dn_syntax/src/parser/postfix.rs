@@ -39,7 +39,7 @@ impl Parser {
                 }
                 _ => return Ok(value),
             };
-            value = Expr { kind, span };
+            value = self.make_expr(kind, span);
         }
     }
 }

@@ -4,6 +4,7 @@ use dn_syntax::ast::{Expr, Identifier, Path};
 
 use super::BodyChecker;
 use crate::check::data::expr_path;
+use crate::facts::Meaning;
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
@@ -16,12 +17,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         expected: Option<&Type>,
     ) -> Type {
         if let Some(path) = self.as_type_path(value) {
-            if let Some(ty) = self.type_path(&path, expected) {
+            if let Some(ty) = self.type_path(Some(value.id), &path, expected) {
                 return ty;
             }
             return Type::Unknown;
         }
         let ty = self.expr(inner, None);
+        self.note(Some(value.id), Meaning::Property);
         self.property(&ty, field)
     }
 

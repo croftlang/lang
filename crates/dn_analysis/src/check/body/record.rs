@@ -33,7 +33,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     self.expect(value, &field_type);
                 }
                 None => {
-                    let found = self.name(&name.name, name.span, Some(&field_type));
+                    let found = self.name(None, &name.name, name.span, Some(&field_type));
                     if !self.checker.accepts(&field_type, &found) {
                         let message = format!(
                             "expected `{field_type}` for `{}`, found `{found}`",

@@ -14,6 +14,8 @@ use dn_syntax::ast::*;
 pub struct Program {
     pub contexts: BTreeMap<String, Context>,
     pub applications: Vec<ApplicationDecl>,
+    /// Types and meanings of expressions, filled in by checking.
+    pub facts: crate::facts::Facts,
 }
 
 #[derive(Debug)]

@@ -1,23 +1,39 @@
 //! Names, fields, records and `with`.
 
-use dn_syntax::ast::{Identifier, Path};
+use dn_syntax::ast::{ExprId, Identifier, Path};
 use dn_syntax::Span;
 
 use super::{BodyChecker, BodyKind};
+use crate::facts::Meaning;
 use crate::symbols::SymbolKind;
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
-    pub(super) fn name(&mut self, name: &str, span: Span, expected: Option<&Type>) -> Type {
+    pub(super) fn name(
+        &mut self,
+        id: Option<ExprId>,
+        name: &str,
+        span: Span,
+        expected: Option<&Type>,
+    ) -> Type {
         if let Some(local) = self.local(name) {
-            return local.ty.clone();
+            let ty = local.ty.clone();
+            self.note(id, Meaning::Local);
+            return ty;
         }
         if let Some(ty) = self.own_field(name, span, false) {
+            self.note(id, Meaning::OwnField);
             return ty;
         }
         match name {
-            "Unit" => return Type::Unit,
-            "None" => return Type::option(Type::Unknown),
+            "Unit" => {
+                self.note(id, Meaning::Unit);
+                return Type::Unit;
+            }
+            "None" => {
+                self.note(id, Meaning::NoneValue);
+                return Type::option(Type::Unknown);
+            }
             _ => {}
         }
         let path = Path {
@@ -26,7 +42,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 span,
             }],
         };
-        if let Some(ty) = self.type_path(&path, expected) {
+        if let Some(ty) = self.type_path(id, &path, expected) {
             return ty;
         }
         self.error(format!("cannot find `{name}` here"), span);
@@ -48,7 +64,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     }
 
     /// A name that stands for a constant, an error or an enum variant.
-    pub(super) fn type_path(&mut self, path: &Path, expected: Option<&Type>) -> Option<Type> {
+    pub(super) fn type_path(
+        &mut self,
+        id: Option<ExprId>,
+        path: &Path,
+        expected: Option<&Type>,
+    ) -> Option<Type> {
         let found = self.checker.resolve(&self.scope, path);
         match found.as_ref().map(|found| found.kind) {
             Some(SymbolKind::Const) => {
@@ -59,7 +80,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     .consts
                     .iter()
                     .find(|c| c.name.name == found.name)?;
-                return Some(self.checker.lower_type(&scope, &constant.ty));
+                let ty = self.checker.lower_type(&scope, &constant.ty);
+                self.note(id, Meaning::Const(found));
+                return Some(ty);
             }
             Some(SymbolKind::Error) => {
                 let found = found.unwrap();
@@ -75,6 +98,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     );
                     self.error(message, path.span());
                 }
+                self.note(id, Meaning::Error(found.clone()));
                 return Some(Type::Named(found));
             }
             Some(kind) => {
@@ -93,6 +117,19 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             );
             self.error(message, path.span());
         }
+        if let Type::Named(owner) = &ty {
+            self.note(
+                id,
+                Meaning::Variant(owner.clone(), variant.name.clone(), variant.error.clone()),
+            );
+        }
         Some(ty)
+    }
+
+    /// Records what an expression refers to, when it is one.
+    pub(super) fn note(&mut self, id: Option<ExprId>, meaning: Meaning) {
+        if let Some(id) = id {
+            self.checker.record(id, meaning);
+        }
     }
 }

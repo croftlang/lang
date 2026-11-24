@@ -27,6 +27,7 @@ use std::collections::HashMap;
 use dn_syntax::ast::File;
 use dn_syntax::{Diagnostic, Span};
 
+use crate::facts::{Facts, Meaning};
 use crate::program::{Context, Program};
 use crate::symbols::{build_table, SymbolTable};
 
@@ -34,7 +35,7 @@ pub(crate) use resolve::{Resolved, Scope};
 
 /// Merges the files into one program and checks its declarations.
 pub fn check(files: Vec<File>) -> Result<Program, Vec<Diagnostic>> {
-    let program = Program::from_files(files);
+    let mut program = Program::from_files(files);
     let mut errors = Vec::new();
     let tables = program
         .contexts
@@ -45,6 +46,7 @@ pub fn check(files: Vec<File>) -> Result<Program, Vec<Diagnostic>> {
         program: &program,
         tables,
         errors,
+        facts: Facts::default(),
     };
     for context in program.contexts.values() {
         checker.check_context(context);
@@ -57,8 +59,10 @@ pub fn check(files: Vec<File>) -> Result<Program, Vec<Diagnostic>> {
             checker.check_bodies(context);
         }
     }
-    let mut errors = checker.errors;
+    let Checker { errors, facts, .. } = checker;
+    let mut errors = errors;
     if errors.is_empty() {
+        program.facts = facts;
         return Ok(program);
     }
     errors.sort_by_key(|error| (error.span.source.0, error.span.line, error.span.column));
@@ -69,9 +73,15 @@ pub(crate) struct Checker<'a> {
     program: &'a Program,
     tables: HashMap<String, SymbolTable>,
     errors: Vec<Diagnostic>,
+    facts: Facts,
 }
 
 impl<'a> Checker<'a> {
+    /// Records what an expression refers to, for code generation.
+    fn record(&mut self, id: dn_syntax::ast::ExprId, meaning: Meaning) {
+        self.facts.meanings.insert(id, meaning);
+    }
+
     fn error(&mut self, message: impl Into<String>, span: Span) {
         self.errors.push(Diagnostic::new(message, span));
     }

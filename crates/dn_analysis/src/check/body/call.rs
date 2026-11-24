@@ -1,17 +1,19 @@
 //! Calls: functions, translations, services, constraints, enum variants and
 //! built-in functions. Method calls are in `method`.
 
-use dn_syntax::ast::{Argument, Expr, ExprKind};
+use dn_syntax::ast::{Argument, Expr, ExprId, ExprKind};
 use dn_syntax::Span;
 
 use super::{BodyChecker, BodyKind};
 use crate::check::data::expr_path;
+use crate::facts::Meaning;
 use crate::symbols::SymbolKind;
 use crate::types::{Resolved, Type};
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
     pub(super) fn call(
         &mut self,
+        id: ExprId,
         callee: &Expr,
         arguments: &[Argument],
         span: Span,
@@ -20,6 +22,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         if let ExprKind::Field(receiver, method) = &callee.kind {
             if self.as_type_path(callee).is_none() {
                 let receiver = self.expr(receiver, None);
+                self.note(Some(id), Meaning::Method);
                 return self.method(&receiver, method, arguments, expected);
             }
         }
@@ -30,6 +33,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let name = path.text();
         let Some(found) = self.checker.resolve(&self.scope, &path) else {
             if let Some(ty) = self.builtin_call(&name, arguments, span, expected) {
+                self.note(Some(id), Meaning::Builtin(name.clone()));
                 return ty;
             }
             if let Some((ty, variant)) = self.find_variant(&path, expected) {
@@ -42,11 +46,22 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     })
                     .collect();
                 self.check_arguments(arguments, &parameters, &name, span, false);
+                if let Type::Named(owner) = &ty {
+                    self.note(
+                        Some(id),
+                        Meaning::Variant(
+                            owner.clone(),
+                            variant.name.clone(),
+                            variant.error.clone(),
+                        ),
+                    );
+                }
                 return ty;
             }
             self.error(format!("cannot find `{name}` here"), path.span());
             return Type::Unknown;
         };
+        self.note(Some(id), Meaning::Declared(found.clone()));
         match found.kind {
             SymbolKind::Function | SymbolKind::Translation | SymbolKind::Constraint => {
                 self.call_declared(&found, arguments, span)

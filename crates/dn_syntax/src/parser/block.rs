@@ -20,10 +20,7 @@ impl Parser {
             }
             Ok(statements)
         })?;
-        Ok(Expr {
-            kind: ExprKind::Block(statements),
-            span,
-        })
+        Ok(self.make_expr(ExprKind::Block(statements), span))
     }
 
     fn parse_statement(&mut self) -> ParseResult<Statement> {
@@ -50,10 +47,7 @@ impl Parser {
         self.expect_keyword(Keyword::If)?;
         let condition = self.with_records(false, Self::parse_expression)?;
         let block = self.parse_block()?;
-        Ok(Expr {
-            kind: ExprKind::If(Box::new(condition), Box::new(block)),
-            span,
-        })
+        Ok(self.make_expr(ExprKind::If(Box::new(condition), Box::new(block)), span))
     }
 
     /// `match kind { Coins(count) -> count * 10 }`
@@ -70,10 +64,7 @@ impl Parser {
             arms.push(MatchArm { pattern, value });
             self.eat(&TokenKind::Comma);
         }
-        Ok(Expr {
-            kind: ExprKind::Match(Box::new(subject), arms),
-            span,
-        })
+        Ok(self.make_expr(ExprKind::Match(Box::new(subject), arms), span))
     }
 
     /// `Coins(count)`, `Item.Gold(amount)` or `None`.

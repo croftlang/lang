@@ -49,7 +49,7 @@ impl Parser {
             _ if self.is_identifier() => ExprKind::Name(self.expect_identifier()?.name),
             _ => return Err(self.unexpected("an expression")),
         };
-        Ok(Expr { kind, span })
+        Ok(self.make_expr(kind, span))
     }
 
     fn literal(&mut self, kind: ExprKind) -> ExprKind {

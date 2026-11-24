@@ -1,17 +1,18 @@
 //! Issuing commands, raising events, native calls, and failing with `?` and `or`.
 
-use dn_syntax::ast::{Argument, Expr, ExprKind, Identifier, Issue};
+use dn_syntax::ast::{Argument, Expr, ExprId, ExprKind, Identifier, Issue};
 use dn_syntax::Span;
 
 use super::{BodyChecker, BodyKind};
 use crate::check::data::expr_path;
+use crate::facts::Meaning;
 use crate::symbols::SymbolKind;
 use crate::types::{Resolved, Type};
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
     /// `issue Cmd(...) on room` gives back the changed room. `issue Cmd(...)
     /// on Room(id)` loads, changes and saves it, so only services and policies can.
-    pub(super) fn issue(&mut self, issue: &Issue, span: Span) -> Type {
+    pub(super) fn issue(&mut self, id: ExprId, issue: &Issue, span: Span) -> Type {
         if matches!(
             self.kind,
             BodyKind::Command(_) | BodyKind::Constraint | BodyKind::Constant
@@ -38,6 +39,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             return Type::Unknown;
         };
+        let meaning = if by_identity {
+            Meaning::IssueByIdentity(aggregate.clone())
+        } else {
+            Meaning::IssueOnValue(aggregate.clone())
+        };
+        self.note(Some(id), meaning);
         self.issue_arguments(&aggregate, &issue.command, &issue.arguments);
         let errors = self
             .checker

@@ -18,7 +18,7 @@ mod tests;
 mod tokens;
 mod types;
 
-use crate::ast::File;
+use crate::ast::{Expr, ExprId, ExprKind, File};
 use crate::lexer::tokenize;
 use crate::span::{Diagnostic, SourceId};
 use crate::token::Token;
@@ -29,6 +29,8 @@ pub fn parse(source: &str, source_id: SourceId) -> Result<File, Diagnostic> {
         tokens,
         position: 0,
         allow_records: true,
+        source_id,
+        next_expr: 0,
     }
     .parse_file()
 }
@@ -40,4 +42,17 @@ pub(crate) struct Parser {
     position: usize,
     /// False inside an `if` or `match` condition, where `{` starts the block.
     allow_records: bool,
+    source_id: SourceId,
+    next_expr: u32,
+}
+
+impl Parser {
+    fn make_expr(&mut self, kind: ExprKind, span: crate::span::Span) -> Expr {
+        let id = ExprId {
+            source: self.source_id,
+            index: self.next_expr,
+        };
+        self.next_expr += 1;
+        Expr { kind, span, id }
+    }
 }

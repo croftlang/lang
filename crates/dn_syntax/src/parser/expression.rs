@@ -15,10 +15,7 @@ impl Parser {
             self.advance();
             let fallback = self.parse_or_operand()?;
             let span = value.span;
-            value = Expr {
-                kind: ExprKind::OrElse(Box::new(value), Box::new(fallback)),
-                span,
-            };
+            value = self.make_expr(ExprKind::OrElse(Box::new(value), Box::new(fallback)), span);
         }
         Ok(value)
     }
@@ -37,10 +34,7 @@ impl Parser {
             self.advance();
             let right = self.parse_binary(precedence + 1)?;
             let span = left.span;
-            left = Expr {
-                kind: ExprKind::Binary(op, Box::new(left), Box::new(right)),
-                span,
-            };
+            left = self.make_expr(ExprKind::Binary(op, Box::new(left), Box::new(right)), span);
         }
         Ok(left)
     }
@@ -77,9 +71,6 @@ impl Parser {
         };
         self.advance();
         let operand = self.parse_unary()?;
-        Ok(Expr {
-            kind: ExprKind::Unary(op, Box::new(operand)),
-            span,
-        })
+        Ok(self.make_expr(ExprKind::Unary(op, Box::new(operand)), span))
     }
 }
