@@ -12,6 +12,8 @@ mod data;
 mod declared;
 mod find;
 mod identity;
+mod model;
+mod model_types;
 mod names;
 mod publish;
 mod repository;
@@ -31,6 +33,7 @@ use crate::facts::{Facts, Meaning};
 use crate::program::{Context, Program};
 use crate::symbols::{build_table, SymbolTable};
 
+pub use model::{Model, VariantInfo};
 pub(crate) use resolve::{Resolved, Scope};
 
 /// Merges the files into one program and checks its declarations.

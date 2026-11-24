@@ -24,6 +24,7 @@ mod record;
 mod repeat;
 mod setup;
 mod string;
+mod type_path;
 mod variant;
 
 use std::collections::HashMap;
