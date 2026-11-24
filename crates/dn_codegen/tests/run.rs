@@ -20,6 +20,27 @@ fn runs_commands_events_policies_and_repositories() {
 }
 
 #[test]
+fn stops_with_the_error_when_the_domain_fails() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/failing");
+    let output = generate(&source, "test", "failing");
+    let built = compile(&output, &["dn_runtime.c", "program.c", "-o", "program"]);
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("program"))
+        .output()
+        .expect("the program runs");
+    assert_eq!(ran.status.code(), Some(1));
+    assert_eq!(String::from_utf8_lossy(&ran.stdout).trim(), "Shop.Closed");
+    fs::remove_dir_all(output).ok();
+}
+
+#[test]
 fn runs_the_dungeon_example_until_it_quits() {
     run_program_at(
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/dungeon"),

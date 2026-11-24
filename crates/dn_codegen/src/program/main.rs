@@ -1,9 +1,10 @@
-//! `main`: sets up the program, runs the start service, and handles the
-//! events it raised.
+//! `main`: sets up the program, runs the domain (or the target's `main`
+//! service), and handles the events it raised. If it fails, the program
+//! prints the error's name and stops with exit code 1.
 
 use dn_analysis::Type;
 
-use crate::names::c_name;
+use crate::names::{c_name, c_string, error_code};
 use crate::Generator;
 
 impl<'a> Generator<'a> {
@@ -13,20 +14,33 @@ impl<'a> Generator<'a> {
             .functions
             .iter()
             .find(|f| f.name.name == self.start.name);
-        let result = service.and_then(|s| s.return_type.as_ref());
-        let result = result.map_or(Type::Unit, |ty| {
-            self.model.lower_type(&self.start.context, None, ty)
-        });
-        let exit = if matches!(result, Type::Result(..)) {
-            "result.ok ? 0 : 1"
+        let result = service.map_or(Type::Unit, |s| self.function_result(&self.start.context, s));
+        let failure = if matches!(result, Type::Result(..)) {
+            "    if (!result.ok) {\n        dn_fail(dn_error_name(result.error.code));\n    }\n"
         } else {
-            "0"
+            ""
         };
         format!(
             "int main(int argc, char **argv)\n{{\n    {} result;\n\n    dn_arguments_set(argc, argv);\n    dn_init();\n    \
-             {}(&result);\n    dn_events_dispatch();\n    return {exit};\n}}\n",
+             {}(&result);\n    dn_events_dispatch();\n{failure}    return 0;\n}}\n",
             self.c_type(&result),
             c_name(&self.start)
         )
+    }
+
+    /// `dn_error_name`, which gives each error's name for messages.
+    pub fn error_names(&self, prototypes: &mut Vec<String>) -> String {
+        let signature = "const char *dn_error_name(dn_u16 code)";
+        prototypes.push(format!("{signature};"));
+        let mut body = String::new();
+        for (error, _) in self.errors() {
+            let name = format!("{}.{}", error.context, error.name);
+            body.push_str(&format!(
+                "    if (code == {}) {{\n        return {};\n    }}\n",
+                error_code(&error),
+                c_string(&name)
+            ));
+        }
+        format!("{signature}\n{{\n{body}    return \"an unknown error\";\n}}\n\n")
     }
 }

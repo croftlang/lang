@@ -1,5 +1,7 @@
 [package]
 name = "game"
+
+[target.test]
 main = "Start"
 
 [target.test.adapters]

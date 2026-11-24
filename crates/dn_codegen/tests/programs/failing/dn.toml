@@ -1,0 +1,4 @@
+[package]
+name = "failing"
+
+[target.test]

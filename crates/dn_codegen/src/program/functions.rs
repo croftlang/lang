@@ -41,9 +41,7 @@ impl<'a> Generator<'a> {
             let Some(decl) = context.functions.iter().find(|f| f.name.name == found.name) else {
                 return String::new();
             };
-            let result = decl.return_type.as_ref().map_or(Type::Unit, |ty| {
-                self.model.lower_type(&found.context, None, ty)
-            });
+            let result = self.function_result(&found.context, decl);
             (result, decl.preconditions.as_slice(), decl.body.as_ref())
         };
         let parameters = self.parameters_of(found);

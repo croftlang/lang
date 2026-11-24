@@ -16,7 +16,7 @@ pub struct Generator<'a> {
     pub(crate) target: String,
     /// Which adapter fills each port on this target.
     pub(crate) bindings: HashMap<Resolved, Resolved>,
-    /// The main service, which runs first.
+    /// What runs first: the domain's body, or the target's `main` service.
     pub(crate) start: Resolved,
     pub(crate) sizes: Sizes,
     /// Every C type used, in the order first seen; defined later in dependency order.
@@ -52,9 +52,13 @@ impl<'a> Generator<'a> {
                 bindings.insert(port, adapter);
             }
         }
-        let main = &manifest.main_for(target_config).name;
-        let start = find(&model, main, SymbolKind::Service)
-            .ok_or_else(|| format!("cannot find the main service `{main}`"))?;
+        let start = match (&target_config.main, program.domains.first()) {
+            (Some(main), _) => find(&model, &main.name, SymbolKind::Service),
+            (None, Some(domain)) => model.lookup(&domain.name.name, &domain.name.name),
+            (None, None) => None,
+        };
+        let start = start
+            .ok_or_else(|| format!("target `{target}` has nothing to run: declare a `domain`"))?;
         let sizes = Sizes::measure(program, &model);
         Ok(Generator {
             program,

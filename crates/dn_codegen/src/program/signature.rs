@@ -68,6 +68,17 @@ impl<'a> Generator<'a> {
         self.lower_parameters(&aggregate.context, Some(&aggregate.name), parameters)
     }
 
+    /// What a function gives back. A domain's body can fail with any error.
+    pub fn function_result(&self, context: &str, function: &dn_syntax::ast::FunctionDecl) -> Type {
+        match &function.return_type {
+            Some(ty) => self.model.lower_type(context, None, ty),
+            None if function.kind == dn_syntax::ast::FunctionKind::Domain => {
+                Type::result(Type::Unit, Type::Errors(Vec::new()))
+            }
+            None => Type::Unit,
+        }
+    }
+
     /// The name of an aggregate's identity field.
     pub fn identity_field(&self, aggregate: &Resolved) -> String {
         let fields = self.model.fields(aggregate);

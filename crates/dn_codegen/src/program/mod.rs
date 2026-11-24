@@ -26,6 +26,7 @@ impl<'a> Generator<'a> {
         let (adapter_state, adapters) = self.adapters(&mut prototypes);
         let repositories = self.repositories(&mut prototypes);
         let main = self.main_function();
+        let error_names = self.error_names(&mut prototypes);
         let event_definition = self.event_definition();
         let equalities = self.equality_functions(&mut prototypes);
         let types = self.type_definitions();
@@ -41,7 +42,7 @@ impl<'a> Generator<'a> {
             prototypes.join("\n")
         );
         let source = format!(
-            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{equalities}{functions}{commands}{events}{adapters}{repositories}{main}"
+            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{equalities}{functions}{commands}{events}{adapters}{repositories}{error_names}{main}"
         );
         let runtime_header = RUNTIME_HEADER.replace(
             "#ifndef DN_STRING_CAPACITY\n#define DN_STRING_CAPACITY 32\n#endif",
