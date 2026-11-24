@@ -31,31 +31,49 @@ context Dungeon {
 }
 ```
 
+## Splitting a context across files
+
+A context can be written inline, in braces, or opened with a header line at
+the top of a file. A header claims the rest of the file. Add an `aggregate`
+header to write part of one aggregate:
+
+```dn
+// dungeon/room/commands.dn
+context Dungeon
+aggregate Room
+
+command Move(direction: Direction) = {
+    ...
+}
+```
+
+The compiler joins every file that opens the same context, and every part of
+the same aggregate, before checking. This keeps each file short.
+
 ## Status
 
 The design is still being decided. The terms are in
 [docs/glossary.md](docs/glossary.md).
 
-The compiler in this repository is an early trial. It reads an older subset of
-the language (`struct`, `enum`, `const`, `constraint`, `port`, `adapter` and
-`fn` with `requires`/`ensures`) and compiles it to Rust. Next, it moves to the
-current design and a C backend.
+The compiler reads the current syntax and checks declarations: every name
+resolves, rules and invariants name real constraints and errors, aggregates
+and entities have one identity, adapters provide their port's operations, and
+the application has an adapter for every port its services use. Bodies are
+parsed but not type-checked yet, and there is no C backend yet, so
+`dn compile` stops after the checks.
 
 ## Usage
 
 ```sh
 cargo install --path crates/dn_cli
 
-dn check .        # check every .dn file in the folder
-dn compile .      # check, generate code in target/dn/ and build it
-dn compile . --release
-dn compile . --no-build
+dn check .        # check every .dn file in the folder and its subfolders
 ```
 
-Try it on the example:
+Try it on the example, a small dungeon game split across ten files:
 
 ```sh
-dn compile examples/invoicing
+dn check examples/dungeon
 ```
 
 ## Layout
@@ -63,8 +81,7 @@ dn compile examples/invoicing
 | Crate | Responsibility |
 |---|---|
 | `dn_syntax` | Lexer, parser and syntax tree |
-| `dn_analysis` | Name resolution, type checking and naming rules |
-| `dn_codegen` | Code generation |
+| `dn_analysis` | Merging files, name resolution and declaration checks |
 | `dn_cli` | The `dn` command |
 
 ## Development
@@ -72,6 +89,3 @@ dn compile examples/invoicing
 ```sh
 cargo test
 ```
-
-The `dn_codegen` tests compile the example's generated code with
-`rustc -D warnings` and run behaviour tests against it.

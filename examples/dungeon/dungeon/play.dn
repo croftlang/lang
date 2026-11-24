@@ -17,7 +17,7 @@ service PlayTurn(room_id: RoomId): Result<Unit, GameError> {
         None -> room
     }
     rooms.save(changed)?
-    draw_room(screen, changed)
+    screen.draw_sprite(PLAYER_SPRITE, changed.player.position)
 }
 
 service PlayGame(): Result<Unit, GameError> {

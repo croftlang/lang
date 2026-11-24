@@ -17,6 +17,7 @@ const SCREEN_WIDTH: Int = 256
 const SCREEN_HEIGHT: Int = 192
 const MAX_ENEMIES: Int = 16
 const FIRST_ROOM: RoomId = 1
+const PLAYER_SPRITE: SpriteId = 0
 
 identity RoomId: Int where Range(1, 20)
 identity PlayerId: Int where Range(1, 2)
