@@ -58,7 +58,7 @@ The design is still being decided. The terms are in
 The compiler reads the current syntax and checks declarations: every name
 resolves, rules and invariants name real constraints and errors, aggregates
 and entities have one identity, adapters provide their port's operations, and
-the application has an adapter for every port its services use.
+`dn.toml` gives every port its services use an adapter on each target.
 
 It also type-checks bodies. Every expression gets a type, failures must be
 handled with `?` or `or`, `match` must handle every variant, and each kind of
@@ -77,23 +77,49 @@ dn check .                       # check every .dn file in the folder and its su
 dn compile . --target desktop    # check, then write C to target/dn/desktop/
 ```
 
-Try it on the example, a small dungeon game split across ten files:
+Try it on the example, a small dungeon game split across eleven files:
 
 ```sh
 dn check examples/dungeon
 dn compile examples/dungeon --target spectrum_48k
 ```
 
+## The project file
+
+`dn.toml` sits beside the `.dn` files and holds what is about the build
+rather than the domain: the main service, which runs first, and for each
+target the adapter that fills each port and the C files holding its native
+functions. The compiler checks every name in it against the program.
+
+```toml
+[package]
+name = "dungeon"
+version = "0.1.0"
+main = "Main"
+
+[target.spectrum_48k]
+native = ["platform/spectrum.c"]
+
+[target.spectrum_48k.adapters]
+Screen = "SpectrumScreen"
+Keyboard = "SpectrumKeyboard"
+Storage = "DivmmcStorage"
+```
+
+A target can run a different main service with its own `main`. `dn check`
+works without a `dn.toml`; `dn compile` needs one.
+
 ## The generated C
 
 `dn compile` writes four files: the runtime (`dn.h`, `dn_runtime.c`), and the
-program (`program.h`, `program.c`). Build them with the target's own C
-compiler, together with C files for the `native` functions its adapters call.
-`program.h` lists their prototypes.
+program (`program.h`, `program.c`), and copies in the target's native C files.
+`program.h` lists the native functions' prototypes. Build every `.c` file with
+the target's own C compiler.
 
 ```sh
 cd examples/dungeon/target/dn/test
-cc -std=c89 dn_runtime.c program.c -o dungeon
+cc -std=c89 *.c -o dungeon
+./dungeon --title
 ```
 
 - **C89 only.** No `//` comments, no declarations after statements, no

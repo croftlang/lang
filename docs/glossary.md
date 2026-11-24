@@ -129,6 +129,10 @@ always finish; list methods such as `map` and `sum` do their iterating.
 ### Let
 Names a value that never changes. Works in every body.
 
+### List literal
+`[a, b, c]` makes a list of exactly those items, and `[]` an empty one,
+whose item type comes from where it is used.
+
 ### Set
 Changes an aggregate's field in a command, an adapter's field, or a
 service's own `let` name. Not allowed anywhere else.
@@ -195,16 +199,13 @@ service lists it in `uses` and calls `arguments.all()` for a
 such as the ZX Spectrum, give an empty list.
 
 ### Adapter
-Implements a port for one target, usually in a `Platform` context. Must
-provide every operation the port declares.
+Implements a port, usually in a `Platform` context: `adapter NullScreen for
+Screen { ... }`. Must provide every operation the port declares. Which
+targets use it is chosen in `dn.toml`, so one adapter can serve several.
 
 ### Native
 Calls a C function from an adapter: `native sprite_draw(sprite, at.x, at.y)`.
 Only allowed inside adapters.
-
-### Application
-Names the starting service and chooses which adapter fills each port on each
-target: `Screen -> SpectrumScreen`.
 
 ### Translation
 The anti-corruption layer: maps one context's term to another's.
@@ -212,7 +213,18 @@ The anti-corruption layer: maps one context's term to another's.
 ## Compiler
 
 ### Project
-A folder of `.dn` files compiled together as one program.
+A folder of `.dn` files compiled together as one program, with a `dn.toml`.
+
+### Project file
+`dn.toml`, beside the `.dn` files. Like Rust's `Cargo.toml`, it holds what
+is about the build rather than the domain: the program's name, its main
+service, and for each target the adapter that fills each port
+(`Screen = "SpectrumScreen"`) and the C files holding its native functions.
+
+### Main
+The service that runs first, named by `main` in `dn.toml`. It takes no
+parameters, and usually sets up the starting data. A target can name a
+different one.
 
 ### Target
 A machine to build for, such as `spectrum_48k`, `atari_st`, `desktop` or `test`.
