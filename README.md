@@ -77,7 +77,7 @@ dn check .                       # check every .dn file in the folder and its su
 dn compile . --target desktop    # check, then write C to target/dn/desktop/
 ```
 
-Try it on the example, a small dungeon game split across eleven files:
+Try it on the example, a small dungeon game split across twelve files:
 
 ```sh
 dn check examples/dungeon
@@ -87,15 +87,14 @@ dn compile examples/dungeon --target spectrum_48k
 ## The project file
 
 `dn.toml` sits beside the `.dn` files and holds what is about the build
-rather than the domain: the main service, which runs first, and for each
-target the adapter that fills each port and the C files holding its native
-functions. The compiler checks every name in it against the program.
+rather than the domain: for each target, the adapter that fills each port
+and the C files holding its native functions. The compiler checks every name
+in it against the program.
 
 ```toml
 [package]
 name = "dungeon"
 version = "0.1.0"
-main = "Main"
 
 [target.spectrum_48k]
 native = ["platform/spectrum.c"]
@@ -106,8 +105,41 @@ Keyboard = "SpectrumKeyboard"
 Storage = "DivmmcStorage"
 ```
 
-A target can run a different main service with its own `main`. `dn check`
-works without a `dn.toml`; `dn compile` needs one.
+`dn check` works without a `dn.toml`; `dn compile` needs one.
+
+## The domain
+
+The program starts in its `domain`, declared once, outside every context.
+Like a function, it has a contract and a body. The contract lists the
+contexts the domain is divided into, which must be every context in the
+program, and imports what it needs from them. The body runs first.
+
+```dn
+domain Game {
+    contexts { Dungeon, Scoring, Platform }
+
+    use { SetUpRooms, PlayTurn, FIRST_ROOM, Keyboard } from Dungeon
+    use { SetUpScoring } from Scoring
+
+    uses Keyboard
+} = {
+    SetUpRooms()?
+    SetUpScoring()?
+    loop {
+        let pressed = keyboard.pressed()
+        if pressed == Some(Quit) {
+            break
+        }
+        PlayTurn(FIRST_ROOM, pressed)?
+    }
+}
+```
+
+It only sees what contexts publish, so each context sets up its own starting
+data through a service it publishes. The body can pass up any error with `?`;
+the program then prints the error's name and stops with exit code 1. A target
+can run a service instead, such as a test entry point, with `main = "RunTests"`
+under that target in `dn.toml`.
 
 ## The generated C
 

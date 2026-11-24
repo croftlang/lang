@@ -217,14 +217,24 @@ A folder of `.dn` files compiled together as one program, with a `dn.toml`.
 
 ### Project file
 `dn.toml`, beside the `.dn` files. Like Rust's `Cargo.toml`, it holds what
-is about the build rather than the domain: the program's name, its main
-service, and for each target the adapter that fills each port
-(`Screen = "SpectrumScreen"`) and the C files holding its native functions.
+is about the build rather than the domain: the program's name, and for each
+target the adapter that fills each port (`Screen = "SpectrumScreen"`), the C
+files holding its native functions, and optionally a `main` service to run
+instead of the domain.
+
+### Domain
+The whole program: `domain Game { ... } = { ... }`, one per program, outside
+every context. Like a function, it has a contract and a body. The contract
+lists the contexts the domain is divided into (`contexts { Dungeon, Scoring }`,
+its context map, which must name every context), imports what it needs from
+them with `use`, and names the ports it calls with `uses`. The body runs
+first: it sets up each context's starting data through services those
+contexts publish, then runs the program. It can pass up any error with `?`;
+the program then prints the error's name and stops with exit code 1.
 
 ### Main
-The service that runs first, named by `main` in `dn.toml`. It takes no
-parameters, and usually sets up the starting data. A target can name a
-different one.
+A service a target runs instead of the domain, named by `main` under that
+target in `dn.toml`, such as a test entry point. It takes no parameters.
 
 ### Target
 A machine to build for, such as `spectrum_48k`, `atari_st`, `desktop` or `test`.
