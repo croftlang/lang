@@ -1,0 +1,75 @@
+//! Calls to functions, translations, constraints and services declared in
+//! dn, to enum variants, and to native C code.
+
+use dn_analysis::symbols::SymbolKind;
+use dn_analysis::types::Resolved;
+use dn_analysis::{Meaning, Type};
+use dn_syntax::ast::{Argument, Expr, ExprKind};
+
+use super::Writer;
+use crate::names::c_name;
+
+impl<'g, 'a> Writer<'g, 'a> {
+    pub fn call(
+        &mut self,
+        value: &Expr,
+        callee: &Expr,
+        arguments: &[Argument],
+        ty: &Type,
+    ) -> String {
+        match self.gen.facts.meaning(value.id).cloned() {
+            Some(Meaning::Method) => {
+                let ExprKind::Field(receiver, method) = &callee.kind else {
+                    return "0".to_string();
+                };
+                self.method(receiver, &method.name, arguments, ty)
+            }
+            Some(Meaning::Builtin(name)) => self.builtin(&name, arguments, ty),
+            Some(Meaning::Variant(owner, variant, error)) => {
+                self.variant_call(&owner, &variant, error.as_ref(), arguments, ty)
+            }
+            Some(Meaning::Declared(found)) => self.call_declared(&found, arguments, ty),
+            _ => "0".to_string(),
+        }
+    }
+
+    fn call_declared(&mut self, found: &Resolved, arguments: &[Argument], ty: &Type) -> String {
+        let parameters = self.gen.parameters_of(found);
+        let passed = self.pass_all(arguments, &parameters);
+        let result = self.call_into(&c_name(found), passed, ty);
+        if found.kind == SymbolKind::Service {
+            self.line("dn_events_dispatch();");
+        }
+        result
+    }
+
+    /// `native zx_cls()`: arguments as dn passes them, and a pointer for the
+    /// result when there is one. The prototype is written from the call.
+    pub fn native(
+        &mut self,
+        function: &str,
+        arguments: &[Argument],
+        want: Option<&Type>,
+    ) -> String {
+        let mut passed = Vec::new();
+        let mut parameters = Vec::new();
+        for argument in arguments {
+            let ty = self.type_of(&argument.value, None);
+            let (c, _) = self.eval(&argument.value, None);
+            let c_type = self.gen.c_type(&ty);
+            parameters.push(if self.gen.is_scalar(&ty) {
+                c_type
+            } else {
+                format!("const {c_type} *")
+            });
+            passed.push(self.pass(c, &ty));
+        }
+        let result = want.cloned().unwrap_or(Type::Unit);
+        parameters.push(format!("{} *", self.gen.c_type(&result)));
+        self.gen.natives.borrow_mut().push((
+            function.to_string(),
+            format!("void {function}({});", parameters.join(", ")),
+        ));
+        self.call_into(function, passed, &result)
+    }
+}

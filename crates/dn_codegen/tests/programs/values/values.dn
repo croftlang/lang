@@ -1,0 +1,59 @@
+// Values, enums, lists, strings and matching, checked at run time.
+context Checks
+
+error WrongAnswer
+
+enum Shape {
+    Square(side: Int)
+    Circle
+}
+
+value Point {
+    x: Int where Range(0, 255)
+    y: Int where Range(0, 255)
+}
+
+const START_X: Int = 3
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn distance(a: Point, b: Point): Int = abs(a.x - b.x) + abs(a.y - b.y)
+
+fn area(shape: Shape): Int = match shape {
+    Square(side) -> side * side
+    Circle -> 0
+}
+
+fn first_long(words: List<String>): Option<String> = words.find(w -> w.length > 3)
+
+service Start(): Result<Unit, WrongAnswer> {
+    uses Arguments
+} = {
+    let a = Point { x: START_X, y: 4 }
+    let b = a with { x: 10 }
+    check(distance(a, b) == 7)?
+    check(b != a)?
+    check(a == Point { x: 3, y: 4 })?
+    check(area(Shape.Square(side: 5)) == 25)?
+    check(area(Shape.Circle) == 0)?
+    let none = arguments.all()
+    check(none.is_empty)?
+    let words = none.add("one").add("three").add("eleven")
+    check(words.length == 3)?
+    check(words.filter(w -> w.length > 3).length == 2)?
+    check(words.map(w -> w.length).sum(n -> n) == 14)?
+    check(words.contains("three"))?
+    check(first_long(words).unwrap_or("") == "three")?
+    check(words.min_by(w -> w.length).map(w -> w.length).unwrap_or(0) == 3)?
+    let joined = "dun" + "geon"
+    check(joined == "dungeon" && joined.starts_with("dun") && joined.to_upper() == "DUNGEON")?
+    check("42".to_int().unwrap_or(0) == 42 && "x".to_int().is_none)?
+    check("a,b,c".split(",").length == 3)?
+    check(max(3, 9) - min(3, 9) == 6)?
+    Unit
+}

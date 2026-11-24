@@ -1,0 +1,6 @@
+application Game {
+    start Start
+    target test {
+        Storage -> NoStorage
+    }
+}

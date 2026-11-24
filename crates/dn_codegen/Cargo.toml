@@ -1,0 +1,10 @@
+[package]
+name = "dn_codegen"
+description = "Generates portable C from checked dn programs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+dn_syntax = { path = "../dn_syntax" }
+dn_analysis = { path = "../dn_analysis" }
