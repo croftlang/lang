@@ -4,7 +4,7 @@ use b_syntax::ast::{ExprId, Identifier, Path};
 use b_syntax::Span;
 
 use super::{BodyChecker, BodyKind};
-use crate::facts::Meaning;
+use crate::facts::{Meaning, MemberKind};
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
@@ -23,6 +23,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
         if let Some(ty) = self.own_field(name, span, false) {
             self.note(id, Meaning::OwnField);
+            self.note_own_field(name, span, &ty);
             return ty;
         }
         match name {
@@ -47,6 +48,29 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
         self.error(format!("cannot find `{name}` here"), span);
         Type::Unknown
+    }
+
+    /// Records the use of a field of the command's aggregate or the adapter.
+    pub(super) fn note_own_field(&mut self, name: &str, span: Span, ty: &Type) {
+        let (owner, fields) = match self.kind {
+            BodyKind::Command(aggregate) => (&aggregate.name.name, &aggregate.fields),
+            BodyKind::Adapter(adapter) => (&adapter.name.name, &adapter.fields),
+            _ => return,
+        };
+        let defined = fields
+            .iter()
+            .find(|f| f.name.name == name)
+            .map(|f| f.name.span);
+        let context = &self.scope.context.name.name;
+        let receiver = self
+            .checker
+            .lookup(context, owner)
+            .map_or(Type::Unknown, Type::Named);
+        let member = Identifier {
+            name: name.to_string(),
+            span,
+        };
+        self.note_member(&member, &receiver, ty, MemberKind::Field, defined);
     }
 
     /// A field of the command's aggregate or of the adapter. `for_set` leaves

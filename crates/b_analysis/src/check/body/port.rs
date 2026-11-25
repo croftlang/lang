@@ -3,6 +3,7 @@
 use b_syntax::ast::{Argument, Identifier};
 
 use super::BodyChecker;
+use crate::facts::MemberKind;
 use crate::types::{Resolved, Type};
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
@@ -27,6 +28,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 .map(|(name, ty)| (name.to_string(), ty))
                 .collect();
             self.check_arguments(arguments, &parameters, &method.name, method.span, false);
+            let receiver = Type::Port(port.clone());
+            self.note_member(method, &receiver, &result, MemberKind::Operation, None);
             return result;
         }
         let scope = self.checker.scope_of(port);
@@ -48,10 +51,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             .map(|p| (p.name.name.clone(), self.checker.parameter_type(&scope, p)))
             .collect();
         self.check_arguments(arguments, &parameters, &method.name, method.span, false);
-        operation
-            .return_type
-            .as_ref()
-            .map_or(Type::Unit, |ty| self.checker.lower_type(&scope, ty))
+        let result = (operation.return_type.as_ref())
+            .map_or(Type::Unit, |ty| self.checker.lower_type(&scope, ty));
+        let receiver = Type::Port(port.clone());
+        let defined = Some(operation.name.span);
+        self.note_member(method, &receiver, &result, MemberKind::Operation, defined);
+        result
     }
 
     /// A repository gives `find(id)` and `save(aggregate)`.
@@ -89,13 +94,16 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             _ => None,
         };
-        found.unwrap_or_else(|| {
+        let Some(found) = found else {
             let message = format!(
                 "repository `{}` only has `find` and `save`",
                 repository.name
             );
             self.error(message, span);
-            Type::Unknown
-        })
+            return Type::Unknown;
+        };
+        let receiver = Type::Repository(repository.clone());
+        self.note_member(method, &receiver, &found, MemberKind::Operation, None);
+        found
     }
 }

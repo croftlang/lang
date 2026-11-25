@@ -87,3 +87,46 @@ fn keeps_what_it_learned_when_there_are_errors() {
     assert_eq!(analysis.diagnostics.len(), 1);
     assert!(analysis.symbols["Dungeon"].get("Size").is_some());
 }
+
+#[test]
+fn notes_fields_and_operations() {
+    let source = "\
+context Dungeon {
+    value Position {
+        x: Int
+        y: Int
+    }
+    port Screen {
+        fn draw(at: Position): Unit
+    }
+    fn right(at: Position): Position = Position { x: at.x + 1, y: at.y }
+    service Show(at: Position): Unit {
+        calls Screen
+    } = {
+        screen.draw(at)
+    }
+}";
+    let analysis = analyze_source(source);
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let members = &analysis.program.facts.members;
+    let at = |line: u32, column: u32| {
+        (members.iter())
+            .find(|m| (m.span.line, m.span.column) == (line, column))
+            .unwrap_or_else(|| panic!("a member at {line}:{column} in {members:?}"))
+    };
+    // `x:` in the record, and `.x` after `at`, are the field on line 3.
+    for column in [51, 57] {
+        let member = at(9, column);
+        assert_eq!(member.name, "x");
+        assert_eq!(member.defined.map(|s| s.line), Some(3));
+        assert_eq!(member.ty, crate::types::Type::Int);
+    }
+    // `draw` in `screen.draw(at)` is the operation on line 7.
+    let draw = at(13, 16);
+    assert_eq!(draw.kind, crate::facts::MemberKind::Operation);
+    assert_eq!(draw.defined.map(|s| s.line), Some(7));
+}

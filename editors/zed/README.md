@@ -2,7 +2,7 @@
 
 Syntax highlighting, the outline panel, bracket matching, indentation and
 text objects for `.b` files, and, through `b lsp`, errors as you type,
-hover and go to definition. The grammar is `editors/tree-sitter-b`.
+hover, go to definition and completion. The grammar is `editors/tree-sitter-b`.
 
 The language server is the `b` command, which the extension finds on your
 PATH, so install it first:

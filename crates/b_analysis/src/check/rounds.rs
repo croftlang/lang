@@ -117,6 +117,9 @@ fn check_round(files: Vec<File>, manifest: Option<Manifest>) -> (Analysis, Vec<R
     references
         .retain(|r| seen.insert((r.span.source.0, r.span.line, r.span.column, r.name.clone())));
     facts.references = references;
+    let mut seen = std::collections::HashSet::new();
+    (facts.members)
+        .retain(|m| seen.insert((m.span.source.0, m.span.line, m.span.column, m.name.clone())));
     program.facts = facts;
     let mut diagnostics = errors;
     diagnostics.sort_by_key(|error| (error.span.source.0, error.span.line, error.span.column));

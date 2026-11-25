@@ -55,7 +55,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     pub(super) fn check_set(&mut self, name: &Identifier, value: &Expr) -> Type {
         let target = match self.kind {
             BodyKind::Command(_) | BodyKind::Adapter(_) => {
-                self.own_field(&name.name, name.span, true)
+                let found = self.own_field(&name.name, name.span, true);
+                if let Some(ty) = &found {
+                    self.note_own_field(&name.name, name.span, ty);
+                }
+                found
             }
             BodyKind::Service => match self.local(&name.name) {
                 Some(local) if local.settable => Some(local.ty.clone()),

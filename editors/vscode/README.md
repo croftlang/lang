@@ -1,7 +1,8 @@
 # b for VS Code
 
 Syntax highlighting for `.b` files and ` ```b ` code blocks in Markdown,
-and, through `b lsp`, errors as you type, hover and go to definition.
+and, through `b lsp`, errors as you type, hover, go to definition and
+completion.
 
 The language server is the `b` command, so install it first:
 

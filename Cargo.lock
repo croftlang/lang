@@ -18,6 +18,7 @@ dependencies = [
  "b_analysis",
  "b_codegen",
  "b_syntax",
+ "crossbeam-channel",
  "lsp-server",
  "lsp-types",
  "serde",

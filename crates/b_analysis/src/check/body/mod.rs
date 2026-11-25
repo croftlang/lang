@@ -33,7 +33,7 @@ mod variant;
 
 use std::collections::HashMap;
 
-use b_syntax::ast::{AdapterDecl, AggregateDecl};
+use b_syntax::ast::{AdapterDecl, AggregateDecl, Identifier};
 use b_syntax::Span;
 
 use super::{Checker, Scope};
@@ -125,6 +125,37 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             ty: ty.clone(),
             defined,
         });
+    }
+
+    /// Records a field, operation or method used at `span`, for editors.
+    pub(super) fn note_member(
+        &mut self,
+        member: &Identifier,
+        receiver: &Type,
+        ty: &Type,
+        kind: crate::facts::MemberKind,
+        defined: Option<Span>,
+    ) {
+        if *receiver == Type::Unknown {
+            return;
+        }
+        self.checker.facts.members.push(crate::facts::Member {
+            span: member.span,
+            name: member.name.clone(),
+            receiver: receiver.clone(),
+            ty: ty.clone(),
+            kind,
+            defined,
+        });
+    }
+
+    /// Where a field of a named type is declared.
+    pub(super) fn field_span(&self, ty: &Type, field: &str) -> Option<Span> {
+        let Type::Named(named) = ty else {
+            return None;
+        };
+        let fields = self.checker.fields_of(named)?;
+        Some(fields.iter().find(|f| f.name.name == field)?.name.span)
     }
 
     pub(super) fn local(&self, name: &str) -> Option<&Local> {

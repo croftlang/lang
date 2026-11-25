@@ -96,7 +96,9 @@ b compile examples/dungeon --target spectrum_48k
 
 `b lsp` runs a language server, which editors start for you. It shows
 errors as you type, a declaration's signature and doc comment on hover,
-and goes to where a name is declared.
+and goes to where a name is declared, including fields, port operations
+and the standard library. It completes names in scope, and after a `.`
+the fields and operations of a value or the variants of an enum.
 
 - VS Code: [editors/vscode](editors/vscode), with highlighting from a TextMate grammar.
 - Zed: [editors/zed](editors/zed), with highlighting from the Tree-sitter grammar in

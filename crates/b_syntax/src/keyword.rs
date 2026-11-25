@@ -93,6 +93,11 @@ impl Keyword {
             .map(|(_, keyword)| *keyword)
     }
 
+    /// Every reserved word.
+    pub fn words() -> impl Iterator<Item = &'static str> {
+        KEYWORDS.iter().map(|(text, _)| *text)
+    }
+
     pub fn as_str(self) -> &'static str {
         KEYWORDS
             .iter()

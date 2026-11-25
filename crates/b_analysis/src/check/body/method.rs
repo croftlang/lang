@@ -4,6 +4,7 @@
 use b_syntax::ast::{Argument, Identifier};
 
 use super::BodyChecker;
+use crate::facts::MemberKind;
 use crate::symbols::SymbolKind;
 use crate::types::{Resolved, Type};
 
@@ -51,10 +52,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             Type::Option(item) => self.option_method(item, name, arguments, span, expected),
             _ => None,
         };
-        found.unwrap_or_else(|| {
+        let Some(found) = found else {
             self.error(format!("`{receiver}` has no method `{name}`"), span);
-            Type::Unknown
-        })
+            return Type::Unknown;
+        };
+        self.note_member(method, receiver, &found, MemberKind::Operation, None);
+        found
     }
 
     /// A method with fixed parameter types.

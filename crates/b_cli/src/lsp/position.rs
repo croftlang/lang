@@ -63,23 +63,85 @@ pub fn word_range(text: &str, span: Span) -> Range {
 }
 
 /// A `file://` URI for a path, with anything but letters, digits, `/` and
-/// `-._~` percent-encoded.
+/// `-._~` percent-encoded. A Windows path such as `C:\code\a.b` becomes
+/// `file:///C:/code/a.b`.
 pub fn path_to_uri(path: &Path) -> Option<Uri> {
-    let mut uri = String::from("file://");
-    for byte in path.to_string_lossy().bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b'/' => {
-                uri.push(byte as char)
-            }
-            _ => uri.push_str(&format!("%{byte:02X}")),
+    text_to_uri(&path.to_string_lossy(), cfg!(windows))?
+        .parse()
+        .ok()
+}
+
+fn text_to_uri(path: &str, windows: bool) -> Option<String> {
+    let mut path = path.to_string();
+    if windows {
+        path = path.replace('\\', "/");
+        if let Some(share) = path.strip_prefix("//") {
+            // `\\server\share\a.b` is `file://server/share/a.b`.
+            let (host, rest) = share.split_once('/')?;
+            return Some(format!("file://{host}{}", encode(&format!("/{rest}"))));
+        }
+        if is_drive(&path) {
+            path.insert(0, '/');
         }
     }
-    uri.parse().ok()
+    Some(format!("file://{}", encode(&path)))
+}
+
+/// Does a path start with a drive letter, as in `C:/code`?
+fn is_drive(path: &str) -> bool {
+    let bytes = path.as_bytes();
+    bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
+}
+
+fn encode(path: &str) -> String {
+    let mut encoded = String::new();
+    for (index, byte) in path.bytes().enumerate() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b'/' => {
+                encoded.push(byte as char)
+            }
+            // The colon after a drive letter, as in `/C:/`.
+            b':' if index == 2 && path.starts_with('/') && is_drive(&path[1..]) => {
+                encoded.push(':')
+            }
+            _ => encoded.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    encoded
 }
 
 /// The path of a `file://` URI.
 pub fn uri_to_path(uri: &Uri) -> Option<PathBuf> {
-    let encoded = uri.as_str().strip_prefix("file://")?.as_bytes();
+    uri_text_to_path(uri.as_str(), cfg!(windows)).map(PathBuf::from)
+}
+
+fn uri_text_to_path(uri: &str, windows: bool) -> Option<String> {
+    let rest = uri.strip_prefix("file://")?;
+    // Everything before the path is the host, empty for this machine.
+    let (host, path) = match rest.find('/') {
+        Some(slash) => rest.split_at(slash),
+        None => (rest, ""),
+    };
+    let path = decode(path)?;
+    if !windows {
+        return (host.is_empty() || host == "localhost").then_some(path);
+    }
+    // `/c%3A/code/a.b`, as VS Code writes it, is `C:\code\a.b`. The drive
+    // is written in capitals, as Windows writes it, so the same file always
+    // has the same path.
+    let path = match path.strip_prefix('/') {
+        Some(rest) if is_drive(rest) => rest[..1].to_ascii_uppercase() + &rest[1..],
+        _ => path,
+    };
+    let path = path.replace('/', "\\");
+    match host {
+        "" | "localhost" => Some(path),
+        host => Some(format!("\\\\{host}{path}")),
+    }
+}
+
+fn decode(encoded: &str) -> Option<String> {
+    let encoded = encoded.as_bytes();
     let mut bytes = Vec::with_capacity(encoded.len());
     let mut index = 0;
     while index < encoded.len() {
@@ -99,7 +161,7 @@ pub fn uri_to_path(uri: &Uri) -> Option<PathBuf> {
             }
         }
     }
-    String::from_utf8(bytes).ok().map(PathBuf::from)
+    String::from_utf8(bytes).ok()
 }
 
 #[cfg(test)]
@@ -135,5 +197,20 @@ mod tests {
             "file:///Users/me/My%20Code/dungeon%20%231/room.b"
         );
         assert_eq!(uri_to_path(&uri).as_deref(), Some(path));
+    }
+
+    #[test]
+    fn windows_paths_have_a_drive_or_a_server() {
+        let uri = text_to_uri(r"C:\Users\me\My Code\room.b", true).expect("a URI");
+        assert_eq!(uri, "file:///C:/Users/me/My%20Code/room.b");
+        let path = uri_text_to_path(&uri, true).expect("a path");
+        assert_eq!(path, r"C:\Users\me\My Code\room.b");
+        // VS Code encodes the colon and writes the drive in lower case.
+        let path = uri_text_to_path("file:///c%3A/code/room.b", true).expect("a path");
+        assert_eq!(path, r"C:\code\room.b");
+        let uri = text_to_uri(r"\\server\share\room.b", true).expect("a URI");
+        assert_eq!(uri, "file://server/share/room.b");
+        let path = uri_text_to_path(&uri, true).expect("a path");
+        assert_eq!(path, r"\\server\share\room.b");
     }
 }

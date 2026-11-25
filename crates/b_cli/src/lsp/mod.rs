@@ -1,34 +1,44 @@
 //! `b lsp`: a language server, so editors can show errors as you type, what
 //! a name is on hover, and where it is declared.
 //!
-//! It speaks the language server protocol over stdin and stdout. Each change
+//! It speaks the language server protocol over stdin and stdout. A change
 //! to a file checks its project again, with the files open in the editor
-//! read as they are there, saved or not.
+//! read as they are there, saved or not. Changes made in quick succession,
+//! as when typing, are checked once, when they pause or when the editor
+//! asks something.
 
+mod completion;
 mod lookup;
 mod position;
 mod session;
+mod standard;
 #[cfg(test)]
 mod tests;
 
-use std::path::Path;
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+
+use crossbeam_channel::RecvTimeoutError;
 
 use lsp_server::{Connection, ExtractError, Message, Notification, Request, Response};
 use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument,
     Notification as _, PublishDiagnostics,
 };
-use lsp_types::request::{GotoDefinition, HoverRequest, Request as _};
+use lsp_types::request::{Completion, GotoDefinition, HoverRequest, Request as _};
 use lsp_types::{
-    Diagnostic, DiagnosticSeverity, GotoDefinitionParams, GotoDefinitionResponse, Hover,
-    HoverContents, HoverParams, HoverProviderCapability, InitializeParams, Location, MarkupContent,
-    MarkupKind, OneOf, PublishDiagnosticsParams, ServerCapabilities, TextDocumentPositionParams,
+    CompletionOptions, CompletionParams, CompletionResponse, Diagnostic, DiagnosticSeverity,
+    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents, HoverParams,
+    HoverProviderCapability, InitializeParams, Location, MarkupContent, MarkupKind, OneOf,
+    PublishDiagnosticsParams, ServerCapabilities, TextDocumentPositionParams,
     TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
 };
 
 use self::lookup::Found;
 use self::position::{from_position, name_range, path_to_uri, uri_to_path, word_range};
 use self::session::{ProjectState, Session};
+use b_syntax::SourceId;
 
 pub fn run() -> Result<(), String> {
     let (connection, io_threads) = Connection::stdio();
@@ -36,6 +46,10 @@ pub fn run() -> Result<(), String> {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         definition_provider: Some(OneOf::Left(true)),
+        completion_provider: Some(CompletionOptions {
+            trigger_characters: Some(vec![".".to_string()]),
+            ..CompletionOptions::default()
+        }),
         ..ServerCapabilities::default()
     };
     let capabilities = serde_json::to_value(capabilities).map_err(|e| e.to_string())?;
@@ -47,6 +61,7 @@ pub fn run() -> Result<(), String> {
     let mut server = Server {
         connection: &connection,
         session: Session::new(workspace_root(&params)),
+        changed: HashSet::new(),
     };
     server.serve()?;
     // The thread reading stdin only ends when the editor closes it, which
@@ -60,27 +75,58 @@ fn workspace_root(params: &InitializeParams) -> Option<std::path::PathBuf> {
     uri_to_path(&folder.uri)
 }
 
+/// How long typing must pause before the files changed are checked.
+const PAUSE: Duration = Duration::from_millis(150);
+
 struct Server<'a> {
     connection: &'a Connection,
     session: Session,
+    /// Files changed since their projects were last checked.
+    changed: HashSet<PathBuf>,
 }
 
 impl Server<'_> {
     fn serve(&mut self) -> Result<(), String> {
-        for message in &self.connection.receiver {
+        loop {
+            let message = if self.changed.is_empty() {
+                match self.connection.receiver.recv() {
+                    Ok(message) => message,
+                    Err(_) => return Ok(()),
+                }
+            } else {
+                match self.connection.receiver.recv_timeout(PAUSE) {
+                    Ok(message) => message,
+                    Err(RecvTimeoutError::Timeout) => {
+                        self.check_changed();
+                        continue;
+                    }
+                    Err(RecvTimeoutError::Disconnected) => return Ok(()),
+                }
+            };
             match message {
                 Message::Request(request) => {
                     let shutdown = self.connection.handle_shutdown(&request);
                     if shutdown.map_err(|error| error.to_string())? {
                         return Ok(());
                     }
+                    // An answer is about the text as it is now.
+                    self.check_changed();
                     self.request(request);
                 }
                 Message::Notification(notification) => self.notification(notification),
                 Message::Response(_) => {}
             }
         }
-        Ok(())
+    }
+
+    /// Checks each project with a changed file, once.
+    fn check_changed(&mut self) {
+        let mut checked = HashSet::new();
+        for path in std::mem::take(&mut self.changed) {
+            if checked.insert(self.session.project_key(&path)) {
+                self.refresh(&path);
+            }
+        }
     }
 
     fn request(&mut self, request: Request) {
@@ -90,6 +136,8 @@ impl Server<'_> {
                 .map(|p| serde_json::to_value(self.hover(&p.text_document_position_params))),
             GotoDefinition::METHOD => params::<GotoDefinitionParams>(request)
                 .map(|p| serde_json::to_value(self.definition(&p.text_document_position_params))),
+            Completion::METHOD => params::<CompletionParams>(request)
+                .map(|p| serde_json::to_value(self.complete(&p.text_document_position))),
             _ => {
                 self.reply(Response::new_err(id, -32601, "unknown request".into()));
                 return;
@@ -135,8 +183,9 @@ impl Server<'_> {
             }
             _ => None,
         };
-        if let Some(path) = changed {
-            self.refresh(&path);
+        // The standard library's files are only there to be read.
+        if let Some(path) = changed.filter(|path| standard::source_at(path).is_none()) {
+            self.changed.insert(path);
         }
     }
 
@@ -172,17 +221,32 @@ impl Server<'_> {
         }
     }
 
+    /// The project a file is checked in, the file's source id, and its text
+    /// as checked. A standard library file is read in any project that uses it.
+    fn file<'s>(&'s self, path: &Path) -> Option<(&'s ProjectState, SourceId, &'s str)> {
+        if let Some((id, text)) = standard::source_at(path) {
+            let mut projects = self.session.projects.values();
+            let state = projects.find(|state| {
+                (state.analysis.symbols.values())
+                    .any(|table| table.symbols.values().any(|s| s.span.source == id))
+            })?;
+            return Some((state, id, text));
+        }
+        let state = self.session.project_for(path)?;
+        let file = state.file_at(path)?;
+        Some((state, file.id, &file.text))
+    }
+
     /// The project, the name under the cursor and the file's text.
     fn at<'s>(
         &'s self,
         at: &TextDocumentPositionParams,
     ) -> Option<(&'s ProjectState, Found<'s>, &'s str)> {
         let path = uri_to_path(&at.text_document.uri)?;
-        let state = self.session.project_for(&path)?;
-        let file = state.file_at(&path)?;
-        let (line, column) = from_position(&file.text, at.position);
-        let found = lookup::find_at(state, file.id, line, column)?;
-        Some((state, found, &file.text))
+        let (state, id, text) = self.file(&path)?;
+        let (line, column) = from_position(text, at.position);
+        let found = lookup::find_at(state, id, line, column)?;
+        Some((state, found, text))
     }
 
     fn hover(&self, at: &TextDocumentPositionParams) -> Option<Hover> {
@@ -201,11 +265,24 @@ impl Server<'_> {
     fn definition(&self, at: &TextDocumentPositionParams) -> Option<GotoDefinitionResponse> {
         let (state, found, _) = self.at(at)?;
         let (span, length) = lookup::definition(state, &found)?;
-        // The standard library has no file to open.
-        let file = state.file(span.source)?;
-        let uri: Uri = path_to_uri(&file.path)?;
-        let range = name_range(&file.text, span, length);
+        let (path, text) = match state.file(span.source) {
+            Some(file) => (file.path.clone(), file.text.as_str()),
+            // The standard library, written out to be opened.
+            None => (standard::path_of(span.source)?, state.text(span.source)?),
+        };
+        let uri: Uri = path_to_uri(&path)?;
+        let range = name_range(text, span, length);
         Some(GotoDefinitionResponse::Scalar(Location::new(uri, range)))
+    }
+
+    fn complete(&self, at: &TextDocumentPositionParams) -> Option<CompletionResponse> {
+        let path = uri_to_path(&at.text_document.uri)?;
+        let (state, id, checked) = self.file(&path)?;
+        // What is typed now, which may not have parsed.
+        let text = self.session.open_text(&path).unwrap_or(checked);
+        let (line, column) = from_position(text, at.position);
+        let items = completion::complete(state, id, text, line, column);
+        Some(CompletionResponse::Array(items))
     }
 }
 

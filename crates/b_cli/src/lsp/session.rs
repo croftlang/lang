@@ -97,7 +97,7 @@ impl Session {
 
     /// The folder with the nearest `b.toml`, looking no higher than the
     /// workspace folder, or the file itself.
-    fn project_key(&self, path: &Path) -> PathBuf {
+    pub fn project_key(&self, path: &Path) -> PathBuf {
         for folder in path.ancestors().skip(1) {
             if folder.join(MANIFEST_FILE).is_file() {
                 return folder.to_path_buf();
@@ -120,11 +120,21 @@ impl Session {
             Err(_) if self.open.contains_key(changed) => Vec::new(),
             Err(message) => return Err(message),
         };
-        // A new file that has not been saved yet.
-        let is_source = changed.extension().is_some_and(|e| e == "b");
-        if is_source && !paths.iter().any(|path| path == changed) {
-            paths.insert(0, changed.to_path_buf());
+        // New files open in the editor that have not been saved yet.
+        let is_source = |path: &Path| path.extension().is_some_and(|e| e == "b");
+        let mut unsaved: Vec<PathBuf> = (self.open.keys())
+            .filter(|path| is_source(path) && !paths.contains(path))
+            .filter(|path| self.project_key(path) == key)
+            .cloned()
+            .collect();
+        if is_source(changed)
+            && !paths.iter().any(|path| path == changed)
+            && !unsaved.iter().any(|p| p == changed)
+        {
+            unsaved.push(changed.to_path_buf());
         }
+        unsaved.sort();
+        paths.splice(0..0, unsaved);
         let (mut sources, mut manifest) = (Vec::new(), None);
         let (mut files, mut diagnostics) = (Vec::new(), Vec::new());
         for path in paths {
@@ -172,6 +182,11 @@ impl Session {
             files,
             diagnostics,
         })
+    }
+
+    /// The text of a file open in the editor, saved or not.
+    pub fn open_text(&self, path: &Path) -> Option<&str> {
+        self.open.get(path).map(String::as_str)
     }
 
     /// The text a diagnostic should be placed against: what the editor shows,
