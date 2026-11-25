@@ -21,6 +21,14 @@ typedef struct {
     char text[CROFT_STRING_CAPACITY];
 } croft_string;
 
+/* Text borrowed for the length of a call, without copying it: a string
+   literal, a string parameter, or the characters of a string kept elsewhere.
+   Every string passed into a function arrives as one of these. */
+typedef struct {
+    const char *text;
+    croft_u16 length;
+} croft_string_view;
+
 #ifndef CROFT_BYTES_CAPACITY
 #define CROFT_BYTES_CAPACITY 64
 #endif
@@ -54,15 +62,18 @@ void croft_fail(const char *message);
 void croft_clear(void *value, unsigned int size);
 
 void croft_string_set(croft_string *out, const char *text);
-croft_bool croft_string_equal(const croft_string *a, const croft_string *b);
-void croft_string_join(const croft_string *a, const croft_string *b, croft_string *out);
-croft_int croft_string_find(const croft_string *text, const croft_string *part, croft_int from);
-croft_bool croft_string_starts_with(const croft_string *text, const croft_string *part);
-croft_bool croft_string_ends_with(const croft_string *text, const croft_string *part);
-void croft_string_to_upper(const croft_string *text, croft_string *out);
-void croft_string_to_lower(const croft_string *text, croft_string *out);
-void croft_string_trim(const croft_string *text, croft_string *out);
-void croft_string_slice(const croft_string *text, croft_int start, croft_int end, croft_string *out);
+croft_string_view croft_string_view_from(const char *text, croft_u16 length);
+croft_string_view croft_string_view_of(const croft_string *text);
+void croft_string_from_view(croft_string_view text, croft_string *out);
+croft_bool croft_string_equal(croft_string_view a, croft_string_view b);
+void croft_string_join(croft_string_view a, croft_string_view b, croft_string *out);
+croft_int croft_string_find(croft_string_view text, croft_string_view part, croft_int from);
+croft_bool croft_string_starts_with(croft_string_view text, croft_string_view part);
+croft_bool croft_string_ends_with(croft_string_view text, croft_string_view part);
+void croft_string_to_upper(croft_string_view text, croft_string *out);
+void croft_string_to_lower(croft_string_view text, croft_string *out);
+void croft_string_trim(croft_string_view text, croft_string *out);
+void croft_string_slice(croft_string_view text, croft_int start, croft_int end, croft_string *out);
 void croft_int_to_string(croft_int value, croft_string *out);
 
 croft_int croft_divide_even(croft_int numerator, croft_int denominator);
@@ -75,9 +86,11 @@ croft_bool croft_bytes_get(const croft_bytes *bytes, croft_int index, croft_int 
 void croft_bytes_add(const croft_bytes *bytes, croft_int byte, croft_bytes *out);
 void croft_bytes_slice(const croft_bytes *bytes, croft_int start, croft_int end, croft_bytes *out);
 void croft_bytes_to_text(const croft_bytes *bytes, croft_string *out);
-void croft_string_to_bytes(const croft_string *text, croft_bytes *out);
+void croft_string_to_bytes(croft_string_view text, croft_bytes *out);
 croft_bool croft_bytes_put_int(croft_bytes *out, croft_int value);
 croft_bool croft_bytes_take_int(const croft_bytes *in, croft_u16 *at, croft_int *out);
+croft_bool croft_bytes_put_byte(croft_bytes *out, croft_u8 value);
+croft_bool croft_bytes_take_byte(const croft_bytes *in, croft_u16 *at, croft_u8 *out);
 croft_bool croft_bytes_put_length(croft_bytes *out, croft_u16 length);
 croft_bool croft_bytes_take_length(const croft_bytes *in, croft_u16 *at, croft_u16 *out);
 croft_bool croft_bytes_put_string(croft_bytes *out, const croft_string *text);
@@ -92,13 +105,13 @@ croft_bool croft_text_equal(const char *a, croft_u16 a_length, const char *b, cr
 croft_bool croft_bytes_put_text(croft_bytes *out, const char *text, croft_u16 length);
 croft_bool croft_bytes_take_text(const croft_bytes *in, croft_u16 *at, char *text, croft_u16 *length,
                            croft_u16 capacity);
-croft_bool croft_string_to_int(const croft_string *text, croft_int *out);
+croft_bool croft_string_to_int(croft_string_view text, croft_int *out);
 
 void croft_arguments_set(int count, char **values);
 croft_int croft_argument_count(void);
 void croft_argument(croft_int index, croft_string *out);
 
 /* The built-in Console port: prints a line. */
-void croft_console_print(const croft_string *text, croft_unit *out);
+void croft_console_print(croft_string_view text, croft_unit *out);
 
 #endif

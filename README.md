@@ -57,6 +57,7 @@ cargo install --path crates/croft_cli
 croft check . # compiler check
 croft compile . --target desktop # check and compile to C
 croft run . --target desktop # check, compile and run C
+croft size . --target spectrum_48k # memory each type and function takes
 ```
 
 Every `.c` file in the output folder is part of the program, for example

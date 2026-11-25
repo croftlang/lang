@@ -1,5 +1,6 @@
 //! Parameters and C signatures of generated functions. Numbers are passed by
-//! value, everything else by pointer, and every result through `out`.
+//! value, strings as a borrowed `croft_string_view`, everything else by
+//! pointer, and every result through `out`.
 
 use croft_analysis::Type;
 use croft_syntax::ast::Parameter;
@@ -39,7 +40,9 @@ impl<'a> Generator<'a> {
         for (parameter, ty) in parameters {
             let c_type = self.c_type(ty);
 
-            list.push(if self.is_scalar(ty) {
+            list.push(if *ty == Type::String {
+                format!("croft_string_view p_{parameter}")
+            } else if self.is_scalar(ty) {
                 format!("{c_type} p_{parameter}")
             } else {
                 format!("const {c_type} *p_{parameter}")
@@ -67,7 +70,11 @@ impl<'g, 'a> Writer<'g, 'a> {
             let c = format!("p_{name}");
             self.parameter(&c);
 
-            let value = if self.gen.is_scalar(ty) {
+            if *ty == Type::String {
+                self.views.insert(c.clone());
+            }
+
+            let value = if self.gen.is_scalar(ty) || *ty == Type::String {
                 c
             } else {
                 format!("(*{c})")

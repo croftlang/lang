@@ -3,14 +3,18 @@
 #include <stdio.h>
 #include "program.h"
 
-/* A Croft string as a C string, for fopen. */
-static void to_path(const croft_string *path, char *out)
+/* The longest path fopen is given. */
+#define CROFT_PATH_CAPACITY 255
+
+/* A Croft string as a C string, for fopen. A longer path is cut short. */
+static void to_path(croft_string_view path, char *out)
 {
     croft_u16 index;
-    for (index = 0; index < path->length; index++) {
-        out[index] = path->text[index];
+    croft_u16 length = path.length < CROFT_PATH_CAPACITY ? path.length : CROFT_PATH_CAPACITY;
+    for (index = 0; index < length; index++) {
+        out[index] = path.text[index];
     }
-    out[path->length] = '\0';
+    out[length] = '\0';
 }
 
 static void fail(croft_error *error, croft_u16 code)
@@ -19,9 +23,9 @@ static void fail(croft_error *error, croft_u16 code)
     error->code = code;
 }
 
-void croft_files_read(const croft_string *path, croft_result_bytes_error *out)
+void croft_files_read(croft_string_view path, croft_result_bytes_error *out)
 {
-    char name[CROFT_STRING_CAPACITY + 1];
+    char name[CROFT_PATH_CAPACITY + 1];
     FILE *file;
     croft_clear(out, sizeof *out);
     to_path(path, name);
@@ -41,10 +45,10 @@ void croft_files_read(const croft_string *path, croft_result_bytes_error *out)
     fclose(file);
 }
 
-static void put(const croft_string *path, const croft_bytes *data, const char *mode,
+static void put(croft_string_view path, const croft_bytes *data, const char *mode,
                 croft_result_unit_error *out)
 {
-    char name[CROFT_STRING_CAPACITY + 1];
+    char name[CROFT_PATH_CAPACITY + 1];
     FILE *file;
     size_t written;
     croft_clear(out, sizeof *out);
@@ -62,19 +66,19 @@ static void put(const croft_string *path, const croft_bytes *data, const char *m
     out->ok = 1;
 }
 
-void croft_files_write(const croft_string *path, const croft_bytes *data, croft_result_unit_error *out)
+void croft_files_write(croft_string_view path, const croft_bytes *data, croft_result_unit_error *out)
 {
     put(path, data, "wb", out);
 }
 
-void croft_files_append(const croft_string *path, const croft_bytes *data, croft_result_unit_error *out)
+void croft_files_append(croft_string_view path, const croft_bytes *data, croft_result_unit_error *out)
 {
     put(path, data, "ab", out);
 }
 
-void croft_files_exists(const croft_string *path, croft_bool *out)
+void croft_files_exists(croft_string_view path, croft_bool *out)
 {
-    char name[CROFT_STRING_CAPACITY + 1];
+    char name[CROFT_PATH_CAPACITY + 1];
     FILE *file;
     to_path(path, name);
     file = fopen(name, "rb");
@@ -84,9 +88,9 @@ void croft_files_exists(const croft_string *path, croft_bool *out)
     }
 }
 
-void croft_files_remove(const croft_string *path, croft_result_unit_error *out)
+void croft_files_remove(croft_string_view path, croft_result_unit_error *out)
 {
-    char name[CROFT_STRING_CAPACITY + 1];
+    char name[CROFT_PATH_CAPACITY + 1];
     croft_bool exists;
     croft_clear(out, sizeof *out);
     croft_files_exists(path, &exists);

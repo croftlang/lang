@@ -97,11 +97,16 @@ impl<'a> Generator<'a> {
                 }
                 SymbolKind::Enum => self.enum_definition(named),
                 _ => {
-                    let fields: Vec<String> = self
-                        .struct_fields(named)
-                        .into_iter()
+                    let mut fields: Vec<String> = (self.struct_fields(named).into_iter())
+                        .filter(|(name, _, _)| self.flag_bit(named, name).is_none())
                         .map(|(name, _, c)| format!("    {c} {name};\n"))
                         .collect();
+
+                    let flags = self.flag_bytes(named);
+
+                    if flags > 0 {
+                        fields.push(format!("    croft_u8 croft_flags[{flags}];\n"));
+                    }
 
                     struct_definition(&c_name(named), &fields.concat())
                 }

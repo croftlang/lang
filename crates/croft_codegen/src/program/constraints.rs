@@ -131,6 +131,10 @@ impl<'a> Generator<'a> {
         for (field, field_type, decl) in &fields {
             let mut place = format!("p_value->{field}");
 
+            if let Some((byte, mask)) = self.flag_bit(named, field) {
+                place = format!("((p_value->croft_flags[{byte}] & {mask}) != 0)");
+            }
+
             if !decl.constraints.is_empty() && self.text_capacity(named, field).is_some() {
                 place = writer.load_text(&place);
             }

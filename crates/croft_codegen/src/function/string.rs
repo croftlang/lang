@@ -6,6 +6,8 @@ use croft_syntax::ast::Argument;
 use super::Writer;
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// `text` is a `croft_string_view`, kept in a variable so the string it
+    /// borrows from is read once.
     pub fn string_method(
         &mut self,
         text: &str,
@@ -13,32 +15,41 @@ impl<'g, 'a> Writer<'g, 'a> {
         arguments: &[Argument],
         ty: &Type,
     ) -> String {
-        let argument = |writer: &mut Self, index: usize, want: &Type| match arguments.get(index) {
-            Some(argument) => writer.value(&argument.value, want),
+        let borrowed = self.raw_variable("text", "croft_string_view");
+        self.line(format!("{borrowed} = {text};"));
+        let text = borrowed;
+
+        let part = |writer: &mut Self, index: usize| match arguments.get(index) {
+            Some(argument) => writer.view(&argument.value),
+            None => "croft_string_view_from(\"\", 0)".to_string(),
+        };
+
+        let number = |writer: &mut Self, index: usize| match arguments.get(index) {
+            Some(argument) => writer.value(&argument.value, &Type::Int),
             None => "0".to_string(),
         };
 
         match name {
             "contains" => {
-                let part = argument(self, 0, &Type::String);
-                format!("(croft_string_find(&{text}, &{part}, 0) >= 0)")
+                let part = part(self, 0);
+                format!("(croft_string_find({text}, {part}, 0) >= 0)")
             }
             "starts_with" | "ends_with" => {
-                let part = argument(self, 0, &Type::String);
-                format!("croft_string_{name}(&{text}, &{part})")
+                let part = part(self, 0);
+                format!("croft_string_{name}({text}, {part})")
             }
             "to_upper" | "to_lower" | "trim" => {
                 let temp = self.temp(ty);
-                self.line(format!("croft_string_{name}(&{text}, &{temp});"));
+                self.line(format!("croft_string_{name}({text}, &{temp});"));
                 temp
             }
             "slice" => {
-                let start = argument(self, 0, &Type::Int);
-                let end = argument(self, 1, &Type::Int);
+                let start = number(self, 0);
+                let end = number(self, 1);
                 let temp = self.temp(ty);
 
                 self.line(format!(
-                    "croft_string_slice(&{text}, {start}, {end}, &{temp});"
+                    "croft_string_slice({text}, {start}, {end}, &{temp});"
                 ));
 
                 temp
@@ -47,19 +58,21 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let temp = self.temp(ty);
 
                 self.line(format!(
-                    "{temp}.some = croft_string_to_int(&{text}, &{temp}.value);"
+                    "{temp}.some = croft_string_to_int({text}, &{temp}.value);"
                 ));
 
                 temp
             }
             "to_bytes" => {
                 let temp = self.temp(ty);
-                self.line(format!("croft_string_to_bytes(&{text}, &{temp});"));
+                self.line(format!("croft_string_to_bytes({text}, &{temp});"));
                 temp
             }
             "split" => {
-                let separator = argument(self, 0, &Type::String);
-                self.split(text, &separator, ty)
+                let separator = self.raw_variable("separator", "croft_string_view");
+                let value = part(self, 0);
+                self.line(format!("{separator} = {value};"));
+                self.split(&text, &separator, ty)
             }
             _ => "0".to_string(),
         }
@@ -76,10 +89,10 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.open("for (;;)");
 
         self.line(format!(
-            "{found} = croft_string_find(&{text}, &{separator}, {start});"
+            "{found} = croft_string_find({text}, {separator}, {start});"
         ));
 
-        self.line(format!("croft_string_slice(&{text}, {start}, {found} < 0 ? {text}.length : {found}, &{parts}.items[{parts}.length]);"));
+        self.line(format!("croft_string_slice({text}, {start}, {found} < 0 ? {text}.length : {found}, &{parts}.items[{parts}.length]);"));
         self.line(format!("{parts}.length++;"));
 
         let capacity = self.gen.sizes.list_capacity(&Type::String);

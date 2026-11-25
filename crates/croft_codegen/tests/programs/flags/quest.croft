@@ -1,0 +1,81 @@
+// Bool fields packed eight to a byte: set by commands and `with`, compared,
+// and saved and loaded through a repository.
+context Quest
+
+error WrongAnswer
+
+identity QuestId for Quest: Int where Range(1, 9)
+
+value Door {
+    open: Bool
+    locked: Bool
+    painted: Bool
+}
+
+aggregate Quest {
+    id: QuestId
+    has_key: Bool
+    has_lamp: Bool
+    door_open: Bool
+    lamp_lit: Bool
+    met_keeper: Bool
+    read_note: Bool
+    fed_cat: Bool
+    rang_bell: Bool
+    saw_ship: Bool
+    won: Bool
+    score: Int where Range(0, 100)
+
+    error NotFound
+
+    factory Begin(id: QuestId) = Quest {
+        id, has_key: false, has_lamp: true, door_open: false, lamp_lit: false,
+        met_keeper: true, read_note: false, fed_cat: false, rang_bell: false,
+        saw_ship: false, won: false, score: 0
+    }
+
+    command Find(key: Bool) = {
+        set has_key = key
+        set saw_ship = true
+        set score = score + 10
+    }
+
+    command Finish = {
+        set won = has_key && saw_ship
+        set has_key = false
+    }
+}
+
+repository Quests for Quest
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+enum Failure {
+    include Quest.Error
+    include StorageError
+    include WrongAnswer
+}
+
+service Check(): Result<Unit, Failure> {
+    calls Quests
+} = {
+    let start = Quest.Begin(id: 1)?
+    check(start.has_lamp && start.met_keeper && !start.has_key && !start.won)?
+    let found = issue Find(key: true) on start?
+    check(found.has_key && found.saw_ship && found.has_lamp && found.score == 10)?
+    check(found != start && found == found)?
+    quests.save(found)?
+    issue Finish on Quest(1)?
+    let loaded = quests.find(1)?
+    check(loaded.won && !loaded.has_key && loaded.saw_ship && loaded.has_lamp)?
+    check(loaded.met_keeper && !loaded.fed_cat && loaded.score == 10)?
+    let door = Door { open: false, locked: true, painted: true }
+    let opened = door with { open: true, locked: false }
+    check(opened.open && !opened.locked && opened.painted)?
+    check([door, opened].count(d -> d.open) == 1)
+}

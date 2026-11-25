@@ -33,12 +33,17 @@ impl<'a> Generator<'a> {
 
                 4 + variants.max().unwrap_or(0)
             }
-            Type::Named(named) => (self.struct_fields(named).into_iter())
-                .map(|(field, ty, _)| match self.text_capacity(named, &field) {
-                    Some(capacity) => 2 + capacity,
-                    None => self.serialized_size(&ty),
-                })
-                .sum(),
+            Type::Named(named) => {
+                let fields: i64 = (self.struct_fields(named).into_iter())
+                    .filter(|(field, _, _)| self.flag_bit(named, field).is_none())
+                    .map(|(field, ty, _)| match self.text_capacity(named, &field) {
+                        Some(capacity) => 2 + capacity,
+                        None => self.serialized_size(&ty),
+                    })
+                    .sum();
+
+                fields + self.flag_bytes(named) as i64
+            }
             _ => 0,
         }
     }
@@ -69,6 +74,7 @@ impl<'a> Generator<'a> {
                 let fields: Vec<String> = (self.struct_fields(named).into_iter())
                     .map(|(name, ty, _)| match self.text_capacity(named, &name) {
                         Some(capacity) => format!("{name}:String<{capacity}>"),
+                        None if self.flag_bit(named, &name).is_some() => format!("{name}:Flag"),
                         None => format!("{name}:{}", self.layout(&ty)),
                     })
                     .collect();

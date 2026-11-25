@@ -78,6 +78,13 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         for argument in arguments {
             let ty = self.type_of(&argument.value, None);
+
+            if ty == Type::String {
+                parameters.push("croft_string_view".to_string());
+                passed.push(self.view(&argument.value));
+                continue;
+            }
+
             let (c, _) = self.eval(&argument.value, None);
             let c_type = self.gen.c_type(&ty);
 

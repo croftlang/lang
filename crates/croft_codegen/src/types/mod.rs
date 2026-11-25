@@ -6,5 +6,6 @@ pub mod enums;
 pub mod error;
 pub mod fields;
 pub mod generic;
+pub mod memory;
 pub mod sizes;
 pub mod width;

@@ -29,6 +29,17 @@ pub fn compile(arguments: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+/// `croft size`: checks a project, then reports the memory its types and
+/// functions take on one target.
+pub fn size(arguments: &[String]) -> Result<(), String> {
+    let (path, target) = parse_arguments(arguments)?;
+    let (_, program) = load_and_check(&path)?;
+    let target = choose_target(&program, target, &path)?;
+    print!("{}", croft_codegen::size_report(&program, &target)?);
+
+    Ok(())
+}
+
 /// Reads `[path] --target <name>` from the arguments.
 pub fn parse_arguments(arguments: &[String]) -> Result<(PathBuf, Option<String>), String> {
     let mut path = None;
@@ -60,26 +71,8 @@ pub fn parse_arguments(arguments: &[String]) -> Result<(PathBuf, Option<String>)
 pub fn write_c(path: &Path, target: Option<String>) -> Result<Output, String> {
     let (project, program) = load_and_check(path)?;
 
-    let Some(manifest) = &program.manifest else {
-        let folder = project.folder.display();
-
-        return Err(format!(
-            "`{folder}` has no croft.toml, which says what to run and on which targets"
-        ));
-    };
-
-    let Some(target) = target else {
-        let targets: Vec<&str> = manifest
-            .targets
-            .iter()
-            .map(|t| t.name.name.as_str())
-            .collect();
-
-        return Err(format!(
-            "choose a target with `--target`; croft.toml has: {}",
-            targets.join(", ")
-        ));
-    };
+    let target = choose_target(&program, target, &project.folder)?;
+    let manifest = program.manifest.as_ref().ok_or("croft.toml is missing")?;
 
     let files = croft_codegen::generate(&program, &target)?;
     let folder = project.folder.join("target").join("croft").join(&target);
@@ -119,4 +112,35 @@ pub fn write_c(path: &Path, target: Option<String>) -> Result<Output, String> {
 
 fn write(path: &Path, contents: &str) -> Result<(), String> {
     fs::write(path, contents).map_err(|error| format!("cannot write `{}`: {error}", path.display()))
+}
+
+/// The target named with `--target`, or an error listing the targets
+/// croft.toml has.
+fn choose_target(
+    program: &croft_analysis::Program,
+    target: Option<String>,
+    folder: &Path,
+) -> Result<String, String> {
+    let Some(manifest) = &program.manifest else {
+        let folder = folder.display();
+
+        return Err(format!(
+            "`{folder}` has no croft.toml, which says what to run and on which targets"
+        ));
+    };
+
+    let Some(target) = target else {
+        let targets: Vec<&str> = manifest
+            .targets
+            .iter()
+            .map(|t| t.name.name.as_str())
+            .collect();
+
+        return Err(format!(
+            "choose a target with `--target`; croft.toml has: {}",
+            targets.join(", ")
+        ));
+    };
+
+    Ok(target)
 }

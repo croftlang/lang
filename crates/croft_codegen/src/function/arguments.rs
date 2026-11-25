@@ -44,18 +44,26 @@ impl<'g, 'a> Writer<'g, 'a> {
         let mut passed = Vec::new();
 
         for ((_, ty), value) in parameters.iter().zip(values) {
-            let c = match value {
-                Some(value) => self.value(value, ty),
+            let passed_value = match value {
+                Some(value) if *ty == Type::String => self.view(value),
+                Some(value) => {
+                    let c = self.value(value, ty);
+                    self.pass(c, ty)
+                }
                 None => "0".to_string(),
             };
 
-            passed.push(self.pass(c, ty));
+            passed.push(passed_value);
         }
 
         passed
     }
 
     pub fn pass(&self, c: String, ty: &Type) -> String {
+        if *ty == Type::String {
+            return self.view_of(&c);
+        }
+
         if self.gen.is_scalar(ty) {
             return c;
         }

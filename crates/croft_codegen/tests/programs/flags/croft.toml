@@ -1,0 +1,8 @@
+[package]
+name = "flags"
+
+[target.test]
+main = "Check"
+
+[target.test.adapters]
+Quests = "MemoryStorage"

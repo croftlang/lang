@@ -80,9 +80,9 @@ fn checks_publish_and_use() {
 
 fn with_repository(operations: &str, extra: &str) -> String {
     dungeon(&format!(
-        "aggregate Room {{\n identity id: RoomId\n error NotFound\n }}\n\
-         identity DoorId: Int where Range(1, 9)\n\
-         aggregate Door {{\n identity id: DoorId\n }}\n\
+        "aggregate Room {{\n id: RoomId\n error NotFound\n }}\n\
+         identity DoorId for Door: Int where Range(1, 9)\n\
+         aggregate Door {{\n id: DoorId\n }}\n\
          repository Rooms for Room {{\n{operations}\n}}\n{extra}"
     ))
 }
@@ -108,7 +108,7 @@ fn checks_a_repositorys_own_operations() {
     );
 
     assert_error(
-        &dungeon("aggregate Room {\n identity id: RoomId\n }\nrepository Rooms for Room {\n}"),
+        &dungeon("aggregate Room {\n id: RoomId\n }\nrepository Rooms for Room {\n}"),
         "repository `Rooms` declares no operations; leave out the braces for `find` and `save`",
     );
 }
@@ -134,7 +134,7 @@ fn calls_only_what_a_repository_declares() {
 fn issues_on_an_identity_only_with_a_find_and_a_save() {
     let source = |find: &str| {
         dungeon(&format!(
-            "aggregate Room {{\n identity id: RoomId\n lit: Bool\n error NotFound\n command Light = {{\n set lit = true\n }}\n }}\n\
+            "aggregate Room {{\n id: RoomId\n lit: Bool\n error NotFound\n command Light = {{\n set lit = true\n }}\n }}\n\
              enum Lookup {{\n include Room.NotFound\n include StorageError\n }}\n\
              repository Rooms for Room {{\n{find}\n fn save(room: Room): Result<Unit, StorageError>\n}}\n\
              service Light(): Result<Unit, Room.Error> {{\n calls Rooms\n}} = issue Light on Room(1)"

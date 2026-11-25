@@ -99,16 +99,13 @@ impl<'a> Generator<'a> {
         writer.preconditions(preconditions, &found.name);
 
         if let Some(body) = body {
-            let value = writer.value(body, &result);
-
+            let value = writer.value_into("(*out)", body, &result);
             if let Some(check) =
                 self.result_check(&c_name(found), &place, &result, return_constraints)
             {
                 let passed = writer.pass(value.clone(), &result);
                 writer.debug_call(&format!("{check}({passed});"));
             }
-
-            writer.line(format!("*out = {value};"));
         }
 
         writer.finish(&signature)

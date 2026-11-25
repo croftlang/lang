@@ -18,6 +18,9 @@ pub struct Sizes {
     /// string any constraint allows if that is longer. A string field with a
     /// shorter `Length` is kept in a size of its own.
     pub string_capacity: i64,
+    /// What set `string_capacity`, when a constraint did: a field or a
+    /// parameter, such as `Terminal.print: text`.
+    pub string_capacity_from: Option<String>,
     /// The most bytes any constraint allows. Every `Bytes` has room for them.
     pub bytes_capacity: i64,
     /// The longest list of each item type any constraint allows.
@@ -30,81 +33,84 @@ impl Sizes {
     pub fn measure(program: &Program, model: &Model) -> Sizes {
         let mut sizes = Sizes {
             string_capacity: 0,
+            string_capacity_from: None,
             bytes_capacity: 0,
             list_capacity: HashMap::new(),
             map_capacity: HashMap::new(),
         };
 
         for (name, context) in &program.contexts {
-            let mut fields: Vec<(&TypeExpr, &[ConstraintUse], Option<&str>)> = Vec::new();
+            let mut fields: Vec<(&TypeExpr, &[ConstraintUse], Option<&str>, String)> = Vec::new();
 
-            let records = context
-                .values
-                .iter()
-                .map(|v| (&v.fields, None))
-                .chain(context.errors.iter().map(|e| (&e.fields, None)));
+            let records = (context.values.iter())
+                .map(|v| (&v.fields, None, v.name.name.clone()))
+                .chain(
+                    context
+                        .errors
+                        .iter()
+                        .map(|e| (&e.fields, None, e.name.name.clone())),
+                );
 
-            let records = records.chain(context.adapters.iter().map(|a| (&a.fields, None)));
+            let records = records
+                .chain((context.adapters.iter()).map(|a| (&a.fields, None, a.name.name.clone())));
 
-            let records = records.chain(
-                context
-                    .enums
-                    .iter()
-                    .flat_map(|e| e.variants.iter().map(|v| (&v.fields, None))),
-            );
+            let records = records.chain(context.enums.iter().flat_map(|e| {
+                (e.variants.iter())
+                    .map(move |v| (&v.fields, None, format!("{}.{}", e.name.name, v.name.name)))
+            }));
 
             let aggregates = context.aggregates.iter().flat_map(|a| {
                 let scope = Some(a.name.name.as_str());
-                let nested = a.entities.iter().map(move |e| (&e.fields, scope));
+                let owner = a.name.name.clone();
+                let nested = (a.entities.iter())
+                    .map(move |e| (&e.fields, scope, format!("{}.{}", a.name.name, e.name.name)));
 
-                let records = a
-                    .errors
-                    .iter()
-                    .chain(&a.events)
-                    .map(move |r| (&r.fields, scope));
+                let records = (a.errors.iter().chain(&a.events))
+                    .map(move |r| (&r.fields, scope, format!("{}.{}", a.name.name, r.name.name)));
 
-                std::iter::once((&a.fields, scope))
+                std::iter::once((&a.fields, scope, owner))
                     .chain(nested)
                     .chain(records)
             });
 
-            for (list, aggregate) in records.chain(aggregates) {
-                fields.extend(
-                    list.iter()
-                        .map(|f| (&f.ty, f.constraints.as_slice(), aggregate)),
-                );
+            for (list, aggregate, owner) in records.chain(aggregates) {
+                fields.extend(list.iter().map(|f| {
+                    let label = format!("{owner}.{}", f.name.name);
+                    (&f.ty, f.constraints.as_slice(), aggregate, label)
+                }));
             }
 
-            let functions = context
-                .functions
-                .iter()
-                .chain(context.ports.iter().flat_map(|p| &p.operations))
-                .map(|f| (f, None));
+            let functions = (context.functions.iter())
+                .map(|f| (f, None, f.name.name.clone()))
+                .chain(context.ports.iter().flat_map(|p| {
+                    (p.operations.iter())
+                        .map(move |f| (f, None, format!("{}.{}", p.name.name, f.name.name)))
+                }));
 
             let commands = context.aggregates.iter().flat_map(|a| {
                 let scope = Some(a.name.name.as_str());
-                a.commands
-                    .iter()
-                    .chain(&a.factories)
-                    .map(move |c| (c, scope))
+                (a.commands.iter().chain(&a.factories))
+                    .map(move |c| (c, scope, format!("{}.{}", a.name.name, c.name.name)))
             });
 
             // A `where` on a parameter or on the result sizes the list as
             // much as one on a field does.
-            for (function, aggregate) in functions.chain(commands) {
+            for (function, aggregate, owner) in functions.chain(commands) {
                 for parameter in function.parameters.iter().flatten() {
                     if let Some(ty) = parameter.types.first() {
-                        fields.push((ty, &parameter.constraints, aggregate));
+                        let label = format!("{owner}: {}", parameter.name.name);
+                        fields.push((ty, &parameter.constraints, aggregate, label));
                     }
                 }
 
                 if let Some(ty) = &function.return_type {
-                    fields.push((ty, &function.return_constraints, aggregate));
+                    let label = format!("{owner}'s result");
+                    fields.push((ty, &function.return_constraints, aggregate, label));
                 }
             }
 
-            for (ty, constraints, aggregate) in fields {
-                sizes.add(program, model, name, aggregate, ty, constraints);
+            for (ty, constraints, aggregate, label) in fields {
+                sizes.add(program, model, name, aggregate, ty, constraints, label);
             }
         }
 
@@ -117,6 +123,7 @@ impl Sizes {
         sizes
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn add(
         &mut self,
         program: &Program,
@@ -125,6 +132,7 @@ impl Sizes {
         aggregate: Option<&str>,
         ty: &TypeExpr,
         constraints: &[ConstraintUse],
+        label: String,
     ) {
         let Some(longest) = constraints
             .iter()
@@ -138,7 +146,13 @@ impl Sizes {
         };
 
         match ty.path.text().as_str() {
-            "String" => self.string_capacity = self.string_capacity.max(longest),
+            "String" => {
+                if longest > self.string_capacity.max(DEFAULT_STRING_CAPACITY) {
+                    self.string_capacity_from = Some(label);
+                }
+
+                self.string_capacity = self.string_capacity.max(longest);
+            }
             "Bytes" => self.bytes_capacity = self.bytes_capacity.max(longest),
             "List" => {
                 let Some(item) = ty.arguments.first() else {

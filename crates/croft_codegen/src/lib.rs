@@ -4,11 +4,13 @@ mod function;
 mod generator;
 mod names;
 mod program;
+mod report;
 mod types;
 
 use croft_analysis::Program;
 
 pub use generator::Generator;
+pub use report::size_report;
 
 /// One generated file: its name and its contents.
 pub struct GeneratedFile {

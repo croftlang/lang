@@ -27,6 +27,7 @@ mod scope;
 mod string;
 mod text;
 mod unused;
+mod view;
 
 pub(crate) use unused::mentions;
 mod usage;
@@ -72,6 +73,9 @@ pub struct Writer<'g, 'a> {
     /// C parameters, marked as used in `finish` if the body never reads them.
     parameters: Vec<String>,
     scopes: Vec<HashMap<String, (String, Type)>>,
+    /// C names holding a `croft_string_view`: the function's string
+    /// parameters, borrowed rather than copied.
+    pub(crate) views: HashSet<String>,
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -90,6 +94,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             names: HashSet::new(),
             parameters: Vec::new(),
             scopes: vec![HashMap::new()],
+            views: HashSet::new(),
         }
     }
 }

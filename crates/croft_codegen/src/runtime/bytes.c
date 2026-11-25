@@ -64,13 +64,13 @@ void croft_bytes_to_text(const croft_bytes *bytes, croft_string *out)
     CROFT_CHECK(index == bytes->length, "bytes are longer than a string can hold");
 }
 
-void croft_string_to_bytes(const croft_string *text, croft_bytes *out)
+void croft_string_to_bytes(croft_string_view text, croft_bytes *out)
 {
     croft_u16 index;
     out->length = 0;
-    for (index = 0; index < text->length && out->length < CROFT_BYTES_CAPACITY; index++) {
-        out->items[out->length] = (unsigned char) text->text[index];
+    for (index = 0; index < text.length && out->length < CROFT_BYTES_CAPACITY; index++) {
+        out->items[out->length] = (unsigned char) text.text[index];
         out->length++;
     }
-    CROFT_CHECK(index == text->length, "text is longer than bytes can hold");
+    CROFT_CHECK(index == text.length, "text is longer than bytes can hold");
 }

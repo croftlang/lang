@@ -31,68 +31,102 @@ void croft_string_set(croft_string *out, const char *text)
     out->length = length;
 }
 
-croft_bool croft_string_equal(const croft_string *a, const croft_string *b)
+croft_string_view croft_string_view_from(const char *text, croft_u16 length)
+{
+    croft_string_view view;
+    view.text = text;
+    view.length = length;
+    return view;
+}
+
+croft_string_view croft_string_view_of(const croft_string *text)
+{
+    return croft_string_view_from(text->text, text->length);
+}
+
+/* Copies borrowed text into a string of its own. */
+void croft_string_from_view(croft_string_view text, croft_string *out)
 {
     croft_u16 index;
-    if (a->length != b->length) {
+    out->length = text.length < CROFT_STRING_CAPACITY ? text.length : CROFT_STRING_CAPACITY;
+    for (index = 0; index < out->length; index++) {
+        out->text[index] = text.text[index];
+    }
+    CROFT_CHECK(text.length <= CROFT_STRING_CAPACITY, "text is longer than a string can hold");
+}
+
+croft_bool croft_string_equal(croft_string_view a, croft_string_view b)
+{
+    croft_u16 index;
+    if (a.length != b.length) {
         return 0;
     }
-    for (index = 0; index < a->length; index++) {
-        if (a->text[index] != b->text[index]) {
+    for (index = 0; index < a.length; index++) {
+        if (a.text[index] != b.text[index]) {
             return 0;
         }
     }
     return 1;
 }
 
-void croft_string_join(const croft_string *a, const croft_string *b, croft_string *out)
+/* Either part may be the characters of out itself, so b is copied first,
+   from the end, when a is already in place. */
+void croft_string_join(croft_string_view a, croft_string_view b, croft_string *out)
 {
-    croft_string joined;
     croft_u16 index;
-    joined = *a;
-    for (index = 0; index < b->length && joined.length < CROFT_STRING_CAPACITY; index++) {
-        joined.text[joined.length] = b->text[index];
-        joined.length++;
+    croft_u16 length = a.length;
+    croft_u16 added = b.length;
+    if (length > CROFT_STRING_CAPACITY) {
+        length = CROFT_STRING_CAPACITY;
     }
-    CROFT_CHECK(index == b->length, "joined text is longer than a string can hold");
-    *out = joined;
+    if (added > CROFT_STRING_CAPACITY - length) {
+        added = (croft_u16) (CROFT_STRING_CAPACITY - length);
+    }
+    for (index = added; index > 0; index--) {
+        out->text[length + index - 1] = b.text[index - 1];
+    }
+    if (a.text != out->text) {
+        for (index = 0; index < length; index++) {
+            out->text[index] = a.text[index];
+        }
+    }
+    out->length = (croft_u16) (length + added);
+    CROFT_CHECK(a.length + b.length <= CROFT_STRING_CAPACITY, "joined text is longer than a string can hold");
 }
 
-croft_int croft_string_find(const croft_string *text, const croft_string *part, croft_int from)
+croft_int croft_string_find(croft_string_view text, croft_string_view part, croft_int from)
 {
     croft_int start;
     croft_int index;
-    for (start = from; start + part->length <= text->length; start++) {
-        for (index = 0; index < part->length; index++) {
-            if (text->text[start + index] != part->text[index]) {
+    for (start = from < 0 ? 0 : from; start + part.length <= text.length; start++) {
+        for (index = 0; index < part.length; index++) {
+            if (text.text[start + index] != part.text[index]) {
                 break;
             }
         }
-        if (index == part->length) {
+        if (index == part.length) {
             return start;
         }
     }
     return -1;
 }
 
-croft_bool croft_string_starts_with(const croft_string *text, const croft_string *part)
+croft_bool croft_string_starts_with(croft_string_view text, croft_string_view part)
 {
-    croft_string start;
-    croft_string_slice(text, 0, part->length, &start);
-    return part->length <= text->length && croft_string_equal(&start, part);
+    return part.length <= text.length
+        && croft_string_equal(croft_string_view_from(text.text, part.length), part);
 }
 
-croft_bool croft_string_ends_with(const croft_string *text, const croft_string *part)
+croft_bool croft_string_ends_with(croft_string_view text, croft_string_view part)
 {
-    croft_string end;
-    croft_string_slice(text, (croft_int) text->length - part->length, text->length, &end);
-    return part->length <= text->length && croft_string_equal(&end, part);
+    return part.length <= text.length
+        && croft_string_equal(croft_string_view_from(text.text + text.length - part.length, part.length), part);
 }
 
-void croft_string_to_upper(const croft_string *text, croft_string *out)
+void croft_string_to_upper(croft_string_view text, croft_string *out)
 {
     croft_u16 index;
-    *out = *text;
+    croft_string_from_view(text, out);
     for (index = 0; index < out->length; index++) {
         if (out->text[index] >= 'a' && out->text[index] <= 'z') {
             out->text[index] = (char) (out->text[index] - 'a' + 'A');
@@ -100,10 +134,10 @@ void croft_string_to_upper(const croft_string *text, croft_string *out)
     }
 }
 
-void croft_string_to_lower(const croft_string *text, croft_string *out)
+void croft_string_to_lower(croft_string_view text, croft_string *out)
 {
     croft_u16 index;
-    *out = *text;
+    croft_string_from_view(text, out);
     for (index = 0; index < out->length; index++) {
         if (out->text[index] >= 'A' && out->text[index] <= 'Z') {
             out->text[index] = (char) (out->text[index] - 'A' + 'a');
@@ -111,35 +145,32 @@ void croft_string_to_lower(const croft_string *text, croft_string *out)
     }
 }
 
-void croft_string_trim(const croft_string *text, croft_string *out)
+void croft_string_trim(croft_string_view text, croft_string *out)
 {
     croft_int start = 0;
-    croft_int end = text->length;
-    while (start < end && text->text[start] == ' ') {
+    croft_int end = text.length;
+    while (start < end && text.text[start] == ' ') {
         start++;
     }
-    while (end > start && text->text[end - 1] == ' ') {
+    while (end > start && text.text[end - 1] == ' ') {
         end--;
     }
     croft_string_slice(text, start, end, out);
 }
 
-void croft_string_slice(const croft_string *text, croft_int start, croft_int end, croft_string *out)
+/* Copied forwards, so out may be the string the text is borrowed from. */
+void croft_string_slice(croft_string_view text, croft_int start, croft_int end, croft_string *out)
 {
-    croft_string slice;
-    croft_int index;
     if (start < 0) {
         start = 0;
     }
-    if (end > text->length) {
-        end = text->length;
+    if (end > text.length) {
+        end = text.length;
     }
-    slice.length = 0;
-    for (index = start; index < end; index++) {
-        slice.text[slice.length] = text->text[index];
-        slice.length++;
+    if (end < start) {
+        end = start;
     }
-    *out = slice;
+    croft_string_from_view(croft_string_view_from(text.text + start, (croft_u16) (end - start)), out);
 }
 
 void croft_int_to_string(croft_int value, croft_string *out)
@@ -165,22 +196,22 @@ void croft_int_to_string(croft_int value, croft_string *out)
     }
 }
 
-croft_bool croft_string_to_int(const croft_string *text, croft_int *out)
+croft_bool croft_string_to_int(croft_string_view text, croft_int *out)
 {
     croft_int value = 0;
     croft_u16 index = 0;
-    croft_bool negative = text->length > 0 && text->text[0] == '-';
+    croft_bool negative = text.length > 0 && text.text[0] == '-';
     if (negative) {
         index = 1;
     }
-    if (index == text->length) {
+    if (index == text.length) {
         return 0;
     }
-    for (; index < text->length; index++) {
-        if (text->text[index] < '0' || text->text[index] > '9') {
+    for (; index < text.length; index++) {
+        if (text.text[index] < '0' || text.text[index] > '9') {
             return 0;
         }
-        value = value * 10 + (text->text[index] - '0');
+        value = value * 10 + (text.text[index] - '0');
     }
     *out = negative ? -value : value;
     return 1;
@@ -202,9 +233,9 @@ void croft_argument(croft_int index, croft_string *out)
     croft_string_set(out, argument_values[index + 1]);
 }
 
-void croft_console_print(const croft_string *text, croft_unit *out)
+void croft_console_print(croft_string_view text, croft_unit *out)
 {
-    fwrite(text->text, 1, text->length, stdout);
+    fwrite(text.text, 1, text.length, stdout);
     putchar('\n');
     *out = 0;
 }

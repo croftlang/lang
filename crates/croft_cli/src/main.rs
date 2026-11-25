@@ -21,6 +21,8 @@ Usage:
                         Check, then write C for one target to target/croft/<name>
     croft run [path] --target <name> [-- arguments]
                         Compile, build the C with $CC (default: cc), and run it
+    croft size [path] --target <name>
+                        Show how much memory types and functions take on a target
     croft lsp               Run the language server, for editors
     croft help              Show this message
     croft version           Show the version
@@ -42,6 +44,7 @@ fn main() -> ExitCode {
             check(&path)
         }),
         "compile" => compile::compile(rest),
+        "size" => compile::size(rest),
         "run" => match run::run(rest) {
             Ok(0) => Ok(()),
             Ok(code) => return ExitCode::from(u8::try_from(code).unwrap_or(1)),

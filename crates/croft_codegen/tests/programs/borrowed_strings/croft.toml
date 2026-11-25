@@ -1,0 +1,5 @@
+[package]
+name = "borrowed_strings"
+
+[target.test]
+main = "Check"

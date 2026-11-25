@@ -99,13 +99,18 @@ impl<'a> Generator<'a> {
                 tests
             }
             Type::Named(named) => {
+                let flags = (0..self.flag_bytes(named))
+                    .map(|byte| format!("a->croft_flags[{byte}] == b->croft_flags[{byte}]"));
+
                 let fields: Vec<String> = (self.struct_fields(named).into_iter())
+                    .filter(|(field, _, _)| self.flag_bit(named, field).is_none())
                     .map(|(field, field_type, _)| match self.text_capacity(named, &field) {
                         Some(_) => format!(
                             "croft_text_equal(a->{field}.text, a->{field}.length, b->{field}.text, b->{field}.length)"
                         ),
                         None => self.compare(&format!("a->{field}"), &format!("b->{field}"), &field_type),
                     })
+                    .chain(flags)
                     .collect();
 
                 let all = if fields.is_empty() {
@@ -126,7 +131,9 @@ impl<'a> Generator<'a> {
         }
 
         if *ty == Type::String {
-            return format!("croft_string_equal(&{a}, &{b})");
+            return format!(
+                "croft_string_equal(croft_string_view_of(&{a}), croft_string_view_of(&{b}))"
+            );
         }
 
         if *ty == Type::Bytes {

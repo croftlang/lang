@@ -34,6 +34,26 @@ croft_bool croft_bytes_take_int(const croft_bytes *in, croft_u16 *at, croft_int 
     return 1;
 }
 
+croft_bool croft_bytes_put_byte(croft_bytes *out, croft_u8 value)
+{
+    if (out->length + 1 > CROFT_BYTES_CAPACITY) {
+        return 0;
+    }
+    out->items[out->length] = value;
+    out->length++;
+    return 1;
+}
+
+croft_bool croft_bytes_take_byte(const croft_bytes *in, croft_u16 *at, croft_u8 *out)
+{
+    if (*at + 1 > in->length) {
+        return 0;
+    }
+    *out = in->items[*at];
+    *at = (croft_u16) (*at + 1);
+    return 1;
+}
+
 croft_bool croft_bytes_put_length(croft_bytes *out, croft_u16 length)
 {
     if (out->length + 2 > CROFT_BYTES_CAPACITY) {
@@ -116,5 +136,5 @@ void croft_storage_key(const char *prefix, croft_int identity, croft_string *out
     croft_string number;
     croft_string_set(out, prefix);
     croft_int_to_string(identity, &number);
-    croft_string_join(out, &number, out);
+    croft_string_join(croft_string_view_of(out), croft_string_view_of(&number), out);
 }

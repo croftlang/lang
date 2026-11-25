@@ -26,7 +26,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.call_into(&format!("{}_{name}", c_name(repository)), passed, ty)
             }
             Type::String => {
-                let (text, _) = self.eval(receiver, None);
+                let text = self.view(receiver);
                 self.string_method(&text, name, arguments, ty)
             }
             Type::Map(key, value) => {
