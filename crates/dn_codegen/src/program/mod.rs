@@ -11,6 +11,7 @@ mod functions;
 mod lookup;
 mod main;
 mod repository;
+mod runtime;
 mod signature;
 
 use crate::{GeneratedFile, Generator};
@@ -61,7 +62,11 @@ impl<'a> Generator<'a> {
             },
             GeneratedFile {
                 name: "dn_runtime.c".to_string(),
-                contents: RUNTIME_SOURCE.to_string(),
+                // `dn_fail` is always kept: `DN_CHECK` in dn.h calls it.
+                contents: runtime::trim_runtime(
+                    RUNTIME_SOURCE,
+                    &format!("dn_fail\n{header}{source}"),
+                ),
             },
             GeneratedFile {
                 name: "program.h".to_string(),

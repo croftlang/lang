@@ -24,6 +24,8 @@ mod repeat;
 mod scope;
 mod string;
 mod unused;
+
+pub(crate) use unused::mentions;
 mod usage;
 
 use std::collections::{HashMap, HashSet};

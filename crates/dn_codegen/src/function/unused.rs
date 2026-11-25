@@ -2,7 +2,7 @@
 //! written with one pair of brackets.
 
 /// Whether `line` uses the C name `name`, not just as part of a longer name.
-pub(super) fn mentions(line: &str, name: &str) -> bool {
+pub(crate) fn mentions(line: &str, name: &str) -> bool {
     let is_name = |c: char| c.is_ascii_alphanumeric() || c == '_';
     line.match_indices(name).any(|(start, _)| {
         let before = line[..start].chars().next_back();
