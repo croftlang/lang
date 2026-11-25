@@ -110,6 +110,13 @@ fn makes_an_instance_of_each_generic_for_each_type() {
     run_program("generics");
 }
 
+/// Lists get room from the `Length` on a function's result and a command's
+/// parameter, not only from fields.
+#[test]
+fn sizes_lists_from_results_and_command_parameters() {
+    run_program("sizes");
+}
+
 #[test]
 fn runs_commands_events_policies_and_repositories() {
     run_program("game");

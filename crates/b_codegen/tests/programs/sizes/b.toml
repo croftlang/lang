@@ -1,0 +1,5 @@
+[package]
+name = "sizes"
+
+[target.test]
+main = "Start"

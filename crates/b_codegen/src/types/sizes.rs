@@ -69,10 +69,22 @@ impl Sizes {
             let functions = context
                 .functions
                 .iter()
-                .chain(context.ports.iter().flat_map(|p| &p.operations));
-            for parameter in functions.flat_map(|f| f.parameters.iter().flatten()) {
-                if let Some(ty) = parameter.types.first() {
-                    fields.push((ty, &parameter.constraints, None));
+                .chain(context.ports.iter().flat_map(|p| &p.operations))
+                .map(|f| (f, None));
+            let commands = context.aggregates.iter().flat_map(|a| {
+                let scope = Some(a.name.name.as_str());
+                a.commands.iter().map(move |c| (c, scope))
+            });
+            // A `where` on a parameter or on the result sizes the list as
+            // much as one on a field does.
+            for (function, aggregate) in functions.chain(commands) {
+                for parameter in function.parameters.iter().flatten() {
+                    if let Some(ty) = parameter.types.first() {
+                        fields.push((ty, &parameter.constraints, aggregate));
+                    }
+                }
+                if let Some(ty) = &function.return_type {
+                    fields.push((ty, &function.return_constraints, aggregate));
                 }
             }
             for (ty, constraints, aggregate) in fields {

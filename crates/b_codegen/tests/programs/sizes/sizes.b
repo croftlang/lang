@@ -1,0 +1,49 @@
+// A list's capacity comes from every `Length` on a list of its item type:
+// on fields, and on the parameters and results of functions and commands.
+context Sizes
+
+error WrongAnswer
+
+identity TruckId: Int where Range(1, 9)
+
+value Stop { code: Int }
+
+value Crate { weight: Int }
+
+// The shortest lists of each item type.
+value Route { stops: List<Stop> where Length(1, 2) }
+value Pallet { crates: List<Crate> where Length(0, 1) }
+
+aggregate Truck {
+    identity id: TruckId
+    loaded: Int
+
+    // A command's parameter sizes the list too.
+    command Load(crates: List<Crate> where Length(0, 6)) = {
+        set loaded = crates.length
+    }
+}
+
+// Five stops, more than `Route` allows, so only the result's `Length` makes room.
+fn timetable(): List<Stop> where Length(0, 5) = [
+    Stop { code: 1 }, Stop { code: 2 }, Stop { code: 3 }, Stop { code: 4 }, Stop { code: 5 }
+]
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+service Start(): Result<Unit, WrongAnswer> = {
+    check(timetable().length == 5)?
+    check(timetable().sum(stop -> stop.code) == 15)?
+    let crates = [Crate { weight: 1 }, Crate { weight: 2 }, Crate { weight: 3 }, Crate { weight: 4 }]
+    let truck = Truck { id: 1, loaded: 0 }
+    let loaded = match issue Load(crates: crates) on truck {
+        Ok(changed) -> changed.loaded
+        Err(error) -> 0
+    }
+    check(loaded == 4)?
+}
