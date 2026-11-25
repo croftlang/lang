@@ -5,10 +5,12 @@ use std::collections::HashSet;
 use dn_syntax::ast::{Field, Parameter, TypeExpr};
 
 use super::{Checker, Scope};
+use crate::types::MAX_PLACES;
 
-const BUILTIN_TYPES: [(&str, usize); 8] = [
+const BUILTIN_TYPES: [(&str, usize); 9] = [
     ("Int", 0),
     ("Float", 0),
+    ("Decimal", 0),
     ("Bool", 0),
     ("String", 0),
     ("Unit", 0),
@@ -34,6 +36,11 @@ impl<'a> Checker<'a> {
         let name = ty.path.text();
         let span = ty.path.span();
         let found = ty.arguments.len();
+        if name == "Decimal" {
+            self.check_places(ty);
+        } else if ty.number.is_some() {
+            self.error(format!("`{name}` takes no number"), span);
+        }
         if let Some((_, expected)) = BUILTIN_TYPES.iter().find(|(builtin, _)| *builtin == name) {
             if *expected != found {
                 let message = format!("`{name}` takes {expected} type arguments, found {found}");
@@ -53,6 +60,22 @@ impl<'a> Checker<'a> {
                 let actual = found.kind.describe();
                 self.error(format!("expected a type, but `{name}` is {actual}"), span);
             }
+            Some(_) => {}
+        }
+    }
+
+    /// `Decimal<2>`: the places must be given, from 1 to `MAX_PLACES`.
+    fn check_places(&mut self, ty: &TypeExpr) {
+        let span = ty.path.span();
+        match ty.number {
+            None => self.error(
+                "`Decimal` needs its decimal places, as in `Decimal<2>`",
+                span,
+            ),
+            Some(places) if !(1..=MAX_PLACES).contains(&places) => self.error(
+                format!("`Decimal` has 1 to {MAX_PLACES} decimal places, found {places}"),
+                span,
+            ),
             Some(_) => {}
         }
     }

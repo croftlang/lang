@@ -32,10 +32,16 @@ impl Parser {
         }
         self.advance();
         let name = self.expect_identifier()?;
+        let is_let = keyword == TokenKind::Keyword(Keyword::Let);
+        let ty = if is_let && self.eat(&TokenKind::Colon) {
+            Some(self.parse_type()?)
+        } else {
+            None
+        };
         self.expect(&TokenKind::Equal)?;
         let value = self.parse_expression()?;
-        if keyword == TokenKind::Keyword(Keyword::Let) {
-            Ok(Statement::Let(name, value))
+        if is_let {
+            Ok(Statement::Let(name, ty, value))
         } else {
             Ok(Statement::Set(name, value))
         }

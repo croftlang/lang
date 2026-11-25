@@ -16,7 +16,10 @@ mod signature;
 use crate::{GeneratedFile, Generator};
 
 const RUNTIME_HEADER: &str = include_str!("../runtime/dn.h");
-const RUNTIME_SOURCE: &str = include_str!("../runtime/dn_runtime.c");
+const RUNTIME_SOURCE: &str = concat!(
+    include_str!("../runtime/dn_runtime.c"),
+    include_str!("../runtime/decimal.c")
+);
 
 impl<'a> Generator<'a> {
     pub fn generate(&self) -> Result<Vec<GeneratedFile>, String> {

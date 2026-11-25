@@ -31,7 +31,7 @@ fn reads_numbers() {
         vec![
             TokenKind::Int(999_999),
             TokenKind::Int(0x4F),
-            TokenKind::Float(2.5),
+            TokenKind::Float("2.5".into()),
             TokenKind::Identifier("list".into()),
             TokenKind::Dot,
             TokenKind::Identifier("length".into()),

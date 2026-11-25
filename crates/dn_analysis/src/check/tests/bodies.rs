@@ -119,3 +119,39 @@ fn checks_bit_operators() {
         "cannot shift by 32, only by 0 to 31",
     );
 }
+
+#[test]
+fn checks_decimals() {
+    let source = game(
+        "fn f(price: Decimal<2>, count: Int): Decimal<2> = {\n let tax: Decimal<2> = 0.2\n price * count + price * tax - 1\n}",
+    );
+    assert_eq!(errors(&source), Vec::<String>::new());
+    assert_error(
+        &game("fn f(): Decimal<2> = 2.505"),
+        "`2.505` has more than 2 decimal places",
+    );
+    assert_error(
+        &game("fn f(price: Decimal): Int = 0"),
+        "`Decimal` needs its decimal places, as in `Decimal<2>`",
+    );
+    assert_error(
+        &game("fn f(price: Decimal<9>): Int = 0"),
+        "`Decimal` has 1 to 6 decimal places, found 9",
+    );
+    assert_error(
+        &game("fn f(a: Decimal<2>, b: Decimal<3>): Decimal<2> = a + b"),
+        "expected `Decimal<2>`, found `Decimal<3>`",
+    );
+    assert_error(
+        &game("fn f(a: Decimal<2>): Decimal<2> = a % 2"),
+        "a `Decimal` has no remainder",
+    );
+    assert_error(
+        &game("fn f(a: Decimal<2>): Decimal<2> = 1 / a"),
+        "only a `Decimal` can be divided by a `Decimal`",
+    );
+    assert_error(
+        &game("fn f(counts: List<Int>): List<Decimal<2>> = counts"),
+        "expected `List<Decimal<2>>`, found `List<Int>`",
+    );
+}

@@ -6,6 +6,7 @@ mod arguments;
 mod block;
 mod builtin;
 mod call;
+mod decimal;
 mod effect;
 mod entry;
 mod expect;

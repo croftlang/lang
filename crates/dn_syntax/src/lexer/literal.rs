@@ -53,10 +53,7 @@ impl<'a> Lexer<'a> {
             self.advance();
             text.push('.');
             text += &self.read_digits(|c| c.is_ascii_digit());
-            return text
-                .parse()
-                .map(TokenKind::Float)
-                .map_err(|_| Diagnostic::new(format!("invalid number `{text}`"), start));
+            return Ok(TokenKind::Float(text));
         }
         text.parse()
             .map(TokenKind::Int)

@@ -44,6 +44,8 @@ impl Path {
 pub struct TypeExpr {
     pub path: Path,
     pub arguments: Vec<TypeExpr>,
+    /// A number in place of type arguments, such as the places in `Decimal<2>`.
+    pub number: Option<i64>,
 }
 
 /// One constraint after `where`, applied to the value or, with `each`, to every item.

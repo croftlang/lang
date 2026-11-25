@@ -6,7 +6,7 @@ use dn_syntax::ast::{Argument, Rule};
 
 use super::Writer;
 use crate::names::{c_name, c_string};
-use crate::types::constant::evaluate;
+use crate::types::constant::{decimal_bound, evaluate};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// Writes a check that stops the program when `value` breaks `rule`.
@@ -39,8 +39,14 @@ impl<'g, 'a> Writer<'g, 'a> {
             .gen
             .model
             .resolve(&self.context, aggregate.as_deref(), &constraint.name);
+        let (program, model, context) = (self.gen.program, &self.gen.model, &self.context);
         let numbers: Option<Vec<i64>> = (constraint.arguments.iter())
-            .map(|argument| evaluate(self.gen.program, &self.gen.model, &self.context, argument))
+            .map(|argument| match ty {
+                Type::Decimal(places) if found.is_none() => {
+                    decimal_bound(program, model, context, argument, *places)
+                }
+                _ => evaluate(program, model, context, argument),
+            })
             .collect();
         match found.filter(|f| f.kind == SymbolKind::Constraint) {
             Some(found) => {
@@ -107,6 +113,7 @@ fn describe_argument(value: &dn_syntax::ast::Expr) -> String {
     use dn_syntax::ast::{BinaryOp, ExprKind, UnaryOp};
     match &value.kind {
         ExprKind::Int(number) => number.to_string(),
+        ExprKind::Float(text) => text.clone(),
         ExprKind::Name(name) => name.clone(),
         ExprKind::Unary(UnaryOp::Negate, inner) => format!("-{}", describe_argument(inner)),
         ExprKind::Unary(UnaryOp::BitNot, inner) => format!("~{}", describe_argument(inner)),

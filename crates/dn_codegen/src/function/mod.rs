@@ -6,6 +6,7 @@ mod arguments;
 mod block;
 mod builtin;
 mod call;
+mod decimal;
 mod expression;
 mod failure;
 mod issue;

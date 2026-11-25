@@ -20,7 +20,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let span = value.span;
         match &value.kind {
             ExprKind::Int(_) => Type::Int,
-            ExprKind::Float(_) => Type::Float,
+            ExprKind::Float(text) => self.float(text, span, expected),
             ExprKind::String(_) => Type::String,
             ExprKind::Bool(_) => Type::Bool,
             ExprKind::Name(name) => self.name(Some(value.id), name, span, expected),
@@ -31,7 +31,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             ExprKind::List(items) => self.list_literal(items, expected),
             ExprKind::Record(path, fields) => self.record(path, fields),
             ExprKind::With(base, fields) => self.with(base, fields),
-            ExprKind::Unary(op, operand) => self.unary(*op, operand),
+            ExprKind::Unary(op, operand) => self.unary(*op, operand, expected),
             ExprKind::Binary(op, left, right) => self.binary(*op, left, right),
             ExprKind::OrElse(value, error) => self.or_else(value, error),
             ExprKind::Try(inner) => self.try_value(inner),
@@ -59,14 +59,14 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
-    pub(super) fn unary(&mut self, op: UnaryOp, operand: &Expr) -> Type {
+    pub(super) fn unary(&mut self, op: UnaryOp, operand: &Expr, expected: Option<&Type>) -> Type {
         match op {
             UnaryOp::Not => {
                 self.expect(operand, &Type::Bool);
                 Type::Bool
             }
             UnaryOp::Negate => {
-                let ty = self.expr(operand, None);
+                let ty = self.expr(operand, expected);
                 if !ty.is_number() {
                     self.error(format!("cannot negate `{ty}`"), operand.span);
                 }
@@ -102,6 +102,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             Add | Subtract | Multiply | Divide | Remainder => {
                 let ty = self.expr(left, None);
+                if let Some(ty) = self.decimal_arithmetic(op, &ty, left, right) {
+                    return ty;
+                }
                 let joins_strings = op == Add && ty == Type::String;
                 if !ty.is_number() && !joins_strings {
                     self.error(format!("cannot do arithmetic on `{ty}`"), left.span);

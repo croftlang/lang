@@ -7,6 +7,9 @@ use crate::symbols::SymbolKind;
 /// Shifts stay below the width of the smallest `Int` on any target, 32 bits.
 pub const MAX_SHIFT: i64 = 32;
 
+/// The most decimal places a `Decimal` can have, so its value fits 32 bits.
+pub const MAX_PLACES: i64 = 6;
+
 /// A declaration a name refers to: its context, its full name there, and its kind.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Resolved {
@@ -19,6 +22,9 @@ pub struct Resolved {
 pub enum Type {
     Int,
     Float,
+    /// A fixed-point number with this many decimal places, kept as a whole
+    /// number of hundredths for `Decimal<2>`.
+    Decimal(u32),
     Bool,
     String,
     Unit,
@@ -55,7 +61,10 @@ impl Type {
     }
 
     pub fn is_number(&self) -> bool {
-        matches!(self, Type::Int | Type::Float | Type::Unknown)
+        matches!(
+            self,
+            Type::Int | Type::Float | Type::Decimal(_) | Type::Unknown
+        )
     }
 
     /// The declaration behind a named type, if it is one of `kinds`.
@@ -72,6 +81,7 @@ impl fmt::Display for Type {
         match self {
             Type::Int => write!(f, "Int"),
             Type::Float => write!(f, "Float"),
+            Type::Decimal(places) => write!(f, "Decimal<{places}>"),
             Type::Bool => write!(f, "Bool"),
             Type::String => write!(f, "String"),
             Type::Unit => write!(f, "Unit"),

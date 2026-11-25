@@ -48,7 +48,7 @@ impl<'a> Generator<'a> {
     pub fn c_type(&self, ty: &Type) -> String {
         let ty = self.canonical(ty);
         let name = match &ty {
-            Type::Int => "dn_int".to_string(),
+            Type::Int | Type::Decimal(_) => "dn_int".to_string(),
             Type::Float => "double".to_string(),
             Type::Bool => "dn_bool".to_string(),
             Type::String => "dn_string".to_string(),
@@ -97,7 +97,7 @@ impl<'a> Generator<'a> {
     /// Passed and stored by value in C: numbers, flags, identities and plain enums.
     pub fn is_scalar(&self, ty: &Type) -> bool {
         match self.canonical(ty) {
-            Type::Int | Type::Float | Type::Bool | Type::Unit => true,
+            Type::Int | Type::Float | Type::Decimal(_) | Type::Bool | Type::Unit => true,
             Type::Named(named) => match named.kind {
                 SymbolKind::Identity => true,
                 SymbolKind::Enum => self.is_plain_enum(&named),

@@ -13,8 +13,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         for (index, statement) in statements.iter().enumerate() {
             let is_last = index + 1 == statements.len();
             match statement {
-                Statement::Let(name, value) => {
-                    let ty = self.type_of(value, None);
+                Statement::Let(name, _, value) => {
+                    let ty = self.gen.facts.kept_as(value.id).clone();
                     if !usage::statements_use(&statements[index + 1..], &name.name) {
                         // Never read: work it out for its effects, with no variable.
                         self.eval(value, None);

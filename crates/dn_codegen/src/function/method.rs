@@ -33,6 +33,21 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let (text, _) = self.eval(receiver, None);
                 self.string_method(&text, name, arguments, ty)
             }
+            Type::Decimal(places) if name == "to_string" => {
+                let number = self.value(receiver, &Type::Decimal(*places));
+                let temp = self.temp(&Type::String);
+                self.line(format!(
+                    "dn_decimal_to_string({number}, {places}, &{temp});"
+                ));
+                temp
+            }
+            Type::Decimal(places) if name == "round" => {
+                let number = self.value(receiver, &Type::Decimal(*places));
+                format!(
+                    "dn_divide_even({number}, {}L)",
+                    crate::types::constant::scale(*places)
+                )
+            }
             Type::Int if name == "to_string" => {
                 let number = self.value(receiver, &Type::Int);
                 let temp = self.temp(&Type::String);

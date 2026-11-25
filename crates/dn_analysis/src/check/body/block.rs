@@ -1,6 +1,6 @@
 //! Blocks and their statements: `let`, `set`, guards, loops and `break`.
 
-use dn_syntax::ast::{Expr, ExprKind, Identifier, Statement};
+use dn_syntax::ast::{Expr, ExprKind, Identifier, Statement, TypeExpr};
 
 use super::{BodyChecker, BodyKind};
 use crate::types::Type;
@@ -13,7 +13,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             for (index, statement) in statements.iter().enumerate() {
                 let is_last = index + 1 == statements.len();
                 result = match statement {
-                    Statement::Let(name, value) => body.check_let(name, value),
+                    Statement::Let(name, ty, value) => body.check_let(name, ty.as_ref(), value),
                     Statement::Set(name, value) => body.check_set(name, value),
                     Statement::Expr(value) => body.check_line(value, is_last, expected),
                 };
@@ -22,14 +22,29 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         })
     }
 
-    pub(super) fn check_let(&mut self, name: &Identifier, value: &Expr) -> Type {
+    pub(super) fn check_let(
+        &mut self,
+        name: &Identifier,
+        written: Option<&TypeExpr>,
+        value: &Expr,
+    ) -> Type {
         if self.local(&name.name).is_some() {
             self.error(
                 format!("`{}` is already named in this body", name.name),
                 name.span,
             );
         }
-        let ty = self.expr(value, None);
+        let ty = match written {
+            Some(written) => {
+                let wanted = self.lower_written(written);
+                let found = self.expect(value, &wanted);
+                if found != wanted {
+                    self.checker.facts.wanted.insert(value.id, wanted.clone());
+                }
+                wanted
+            }
+            None => self.expr(value, None),
+        };
         let settable = matches!(self.kind, BodyKind::Service);
         self.bind(&name.name, ty, settable);
         Type::Unit
@@ -109,5 +124,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 format!("this guard gives back `{found}`, but the body gives back `{result}`");
             self.error(message, block.span);
         }
+    }
+
+    /// A type written in a body, such as on a `let`, reported if it is wrong.
+    fn lower_written(&mut self, written: &TypeExpr) -> Type {
+        self.checker.check_type(&self.scope, written, false);
+        self.checker.lower_type(&self.scope, written)
     }
 }

@@ -6,7 +6,8 @@ pub enum TokenKind {
     Identifier(String),
     Keyword(Keyword),
     Int(i64),
-    Float(f64),
+    /// A number with a fractional part, kept as written so a `Decimal` gets it exactly.
+    Float(String),
     String(String),
     LeftBrace,
     RightBrace,

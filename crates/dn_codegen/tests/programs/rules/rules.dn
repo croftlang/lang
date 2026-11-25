@@ -9,6 +9,8 @@ context Clinic {
 
     fn heal(amount: Int where Range(1, 50)): Int = amount * 2
 
+    fn pay(amount: Decimal<2> where Range(0.01, 99.99)): Decimal<2> = amount
+
     fn half(number: Int): Int where Even = number / 2
 
     fn count(numbers: List<Int> where each Even): Int = numbers.length
@@ -28,6 +30,9 @@ context Clinic {
         }
         if chosen.contains("each") {
             let counted = count([2, 3])
+        }
+        if chosen.contains("pay") {
+            let paid = pay(120)
         }
         if chosen.contains("shift") {
             let shifted = 1 << chosen.length * 40

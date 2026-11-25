@@ -50,3 +50,39 @@ pub fn evaluate(program: &Program, model: &Model, context: &str, value: &Expr) -
         _ => None,
     }
 }
+
+/// What one whole unit is in a `Decimal` with this many places: 100 for two.
+pub fn scale(places: u32) -> i64 {
+    10_i64.pow(places)
+}
+
+/// A literal such as `2.5` as a whole number of the smallest unit: 250 for two places.
+pub fn scaled(text: &str, places: u32) -> i64 {
+    let (whole, part) = text.split_once('.').unwrap_or((text, ""));
+    let mut digits: String = whole
+        .chars()
+        .chain(part.chars())
+        .filter(|c| *c != '_')
+        .collect();
+    for _ in part.len()..places as usize {
+        digits.push('0');
+    }
+    digits.parse().unwrap_or(0)
+}
+
+/// A `Range` bound for a `Decimal`: `0.5` or `10` as a whole number of its smallest unit.
+pub fn decimal_bound(
+    program: &Program,
+    model: &Model,
+    context: &str,
+    value: &Expr,
+    places: u32,
+) -> Option<i64> {
+    match &value.kind {
+        ExprKind::Float(text) => Some(scaled(text, places)),
+        ExprKind::Unary(UnaryOp::Negate, operand) => {
+            Some(-decimal_bound(program, model, context, operand, places)?)
+        }
+        _ => evaluate(program, model, context, value)?.checked_mul(scale(places)),
+    }
+}

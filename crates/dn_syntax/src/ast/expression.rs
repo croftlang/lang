@@ -1,4 +1,4 @@
-use super::{Identifier, Path, Rule};
+use super::{Identifier, Path, Rule, TypeExpr};
 use crate::span::{SourceId, Span};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -19,7 +19,8 @@ pub struct ExprId {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExprKind {
     Int(i64),
-    Float(f64),
+    /// As written, such as `2.50`.
+    Float(String),
     String(String),
     Bool(bool),
     Name(String),
@@ -81,7 +82,8 @@ pub struct LoopCounter {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
-    Let(Identifier, Expr),
+    /// `let name = value`, or `let name: Type = value`.
+    Let(Identifier, Option<TypeExpr>, Expr),
     Set(Identifier, Expr),
     Expr(Expr),
 }

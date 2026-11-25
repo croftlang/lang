@@ -12,4 +12,4 @@ pub use check::{check, Model, VariantInfo};
 pub use facts::{Facts, Meaning};
 pub use manifest::{Manifest, TargetConfig, MANIFEST_FILE};
 pub use program::{Context, Program};
-pub use types::{Type, MAX_SHIFT};
+pub use types::{Type, MAX_PLACES, MAX_SHIFT};

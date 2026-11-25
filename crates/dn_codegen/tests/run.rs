@@ -77,6 +77,13 @@ fn checks_rules_in_debug_builds() {
         (Some(1), "count: numbers must satisfy each Even".to_string())
     );
     assert_eq!(
+        run("debug", "pay"),
+        (
+            Some(1),
+            "pay: amount must satisfy Range(0.01, 99.99)".to_string()
+        )
+    );
+    assert_eq!(
         run("debug", "shift"),
         (Some(1), "shift by less than 0 or more than 31".to_string())
     );

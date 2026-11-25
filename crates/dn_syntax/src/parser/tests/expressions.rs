@@ -32,7 +32,7 @@ fn continues_a_chain_of_calls_across_lines() {
 #[test]
 fn reads_records_and_with() {
     let body = statements("let start = Position { x: 10, y: 20 }\nstart with { x: 11 }");
-    let Statement::Let(_, value) = &body[0] else {
+    let Statement::Let(_, _, value) = &body[0] else {
         panic!("expected let")
     };
     assert!(matches!(value.kind, ExprKind::Record(_, ref fields) if fields.len() == 2));
@@ -119,11 +119,11 @@ fn reads_a_counted_loop() {
 #[test]
 fn reads_list_literals() {
     let body = statements("let empty = []\nlet three = [1, 2,\n    3]");
-    let Statement::Let(_, empty) = &body[0] else {
+    let Statement::Let(_, _, empty) = &body[0] else {
         panic!("expected let")
     };
     assert!(matches!(empty.kind, ExprKind::List(ref items) if items.is_empty()));
-    let Statement::Let(_, three) = &body[1] else {
+    let Statement::Let(_, _, three) = &body[1] else {
         panic!("expected let")
     };
     assert!(matches!(three.kind, ExprKind::List(ref items) if items.len() == 3));

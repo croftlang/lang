@@ -6,6 +6,7 @@ use dn_syntax::ast::{Expr, ExprKind, UnaryOp};
 
 use super::Writer;
 use crate::names::c_string;
+use crate::types::constant::{scale, scaled};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// The value of `value`, as a C expression of the C type for `want`.
@@ -29,7 +30,10 @@ impl<'g, 'a> Writer<'g, 'a> {
         let ty = self.type_of(value, want);
         let c = match &value.kind {
             ExprKind::Int(number) => format!("{number}L"),
-            ExprKind::Float(number) => format!("{number:?}"),
+            ExprKind::Float(text) => match ty {
+                Type::Decimal(places) => format!("{}L", scaled(text, places)),
+                _ => text.clone(),
+            },
             ExprKind::Bool(flag) => (if *flag { "1" } else { "0" }).to_string(),
             ExprKind::String(text) => {
                 let temp = self.temp(&Type::String);
@@ -84,6 +88,9 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// Converts a value to another type with the same meaning: a plain value
     /// into a successful `Result`. Every error is already `dn_error`.
     pub fn convert(&mut self, c: String, from: &Type, to: &Type) -> String {
+        if let (Type::Decimal(places), Type::Int) = (to, from) {
+            return format!("({c} * {}L)", scale(*places));
+        }
         if self.gen.c_type(from) == self.gen.c_type(to) {
             return c;
         }

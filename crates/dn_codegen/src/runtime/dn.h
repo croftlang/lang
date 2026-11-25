@@ -55,6 +55,11 @@ void dn_string_to_lower(const dn_string *text, dn_string *out);
 void dn_string_trim(const dn_string *text, dn_string *out);
 void dn_string_slice(const dn_string *text, dn_int start, dn_int end, dn_string *out);
 void dn_int_to_string(dn_int value, dn_string *out);
+
+dn_int dn_divide_even(dn_int numerator, dn_int denominator);
+dn_int dn_decimal_multiply(dn_int a, dn_int b, dn_int scale);
+dn_int dn_decimal_divide(dn_int a, dn_int b, dn_int scale);
+void dn_decimal_to_string(dn_int value, dn_int places, dn_string *out);
 dn_bool dn_string_to_int(const dn_string *text, dn_int *out);
 
 void dn_arguments_set(int count, char **values);

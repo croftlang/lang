@@ -28,7 +28,18 @@ impl Parser {
     pub(super) fn parse_type(&mut self) -> ParseResult<TypeExpr> {
         let path = self.parse_path()?;
         let mut arguments = Vec::new();
+        let mut number = None;
         if self.eat(&TokenKind::Less) {
+            if let TokenKind::Int(value) = self.peek().kind {
+                self.advance();
+                number = Some(value);
+                self.close_type_arguments()?;
+                return Ok(TypeExpr {
+                    path,
+                    arguments,
+                    number,
+                });
+            }
             loop {
                 arguments.push(self.parse_type()?);
                 if !self.eat(&TokenKind::Comma) {
@@ -37,7 +48,11 @@ impl Parser {
             }
             self.close_type_arguments()?;
         }
-        Ok(TypeExpr { path, arguments })
+        Ok(TypeExpr {
+            path,
+            arguments,
+            number,
+        })
     }
 
     /// A field: `identity id: RoomId` or `hit_points: Int where Range(0, 100)`.

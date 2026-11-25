@@ -29,8 +29,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 return self.repository_operation(repository, method, arguments)
             }
             Type::String => self.string_method(name, arguments, span),
-            Type::Int | Type::Float if name == "to_string" => {
+            Type::Int | Type::Float | Type::Decimal(_) if name == "to_string" => {
                 self.fixed(name, arguments, &[], Type::String, span)
+            }
+            Type::Decimal(_) if name == "round" => {
+                self.fixed(name, arguments, &[], Type::Int, span)
             }
             Type::List(item) => self.list_method(item, name, arguments, span),
             Type::Option(item) => self.option_method(item, name, arguments, span, expected),

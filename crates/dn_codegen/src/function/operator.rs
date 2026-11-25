@@ -17,6 +17,9 @@ impl<'g, 'a> Writer<'g, 'a> {
         if matches!(op, ShiftLeft | ShiftRight) {
             return self.shift(op == ShiftLeft, left, right);
         }
+        if let Type::Decimal(places) = ty {
+            return self.decimal_arithmetic(op, left, right, *places);
+        }
         let left_type = self.type_of(left, None);
         let (left, _) = self.eval(left, None);
         let right = self.value(right, &left_type);

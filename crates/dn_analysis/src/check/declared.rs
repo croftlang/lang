@@ -4,7 +4,7 @@ use dn_syntax::ast::{Field, TypeExpr};
 
 use super::{Checker, Resolved, Scope};
 use crate::symbols::SymbolKind;
-use crate::types::Type;
+use crate::types::{Type, MAX_PLACES};
 
 impl<'a> Checker<'a> {
     /// The type a written type stands for. Names that don't resolve were
@@ -18,6 +18,7 @@ impl<'a> Checker<'a> {
         match ty.path.text().as_str() {
             "Int" => Type::Int,
             "Float" => Type::Float,
+            "Decimal" => Type::Decimal(ty.number.unwrap_or(0).clamp(0, MAX_PLACES) as u32),
             "Bool" => Type::Bool,
             "String" => Type::String,
             "Unit" => Type::Unit,
