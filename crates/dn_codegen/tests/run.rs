@@ -14,6 +14,27 @@ fn runs_values_enums_lists_and_strings() {
     run_program("values");
 }
 
+/// A domain calling one function, printing through the built-in `Console`.
+#[test]
+fn prints_through_the_console() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/hello");
+    let output = generate(&source, "test", "hello");
+    let built = compile(&output, &["dn_runtime.c", "program.c", "-o", "program"]);
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("program"))
+        .output()
+        .expect("it runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "5\n");
+    fs::remove_dir_all(output).ok();
+}
+
 #[test]
 fn runs_commands_events_policies_and_repositories() {
     run_program("game");

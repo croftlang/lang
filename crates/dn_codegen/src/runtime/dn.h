@@ -66,4 +66,7 @@ void dn_arguments_set(int count, char **values);
 dn_int dn_argument_count(void);
 void dn_argument(dn_int index, dn_string *out);
 
+/* The built-in Console port: prints a line. */
+void dn_console_print(const dn_string *text, dn_unit *out);
+
 #endif

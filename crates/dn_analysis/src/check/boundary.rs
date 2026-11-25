@@ -26,9 +26,9 @@ impl<'a> Checker<'a> {
                     name.span,
                 ),
             }
-            match &operation.return_type {
-                Some(ty) => self.check_type(scope, ty, false),
-                None => self.error(format!("`{}` needs a return type", name.name), name.span),
+            // With no return type, an operation gives back `Unit`.
+            if let Some(ty) = &operation.return_type {
+                self.check_type(scope, ty, false);
             }
             if operation.body.is_some() || !operation.preconditions.is_empty() {
                 let message = format!(

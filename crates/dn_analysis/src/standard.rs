@@ -1,4 +1,5 @@
-//! The standard contexts: built-in names a context imports before using,
+//! Built-in ports every target supplies, and the standard contexts:
+//! built-in names a context imports before using,
 //! such as `use { trim, split } from Std.Text`. The core types, list and
 //! option methods, `Range` and `Length` need no import.
 
@@ -35,4 +36,13 @@ pub fn standard_context_of(name: &str) -> Option<&'static str> {
         .iter()
         .find(|(_, names)| names.contains(&name))
         .map(|(context, _)| *context)
+}
+
+/// Ports every target supplies, so a service can call them with no adapter
+/// named in `dn.toml`: `Arguments` reads the command line and `Console`
+/// prints a line. A port the program declares with the same name replaces it.
+pub const BUILTIN_PORTS: [&str; 2] = ["Arguments", "Console"];
+
+pub fn is_builtin_port(name: &str) -> bool {
+    BUILTIN_PORTS.contains(&name)
 }

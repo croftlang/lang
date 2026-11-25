@@ -114,3 +114,23 @@ fn gives_services_their_command_line_arguments() {
     let service = "service Start(): Bool {\n calls Arguments\n} = arguments.all().contains(3)";
     assert_error(&game(service), "expected `String`, found `Int`");
 }
+
+#[test]
+fn gives_services_the_built_in_console() {
+    let service = "service Greet(): Unit {\n calls Console\n} = console.print(\"hello\")";
+    assert_eq!(errors(&game(service)), Vec::<String>::new());
+    let service = "service Greet(): Unit {\n calls Console\n} = console.print(3)";
+    assert_error(&game(service), "expected `String`, found `Int`");
+    let service = "service Greet(): Unit {\n calls Console\n} = console.shout(\"hello\")";
+    assert_error(&game(service), "port `Console` has no operation `shout`");
+}
+
+#[test]
+fn gives_back_unit_when_there_is_no_return_type() {
+    let source = game(
+        "port Log {\n fn write(text: String)\n}\n\
+         service Note(): Unit {\n calls Log\n} = log.write(\"hi\")\n\
+         fn nothing() = Unit",
+    );
+    assert_eq!(errors(&source), Vec::<String>::new());
+}

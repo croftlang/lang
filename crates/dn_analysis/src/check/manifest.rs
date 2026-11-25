@@ -1,6 +1,7 @@
 //! Checking `dn.toml` against the program: what each target runs, and an
 //! adapter for every port each target needs.
 
+use crate::standard::is_builtin_port;
 use std::collections::BTreeSet;
 
 use dn_syntax::ast::Identifier;
@@ -50,13 +51,11 @@ impl<'a> Checker<'a> {
     fn check_target(&mut self, target: &TargetConfig, needed: &BTreeSet<(String, String)>) {
         let mut bound = BTreeSet::new();
         for (port_name, adapter_name) in &target.adapters {
-            if port_name.name == "Arguments"
+            if is_builtin_port(&port_name.name)
                 && self.find_quietly(port_name, SymbolKind::Port).is_none()
             {
-                self.error(
-                    "`Arguments` is built in, so it needs no adapter",
-                    port_name.span,
-                );
+                let message = format!("`{}` is built in, so it needs no adapter", port_name.name);
+                self.error(message, port_name.span);
                 continue;
             }
             let Some(port) = self.find_anywhere(&to_path(port_name), SymbolKind::Port, "a port")

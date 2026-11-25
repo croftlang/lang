@@ -97,11 +97,11 @@ impl<'a> Checker<'a> {
 
 impl<'c, 'a> BodyChecker<'c, 'a> {}
 
-/// The built-in port that gives a program its command-line arguments.
-pub(super) fn arguments_port() -> Resolved {
+/// A built-in port, such as `Arguments`. It belongs to no context.
+pub(super) fn builtin_port(name: &str) -> Resolved {
     Resolved {
         context: String::new(),
-        name: "Arguments".to_string(),
+        name: name.to_string(),
         kind: SymbolKind::Port,
     }
 }
