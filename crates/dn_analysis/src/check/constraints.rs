@@ -20,7 +20,7 @@ impl<'a> Checker<'a> {
             if constraint.each && !is_list {
                 self.error("`each` can only be used on a list", constraint.name.span());
             }
-            self.check_constraint_use(scope, &constraint);
+            self.check_constraint_use(scope, constraint);
         }
     }
 
