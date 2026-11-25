@@ -97,6 +97,11 @@ Every `.c` file in the output folder is part of the program, for example
 target uses, such as `croft_files.c` for `StdioFiles`, and `croft_http.c` for
 `CurlHttp`, which needs `-lcurl` when linking.
 
+`croft run . --target desktop` does all of this in one step: it compiles, builds
+the C with `$CC` (or `cc`), adding `-lcurl` when the target uses `CurlHttp`, and
+runs the program from `target/croft/desktop/<package name>`. Arguments after
+`--` go to the program.
+
 Try it on the test fixture, a small cargo shipping system after the one in
 Eric Evans' *Domain-Driven Design*, split across thirteen files:
 
