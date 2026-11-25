@@ -207,3 +207,21 @@ fn handles_the_rest_of_a_match_with_a_wildcard() {
         "`_` stands for several variants, so it can't name their fields",
     );
 }
+
+#[test]
+fn checks_single_value_types() {
+    let source = "context Shop {\n value Score: Int where Range(0, 999)\n fn f(score: Score): Score = Score(score.value + 1)\n fn g(): Score = 7\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+    assert_error(
+        "context Shop {\n value Score: Int\n fn f(n: Int): Score = n\n}",
+        "expected `Score`, found `Int`",
+    );
+    assert_error(
+        "context Shop {\n value Score: Int\n fn f(score: Score): Score = score + 1\n}",
+        "cannot do arithmetic on `Score`",
+    );
+    assert_error(
+        "context Shop {\n value Point { x: Int }\n fn f(): Point = Point(3)\n}",
+        "`Point` is made with its fields: `Point { ... }`",
+    );
+}

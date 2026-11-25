@@ -24,4 +24,18 @@ impl<'a> Checker<'a> {
         };
         self.lower_type(&self.scope_of(aggregate), &identity.ty)
     }
+
+    /// The type a single-value type holds, such as `Int` for
+    /// `value Score: Int where Range(0, 999_999)`.
+    pub(crate) fn single_value_inner(&self, ty: &Type) -> Option<Type> {
+        let named = ty.named(&[SymbolKind::Value])?;
+        let scope = self.scope_of(named);
+        let value = scope
+            .context
+            .values
+            .iter()
+            .find(|v| v.name.name == named.name)?;
+        let field = value.fields.first().filter(|_| value.single)?;
+        Some(self.lower_type(&scope, &field.ty))
+    }
 }

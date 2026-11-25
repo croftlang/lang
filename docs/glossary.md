@@ -30,6 +30,14 @@ ports and repositories live at context level.
 A value object: defined only by its fields, equal when its fields are equal,
 and never changed. Made with its type name, `Position { x: 10, y: 20 }`.
 
+### Single-value type
+A value around one value of another type, so it can't be mixed up with
+other uses of that type: `value Score: Int where Range(0, 999_999)`. Made
+with `Score(120)`, or a literal where a `Score` is expected, and read with
+`score.value`. It has none of the operators of the type it holds, so
+`Score(score.value + 10)` makes a new one, and its constraints are checked
+there.
+
 ### With
 Makes a changed copy of a value: `start with { x: start.x + 1 }`. The original
 is untouched.

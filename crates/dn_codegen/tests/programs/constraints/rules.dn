@@ -11,6 +11,8 @@ context Clinic {
 
     fn heal(amount: Int where Range(1, 50)): Int = amount * 2
 
+    value Score: Int where Range(0, 999)
+
     fn pay(amount: Decimal<2> where Range(0.01, 99.99)): Decimal<2> = amount
 
     fn half(number: Int): Int where Even = number / 2
@@ -35,6 +37,9 @@ context Clinic {
         }
         if chosen.contains("each") {
             let counted = count([2, 3])
+        }
+        if chosen.contains("score") {
+            let score = Score(chosen.length * 5000)
         }
         if chosen.contains("pay") {
             let paid = pay(120)

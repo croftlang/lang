@@ -80,6 +80,11 @@ impl<'a> Model<'a> {
             .collect()
     }
 
+    /// The type a single-value type holds, such as `Int` for `Score`.
+    pub fn single_value_inner(&self, ty: &Type) -> Option<Type> {
+        self.checker.single_value_inner(ty)
+    }
+
     /// What an adapter for `port`, a port or a repository, provides.
     pub fn operations_of(&self, port: &Resolved) -> Vec<Operation<'a>> {
         self.checker.operations_of(port)

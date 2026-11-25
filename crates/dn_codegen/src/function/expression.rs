@@ -91,6 +91,12 @@ impl<'g, 'a> Writer<'g, 'a> {
         if let (Type::Decimal(places), Type::Int) = (to, from) {
             return format!("({c} * {}L)", scale(*places));
         }
+        if let Some(inner) = self.gen.model.single_value_inner(to) {
+            if inner != *to && self.gen.c_type(from) != self.gen.c_type(to) {
+                let value = self.convert(c, from, &inner);
+                return self.wrap_single_value(value, to);
+            }
+        }
         if self.gen.c_type(from) == self.gen.c_type(to) {
             return c;
         }
@@ -104,6 +110,15 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             _ => c,
         }
+    }
+
+    /// A single-value type around `value`, checked against its constraints
+    /// in debug builds: `Score(120)`, or `120` where a `Score` is expected.
+    pub fn wrap_single_value(&mut self, value: String, ty: &Type) -> String {
+        let temp = self.temp(ty);
+        self.line(format!("{temp}.value = {value};"));
+        self.check_fields(&temp, ty);
+        temp
     }
 
     /// A C expression that is true when two values of `ty` are equal.

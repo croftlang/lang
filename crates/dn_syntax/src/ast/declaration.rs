@@ -42,6 +42,9 @@ pub struct ValueDecl {
     pub name: Identifier,
     pub fields: Vec<Field>,
     pub invariants: Vec<Invariant>,
+    /// Written `value Score: Int where Range(0, 999_999)`: a type of its own
+    /// around one value, held in a single field called `value`.
+    pub single: bool,
 }
 
 /// An aggregate, or the part of one written in a single file.

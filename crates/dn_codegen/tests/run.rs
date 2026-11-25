@@ -168,6 +168,13 @@ fn checks_rules_in_debug_builds() {
         (Some(1), "count: numbers must satisfy each Even".to_string())
     );
     assert_eq!(
+        run("debug", "score"),
+        (
+            Some(1),
+            "Score: value must satisfy Range(0, 999)".to_string()
+        )
+    );
+    assert_eq!(
         run("debug", "pay"),
         (
             Some(1),

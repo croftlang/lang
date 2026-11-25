@@ -34,7 +34,7 @@ impl Parser {
         self.expect(&TokenKind::LeftBrace)?;
         let mut values = Vec::new();
         while !self.eat(&TokenKind::RightBrace) {
-            let name = self.expect_identifier()?;
+            let name = self.expect_field_name()?;
             let value = if self.eat(&TokenKind::Colon) {
                 Some(self.with_records(true, Self::parse_expression)?)
             } else {
