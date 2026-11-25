@@ -1,6 +1,7 @@
 //! A read-only view of a checked program's declarations, for code generation.
 
 use super::operations::Operation;
+use super::repository::StorageShape;
 use std::collections::HashMap;
 
 use croft_syntax::ast::{Field, Path, TypeExpr};
@@ -102,5 +103,18 @@ impl<'a> Model<'a> {
 
     pub fn repository_aggregate(&self, repository: &Resolved) -> Option<Resolved> {
         self.checker.repository_aggregate(repository)
+    }
+
+    /// Which shape a repository's operation has, if `Storage` can provide it.
+    pub fn storage_shape(&self, repository: &Resolved, operation: &str) -> Option<StorageShape> {
+        let aggregate = self.checker.repository_aggregate(repository)?;
+        let operations = self.checker.operations_of(repository);
+        let operation = operations.iter().find(|op| op.name == operation)?;
+        self.checker.storage_shape(&aggregate, operation)
+    }
+
+    /// The find and save `issue ... on Room(id)` loads and saves through.
+    pub fn find_and_save(&self, repository: &Resolved) -> Option<(Operation<'a>, Operation<'a>)> {
+        self.checker.find_and_save(repository)
     }
 }

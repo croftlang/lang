@@ -91,11 +91,15 @@ const SHOP: &str = "context Shop {\n\
     service Main(): Result<Unit, StorageError> {\n calls Shelves\n} = shelves.save(Shelf { id: 1 })\n}";
 
 fn check_shop(adapters: &str) -> Vec<String> {
+    check_source(SHOP, adapters)
+}
+
+fn check_source(source: &str, adapters: &str) -> Vec<String> {
     let text = toml(&format!(
         "[target.test]\nmain = \"Main\"\n\n[target.test.adapters]\n{adapters}"
     ));
     let manifest = Manifest::parse(&text, SourceId(1)).unwrap_or_else(|e| panic!("{}", e.message));
-    let file = parse(SHOP, SourceId(0)).expect("valid syntax");
+    let file = parse(source, SourceId(0)).expect("valid syntax");
     match crate::check(vec![file], Some(manifest)) {
         Ok(_) => Vec::new(),
         Err(errors) => errors
@@ -127,5 +131,33 @@ fn keeps_repositories_in_memory_or_in_files() {
     assert_eq!(
         check_shop("Shelves = \"Cloud\"\n"),
         vec!["8: cannot find an adapter named `Cloud`"]
+    );
+}
+
+#[test]
+fn keeps_in_storage_only_finds_saves_and_removes() {
+    let shop = |operations: &str| {
+        format!(
+            "context Shop {{\n\
+             identity ShelfId: Int where Range(1, 9)\n\
+             aggregate Shelf {{\n identity id: ShelfId\n error NotFound\n }}\n\
+             enum Lookup {{\n include Shelf.NotFound\n include StorageError\n }}\n\
+             repository Shelves for Shelf {{\n{operations}\n}}\n\
+             service Main(): Result<Unit, StorageError> {{\n calls Shelves\n}} = Ok(Unit)\n}}"
+        )
+    };
+    let kept = "fn find(id: ShelfId): Result<Shelf, Lookup>\n\
+                fn find_kept(id: ShelfId): Result<Option<Shelf>, StorageError>\n\
+                fn save(shelf: Shelf): Result<Unit, StorageError>\n\
+                fn remove(id: ShelfId): Result<Unit, StorageError>";
+    assert_eq!(check_source(&shop(kept), ""), Vec::<String>::new());
+    let empty = "fn empty(): Result<List<Shelf>, StorageError>";
+    assert_eq!(
+        check_source(&shop(empty), "Shelves = \"MemoryStorage\"\n"),
+        vec!["8: `Storage` can't provide `Shelves.empty`, so target `test` needs an adapter written for `Shelves`"]
+    );
+    assert_eq!(
+        check_source(&shop(empty), ""),
+        vec!["4: `Storage` can't provide `Shelves.empty`, so target `test` needs an adapter written for `Shelves`"]
     );
 }

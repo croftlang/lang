@@ -98,6 +98,15 @@ impl<'a> Checker<'a> {
                 self.error(message, adapter_name.span);
             }
         }
+        // A repository the target doesn't bind is kept in `MemoryStorage`.
+        for repository in self.all_of(SymbolKind::Repository) {
+            let named = (target.adapters.iter()).any(|(port, _)| {
+                self.find_quietly(port, SymbolKind::Repository).as_ref() == Some(&repository)
+            });
+            if !named {
+                self.check_storage_shapes(target, &repository, target.name.span);
+            }
+        }
         for (_, port) in needed.difference(&bound) {
             let message = format!(
                 "target `{}` has no adapter for port `{port}`",
@@ -140,6 +149,9 @@ impl<'a> Checker<'a> {
             self.error(message, name.span);
             return;
         }
+        if is_storage {
+            self.check_storage_shapes(target, repository, name.span);
+        }
         let saves_in_files = adapter.context == STORAGE_CONTEXT && adapter.name == FILE_STORAGE;
         let binds_files = target.adapters.iter().any(|(port, _)| port.name == "Files");
         if saves_in_files && !binds_files {
@@ -148,6 +160,28 @@ impl<'a> Checker<'a> {
                 target.name.name
             );
             self.error(message, name.span);
+        }
+    }
+
+    /// `Storage` provides only finds, saves and removes, so a repository
+    /// with any other operation needs an adapter written for it.
+    fn check_storage_shapes(
+        &mut self,
+        target: &TargetConfig,
+        repository: &Resolved,
+        span: croft_syntax::Span,
+    ) {
+        let Some(aggregate) = self.repository_aggregate(repository) else {
+            return;
+        };
+        for operation in self.operations_of(repository) {
+            if self.storage_shape(&aggregate, &operation).is_none() {
+                let message = format!(
+                    "`Storage` can't provide `{}.{}`, so target `{}` needs an adapter written for `{}`",
+                    repository.name, operation.name, target.name.name, repository.name
+                );
+                self.error(message, span);
+            }
         }
     }
 

@@ -262,3 +262,23 @@ fn explains_that_storage_is_chosen_in_the_project_file() {
         "a repository's storage is chosen in croft.toml, such as `Rooms = \"FileStorage\"`"
     );
 }
+
+#[test]
+fn reads_a_repository_with_and_without_operations() {
+    let source = "context Shop {\n    repository Tills for Till\n    repository Shelves for Shelf {\n        \
+                  fn find(id: ShelfId): Result<Option<Shelf>, StorageError>\n        \
+                  fn empty(): Result<List<Shelf>, StorageError>\n    }\n}";
+    let file = parse_ok(source);
+    let items = &only_context(&file).items;
+    let ContextItem::Repository(tills) = &items[0] else {
+        panic!("expected a repository")
+    };
+    assert!(tills.operations.is_none());
+    let ContextItem::Repository(shelves) = &items[1] else {
+        panic!("expected a repository")
+    };
+    let operations = shelves.operations.as_ref().unwrap();
+    assert_eq!(operations.len(), 2);
+    assert_eq!(operations[1].name.name, "empty");
+    assert_eq!(operations[1].kind, FunctionKind::Operation);
+}

@@ -59,7 +59,6 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
         }
         Type::Int | Type::Float => methods(&["to_string"]),
         Type::Decimal(_) => methods(&["to_string", "round"]),
-        Type::Repository(_) => methods(&["find", "save"]),
         Type::Port(port) if port.context.is_empty() => match port.name.as_str() {
             "Arguments" => methods(&["all"]),
             "Console" => methods(&["print"]),

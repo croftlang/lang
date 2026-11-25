@@ -65,7 +65,8 @@ impl Parser {
         Ok(operation)
     }
 
-    /// `repository Rooms for Room`
+    /// `repository Rooms for Room`, or with operations of its own:
+    /// `repository Rooms for Room { fn find(id: RoomId): ... }`
     pub(super) fn parse_repository(&mut self) -> ParseResult<RepositoryDecl> {
         let doc = self.doc();
         self.expect_keyword(Keyword::Repository)?;
@@ -77,10 +78,20 @@ impl Parser {
                 "a repository's storage is chosen in croft.toml, such as `Rooms = \"FileStorage\"`";
             return Err(Diagnostic::new(message, self.span()));
         }
+        let operations = if self.eat(&TokenKind::LeftBrace) {
+            let mut operations = Vec::new();
+            while !self.eat(&TokenKind::RightBrace) {
+                operations.push(self.parse_operation()?);
+            }
+            Some(operations)
+        } else {
+            None
+        };
         Ok(RepositoryDecl {
             doc,
             name,
             aggregate,
+            operations,
         })
     }
 }

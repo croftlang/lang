@@ -39,7 +39,14 @@ impl<'a> Model<'a> {
 
     /// Every declaration of one kind, across all contexts.
     pub fn all(&self, kind: SymbolKind) -> Vec<Resolved> {
-        let mut found: Vec<Resolved> = (self.checker.tables.iter())
+        self.checker.all_of(kind)
+    }
+}
+
+impl<'a> super::Checker<'a> {
+    /// Every declaration of one kind, across all contexts.
+    pub(super) fn all_of(&self, kind: SymbolKind) -> Vec<Resolved> {
+        let mut found: Vec<Resolved> = (self.tables.iter())
             .flat_map(|(context, table)| {
                 table
                     .symbols

@@ -42,6 +42,7 @@ use crate::symbols::SymbolTable;
 
 pub use model::{Model, VariantInfo};
 pub use operations::Operation;
+pub use repository::StorageShape;
 pub(crate) use resolve::{Resolved, Scope};
 
 pub use rounds::{analyze, check, Analysis};

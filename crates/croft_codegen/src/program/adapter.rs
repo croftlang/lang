@@ -129,8 +129,8 @@ impl<'a> Generator<'a> {
         (state, out)
     }
 
-    /// Whether `adapter` was written for `repository` itself, giving its
-    /// `find` and `save`, rather than for `Storage`.
+    /// Whether `adapter` was written for `repository` itself, giving the
+    /// operations it declares, rather than for `Storage`.
     pub fn is_repository_adapter(&self, repository: &Resolved, adapter: &Resolved) -> bool {
         let context = &self.program.contexts[&adapter.context];
         let decl = context

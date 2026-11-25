@@ -1,0 +1,9 @@
+[package]
+name = "repository_operations"
+
+[target.test]
+main = "Check"
+
+[target.test.adapters]
+Shelves = "MemoryStorage"
+Tills = "ListTills"

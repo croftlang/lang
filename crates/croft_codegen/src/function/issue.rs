@@ -35,12 +35,16 @@ impl<'g, 'a> Writer<'g, 'a> {
         let Some(repository) = self.gen.model.repository_for(&aggregate) else {
             return "0".to_string();
         };
+        let Some((find, save)) = self.gen.model.find_and_save(&repository) else {
+            return "0".to_string();
+        };
         let repository = c_name(&repository);
+        let (find, save) = (find.name, save.name);
         let changed_type = Type::result(aggregate_type, Type::Errors(Vec::new()));
         let found = self.temp(&changed_type);
         let changed = self.temp(&changed_type);
         let result = self.temp(ty);
-        self.line(format!("{repository}_find({identity}, &{found});"));
+        self.line(format!("{repository}_{find}({identity}, &{found});"));
         self.open(format!("if (!{found}.ok)"));
         self.line(format!("{result}.ok = 0;"));
         self.line(format!("{result}.error = {found}.error;"));
@@ -55,7 +59,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.line(format!("{result}.error = {changed}.error;"));
         self.close();
         self.line(format!(
-            "else {repository}_save(&{changed}.value, &{result});"
+            "else {repository}_{save}(&{changed}.value, &{result});"
         ));
         self.close();
         result

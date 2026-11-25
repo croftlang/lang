@@ -53,8 +53,28 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         if !by_identity {
             return Type::result(Type::Named(aggregate), errors);
         }
-        let storage = self.checker.storage_error();
-        Type::result(Type::Unit, Type::Errors(vec![errors, storage]))
+        let mut all = vec![errors];
+        let repository = self.checker.repository_for(&aggregate);
+        match repository.and_then(|r| self.checker.find_and_save(&r)) {
+            Some((find, save)) => {
+                for result in [find.result, save.result] {
+                    if let Type::Result(_, error) = result {
+                        match *error {
+                            Type::Errors(errors) => all.extend(errors),
+                            error => all.push(error),
+                        }
+                    }
+                }
+            }
+            None => all.push(self.checker.storage_error()),
+        }
+        let mut errors: Vec<Type> = Vec::new();
+        for error in all {
+            if !errors.contains(&error) {
+                errors.push(error);
+            }
+        }
+        Type::result(Type::Unit, Type::Errors(errors))
     }
 
     /// The aggregate named by an `on Room(id)` target, after checking `id`.
@@ -73,11 +93,19 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 target.span,
             );
         }
-        if self.checker.repository_for(&aggregate).is_none() {
-            self.error(
+        match self.checker.repository_for(&aggregate) {
+            None => self.error(
                 format!("`{}` has no repository to load it from", aggregate.name),
                 target.span,
-            );
+            ),
+            Some(repository) if self.checker.find_and_save(&repository).is_none() => {
+                let message = format!(
+                    "issuing a command on `{}(...)` loads and saves it through `{}`, which needs a find by identity that fails with `{}.NotFound`, and a save",
+                    aggregate.name, repository.name, aggregate.name
+                );
+                self.error(message, target.span);
+            }
+            Some(_) => {}
         }
         let identity = self.checker.identity_of(&aggregate);
         let parameters = [("identity".to_string(), identity)];

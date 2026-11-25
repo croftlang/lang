@@ -268,15 +268,19 @@ which also handles HTTPS, so a program that binds it is linked with `-lcurl`.
 What the domain needs from the outside world, by signature only.
 
 ### Repository
-A port for loading and saving one aggregate: `repository Cargos for Cargo`.
-The compiler writes `find` and `save`. `find` fails with the aggregate's
-errors or a `StorageError`, and `save` with a `StorageError`. Each target
-binds the repository in `croft.toml` to an adapter for `Storage`, which keeps
-the bytes the compiler makes from each aggregate under a key such as
-`carg12` for cargo 12: `MemoryStorage`, the default, `FileStorage`, or one of the
-program's own. An adapter can also be written for the repository itself,
-`adapter SqlCargos for Cargos = { fn find(id) = ... fn save(cargo) = ... }`,
-to keep aggregates its own way.
+A port for keeping one aggregate. `repository Cargos for Cargo` on its own
+has `find` and `save`: `find` fails with the aggregate's errors or a
+`StorageError`, and `save` with a `StorageError`. Or it declares its own
+operations, named in the ubiquitous language:
+`repository Cargos for Cargo { fn awaiting_customs(): Result<List<Cargo>, StorageError> }`.
+Each operation takes or gives back only that aggregate, its identity or plain
+values, and can fail with a `StorageError`. Each target binds the repository
+in `croft.toml` to an adapter written for the repository itself, to keep
+aggregates its own way, or to an adapter for `Storage`, which keeps the bytes
+the compiler makes from each aggregate under a key such as `carg12` for
+cargo 12: `MemoryStorage`, the default, `FileStorage`, or one of the
+program's own. `Storage` can only provide a find by identity, giving an
+`Option` or failing with `NotFound`, a save and a remove.
 
 ### Storage
 The built-in port that repositories keep their aggregates through: `load`

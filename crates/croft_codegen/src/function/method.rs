@@ -20,13 +20,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         match &receiver_type {
             Type::Port(port) => self.port_call(port, name, arguments, ty),
             Type::Repository(repository) => {
-                let aggregate = self.gen.model.repository_aggregate(repository);
-                let parameter = match (name, aggregate) {
-                    ("find", Some(aggregate)) => self.gen.model.identity_of(&aggregate),
-                    (_, Some(aggregate)) => Type::Named(aggregate),
-                    _ => Type::Unknown,
-                };
-                let passed = self.pass_all(arguments, &[("value".to_string(), parameter)]);
+                let parameters = self.gen.operation_parameters(repository, name);
+                let passed = self.pass_all(arguments, &parameters);
                 self.call_into(&format!("{}_{name}", c_name(repository)), passed, ty)
             }
             Type::String => {

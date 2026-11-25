@@ -324,3 +324,11 @@ fn compiles_the_logistics_fixture_for_every_target() {
         fs::remove_dir_all(output).ok();
     }
 }
+
+/// Repositories that declare their own operations: finds, a save and a
+/// remove that Storage provides, and a query an adapter written for the
+/// repository answers.
+#[test]
+fn runs_operations_a_repository_declares() {
+    run_program("repository_operations");
+}
