@@ -1,4 +1,4 @@
-//! Naming rules: types in PascalCase, functions and fields in snake_case and
+//! Naming conventions: types in PascalCase, functions and fields in snake_case and
 //! constants in UPPER_SNAKE_CASE.
 
 use dn_syntax::ast::{Field, FunctionKind, Identifier, RecordDecl};

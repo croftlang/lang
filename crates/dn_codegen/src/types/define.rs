@@ -71,10 +71,10 @@ impl<'a> Generator<'a> {
                 SymbolKind::Identity => {
                     let scope = &self.program.contexts[&named.context];
                     let identity = scope.identities.iter().find(|i| i.name.name == named.name);
-                    let rules = identity.map_or(&[][..], |i| &i.rules[..]);
+                    let constraints = identity.map_or(&[][..], |i| &i.constraints[..]);
                     format!(
                         "typedef {} {};\n\n",
-                        int_width(self.program, &self.model, &named.context, rules),
+                        int_width(self.program, &self.model, &named.context, constraints),
                         c_name(named)
                     )
                 }

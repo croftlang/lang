@@ -102,7 +102,7 @@ fn counts_a_loop_through_a_range() {
     let service = "service Draw(): Unit = {\n loop (let row where Length(0, 23)) {\n Unit\n }\n}";
     assert_error(
         &game(service),
-        "a counted loop needs a `Range` rule, such as `where Range(0, 9)`",
+        "a counted loop needs a `Range` constraint, such as `where Range(0, 9)`",
     );
 }
 

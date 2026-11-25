@@ -1,6 +1,6 @@
 //! Declarations with behaviour, and the boundary with the outside world.
 
-use super::{Expr, Field, Identifier, Parameter, Path, Rule, TypeExpr};
+use super::{ConstraintUse, Expr, Field, Identifier, Parameter, Path, TypeExpr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FunctionKind {
@@ -22,7 +22,7 @@ pub struct FunctionDecl {
     pub name: Identifier,
     pub parameters: Option<Vec<Parameter>>,
     pub return_type: Option<TypeExpr>,
-    pub return_rules: Vec<Rule>,
+    pub return_constraints: Vec<ConstraintUse>,
     pub preconditions: Vec<Expr>,
     /// The ports a service or domain calls: `calls Screen, Keyboard`.
     pub calls: Vec<Path>,

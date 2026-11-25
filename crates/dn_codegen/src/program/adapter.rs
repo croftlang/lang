@@ -4,7 +4,7 @@
 use dn_analysis::Type;
 
 use super::super::types::define::struct_definition;
-use super::rules::CheckPlace;
+use super::constraints::CheckPlace;
 use crate::function::{OwnFields, Returns, Writer};
 use crate::names::c_name;
 use crate::Generator;
@@ -92,15 +92,15 @@ impl<'a> Generator<'a> {
                     aggregate: None,
                     label: &label,
                 };
-                let rules = expected
+                let constraints = expected
                     .parameters
                     .iter()
                     .flatten()
-                    .map(|p| p.rules.as_slice());
-                let checked: Vec<(String, Type, &[dn_syntax::ast::Rule])> = renamed
+                    .map(|p| p.constraints.as_slice());
+                let checked: Vec<(String, Type, &[dn_syntax::ast::ConstraintUse])> = renamed
                     .iter()
-                    .zip(rules)
-                    .map(|((n, ty), rules)| (n.clone(), ty.clone(), rules))
+                    .zip(constraints)
+                    .map(|((n, ty), constraints)| (n.clone(), ty.clone(), constraints))
                     .collect();
                 if let Some(call) = self.argument_check(&function, &place, &checked) {
                     writer.debug_call(&call);
@@ -108,7 +108,7 @@ impl<'a> Generator<'a> {
                 if let Some(body) = &operation.body {
                     let value = writer.value(body, &result);
                     if let Some(check) =
-                        self.result_check(&function, &place, &result, &expected.return_rules)
+                        self.result_check(&function, &place, &result, &expected.return_constraints)
                     {
                         let passed = writer.pass(value.clone(), &result);
                         writer.debug_call(&format!("{check}({passed});"));

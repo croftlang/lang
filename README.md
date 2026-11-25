@@ -3,7 +3,7 @@
 dn is a domain language. The domain model is the program: you write it with
 domain-driven design's building blocks (contexts, values, entities,
 aggregates, commands, events, ports and adapters) and the compiler checks the
-rules you attach to them. dn is designed to compile to portable C, so one
+constraints you attach to them. dn is designed to compile to portable C, so one
 program can run on a ZX Spectrum, an Atari ST, Windows, macOS and Linux.
 
 ```dn
@@ -56,7 +56,7 @@ The design is still being decided. The terms are in
 [docs/glossary.md](docs/glossary.md).
 
 The compiler reads the current syntax and checks declarations: every name
-resolves, rules and invariants name real constraints and errors, aggregates
+resolves, `where` clauses and invariants name real constraints and errors, aggregates
 and entities have one identity, adapters provide their port's operations, and
 `dn.toml` gives every port its services use an adapter on each target.
 
@@ -162,10 +162,10 @@ cc -std=c89 *.c -o dungeon
 - **C89 only.** No `//` comments, no declarations after statements, no
   floating point unless the program uses `Float`, and structs are passed by
   pointer, since cc65 can only pass 1, 2 and 4 byte structs by value.
-- **Fixed sizes.** A list holds as many items as the largest `Length` rule
+- **Fixed sizes.** A list holds as many items as the largest `Length` constraint
   on any list of its item type (16 when there is none), and every string has
-  room for the longest string any rule allows (32 by default). A whole
-  number field with a `Range` rule takes the smallest C type that fits.
+  room for the longest string any constraint allows (32 by default). A whole
+  number field with a `Range` constraint takes the smallest C type that fits.
 - **Errors** share one C type, `dn_error`, which holds a code and the error's fields.
 - **Events** are queued by commands and kept once the aggregate that raised
   them is saved. When a service ends, its kept events go to the policies;
@@ -174,9 +174,9 @@ cc -std=c89 *.c -o dungeon
   the storage port comes later.
 - **Contracts.** Preconditions with an error, and invariants, are always
   checked. Built with `-DDN_DEBUG`, a program also checks plain preconditions
-  and every `where` rule: on arguments when a function, command or adapter
+  and every `where` constraint: on arguments when a function, command or adapter
   operation starts, on results before they are given back, and on fields
-  whenever a value is built or a command ends. A broken rule stops the
+  whenever a value is built or a command ends. A broken constraint stops the
   program with a message such as `heal: amount must satisfy Range(1, 50)`.
   Release builds skip these checks.
 

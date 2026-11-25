@@ -1,16 +1,16 @@
-//! Debug-build checks of `where` rules: on a function's arguments when it
+//! Debug-build checks of `where` constraints: on a function's arguments when it
 //! starts, on its result before it returns, and on a value's fields when it
 //! is built. Each check is its own function, compiled only with `DN_DEBUG`.
 
 use dn_analysis::types::Resolved;
 use dn_analysis::Type;
-use dn_syntax::ast::Rule;
+use dn_syntax::ast::ConstraintUse;
 
 use crate::function::{Returns, Writer};
 use crate::names::c_name;
 use crate::Generator;
 
-/// Where a check's rules are looked up, and how its messages name things.
+/// Where a check's constraints are looked up, and how its messages name things.
 pub struct CheckPlace<'r> {
     pub context: &'r str,
     pub aggregate: Option<&'r str>,
@@ -18,15 +18,18 @@ pub struct CheckPlace<'r> {
 }
 
 impl<'a> Generator<'a> {
-    /// A function that checks each argument against its rules, and the call
-    /// to it, when any argument has rules.
+    /// A function that checks each argument against its constraints, and the call
+    /// to it, when any argument has constraints.
     pub fn argument_check(
         &self,
         function: &str,
         place: &CheckPlace,
-        parameters: &[(String, Type, &[Rule])],
+        parameters: &[(String, Type, &[ConstraintUse])],
     ) -> Option<String> {
-        if parameters.iter().all(|(_, _, rules)| rules.is_empty()) {
+        if parameters
+            .iter()
+            .all(|(_, _, constraints)| constraints.is_empty())
+        {
             return None;
         }
         let name = format!("dn_check_{function}");
@@ -36,10 +39,15 @@ impl<'a> Generator<'a> {
             .collect();
         let mut writer = self.check_writer(place);
         writer.bind_parameters(&typed);
-        for (parameter, ty, rules) in parameters {
+        for (parameter, ty, constraints) in parameters {
             let (value, _) = writer.lookup(parameter).expect("a bound parameter");
-            for rule in rules.iter() {
-                writer.check_rule(&value, ty, rule, &format!("{}: {parameter}", place.label));
+            for constraint in constraints.iter() {
+                writer.check_constraint(
+                    &value,
+                    ty,
+                    constraint,
+                    &format!("{}: {parameter}", place.label),
+                );
             }
         }
         self.add_check(writer, &self.signature(&name, &[], &typed, None));
@@ -47,15 +55,15 @@ impl<'a> Generator<'a> {
         Some(format!("{name}({});", arguments.join(", ")))
     }
 
-    /// A function that checks a result against its rules, when it has any.
+    /// A function that checks a result against its constraints, when it has any.
     pub fn result_check(
         &self,
         function: &str,
         place: &CheckPlace,
         ty: &Type,
-        rules: &[Rule],
+        constraints: &[ConstraintUse],
     ) -> Option<String> {
-        if rules.is_empty() || matches!(ty, Type::Result(..)) {
+        if constraints.is_empty() || matches!(ty, Type::Result(..)) {
             return None;
         }
         let name = format!("dn_check_result_{function}");
@@ -63,18 +71,26 @@ impl<'a> Generator<'a> {
         let parameters = [("result".to_string(), ty.clone())];
         writer.bind_parameters(&parameters);
         let (value, _) = writer.lookup("result").expect("a bound parameter");
-        for rule in rules {
-            writer.check_rule(&value, ty, rule, &format!("{}: the result", place.label));
+        for constraint in constraints {
+            writer.check_constraint(
+                &value,
+                ty,
+                constraint,
+                &format!("{}: the result", place.label),
+            );
         }
         self.add_check(writer, &self.signature(&name, &[], &parameters, None));
         Some(name)
     }
 
-    /// The function that checks a value's fields against their rules, when
-    /// any field has rules. Generated once for each type.
+    /// The function that checks a value's fields against their constraints, when
+    /// any field has constraints. Generated once for each type.
     pub fn field_check(&self, named: &Resolved) -> Option<String> {
         let fields = self.model.fields(named);
-        if fields.iter().all(|(_, _, field)| field.rules.is_empty()) {
+        if fields
+            .iter()
+            .all(|(_, _, field)| field.constraints.is_empty())
+        {
             return None;
         }
         let name = format!("dn_check_{}", c_name(named));
@@ -93,11 +109,11 @@ impl<'a> Generator<'a> {
         let ty = Type::Named(named.clone());
         writer.bind_parameters(&[("value".to_string(), ty.clone())]);
         for (field, field_type, decl) in &fields {
-            for rule in &decl.rules {
-                writer.check_rule(
+            for constraint in &decl.constraints {
+                writer.check_constraint(
                     &format!("p_value->{field}"),
                     field_type,
-                    rule,
+                    constraint,
                     &format!("{}: {field}", named.name),
                 );
             }
@@ -144,7 +160,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.directive("#endif");
     }
 
-    /// Checks a value just built against its type's field rules, in debug builds.
+    /// Checks a value just built against its type's field constraints, in debug builds.
     pub fn check_fields(&mut self, value: &str, ty: &Type) {
         let Type::Named(named) = ty else { return };
         if let Some(check) = self.gen.field_check(named) {

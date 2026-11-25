@@ -1,4 +1,4 @@
-use super::{Identifier, Path, Rule, TypeExpr};
+use super::{ConstraintUse, Identifier, Path, TypeExpr};
 use crate::span::{SourceId, Span};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -73,11 +73,11 @@ pub struct FieldValue {
     pub value: Option<Expr>,
 }
 
-/// The counter of a counted loop: it takes every value its rules allow, in order.
+/// The counter of a counted loop: it takes every value its constraints allow, in order.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoopCounter {
     pub name: Identifier,
-    pub rules: Vec<Rule>,
+    pub constraints: Vec<ConstraintUse>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -113,7 +113,7 @@ fn reads_a_counted_loop() {
         panic!("expected a counter")
     };
     assert_eq!(counter.name.name, "i");
-    assert_eq!(counter.rules.len(), 1);
+    assert_eq!(counter.constraints.len(), 1);
 }
 
 #[test]

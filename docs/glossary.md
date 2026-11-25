@@ -57,10 +57,10 @@ The consistency boundary around one or more entities and values. It owns its
 entities, invariants, errors, events and commands, and is only changed by its
 own commands.
 
-## Rules
+## Constraints and invariants
 
 ### Constraint
-A named, pure rule that returns `Bool`. Its first parameter is the value being
+A named, pure check that returns `Bool`. Its first parameter is the value being
 checked.
 
 ### Range and Length
@@ -74,10 +74,10 @@ Attaches constraints to a type, on a field, parameter or return type:
 
 ### Each
 Applies a constraint to every item in a list: `where Length(0, 16), each Alive`.
-For rules about being in that list, not about the item itself.
+For constraints about being in that list, not about the item itself.
 
 ### Invariant
-A rule about an aggregate as a whole, declared inside it and checked after
+A constraint on an aggregate as a whole, declared inside it and checked after
 every command: `invariant ExitClear or ExitBlocked`.
 
 ### Error
@@ -95,12 +95,12 @@ builds, which stop with a message.
 ### Contract
 What a piece of code needs and what it promises, written before its body:
 its preconditions and, for services, `calls` in the braces between the
-signature and `=`; the `where` rules on its parameters and result, which
+signature and `=`; the `where` constraints on its parameters and result, which
 a parameter can have after its type or in the braces (`damage where
 Range(1, 20)`); and, for
 an aggregate, its invariants. The braces are left out when there is nothing
-to say. Debug builds check every `where` rule as the program runs, and
-stop with a message naming the rule that broke. A contract states domain
+to say. Debug builds check every `where` constraint as the program runs, and
+stop with a message naming the constraint that broke. A contract states domain
 rules once, where they apply, names
 failures in the ubiquitous language, keeps bodies simple, and tells the
 compiler how much memory data needs.
@@ -154,7 +154,7 @@ service's own `let` name. Not allowed anywhere else.
 ### Loop
 Repeats a block, in services and adapters only. `loop { ... }` runs until
 `break`. `loop (let i where Range(0, 99)) { ... }` runs once for each value the
-counter's rules allow, in order; `Range` includes both ends, so that loop runs
+counter's constraints allow, in order; `Range` includes both ends, so that loop runs
 100 times. A loop gives back `Unit`, and `?` inside it leaves the whole service.
 
 ### Break
@@ -219,7 +219,7 @@ targets use it is chosen in `dn.toml`, so one adapter can serve several.
 
 ### Starting value
 What an adapter's field holds when the program starts, written after its
-type and rules: `keys: List<Key> where Length(0, 32) = [Right, Fire]`. Every
+type and constraints: `keys: List<Key> where Length(0, 32) = [Right, Fire]`. Every
 adapter field needs one; no other field has one.
 
 ### Native

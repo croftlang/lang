@@ -48,16 +48,11 @@ pub struct TypeExpr {
     pub number: Option<i64>,
 }
 
-/// One constraint after `where`, applied to the value or, with `each`, to every item.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Rule {
-    pub each: bool,
-    pub constraint: ConstraintUse,
-}
-
-/// A constraint applied to a value: `Range(0, 100)`. The value is its first argument.
+/// A constraint applied to a value after `where`: `Range(0, 100)`, or with
+/// `each`, applied to every item of a list. The value is its first argument.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConstraintUse {
+    pub each: bool,
     pub name: Path,
     pub arguments: Vec<Expr>,
 }
@@ -67,7 +62,7 @@ pub struct Field {
     pub doc: Vec<String>,
     pub name: Identifier,
     pub ty: TypeExpr,
-    pub rules: Vec<Rule>,
+    pub constraints: Vec<ConstraintUse>,
     pub is_identity: bool,
     /// The starting value of an adapter's field: `keys: List<Key> = []`.
     pub value: Option<Expr>,
@@ -79,7 +74,7 @@ pub struct Field {
 pub struct Parameter {
     pub name: Identifier,
     pub types: Vec<TypeExpr>,
-    pub rules: Vec<Rule>,
+    pub constraints: Vec<ConstraintUse>,
 }
 
 /// Everything read from one source file: the contexts, or parts of

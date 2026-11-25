@@ -4,13 +4,13 @@
 mod adapter;
 mod command;
 mod constant;
+mod constraints;
 mod equality;
 mod events;
 mod functions;
 mod lookup;
 mod main;
 mod repository;
-mod rules;
 mod signature;
 
 use crate::{GeneratedFile, Generator};

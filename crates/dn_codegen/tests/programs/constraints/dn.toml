@@ -1,5 +1,5 @@
 [package]
-name = "rules"
+name = "constraints"
 
 [target.test]
 main = "Start"

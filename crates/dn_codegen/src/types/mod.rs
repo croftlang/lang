@@ -1,4 +1,4 @@
-//! C type definitions: structs for dn types, sizes from rules, and their order.
+//! C type definitions: structs for dn types, sizes from constraints, and their order.
 
 pub mod constant;
 pub mod define;

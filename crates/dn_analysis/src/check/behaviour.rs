@@ -30,7 +30,7 @@ impl<'a> Checker<'a> {
             }
             (Some(ty), _) => {
                 self.check_type(scope, ty, false);
-                self.check_rules(scope, &function.return_rules, Some(ty));
+                self.check_constraints(scope, &function.return_constraints, Some(ty));
             }
             (None, _) => {}
         }

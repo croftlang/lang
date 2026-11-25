@@ -8,7 +8,7 @@ use crate::token::TokenKind;
 
 impl Parser {
     /// The braces between a signature and its body: preconditions, one per
-    /// line, rules for parameters, and the ports a service `calls`. Left out
+    /// line, constraints for parameters, and the ports a service `calls`. Left out
     /// when empty.
     pub(super) fn parse_contract(
         &mut self,
@@ -28,7 +28,7 @@ impl Parser {
                     }
                 }
             } else if self.peek_nth(1).kind == TokenKind::Keyword(Keyword::Where) {
-                self.parse_parameter_rules(parameters.as_deref_mut())?;
+                self.parse_parameter_constraints(parameters.as_deref_mut())?;
             } else {
                 preconditions.push(self.parse_expression()?);
             }
@@ -47,21 +47,21 @@ impl Parser {
         Ok(())
     }
 
-    /// `damage where Range(1, 20)` in a contract: the same rules as writing
+    /// `damage where Range(1, 20)` in a contract: the same constraints as writing
     /// them after the parameter's type, so they are added to the parameter.
-    fn parse_parameter_rules(
+    fn parse_parameter_constraints(
         &mut self,
         parameters: Option<&mut Vec<Parameter>>,
     ) -> ParseResult<()> {
         let name = self.expect_identifier()?;
-        let rules = self.parse_rules()?;
+        let constraints = self.parse_constraints()?;
         let parameter =
             parameters.and_then(|all| all.iter_mut().find(|p| p.name.name == name.name));
         match parameter {
-            Some(parameter) => parameter.rules.extend(rules),
+            Some(parameter) => parameter.constraints.extend(constraints),
             None => {
                 let message = format!(
-                    "`{}` is not a parameter, so it can't have rules here",
+                    "`{}` is not a parameter, so it can't have constraints here",
                     name.name
                 );
                 return Err(Diagnostic::new(message, name.span));

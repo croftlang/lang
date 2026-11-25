@@ -1,6 +1,6 @@
 use super::{
     AdapterDecl, ConstraintUse, Expr, Field, FunctionDecl, Identifier, Parameter, Path, PolicyDecl,
-    PortDecl, RepositoryDecl, Rule, TypeExpr,
+    PortDecl, RepositoryDecl, TypeExpr,
 };
 
 /// A context, or the part of one written in a single file.
@@ -94,7 +94,7 @@ pub struct IdentityDecl {
     pub doc: Vec<String>,
     pub name: Identifier,
     pub ty: TypeExpr,
-    pub rules: Vec<Rule>,
+    pub constraints: Vec<ConstraintUse>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

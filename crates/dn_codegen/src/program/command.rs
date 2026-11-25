@@ -6,7 +6,7 @@ use dn_analysis::types::Resolved;
 use dn_analysis::Type;
 use dn_syntax::ast::{AggregateDecl, FunctionDecl};
 
-use super::rules::CheckPlace;
+use super::constraints::CheckPlace;
 use crate::function::{OwnFields, Returns, Writer};
 use crate::names::c_name;
 use crate::Generator;
@@ -69,15 +69,15 @@ impl<'a> Generator<'a> {
             aggregate: Some(&found.name),
             label: &label,
         };
-        let rules = command
+        let constraints = command
             .parameters
             .iter()
             .flatten()
-            .map(|p| p.rules.as_slice());
-        let checked: Vec<(String, Type, &[dn_syntax::ast::Rule])> = parameters
+            .map(|p| p.constraints.as_slice());
+        let checked: Vec<(String, Type, &[dn_syntax::ast::ConstraintUse])> = parameters
             .iter()
-            .zip(rules)
-            .map(|((name, ty), rules)| (name.clone(), ty.clone(), rules))
+            .zip(constraints)
+            .map(|((name, ty), constraints)| (name.clone(), ty.clone(), constraints))
             .collect();
         if let Some(call) = self.argument_check(&name, &place, &checked) {
             writer.debug_call(&call);

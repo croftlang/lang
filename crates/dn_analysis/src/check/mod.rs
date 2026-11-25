@@ -7,6 +7,7 @@ mod assign;
 mod behaviour;
 mod body;
 mod boundary;
+mod constraints;
 mod data;
 mod declared;
 mod domain;
@@ -20,7 +21,6 @@ mod ports;
 mod publish;
 mod repository;
 mod resolve;
-mod rules;
 #[cfg(test)]
 mod tests;
 mod types;

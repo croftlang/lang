@@ -80,7 +80,7 @@ impl Context {
             name: domain.name.clone(),
             parameters: Some(Vec::new()),
             return_type: None,
-            return_rules: Vec::new(),
+            return_constraints: Vec::new(),
             preconditions: Vec::new(),
             calls: domain.calls.clone(),
             body: Some(domain.body.clone()),

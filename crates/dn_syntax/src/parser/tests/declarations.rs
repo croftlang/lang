@@ -39,15 +39,15 @@ fn reads_rules_on_fields_and_parameters() {
     let ContextItem::Value(room) = &items[0] else {
         panic!("expected a value")
     };
-    let rules = &room.fields[0].rules;
-    assert_eq!(rules.len(), 2);
-    assert!(rules[1].each);
+    let constraints = &room.fields[0].constraints;
+    assert_eq!(constraints.len(), 2);
+    assert!(constraints[1].each);
     let ContextItem::Function(heal) = &items[1] else {
         panic!("expected a function")
     };
     let parameters = heal.parameters.as_ref().unwrap();
     assert_eq!(parameters.len(), 2);
-    assert_eq!(parameters[0].rules.len(), 1);
+    assert_eq!(parameters[0].constraints.len(), 1);
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn reads_enums_with_data_and_includes() {
     };
     assert_eq!(error.includes[0].text(), "Room.Error");
     assert_eq!(error.variants.len(), 2);
-    assert_eq!(error.variants[0].fields[0].rules.len(), 1);
+    assert_eq!(error.variants[0].fields[0].constraints.len(), 1);
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn reads_the_starting_value_of_an_adapter_field() {
         panic!("expected an adapter")
     };
     let field = &adapter.fields[0];
-    assert_eq!(field.rules.len(), 1);
+    assert_eq!(field.constraints.len(), 1);
     assert!(
         matches!(field.value.as_ref().map(|v| &v.kind), Some(crate::ast::ExprKind::List(items)) if items.len() == 2)
     );
@@ -171,15 +171,15 @@ fn adds_rules_written_in_a_contract_to_their_parameter() {
         panic!("expected a function");
     };
     let parameters = attack.parameters.as_ref().expect("parameters");
-    let rules = |index: usize| -> Vec<String> {
+    let constraints = |index: usize| -> Vec<String> {
         parameters[index]
-            .rules
+            .constraints
             .iter()
-            .map(|rule| rule.constraint.name.text())
+            .map(|constraint| constraint.name.text())
             .collect()
     };
-    assert_eq!(rules(0), ["Range", "Even"]);
-    assert_eq!(rules(1), ["Alive", "Near"]);
+    assert_eq!(constraints(0), ["Range", "Even"]);
+    assert_eq!(constraints(1), ["Alive", "Near"]);
     assert_eq!(attack.preconditions.len(), 1);
 }
 
@@ -187,6 +187,6 @@ fn adds_rules_written_in_a_contract_to_their_parameter() {
 fn reports_rules_in_a_contract_for_a_name_that_is_not_a_parameter() {
     assert_eq!(
         parse_error("context Dungeon {\n fn f(a: Int): Int {\n b where Even\n } = a\n}"),
-        "`b` is not a parameter, so it can't have rules here"
+        "`b` is not a parameter, so it can't have constraints here"
     );
 }

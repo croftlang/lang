@@ -14,8 +14,13 @@ impl<'a> Generator<'a> {
         let mut fields: Vec<(String, Type, String)> = (self.model.fields(named).into_iter())
             .map(|(name, ty, field)| {
                 let c = match ty {
-                    Type::Int => int_width(self.program, &self.model, &named.context, &field.rules)
-                        .to_string(),
+                    Type::Int => int_width(
+                        self.program,
+                        &self.model,
+                        &named.context,
+                        &field.constraints,
+                    )
+                    .to_string(),
                     _ => self.c_type(&ty),
                 };
                 (name, ty, c)

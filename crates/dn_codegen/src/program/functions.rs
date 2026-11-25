@@ -3,9 +3,9 @@
 use dn_analysis::symbols::SymbolKind;
 use dn_analysis::types::Resolved;
 use dn_analysis::Type;
-use dn_syntax::ast::{Expr, ExprKind, Rule};
+use dn_syntax::ast::{ConstraintUse, Expr, ExprKind};
 
-use super::rules::CheckPlace;
+use super::constraints::CheckPlace;
 
 use crate::function::{Returns, Writer};
 use crate::names::c_name;
@@ -30,7 +30,7 @@ impl<'a> Generator<'a> {
 
     fn function(&self, found: &Resolved, prototypes: &mut Vec<String>) -> String {
         let context = &self.program.contexts[&found.context];
-        let (result, preconditions, body, rules, return_rules) = if found.kind
+        let (result, preconditions, body, constraints, return_constraints) = if found.kind
             == SymbolKind::Constraint
         {
             let Some(decl) = context
@@ -46,18 +46,18 @@ impl<'a> Generator<'a> {
                 return String::new();
             };
             let result = self.function_result(&found.context, decl);
-            let rules = decl
+            let constraints = decl
                 .parameters
                 .iter()
                 .flatten()
-                .map(|p| p.rules.as_slice())
+                .map(|p| p.constraints.as_slice())
                 .collect();
             (
                 result,
                 decl.preconditions.as_slice(),
                 decl.body.as_ref(),
-                rules,
-                decl.return_rules.as_slice(),
+                constraints,
+                decl.return_constraints.as_slice(),
             )
         };
         let parameters = self.parameters_of(found);
@@ -70,10 +70,10 @@ impl<'a> Generator<'a> {
             aggregate: None,
             label: &found.name,
         };
-        let checked: Vec<(String, Type, &[Rule])> = parameters
+        let checked: Vec<(String, Type, &[ConstraintUse])> = parameters
             .iter()
-            .zip(rules)
-            .map(|((name, ty), rules)| (name.clone(), ty.clone(), rules))
+            .zip(constraints)
+            .map(|((name, ty), constraints)| (name.clone(), ty.clone(), constraints))
             .collect();
         if let Some(call) = self.argument_check(&c_name(found), &place, &checked) {
             writer.debug_call(&call);
@@ -81,7 +81,9 @@ impl<'a> Generator<'a> {
         writer.preconditions(preconditions, &found.name);
         if let Some(body) = body {
             let value = writer.value(body, &result);
-            if let Some(check) = self.result_check(&c_name(found), &place, &result, return_rules) {
+            if let Some(check) =
+                self.result_check(&c_name(found), &place, &result, return_constraints)
+            {
                 let passed = writer.pass(value.clone(), &result);
                 writer.debug_call(&format!("{check}({passed});"));
             }

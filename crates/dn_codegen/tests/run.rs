@@ -19,15 +19,15 @@ fn runs_commands_events_policies_and_repositories() {
     run_program("game");
 }
 
-/// Each broken rule stops a debug build with a message naming it, and a
+/// Each broken constraint stops a debug build with a message naming it, and a
 /// release build doesn't check.
 #[test]
 fn checks_rules_in_debug_builds() {
     if !has_c_compiler() {
         return;
     }
-    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/rules");
-    let output = generate(&source, "test", "rules");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/constraints");
+    let output = generate(&source, "test", "constraints");
     let debug = compile(
         &output,
         &["-DDN_DEBUG", "dn_runtime.c", "program.c", "-o", "debug"],

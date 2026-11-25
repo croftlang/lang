@@ -81,12 +81,12 @@ impl Parser {
         let name = self.expect_identifier()?;
         self.expect(&TokenKind::Colon)?;
         let ty = self.parse_type()?;
-        let rules = self.parse_rules()?;
+        let constraints = self.parse_constraints()?;
         Ok(IdentityDecl {
             doc,
             name,
             ty,
-            rules,
+            constraints,
         })
     }
 }

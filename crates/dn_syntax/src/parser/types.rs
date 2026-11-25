@@ -1,4 +1,4 @@
-//! Paths, types, fields, parameters and `where` rules.
+//! Paths, types, fields, parameters and `where` constraints.
 
 use super::{ParseResult, Parser};
 use crate::ast::{Field, Parameter, Path, TypeExpr};
@@ -62,7 +62,7 @@ impl Parser {
         let name = self.expect_identifier()?;
         self.expect(&TokenKind::Colon)?;
         let ty = self.parse_type()?;
-        let rules = self.parse_rules()?;
+        let constraints = self.parse_constraints()?;
         let value = if self.eat(&TokenKind::Equal) {
             Some(self.parse_expression()?)
         } else {
@@ -73,7 +73,7 @@ impl Parser {
             doc,
             name,
             ty,
-            rules,
+            constraints,
             is_identity,
         })
     }
@@ -113,8 +113,12 @@ impl Parser {
                     types.push(self.parse_type()?);
                 }
             }
-            let rules = self.parse_rules()?;
-            parameters.push(Parameter { name, types, rules });
+            let constraints = self.parse_constraints()?;
+            parameters.push(Parameter {
+                name,
+                types,
+                constraints,
+            });
             if !self.eat(&TokenKind::Comma) {
                 self.expect(&TokenKind::RightParen)?;
                 break;

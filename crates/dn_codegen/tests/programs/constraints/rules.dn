@@ -1,4 +1,4 @@
-// Breaks one rule, chosen by the command-line argument, so the test can see
+// Breaks one constraint, chosen by the command-line argument, so the test can see
 // each kind of check stop a debug build.
 context Clinic {
     constraint Even(number: Int) = number % 2 == 0
@@ -13,7 +13,7 @@ context Clinic {
 
     fn half(number: Int): Int where Even = number / 2
 
-    // Its rule is in the contract, which checks the same as writing it inline.
+    // Its constraint is in the contract, which checks the same as writing it inline.
     fn count(numbers: List<Int>): Int {
         numbers where each Even
     } = numbers.length

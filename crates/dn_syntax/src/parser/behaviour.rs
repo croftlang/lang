@@ -7,7 +7,7 @@ use crate::token::TokenKind;
 
 impl Parser {
     /// Anything with a signature: a name, parameters, a return type with
-    /// rules, a contract in braces and a body after `=`. Only the name is required.
+    /// constraints, a contract in braces and a body after `=`. Only the name is required.
     pub(super) fn parse_function(&mut self) -> ParseResult<FunctionDecl> {
         let doc = self.doc();
         let kind = match self.advance().kind {
@@ -23,10 +23,10 @@ impl Parser {
         } else {
             None
         };
-        let (mut return_type, mut return_rules) = (None, Vec::new());
+        let (mut return_type, mut return_constraints) = (None, Vec::new());
         if self.eat(&TokenKind::Colon) {
             return_type = Some(self.parse_type()?);
-            return_rules = self.parse_rules()?;
+            return_constraints = self.parse_constraints()?;
         }
         let (preconditions, calls) = self.parse_contract(parameters.as_mut())?;
         let body = if self.eat(&TokenKind::Equal) {
@@ -40,7 +40,7 @@ impl Parser {
             name,
             parameters,
             return_type,
-            return_rules,
+            return_constraints,
             preconditions,
             calls,
             body,

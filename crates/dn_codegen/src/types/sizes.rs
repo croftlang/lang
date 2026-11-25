@@ -1,21 +1,21 @@
-//! Sizes taken from rules: how long strings and lists can be, and how many
+//! Sizes taken from constraints: how long strings and lists can be, and how many
 //! bytes a whole number needs.
 
 use std::collections::HashMap;
 
 use dn_analysis::{Model, Program, Type};
-use dn_syntax::ast::{Rule, TypeExpr};
+use dn_syntax::ast::{ConstraintUse, TypeExpr};
 
 use super::constant::evaluate;
 
-/// Used when no `Length` rule says otherwise.
+/// Used when no `Length` constraint says otherwise.
 pub const DEFAULT_LIST_CAPACITY: i64 = 16;
 pub const DEFAULT_STRING_CAPACITY: i64 = 32;
 
 pub struct Sizes {
-    /// The longest string any rule allows. Every string has room for it.
+    /// The longest string any constraint allows. Every string has room for it.
     pub string_capacity: i64,
-    /// The longest list of each item type any rule allows.
+    /// The longest list of each item type any constraint allows.
     list_capacity: HashMap<Type, i64>,
 }
 
@@ -26,7 +26,7 @@ impl Sizes {
             list_capacity: HashMap::new(),
         };
         for (name, context) in &program.contexts {
-            let mut fields: Vec<(&TypeExpr, &[Rule], Option<&str>)> = Vec::new();
+            let mut fields: Vec<(&TypeExpr, &[ConstraintUse], Option<&str>)> = Vec::new();
             let records = context
                 .values
                 .iter()
@@ -52,7 +52,10 @@ impl Sizes {
                     .chain(records)
             });
             for (list, aggregate) in records.chain(aggregates) {
-                fields.extend(list.iter().map(|f| (&f.ty, f.rules.as_slice(), aggregate)));
+                fields.extend(
+                    list.iter()
+                        .map(|f| (&f.ty, f.constraints.as_slice(), aggregate)),
+                );
             }
             let functions = context
                 .functions
@@ -60,11 +63,11 @@ impl Sizes {
                 .chain(context.ports.iter().flat_map(|p| &p.operations));
             for parameter in functions.flat_map(|f| f.parameters.iter().flatten()) {
                 if let Some(ty) = parameter.types.first() {
-                    fields.push((ty, &parameter.rules, None));
+                    fields.push((ty, &parameter.constraints, None));
                 }
             }
-            for (ty, rules, aggregate) in fields {
-                sizes.add(program, model, name, aggregate, ty, rules);
+            for (ty, constraints, aggregate) in fields {
+                sizes.add(program, model, name, aggregate, ty, constraints);
             }
         }
         if sizes.string_capacity == 0 {
@@ -80,13 +83,13 @@ impl Sizes {
         context: &str,
         aggregate: Option<&str>,
         ty: &TypeExpr,
-        rules: &[Rule],
+        constraints: &[ConstraintUse],
     ) {
-        let Some(longest) = rules
+        let Some(longest) = constraints
             .iter()
-            .filter(|r| !r.each && r.constraint.name.text() == "Length")
-            .find_map(|rule| {
-                let high = rule.constraint.arguments.last()?;
+            .filter(|r| !r.each && r.name.text() == "Length")
+            .find_map(|constraint| {
+                let high = constraint.arguments.last()?;
                 evaluate(program, model, context, high)
             })
         else {

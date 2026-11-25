@@ -1,4 +1,4 @@
-//! Types, fields, parameters and the constraints in `where` rules.
+//! Types, fields, parameters and the constraints in `where` clauses.
 
 use std::collections::HashSet;
 
@@ -88,7 +88,7 @@ impl<'a> Checker<'a> {
                 self.error(message, field.name.span);
             }
             self.check_type(scope, &field.ty, false);
-            self.check_rules(scope, &field.rules, Some(&field.ty));
+            self.check_constraints(scope, &field.constraints, Some(&field.ty));
             if let Some(value) = &field.value {
                 self.error("only an adapter's fields have starting values", value.span);
             }
@@ -116,7 +116,7 @@ impl<'a> Checker<'a> {
             for ty in &parameter.types {
                 self.check_type(scope, ty, generic);
             }
-            self.check_rules(scope, &parameter.rules, parameter.types.first());
+            self.check_constraints(scope, &parameter.constraints, parameter.types.first());
         }
     }
 }

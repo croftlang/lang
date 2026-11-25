@@ -1,39 +1,52 @@
-//! Testing a value against a `where` rule, for debug builds.
+//! Testing a value against a `where` constraint, for debug builds.
 
 use dn_analysis::symbols::SymbolKind;
 use dn_analysis::Type;
-use dn_syntax::ast::{Argument, Rule};
+use dn_syntax::ast::{Argument, ConstraintUse};
 
 use super::Writer;
 use crate::names::{c_name, c_string};
 use crate::types::constant::{decimal_bound, evaluate};
 
 impl<'g, 'a> Writer<'g, 'a> {
-    /// Writes a check that stops the program when `value` breaks `rule`.
+    /// Writes a check that stops the program when `value` breaks `constraint`.
     /// `what` names the value in the message, such as `heal: amount`.
-    pub fn check_rule(&mut self, value: &str, ty: &Type, rule: &Rule, what: &str) {
-        let message = c_string(&format!("{what} must satisfy {}", describe(rule)));
-        if rule.each {
+    pub fn check_constraint(
+        &mut self,
+        value: &str,
+        ty: &Type,
+        constraint: &ConstraintUse,
+        what: &str,
+    ) {
+        let message = c_string(&format!("{what} must satisfy {}", describe(constraint)));
+        if constraint.each {
             let Type::List(item) = ty else { return };
             let index = self.variable("index", &Type::Int);
             self.open(format!(
                 "for ({index} = 0; {index} < (dn_int) {value}.length; {index}++)"
             ));
-            if let Some(test) = self.rule_test(&format!("{value}.items[{index}]"), item, rule) {
+            if let Some(test) =
+                self.constraint_test(&format!("{value}.items[{index}]"), item, constraint)
+            {
                 self.line(format!("DN_CHECK({test}, {message});"));
             }
             self.close();
             return;
         }
-        if let Some(test) = self.rule_test(value, ty, rule) {
+        if let Some(test) = self.constraint_test(value, ty, constraint) {
             self.line(format!("DN_CHECK({test}, {message});"));
         }
     }
 
-    /// A C expression that is true when `value` keeps the rule, or `None`
+    /// A C expression that is true when `value` keeps the constraint, or `None`
     /// when its arguments can't be worked out now.
-    fn rule_test(&mut self, value: &str, ty: &Type, rule: &Rule) -> Option<String> {
-        let constraint = &rule.constraint;
+    fn constraint_test(
+        &mut self,
+        value: &str,
+        ty: &Type,
+        constraint: &ConstraintUse,
+    ) -> Option<String> {
+        let constraint = &constraint;
         let aggregate = self.aggregate.clone();
         let found = self
             .gen
@@ -89,20 +102,15 @@ fn literal(number: i64, original: &dn_syntax::ast::Expr) -> dn_syntax::ast::Expr
 }
 
 /// `Range(1, 50)` or `each Alive`, as written, for messages.
-fn describe(rule: &Rule) -> String {
-    let name = rule.constraint.name.text();
-    let arguments: Vec<String> = rule
-        .constraint
-        .arguments
-        .iter()
-        .map(describe_argument)
-        .collect();
+fn describe(constraint: &ConstraintUse) -> String {
+    let name = constraint.name.text();
+    let arguments: Vec<String> = constraint.arguments.iter().map(describe_argument).collect();
     let call = if arguments.is_empty() {
         name
     } else {
         format!("{name}({})", arguments.join(", "))
     };
-    if rule.each {
+    if constraint.each {
         format!("each {call}")
     } else {
         call
