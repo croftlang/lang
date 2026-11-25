@@ -21,6 +21,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             "slice" => self.fixed(name, arguments, &[Type::Int, Type::Int], s, span),
             "split" => self.fixed(name, arguments, &[s], Type::list(Type::String), span),
             "to_int" => self.fixed(name, arguments, &[], Type::option(Type::Int), span),
+            "to_bytes" => self.fixed(name, arguments, &[], Type::Bytes, span),
             _ => None,
         }
     }

@@ -14,6 +14,8 @@ pub const STANDARD_CONTEXTS: [(&str, &[&str]); 2] = [
             "split",
             "starts_with",
             "to_int",
+            "to_bytes",
+            "to_text",
             "to_lower",
             "to_upper",
             "trim",

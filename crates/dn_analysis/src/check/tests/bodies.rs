@@ -175,3 +175,17 @@ fn checks_imports_from_standard_contexts() {
     let source = "context Shop {\n use { to_upper } from Std.Text\n fn f(names: List<String>): Bool = names.contains(\"A\") && names.length > 0\n fn g(name: String): String = name.to_upper()\n}";
     assert_eq!(errors(source), Vec::<String>::new());
 }
+
+#[test]
+fn checks_bytes() {
+    let source = "context Shop {\n use { to_text } from Std.Text\n fn f(): Option<Int> = {\n let data: Bytes = [1, 2, 0xFF]\n data.add(3).get(0)\n }\n fn g(data: Bytes where Length(0, 512)): String = data.to_text()\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+    assert_error(
+        "context Shop {\n fn f(): Bytes = [1, 256]\n}",
+        "a byte is from 0 to 255, found 256",
+    );
+    assert_error(
+        "context Shop {\n fn f(data: Bytes): String = data.to_text()\n}",
+        "`to_text` needs `use { to_text } from Std.Text`",
+    );
+}

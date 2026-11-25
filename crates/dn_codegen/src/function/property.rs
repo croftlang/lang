@@ -78,8 +78,12 @@ impl<'g, 'a> Writer<'g, 'a> {
         let inner_type = self.type_of(inner, None);
         let (c, _) = self.eval(inner, None);
         match (&inner_type, field) {
-            (Type::String | Type::List(_), "length") => format!("((dn_int) {c}.length)"),
-            (Type::String | Type::List(_), "is_empty") => format!("({c}.length == 0)"),
+            (Type::String | Type::Bytes | Type::List(_), "length") => {
+                format!("((dn_int) {c}.length)")
+            }
+            (Type::String | Type::Bytes | Type::List(_), "is_empty") => {
+                format!("({c}.length == 0)")
+            }
             (Type::List(item), "first" | "last") => {
                 let temp = self.temp(&Type::option((**item).clone()));
                 let index = if field == "first" {

@@ -194,11 +194,19 @@ Functions and methods every program has, with no import. Functions: `Some`,
 `min_by`, `max_by`; a list of entities also has `get`, `contains`, `replace`
 and `remove` by identity. Options: `is_some`, `is_none`, `map`, `unwrap_or`.
 
+### Bytes
+A sequence of bytes, each from 0 to 255, for file contents, saves and network
+messages. Written as a list of numbers where `Bytes` is expected:
+`let header: Bytes = [0x44, 0x4E, 1]`. It has `length`, `is_empty`, `get`
+(an `Option<Int>`), `add` and `slice`. `Std.Text` turns text into bytes with
+`to_bytes`, and back with `to_text`. Every `Bytes` has room for the most any
+`Length` constraint on one allows, 64 when there is none.
+
 ### Standard context
 A set of built-ins a context imports before using, like any other context:
 `use { trim, split } from Std.Text`. `Std.Text` has `contains`,
-`starts_with`, `ends_with`, `to_upper`, `to_lower`, `trim`, `slice`, `split`
-and `to_int` for strings. `Std.Numbers` has `Decimal`, `max`, `min` and `abs`.
+`starts_with`, `ends_with`, `to_upper`, `to_lower`, `trim`, `slice`, `split`,
+`to_int` and `to_bytes` for strings, and `to_text` for bytes. `Std.Numbers` has `Decimal`, `max`, `min` and `abs`.
 Each file of a context sees what any of them imports. Standard contexts need
 no arrow in the domain's `contexts`.
 

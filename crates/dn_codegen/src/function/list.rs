@@ -105,6 +105,9 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// `[a, b, c]`: a list of exactly these items.
     pub fn list_literal(&mut self, items: &[dn_syntax::ast::Expr], ty: &Type) -> String {
+        if *ty == Type::Bytes {
+            return self.bytes_literal(items);
+        }
         let Type::List(item) = ty else {
             return "0".to_string();
         };

@@ -7,12 +7,13 @@ use dn_syntax::ast::{Field, Parameter, TypeExpr};
 use super::{Checker, Scope};
 use crate::types::MAX_PLACES;
 
-const BUILTIN_TYPES: [(&str, usize); 9] = [
+const BUILTIN_TYPES: [(&str, usize); 10] = [
     ("Int", 0),
     ("Float", 0),
     ("Decimal", 0),
     ("Bool", 0),
     ("String", 0),
+    ("Bytes", 0),
     ("Unit", 0),
     ("List", 1),
     ("Option", 1),

@@ -21,6 +21,15 @@ typedef struct {
     char text[DN_STRING_CAPACITY];
 } dn_string;
 
+#ifndef DN_BYTES_CAPACITY
+#define DN_BYTES_CAPACITY 64
+#endif
+
+typedef struct {
+    dn_u16 length;
+    unsigned char items[DN_BYTES_CAPACITY];
+} dn_bytes;
+
 #define DN_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define DN_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define DN_ABS(a) ((a) < 0 ? -(a) : (a))
@@ -60,6 +69,13 @@ dn_int dn_divide_even(dn_int numerator, dn_int denominator);
 dn_int dn_decimal_multiply(dn_int a, dn_int b, dn_int scale);
 dn_int dn_decimal_divide(dn_int a, dn_int b, dn_int scale);
 void dn_decimal_to_string(dn_int value, dn_int places, dn_string *out);
+
+dn_bool dn_bytes_equal(const dn_bytes *a, const dn_bytes *b);
+dn_bool dn_bytes_get(const dn_bytes *bytes, dn_int index, dn_int *out);
+void dn_bytes_add(const dn_bytes *bytes, dn_int byte, dn_bytes *out);
+void dn_bytes_slice(const dn_bytes *bytes, dn_int start, dn_int end, dn_bytes *out);
+void dn_bytes_to_text(const dn_bytes *bytes, dn_string *out);
+void dn_string_to_bytes(const dn_string *text, dn_bytes *out);
 dn_bool dn_string_to_int(const dn_string *text, dn_int *out);
 
 void dn_arguments_set(int count, char **values);

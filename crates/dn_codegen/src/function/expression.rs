@@ -114,6 +114,9 @@ impl<'g, 'a> Writer<'g, 'a> {
         if *ty == Type::String {
             return format!("dn_string_equal(&{left}, &{right})");
         }
+        if *ty == Type::Bytes {
+            return format!("dn_bytes_equal(&{left}, &{right})");
+        }
         let name = self.gen.equality_for(ty);
         format!("{name}(&{left}, &{right})")
     }

@@ -52,6 +52,7 @@ impl<'a> Generator<'a> {
             Type::Float => "double".to_string(),
             Type::Bool => "dn_bool".to_string(),
             Type::String => "dn_string".to_string(),
+            Type::Bytes => "dn_bytes".to_string(),
             Type::Unit | Type::Unknown | Type::Port(_) | Type::Repository(_) => {
                 "dn_unit".to_string()
             }

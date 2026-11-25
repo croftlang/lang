@@ -5,6 +5,7 @@ mod adapter;
 mod arguments;
 mod block;
 mod builtin;
+mod bytes;
 mod call;
 mod decimal;
 mod effect;

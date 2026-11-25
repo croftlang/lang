@@ -5,6 +5,7 @@
 mod arguments;
 mod block;
 mod builtin;
+mod bytes;
 mod call;
 mod constraint;
 mod decimal;

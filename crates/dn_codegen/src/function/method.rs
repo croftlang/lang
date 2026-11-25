@@ -33,6 +33,10 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let (text, _) = self.eval(receiver, None);
                 self.string_method(&text, name, arguments, ty)
             }
+            Type::Bytes => {
+                let (bytes, _) = self.eval(receiver, None);
+                self.bytes_method(&bytes, name, arguments, ty)
+            }
             Type::Decimal(places) if name == "to_string" => {
                 let number = self.value(receiver, &Type::Decimal(*places));
                 let temp = self.temp(&Type::String);

@@ -92,6 +92,9 @@ impl<'a> Generator<'a> {
         if *ty == Type::String {
             return format!("dn_string_equal(&{a}, &{b})");
         }
+        if *ty == Type::Bytes {
+            return format!("dn_bytes_equal(&{a}, &{b})");
+        }
         format!("{}(&{a}, &{b})", self.equality_for(ty))
     }
 }

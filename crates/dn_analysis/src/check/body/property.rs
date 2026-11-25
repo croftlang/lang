@@ -12,8 +12,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let name = field.name.as_str();
         let found = match (ty, name) {
             (Type::Unknown, _) => Some(Type::Unknown),
-            (Type::String | Type::List(_), "length") => Some(Type::Int),
-            (Type::String | Type::List(_), "is_empty") => Some(Type::Bool),
+            (Type::String | Type::Bytes | Type::List(_), "length") => Some(Type::Int),
+            (Type::String | Type::Bytes | Type::List(_), "is_empty") => Some(Type::Bool),
             (Type::List(item), "first" | "last") => Some(Type::option((**item).clone())),
             (Type::Option(_), "is_some" | "is_none") => Some(Type::Bool),
             (Type::Named(named), "source") if named.kind == SymbolKind::Event => {

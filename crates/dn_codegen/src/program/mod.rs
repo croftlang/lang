@@ -19,7 +19,8 @@ use crate::{GeneratedFile, Generator};
 const RUNTIME_HEADER: &str = include_str!("../runtime/dn.h");
 const RUNTIME_SOURCE: &str = concat!(
     include_str!("../runtime/dn_runtime.c"),
-    include_str!("../runtime/decimal.c")
+    include_str!("../runtime/decimal.c"),
+    include_str!("../runtime/bytes.c")
 );
 
 impl<'a> Generator<'a> {
@@ -51,10 +52,15 @@ impl<'a> Generator<'a> {
         let source = format!(
             "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{checks}{equalities}{functions}{commands}{events}{adapters}{repositories}{error_names}{main}"
         );
-        let runtime_header = RUNTIME_HEADER.replace(
-            "#ifndef DN_STRING_CAPACITY\n#define DN_STRING_CAPACITY 32\n#endif",
-            &format!("#define DN_STRING_CAPACITY {}", self.sizes.string_capacity),
-        );
+        let runtime_header = RUNTIME_HEADER
+            .replace(
+                "#ifndef DN_STRING_CAPACITY\n#define DN_STRING_CAPACITY 32\n#endif",
+                &format!("#define DN_STRING_CAPACITY {}", self.sizes.string_capacity),
+            )
+            .replace(
+                "#ifndef DN_BYTES_CAPACITY\n#define DN_BYTES_CAPACITY 64\n#endif",
+                &format!("#define DN_BYTES_CAPACITY {}", self.sizes.bytes_capacity),
+            );
         Ok(vec![
             GeneratedFile {
                 name: "dn.h".to_string(),

@@ -21,6 +21,7 @@ impl<'a> Checker<'a> {
             "Decimal" => Type::Decimal(ty.number.unwrap_or(0).clamp(0, MAX_PLACES) as u32),
             "Bool" => Type::Bool,
             "String" => Type::String,
+            "Bytes" => Type::Bytes,
             "Unit" => Type::Unit,
             "List" => Type::list(argument(0)),
             "Option" => Type::option(argument(0)),
