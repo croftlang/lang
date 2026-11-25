@@ -1,5 +1,6 @@
 //! Functions, services, translations, commands, policies and constraints.
 
+use crate::standard::is_builtin_port;
 use dn_syntax::ast::{ConstraintDecl, FunctionDecl, FunctionKind, PolicyDecl};
 
 use super::{Checker, Scope};
@@ -25,9 +26,6 @@ impl<'a> Checker<'a> {
                 let message = "a command gives back its aggregate, so it has no return type";
                 self.error(message, span);
             }
-            (None, FunctionKind::Function | FunctionKind::Translation) => {
-                self.error(format!("`{}` needs a return type", name.name), span);
-            }
             (Some(ty), _) => {
                 self.check_type(scope, ty, false);
                 self.check_constraints(scope, &function.return_constraints, Some(ty));
@@ -37,7 +35,8 @@ impl<'a> Checker<'a> {
         if matches!(function.kind, FunctionKind::Service | FunctionKind::Domain) {
             let kinds = [SymbolKind::Port, SymbolKind::Repository];
             for port in &function.calls {
-                let is_builtin = port.text() == "Arguments" && self.resolve(scope, port).is_none();
+                let is_builtin =
+                    is_builtin_port(&port.text()) && self.resolve(scope, port).is_none();
                 if !is_builtin {
                     self.expect_kind(scope, port, &kinds, "a port or repository");
                 }

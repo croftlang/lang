@@ -33,6 +33,14 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let (text, _) = self.eval(receiver, None);
                 self.string_method(&text, name, arguments, ty)
             }
+            Type::Map(key, value) => {
+                let (map, _) = self.eval(receiver, None);
+                self.map_method(&map, key, value, name, arguments, ty)
+            }
+            Type::Bytes => {
+                let (bytes, _) = self.eval(receiver, None);
+                self.bytes_method(&bytes, name, arguments, ty)
+            }
             Type::Decimal(places) if name == "to_string" => {
                 let number = self.value(receiver, &Type::Decimal(*places));
                 let temp = self.temp(&Type::String);
@@ -75,7 +83,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         ty: &Type,
     ) -> String {
         if port.context.is_empty() {
-            return self.all_arguments(ty);
+            return self.builtin_port_call(&port.name, arguments, ty);
         }
         let Some(adapter) = self.gen.bindings.get(port).cloned() else {
             return "0".to_string();
@@ -83,6 +91,15 @@ impl<'g, 'a> Writer<'g, 'a> {
         let parameters = self.gen.operation_parameters(port, name);
         let passed = self.pass_all(arguments, &parameters);
         self.call_into(&format!("{}_{name}", c_name(&adapter)), passed, ty)
+    }
+
+    /// An operation on a built-in port, which the runtime supplies on every target.
+    fn builtin_port_call(&mut self, port: &str, arguments: &[Argument], ty: &Type) -> String {
+        if port == "Console" {
+            let passed = self.pass_all(arguments, &[("text".to_string(), Type::String)]);
+            return self.call_into("dn_console_print", passed, ty);
+        }
+        self.all_arguments(ty)
     }
 
     /// `arguments.all()`: the program's command-line arguments.

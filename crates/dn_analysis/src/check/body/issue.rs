@@ -53,14 +53,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         if !by_identity {
             return Type::result(Type::Named(aggregate), errors);
         }
-        let storage = self
-            .checker
-            .repository_for(&aggregate)
-            .map(|r| self.checker.storage_error(&r));
-        Type::result(
-            Type::Unit,
-            Type::Errors(vec![errors, storage.unwrap_or(Type::Unknown)]),
-        )
+        let storage = self.checker.storage_error();
+        Type::result(Type::Unit, Type::Errors(vec![errors, storage]))
     }
 
     /// The aggregate named by an `on Room(id)` target, after checking `id`.

@@ -27,8 +27,13 @@ pub enum Type {
     Decimal(u32),
     Bool,
     String,
+    /// A sequence of bytes, each from 0 to 255: file contents, a save, a
+    /// network message.
+    Bytes,
     Unit,
     List(Box<Type>),
+    /// Keys, each with a value, such as how many of each item the player holds.
+    Map(Box<Type>, Box<Type>),
     Option(Box<Type>),
     Result(Box<Type>, Box<Type>),
     /// A value, entity, aggregate, enum, identity, error, error set or event.
@@ -46,6 +51,10 @@ pub enum Type {
 impl Type {
     pub fn list(item: Type) -> Type {
         Type::List(Box::new(item))
+    }
+
+    pub fn map(key: Type, value: Type) -> Type {
+        Type::Map(Box::new(key), Box::new(value))
     }
 
     pub fn option(item: Type) -> Type {
@@ -84,8 +93,10 @@ impl fmt::Display for Type {
             Type::Decimal(places) => write!(f, "Decimal<{places}>"),
             Type::Bool => write!(f, "Bool"),
             Type::String => write!(f, "String"),
+            Type::Bytes => write!(f, "Bytes"),
             Type::Unit => write!(f, "Unit"),
             Type::List(item) => write!(f, "List<{item}>"),
+            Type::Map(key, value) => write!(f, "Map<{key}, {value}>"),
             Type::Option(item) => write!(f, "Option<{item}>"),
             Type::Result(value, error) => write!(f, "Result<{value}, {error}>"),
             Type::Named(named) | Type::Port(named) | Type::Repository(named) => {

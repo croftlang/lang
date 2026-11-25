@@ -20,6 +20,8 @@ pub struct FunctionDecl {
     pub doc: Vec<String>,
     pub kind: FunctionKind,
     pub name: Identifier,
+    /// `T` in `fn first<T>(items: List<T>): Option<T>`.
+    pub type_parameters: Vec<Identifier>,
     pub parameters: Option<Vec<Parameter>>,
     pub return_type: Option<TypeExpr>,
     pub return_constraints: Vec<ConstraintUse>,
@@ -54,11 +56,10 @@ pub struct AdapterDecl {
     pub operations: Vec<FunctionDecl>,
 }
 
-/// `repository Rooms for Room in Storage`
+/// `repository Rooms for Room`. Where it saves is chosen in dn.toml.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RepositoryDecl {
     pub doc: Vec<String>,
     pub name: Identifier,
     pub aggregate: Path,
-    pub storage: Option<Path>,
 }

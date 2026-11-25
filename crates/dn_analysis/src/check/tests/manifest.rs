@@ -83,3 +83,49 @@ fn reports_unknown_keys_in_the_file() {
         error.message
     );
 }
+
+const SHOP: &str = "context Shop {\n\
+    identity ShelfId: Int where Range(1, 9)\n\
+    aggregate Shelf {\n identity id: ShelfId\n error NotFound\n }\n\
+    repository Shelves for Shelf\n\
+    service Main(): Result<Unit, StorageError> {\n calls Shelves\n} = shelves.save(Shelf { id: 1 })\n}";
+
+fn check_shop(adapters: &str) -> Vec<String> {
+    let text = toml(&format!(
+        "[target.test]\nmain = \"Main\"\n\n[target.test.adapters]\n{adapters}"
+    ));
+    let manifest = Manifest::parse(&text, SourceId(1)).unwrap_or_else(|e| panic!("{}", e.message));
+    let file = parse(SHOP, SourceId(0)).expect("valid syntax");
+    match crate::check(vec![file], Some(manifest)) {
+        Ok(_) => Vec::new(),
+        Err(errors) => errors
+            .into_iter()
+            .map(|e| format!("{}: {}", e.span.line, e.message))
+            .collect(),
+    }
+}
+
+#[test]
+fn keeps_repositories_in_memory_or_in_files() {
+    assert_eq!(check_shop(""), Vec::<String>::new());
+    assert_eq!(
+        check_shop("Shelves = \"MemoryStorage\"\n"),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        check_shop("Files = \"StdioFiles\"\nShelves = \"FileStorage\"\n"),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        check_shop("Shelves = \"FileStorage\"\n"),
+        vec!["8: `FileStorage` saves through `Files`, so target `test` needs an adapter for `Files`, such as `Files = \"StdioFiles\"`"]
+    );
+    assert_eq!(
+        check_shop("Shelves = \"StdioFiles\"\nFiles = \"StdioFiles\"\n"),
+        vec!["8: `StdioFiles` is not an adapter for `Storage` or for `Shelves`, so it can't keep its aggregates"]
+    );
+    assert_eq!(
+        check_shop("Shelves = \"Cloud\"\n"),
+        vec!["8: cannot find an adapter named `Cloud`"]
+    );
+}

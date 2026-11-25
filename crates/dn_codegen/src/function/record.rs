@@ -16,7 +16,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             };
             let temp = self.error_value(error);
             let prefix = format!("{temp}.fields.{}", c_name(error));
-            self.set_named_fields(&prefix, &self.field_types(error), fields);
+            self.set_named_fields(&prefix, None, &self.field_types(error), fields);
             return temp;
         }
         let temp = self.temp(ty);
@@ -29,7 +29,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     pub fn set_fields(&mut self, target: &str, ty: &Type, fields: &[FieldValue]) {
         let Type::Named(named) = ty else { return };
         let types = self.field_types(named);
-        self.set_named_fields(target, &types, fields);
+        self.set_named_fields(target, Some(named), &types, fields);
     }
 
     pub fn field_types(&self, named: &Resolved) -> Vec<(String, Type)> {
@@ -40,7 +40,13 @@ impl<'g, 'a> Writer<'g, 'a> {
             .collect()
     }
 
-    fn set_named_fields(&mut self, target: &str, types: &[(String, Type)], fields: &[FieldValue]) {
+    fn set_named_fields(
+        &mut self,
+        target: &str,
+        owner: Option<&Resolved>,
+        types: &[(String, Type)],
+        fields: &[FieldValue],
+    ) {
         for given in fields {
             let name = &given.name.name;
             let field_type = types
@@ -49,9 +55,9 @@ impl<'g, 'a> Writer<'g, 'a> {
                 .map_or(Type::Unknown, |(_, ty)| ty.clone());
             let value = match &given.value {
                 Some(value) => self.value(value, &field_type),
-                None => self.local_or_field(name),
+                None => self.read_name(name),
             };
-            self.line(format!("{target}.{name} = {value};"));
+            self.write_field(owner, target, name, &value);
         }
     }
 

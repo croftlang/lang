@@ -24,7 +24,12 @@ impl<'a> Checker<'a> {
             body.bind_parameters(&constraint.parameters);
             body.expect(&constraint.body, &Type::Bool);
         }
-        for function in &context.functions {
+        // A generic template is checked as each of its instances.
+        for function in context
+            .functions
+            .iter()
+            .filter(|f| f.type_parameters.is_empty())
+        {
             let kind = match function.kind {
                 FunctionKind::Service | FunctionKind::Domain => BodyKind::Service,
                 _ => BodyKind::Function,
@@ -87,7 +92,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    pub(super) fn parameter_type(&self, scope: &Scope, parameter: &Parameter) -> Type {
+    pub(crate) fn parameter_type(&self, scope: &Scope, parameter: &Parameter) -> Type {
         parameter
             .types
             .first()
@@ -97,11 +102,11 @@ impl<'a> Checker<'a> {
 
 impl<'c, 'a> BodyChecker<'c, 'a> {}
 
-/// The built-in port that gives a program its command-line arguments.
-pub(super) fn arguments_port() -> Resolved {
+/// A built-in port, such as `Arguments`. It belongs to no context.
+pub(super) fn builtin_port(name: &str) -> Resolved {
     Resolved {
         context: String::new(),
-        name: "Arguments".to_string(),
+        name: name.to_string(),
         kind: SymbolKind::Port,
     }
 }

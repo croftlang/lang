@@ -40,6 +40,9 @@ pub struct Context {
     pub repositories: Vec<RepositoryDecl>,
     /// Made from the `domain`: its `use` lines, and one service, its body.
     pub is_domain: bool,
+    /// Part of the standard library, such as `Std.Files`: it needs no place
+    /// in the domain's `contexts`, and no arrow to be used.
+    pub is_standard: bool,
 }
 
 impl Program {

@@ -1,9 +1,13 @@
-//! The fields of the structs for values, entities, aggregates and events.
+//! The fields of the structs for values, entities, aggregates and events. A
+//! string field with a `Length` shorter than the longest string anywhere is
+//! kept in a `dn_text_N` of just that many characters, and copied into a
+//! full `dn_string` when it is read.
 
 use dn_analysis::symbols::SymbolKind;
 use dn_analysis::types::Resolved;
 use dn_analysis::Type;
 
+use super::constant::evaluate;
 use super::width::int_width;
 use crate::Generator;
 
@@ -13,7 +17,13 @@ impl<'a> Generator<'a> {
     pub fn struct_fields(&self, named: &Resolved) -> Vec<(String, Type, String)> {
         let mut fields: Vec<(String, Type, String)> = (self.model.fields(named).into_iter())
             .map(|(name, ty, field)| {
+                let text = self.text_capacity(named, &name);
                 let c = match ty {
+                    Type::String if text.is_some() => {
+                        let capacity = text.unwrap_or_default();
+                        self.texts.borrow_mut().insert(capacity);
+                        format!("dn_text_{capacity}")
+                    }
                     Type::Int => int_width(
                         self.program,
                         &self.model,
@@ -38,5 +48,29 @@ impl<'a> Generator<'a> {
             }
         }
         fields
+    }
+
+    /// How many characters a string field keeps, when that is fewer than
+    /// every other string: its own `Length`. Errors, enum variants and
+    /// adapters keep full strings.
+    pub fn text_capacity(&self, owner: &Resolved, field: &str) -> Option<i64> {
+        use SymbolKind::{Aggregate, Entity, Event, Value};
+        if !matches!(owner.kind, Value | Entity | Aggregate | Event)
+            || self.model.is_error(&Type::Named(owner.clone()))
+        {
+            return None;
+        }
+        let fields = self.model.fields(owner);
+        let (_, ty, declared) = fields.into_iter().find(|(name, _, _)| name == field)?;
+        if ty != Type::String {
+            return None;
+        }
+        let length = declared
+            .constraints
+            .iter()
+            .find(|c| !c.each && c.name.text() == "Length")?;
+        let high = length.arguments.last()?;
+        let capacity = evaluate(self.program, &self.model, &owner.context, high)?;
+        (capacity < self.sizes.string_capacity).then_some(capacity.max(1))
     }
 }

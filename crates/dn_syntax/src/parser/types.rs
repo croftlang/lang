@@ -1,7 +1,7 @@
 //! Paths, types, fields, parameters and `where` constraints.
 
 use super::{ParseResult, Parser};
-use crate::ast::{Field, Parameter, Path, TypeExpr};
+use crate::ast::{Field, Identifier, Parameter, Path, TypeExpr};
 use crate::keyword::Keyword;
 use crate::token::TokenKind;
 
@@ -136,5 +136,21 @@ impl Parser {
         }
         self.expect(&TokenKind::Greater)?;
         Ok(())
+    }
+
+    /// `<A, B>` after a generic value's or function's name, or nothing.
+    pub(super) fn parse_type_parameters(&mut self) -> ParseResult<Vec<Identifier>> {
+        let mut parameters = Vec::new();
+        if !self.eat(&TokenKind::Less) {
+            return Ok(parameters);
+        }
+        loop {
+            parameters.push(self.expect_identifier()?);
+            if !self.eat(&TokenKind::Comma) {
+                break;
+            }
+        }
+        self.close_type_arguments()?;
+        Ok(parameters)
     }
 }

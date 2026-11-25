@@ -26,9 +26,9 @@ impl<'a> Checker<'a> {
                     name.span,
                 ),
             }
-            match &operation.return_type {
-                Some(ty) => self.check_type(scope, ty, false),
-                None => self.error(format!("`{}` needs a return type", name.name), name.span),
+            // With no return type, an operation gives back `Unit`.
+            if let Some(ty) = &operation.return_type {
+                self.check_type(scope, ty, false);
             }
             if operation.body.is_some() || !operation.preconditions.is_empty() {
                 let message = format!(
@@ -40,8 +40,8 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `repository Rooms for Room in Storage`: an aggregate of this context,
-    /// stored through a port.
+    /// `repository Rooms for Room`: an aggregate of this context, kept in
+    /// the storage dn.toml chooses.
     pub(super) fn check_repository(&mut self, scope: &Scope, repository: &RepositoryDecl) {
         let kinds = [SymbolKind::Aggregate];
         if let Some(found) = self.expect_kind(scope, &repository.aggregate, &kinds, "an aggregate")
@@ -50,9 +50,6 @@ impl<'a> Checker<'a> {
                 let message = "a repository can only store an aggregate of its own context";
                 self.error(message, repository.aggregate.span());
             }
-        }
-        if let Some(storage) = &repository.storage {
-            self.expect_kind(scope, storage, &[SymbolKind::Port], "a port");
         }
     }
 }

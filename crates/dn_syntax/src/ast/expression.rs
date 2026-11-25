@@ -21,6 +21,8 @@ pub enum ExprKind {
     Int(i64),
     /// As written, such as `2.50`.
     Float(String),
+    /// `["sword": 3, "key": 1]`, or `[:]` when empty.
+    Map(Vec<(Expr, Expr)>),
     String(String),
     Bool(bool),
     Name(String),

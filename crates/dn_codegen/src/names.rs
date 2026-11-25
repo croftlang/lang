@@ -6,9 +6,28 @@ use dn_analysis::Type;
 
 use crate::Generator;
 
-/// `Dungeon_Room_Enemy` for `Room.Enemy` in context `Dungeon`.
+/// `Dungeon_Room_Enemy` for `Room.Enemy` in context `Dungeon`, and
+/// `Shop_Pair_Int_String` for the instance `Pair<Int, String>`.
 pub fn c_name(named: &Resolved) -> String {
-    format!("{}_{}", named.context, named.name.replace('.', "_"))
+    format!(
+        "{}_{}",
+        c_identifier(&named.context),
+        c_identifier(&named.name)
+    )
+}
+
+/// A dn name as a C identifier: anything but letters, digits and `_` becomes
+/// `_`, and runs of them one, with none at the end.
+fn c_identifier(name: &str) -> String {
+    let mut out = String::new();
+    for c in name.chars() {
+        if c.is_ascii_alphanumeric() || c == '_' {
+            out.push(c);
+        } else if !out.ends_with('_') {
+            out.push('_');
+        }
+    }
+    out.trim_end_matches('_').to_string()
 }
 
 /// The C name for an error's code: `DN_ERROR_Dungeon_Room_NotFound`.
@@ -52,12 +71,14 @@ impl<'a> Generator<'a> {
             Type::Float => "double".to_string(),
             Type::Bool => "dn_bool".to_string(),
             Type::String => "dn_string".to_string(),
+            Type::Bytes => "dn_bytes".to_string(),
             Type::Unit | Type::Unknown | Type::Port(_) | Type::Repository(_) => {
                 "dn_unit".to_string()
             }
             Type::Errors(_) => "dn_error".to_string(),
             Type::Named(named) => c_name(named),
             Type::List(item) => format!("dn_list_{}", self.short(item)),
+            Type::Map(key, value) => format!("dn_map_{}_{}", self.short(key), self.short(value)),
             Type::Option(item) => format!("dn_option_{}", self.short(item)),
             Type::Result(value, error) => {
                 format!("dn_result_{}_{}", self.short(value), self.short(error))
@@ -73,6 +94,7 @@ impl<'a> Generator<'a> {
             Type::Errors(_) => Type::Errors(Vec::new()),
             Type::Named(_) if self.model.is_error(ty) => Type::Errors(Vec::new()),
             Type::List(item) => Type::list(self.canonical(item)),
+            Type::Map(key, value) => Type::map(self.canonical(key), self.canonical(value)),
             Type::Option(item) => Type::option(self.canonical(item)),
             Type::Result(value, error) => {
                 Type::result(self.canonical(value), self.canonical(error))

@@ -34,6 +34,16 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     fn call_declared(&mut self, found: &Resolved, arguments: &[Argument], ty: &Type) -> String {
+        if found.kind == SymbolKind::Value {
+            let inner = self
+                .gen
+                .model
+                .single_value_inner(ty)
+                .unwrap_or(Type::Unknown);
+            let value = arguments.first().map(|argument| &argument.value);
+            let value = value.map_or("0".to_string(), |value| self.value(value, &inner));
+            return self.wrap_single_value(value, ty);
+        }
         let parameters = self.gen.parameters_of(found);
         let passed = self.pass_all(arguments, &parameters);
         if found.kind != SymbolKind::Service {

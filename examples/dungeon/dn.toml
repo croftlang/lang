@@ -11,9 +11,10 @@ native = ["platform/spectrum.c"]
 [target.spectrum_48k.adapters]
 Screen = "SpectrumScreen"
 Keyboard = "SpectrumKeyboard"
-Storage = "DivmmcStorage"
+Files = "DivmmcFiles"
+Rooms = "FileStorage"
+Scoreboards = "FileStorage"
 
 [target.test.adapters]
 Screen = "NullScreen"
 Keyboard = "ScriptedKeyboard"
-Storage = "MemoryStorage"

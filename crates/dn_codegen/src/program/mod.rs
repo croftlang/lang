@@ -2,24 +2,32 @@
 //! prototype, and one C file with every function.
 
 mod adapter;
+mod builtin_storage;
 mod command;
 mod constant;
 mod constraints;
 mod equality;
 mod events;
 mod functions;
+mod layout;
 mod lookup;
 mod main;
 mod repository;
 mod runtime;
+mod serialize;
 mod signature;
 
 use crate::{GeneratedFile, Generator};
 
 const RUNTIME_HEADER: &str = include_str!("../runtime/dn.h");
+const STDIO_FILES: &str = include_str!("../runtime/files.c");
+const CURL_HTTP: &str = include_str!("../runtime/http.c");
 const RUNTIME_SOURCE: &str = concat!(
     include_str!("../runtime/dn_runtime.c"),
-    include_str!("../runtime/decimal.c")
+    include_str!("../runtime/decimal.c"),
+    include_str!("../runtime/bytes.c"),
+    include_str!("../runtime/saving.c"),
+    include_str!("../runtime/text.c")
 );
 
 impl<'a> Generator<'a> {
@@ -31,6 +39,8 @@ impl<'a> Generator<'a> {
         let events = self.events(&mut prototypes);
         let (adapter_state, adapters) = self.adapters(&mut prototypes);
         let repositories = self.repositories(&mut prototypes);
+        let serializers = self.serializer_functions();
+        let storage = self.builtin_storage();
         let main = self.main_function();
         let error_names = self.error_names(&mut prototypes);
         let event_definition = self.event_definition();
@@ -49,13 +59,23 @@ impl<'a> Generator<'a> {
             prototypes.join("\n")
         );
         let source = format!(
-            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{checks}{equalities}{functions}{commands}{events}{adapters}{repositories}{error_names}{main}"
+            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{checks}{equalities}{functions}{commands}{events}{storage}{adapters}{serializers}{repositories}{error_names}{main}"
         );
-        let runtime_header = RUNTIME_HEADER.replace(
-            "#ifndef DN_STRING_CAPACITY\n#define DN_STRING_CAPACITY 32\n#endif",
-            &format!("#define DN_STRING_CAPACITY {}", self.sizes.string_capacity),
-        );
-        Ok(vec![
+        let runtime_header = RUNTIME_HEADER
+            .replace(
+                "#ifndef DN_STRING_CAPACITY\n#define DN_STRING_CAPACITY 32\n#endif",
+                &format!("#define DN_STRING_CAPACITY {}", self.sizes.string_capacity),
+            )
+            .replace(
+                "#ifndef DN_BYTES_CAPACITY\n#define DN_BYTES_CAPACITY 64\n#endif",
+                &format!("#define DN_BYTES_CAPACITY {}", self.sizes.bytes_capacity),
+            );
+        let standard_natives = self.standard_natives();
+        let reached: String = standard_natives
+            .iter()
+            .map(|file| file.contents.as_str())
+            .collect();
+        let mut files = vec![
             GeneratedFile {
                 name: "dn.h".to_string(),
                 contents: runtime_header,
@@ -65,7 +85,7 @@ impl<'a> Generator<'a> {
                 // `dn_fail` is always kept: `DN_CHECK` in dn.h calls it.
                 contents: runtime::trim_runtime(
                     RUNTIME_SOURCE,
-                    &format!("dn_fail\n{header}{source}"),
+                    &format!("dn_fail\n{header}{source}{reached}"),
                 ),
             },
             GeneratedFile {
@@ -76,7 +96,32 @@ impl<'a> Generator<'a> {
                 name: "program.c".to_string(),
                 contents: source,
             },
-        ])
+        ];
+        files.extend(standard_natives);
+        Ok(files)
+    }
+
+    /// The C for standard adapters this target binds: `dn_files.c` when
+    /// `Files` is bound to `StdioFiles`, and `dn_http.c` for `CurlHttp`.
+    fn standard_natives(&self) -> Vec<GeneratedFile> {
+        let binds = |context: &str, name: &str| {
+            (self.bindings.values())
+                .any(|adapter| adapter.context == context && adapter.name == name)
+        };
+        let mut files = Vec::new();
+        if binds("Std.Files", "StdioFiles") {
+            files.push(GeneratedFile {
+                name: "dn_files.c".to_string(),
+                contents: STDIO_FILES.to_string(),
+            });
+        }
+        if binds("Std.Http", "CurlHttp") {
+            files.push(GeneratedFile {
+                name: "dn_http.c".to_string(),
+                contents: CURL_HTTP.to_string(),
+            });
+        }
+        files
     }
 
     fn native_prototypes(&self) -> String {

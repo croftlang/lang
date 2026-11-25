@@ -65,24 +65,22 @@ impl Parser {
         Ok(operation)
     }
 
-    /// `repository Rooms for Room in Storage`
+    /// `repository Rooms for Room`
     pub(super) fn parse_repository(&mut self) -> ParseResult<RepositoryDecl> {
         let doc = self.doc();
         self.expect_keyword(Keyword::Repository)?;
         let name = self.expect_identifier()?;
         self.expect_word("for")?;
         let aggregate = self.parse_path()?;
-        let storage = if self.check_word("in") && !self.peek().newline_before {
-            self.advance();
-            Some(self.parse_path()?)
-        } else {
-            None
-        };
+        if self.check_word("in") && !self.peek().newline_before {
+            let message =
+                "a repository's storage is chosen in dn.toml, such as `Rooms = \"FileStorage\"`";
+            return Err(Diagnostic::new(message, self.span()));
+        }
         Ok(RepositoryDecl {
             doc,
             name,
             aggregate,
-            storage,
         })
     }
 }

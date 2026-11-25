@@ -12,76 +12,47 @@ mod data;
 mod declared;
 mod domain;
 mod find;
+mod generics;
 mod identity;
 mod manifest;
 mod model;
 mod model_types;
 mod names;
+mod operations;
 mod ports;
 mod publish;
 mod repository;
 mod resolve;
+mod rounds;
 #[cfg(test)]
 mod tests;
+mod type_arguments;
 mod types;
 mod variant;
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 
-use dn_syntax::ast::File;
 use dn_syntax::{Diagnostic, Span};
 
 use crate::facts::{Facts, Meaning};
-use crate::manifest::Manifest;
+use crate::generics::Request;
 use crate::program::{Context, Program};
-use crate::symbols::{build_table, SymbolTable};
+use crate::symbols::SymbolTable;
 
 pub use model::{Model, VariantInfo};
+pub use operations::Operation;
 pub(crate) use resolve::{Resolved, Scope};
 
-/// Merges the files into one program and checks it, with the project file if there is one.
-pub fn check(files: Vec<File>, manifest: Option<Manifest>) -> Result<Program, Vec<Diagnostic>> {
-    let mut program = Program::from_files(files);
-    program.manifest = manifest;
-    let mut errors = Vec::new();
-    let tables = program
-        .contexts
-        .iter()
-        .map(|(name, context)| (name.clone(), build_table(context, &mut errors)))
-        .collect();
-    let mut checker = Checker {
-        program: &program,
-        tables,
-        errors,
-        facts: Facts::default(),
-    };
-    for context in program.contexts.values() {
-        checker.check_context(context);
-    }
-    checker.check_domain();
-    if let Some(manifest) = &program.manifest {
-        checker.check_manifest(manifest);
-    }
-    if checker.errors.is_empty() {
-        for context in program.contexts.values() {
-            checker.check_bodies(context);
-        }
-    }
-    let Checker { errors, facts, .. } = checker;
-    let mut errors = errors;
-    if errors.is_empty() {
-        program.facts = facts;
-        return Ok(program);
-    }
-    errors.sort_by_key(|error| (error.span.source.0, error.span.line, error.span.column));
-    Err(errors)
-}
+pub use rounds::check;
 
 pub(crate) struct Checker<'a> {
     program: &'a Program,
     tables: HashMap<String, SymbolTable>,
     errors: Vec<Diagnostic>,
     facts: Facts,
+    /// Instances of generic templates this round needs but doesn't have yet.
+    requests: RefCell<Vec<Request>>,
 }
 
 impl<'a> Checker<'a> {
@@ -103,7 +74,11 @@ impl<'a> Checker<'a> {
         self.check_publish(context);
         self.check_uses(context);
         for value in &context.values {
-            self.check_value(&scope, value, false);
+            if value.type_parameters.is_empty() {
+                self.check_value(&scope, value, false);
+            } else {
+                self.check_type_parameters(&value.type_parameters);
+            }
         }
         for enum_decl in &context.enums {
             self.check_enum(&scope, enum_decl);
@@ -124,7 +99,11 @@ impl<'a> Checker<'a> {
             self.check_aggregate(context, aggregate);
         }
         for function in &context.functions {
-            self.check_function(&scope, function);
+            if function.type_parameters.is_empty() {
+                self.check_function(&scope, function);
+            } else {
+                self.check_type_parameters(&function.type_parameters);
+            }
         }
         for policy in &context.policies {
             self.check_policy(&scope, policy);

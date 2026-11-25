@@ -61,6 +61,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             self.error(format!("cannot find `{name}` here"), path.span());
             return Type::Unknown;
         };
+        if self.checker.generic_function(&found).is_some() {
+            return self.call_generic(id, &found, arguments, span, expected);
+        }
         self.note(Some(id), Meaning::Declared(found.clone()));
         match found.kind {
             SymbolKind::Function | SymbolKind::Translation | SymbolKind::Constraint => {
@@ -73,6 +76,19 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 self.error("only a service can run another service", span);
                 Type::Unknown
             }
+            SymbolKind::Value => match self.checker.single_value_inner(&Type::Named(found.clone()))
+            {
+                Some(inner) => {
+                    let parameters = [("value".to_string(), inner)];
+                    self.check_arguments(arguments, &parameters, &name, span, false);
+                    Type::Named(found)
+                }
+                None => {
+                    let message = format!("`{name}` is made with its fields: `{name} {{ ... }}`");
+                    self.error(message, span);
+                    Type::Unknown
+                }
+            },
             SymbolKind::Aggregate => {
                 let message = format!(
                     "an aggregate is loaded by issuing a command: `issue Command on {name}(id)`"

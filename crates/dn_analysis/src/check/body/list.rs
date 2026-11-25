@@ -105,6 +105,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         items: &[dn_syntax::ast::Expr],
         expected: Option<&Type>,
     ) -> Type {
+        if expected == Some(&Type::Bytes) {
+            return self.bytes_literal(items);
+        }
         let expected_item = match expected {
             Some(Type::List(item)) if !item.is_unknown() => Some((**item).clone()),
             _ => None,

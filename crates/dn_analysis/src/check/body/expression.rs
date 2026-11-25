@@ -29,7 +29,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 self.call(value.id, callee, arguments, span, expected)
             }
             ExprKind::List(items) => self.list_literal(items, expected),
-            ExprKind::Record(path, fields) => self.record(path, fields),
+            ExprKind::Map(entries) => self.map_literal(entries, expected, span),
+            ExprKind::Record(path, fields) => self.record(path, fields, expected),
             ExprKind::With(base, fields) => self.with(base, fields),
             ExprKind::Unary(op, operand) => self.unary(*op, operand, expected),
             ExprKind::Binary(op, left, right) => self.binary(*op, left, right),

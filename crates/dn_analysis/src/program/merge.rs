@@ -23,6 +23,7 @@ impl Context {
             adapters: Vec::new(),
             repositories: Vec::new(),
             is_domain: false,
+            is_standard: false,
         }
     }
 
@@ -75,6 +76,7 @@ impl Context {
         context.is_domain = true;
         context.uses = domain.uses.clone();
         context.functions.push(FunctionDecl {
+            type_parameters: Vec::new(),
             doc: domain.doc.clone(),
             kind: FunctionKind::Domain,
             name: domain.name.clone(),

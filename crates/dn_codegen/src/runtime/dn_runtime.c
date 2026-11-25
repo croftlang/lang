@@ -1,4 +1,4 @@
-/* The dn runtime: strings, arguments and contract failures. C89. */
+/* The dn runtime: strings, arguments, the console and contract failures. C89. */
 #include <stdio.h>
 #include <stdlib.h>
 #include "dn.h"
@@ -54,6 +54,7 @@ void dn_string_join(const dn_string *a, const dn_string *b, dn_string *out)
         joined.text[joined.length] = b->text[index];
         joined.length++;
     }
+    DN_CHECK(index == b->length, "joined text is longer than a string can hold");
     *out = joined;
 }
 
@@ -199,4 +200,11 @@ dn_int dn_argument_count(void)
 void dn_argument(dn_int index, dn_string *out)
 {
     dn_string_set(out, argument_values[index + 1]);
+}
+
+void dn_console_print(const dn_string *text, dn_unit *out)
+{
+    fwrite(text->text, 1, text->length, stdout);
+    putchar('\n');
+    *out = 0;
 }

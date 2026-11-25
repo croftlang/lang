@@ -16,6 +16,11 @@ enum Case {
 
 impl<'a> Checker<'a> {
     fn expect_case(&mut self, name: &Identifier, case: Case, what: &str) {
+        // An instance, such as `first<Int>`, is named after its template,
+        // which was checked as written.
+        if name.name.contains('<') {
+            return;
+        }
         let (matches, written) = match case {
             Case::Pascal => (is_pascal_case(&name.name), "PascalCase"),
             Case::Snake => (is_snake_case(&name.name), "snake_case"),

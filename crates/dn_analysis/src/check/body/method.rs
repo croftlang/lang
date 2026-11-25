@@ -28,6 +28,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             Type::Repository(repository) => {
                 return self.repository_operation(repository, method, arguments)
             }
+            Type::Bytes => {
+                let context = self.scope.context;
+                if name == "to_text" {
+                    self.checker.check_standard(context, name, span);
+                }
+                self.bytes_method(name, arguments, span)
+            }
             Type::String => {
                 let context = self.scope.context;
                 self.checker.check_standard(context, name, span);
@@ -40,6 +47,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 self.fixed(name, arguments, &[], Type::Int, span)
             }
             Type::List(item) => self.list_method(item, name, arguments, span),
+            Type::Map(key, value) => self.map_method(key, value, name, arguments, span),
             Type::Option(item) => self.option_method(item, name, arguments, span, expected),
             _ => None,
         };

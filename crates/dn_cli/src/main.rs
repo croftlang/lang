@@ -90,7 +90,11 @@ pub(crate) fn load_and_check(path: &Path) -> Result<(Project, dn_analysis::Progr
 
 fn check(path: &Path) -> Result<(), String> {
     let (project, program) = load_and_check(path)?;
-    let contexts = program.contexts.values().filter(|c| !c.is_domain).count();
+    let contexts = program
+        .contexts
+        .values()
+        .filter(|c| !c.is_domain && !c.is_standard)
+        .count();
     let files = project.files.len();
     let domain = program
         .domains

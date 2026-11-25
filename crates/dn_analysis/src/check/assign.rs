@@ -54,9 +54,16 @@ impl<'a> Checker<'a> {
                 Type::Errors(_) => true,
                 _ => false,
             },
+            // One of several errors takes any error one of them takes.
+            (Type::Errors(errors), from) => errors.iter().any(|error| self.accepts(error, from)),
             // A whole number is a `Decimal` with nothing after the point. Inside a
             // list or option it would need every item converted, so it isn't taken there.
             (Type::Decimal(_), Type::Int) => true,
+            (Type::Map(to_key, to_value), Type::Map(from_key, from_value)) => {
+                self.accepts(to_key, from_key)
+                    && self.accepts(to_value, from_value)
+                    && !matches!((&**to_value, &**from_value), (Type::Decimal(_), Type::Int))
+            }
             (Type::List(to), Type::List(from)) | (Type::Option(to), Type::Option(from)) => {
                 self.accepts(to, from) && !matches!((&**to, &**from), (Type::Decimal(_), Type::Int))
             }

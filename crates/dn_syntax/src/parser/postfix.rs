@@ -18,7 +18,7 @@ impl Parser {
             let kind = match self.peek().kind {
                 TokenKind::Dot => {
                     self.advance();
-                    ExprKind::Field(Box::new(value), self.expect_identifier()?)
+                    ExprKind::Field(Box::new(value), self.expect_field_name()?)
                 }
                 TokenKind::LeftParen if same_line => {
                     ExprKind::Call(Box::new(value), self.parse_arguments()?)

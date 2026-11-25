@@ -1,5 +1,6 @@
 //! A read-only view of a checked program's declarations, for code generation.
 
+use super::operations::Operation;
 use std::collections::HashMap;
 
 use dn_syntax::ast::{Field, Path, TypeExpr};
@@ -36,6 +37,7 @@ impl<'a> Model<'a> {
                 tables,
                 errors,
                 facts: Facts::default(),
+                requests: std::cell::RefCell::default(),
             },
         }
     }
@@ -77,6 +79,16 @@ impl<'a> Model<'a> {
                 )
             })
             .collect()
+    }
+
+    /// The type a single-value type holds, such as `Int` for `Score`.
+    pub fn single_value_inner(&self, ty: &Type) -> Option<Type> {
+        self.checker.single_value_inner(ty)
+    }
+
+    /// What an adapter for `port`, a port or a repository, provides.
+    pub fn operations_of(&self, port: &Resolved) -> Vec<Operation<'a>> {
+        self.checker.operations_of(port)
     }
 
     pub fn identity_of(&self, aggregate: &Resolved) -> Type {

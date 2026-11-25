@@ -157,3 +157,16 @@ fn reads_nested_type_arguments_ending_in_two_brackets() {
         ExprKind::Binary(BinaryOp::ShiftRight, _, _)
     ));
 }
+
+#[test]
+fn reads_map_literals() {
+    let body = function_body("fn f(): Int = [\"a\": 1, \"b\": 2]");
+    let ExprKind::Map(entries) = body.kind else {
+        panic!("expected a map")
+    };
+    assert_eq!(entries.len(), 2);
+    let body = function_body("fn f(): Int = [:]");
+    assert!(matches!(body.kind, ExprKind::Map(entries) if entries.is_empty()));
+    let body = function_body("fn f(): Int = []");
+    assert!(matches!(body.kind, ExprKind::List(items) if items.is_empty()));
+}

@@ -4,8 +4,6 @@ fn game(extra: &str) -> String {
     format!(
         "context Game {{\n\
          identity RoomId: Int\n\
-         error StorageError\n\
-         port Storage {{\n fn load(name: String): Result<Int, StorageError>\n}}\n\
          port Screen {{\n fn clear(): Unit\n}}\n\
          aggregate Room {{\n\
              identity id: RoomId\n\
@@ -14,7 +12,7 @@ fn game(extra: &str) -> String {
              event Healed {{ lives: Int }}\n\
              command Heal(amount: Int) = {{\n set lives = lives + amount\n emit Healed {{ lives }}\n }}\n\
          }}\n\
-         repository Rooms for Room in Storage\n\
+         repository Rooms for Room\n\
          enum GameError {{\n include Room.Error\n include StorageError\n }}\n\
          {extra}\n}}"
     )
@@ -113,4 +111,24 @@ fn gives_services_their_command_line_arguments() {
     assert_eq!(errors(&game(service)), Vec::<String>::new());
     let service = "service Start(): Bool {\n calls Arguments\n} = arguments.all().contains(3)";
     assert_error(&game(service), "expected `String`, found `Int`");
+}
+
+#[test]
+fn gives_services_the_built_in_console() {
+    let service = "service Greet(): Unit {\n calls Console\n} = console.print(\"hello\")";
+    assert_eq!(errors(&game(service)), Vec::<String>::new());
+    let service = "service Greet(): Unit {\n calls Console\n} = console.print(3)";
+    assert_error(&game(service), "expected `String`, found `Int`");
+    let service = "service Greet(): Unit {\n calls Console\n} = console.shout(\"hello\")";
+    assert_error(&game(service), "port `Console` has no operation `shout`");
+}
+
+#[test]
+fn gives_back_unit_when_there_is_no_return_type() {
+    let source = game(
+        "port Log {\n fn write(text: String)\n}\n\
+         service Note(): Unit {\n calls Log\n} = log.write(\"hi\")\n\
+         fn nothing() = Unit",
+    );
+    assert_eq!(errors(&source), Vec::<String>::new());
 }

@@ -14,6 +14,102 @@ fn runs_values_enums_lists_and_strings() {
     run_program("values");
 }
 
+/// A domain calling one function, printing through the built-in `Console`.
+#[test]
+fn prints_through_the_console() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/hello");
+    let output = generate(&source, "test", "hello");
+    let built = compile(&output, &["dn_runtime.c", "program.c", "-o", "program"]);
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("program"))
+        .output()
+        .expect("it runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "5\n");
+    fs::remove_dir_all(output).ok();
+}
+
+/// Std.Files through StdioFiles: the file is written, read back and removed,
+/// and reading it again stops the program with `NotFound`.
+#[test]
+fn reads_and_writes_files() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/files");
+    let output = generate(&source, "test", "files");
+    let built = compile(
+        &output,
+        &["dn_runtime.c", "dn_files.c", "program.c", "-o", "program"],
+    );
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("program"))
+        .current_dir(&output)
+        .output()
+        .expect("it runs");
+    assert_eq!(ran.status.code(), Some(1));
+    assert_eq!(
+        String::from_utf8_lossy(&ran.stdout),
+        "first line, then more\nStd.Files.NotFound\n"
+    );
+    assert!(!output.join("notes.txt").exists());
+    fs::remove_dir_all(output).ok();
+}
+
+/// A shelf saved through FileStorage comes back the same, a missing one is
+/// `NotFound`, and a damaged file is `StorageDamaged`.
+#[test]
+fn saves_and_finds_aggregates_in_files() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/storage");
+    let output = generate(&source, "test", "storage");
+    let built = compile(
+        &output,
+        &[
+            "-DDN_DEBUG",
+            "dn_runtime.c",
+            "dn_files.c",
+            "program.c",
+            "-o",
+            "program",
+        ],
+    );
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("program"))
+        .current_dir(&output)
+        .output()
+        .expect("it runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "ok\n");
+    assert!(ran.status.success());
+    fs::remove_dir_all(output).ok();
+}
+
+#[test]
+fn keeps_aggregates_through_adapters_of_the_programs_own() {
+    run_program("repository_adapter");
+}
+
+#[test]
+fn makes_an_instance_of_each_generic_for_each_type() {
+    run_program("generics");
+}
+
 #[test]
 fn runs_commands_events_policies_and_repositories() {
     run_program("game");
@@ -77,6 +173,13 @@ fn checks_rules_in_debug_builds() {
         (Some(1), "count: numbers must satisfy each Even".to_string())
     );
     assert_eq!(
+        run("debug", "score"),
+        (
+            Some(1),
+            "Score: value must satisfy Range(0, 999)".to_string()
+        )
+    );
+    assert_eq!(
         run("debug", "pay"),
         (
             Some(1),
@@ -87,7 +190,22 @@ fn checks_rules_in_debug_builds() {
         run("debug", "shift"),
         (Some(1), "shift by less than 0 or more than 31".to_string())
     );
+    assert_eq!(
+        run("debug", "name"),
+        (
+            Some(1),
+            "Patient: name is longer than 8 characters".to_string()
+        )
+    );
+    assert_eq!(
+        run("debug", "join"),
+        (
+            Some(1),
+            "joined text is longer than a string can hold".to_string()
+        )
+    );
     assert_eq!(run("release", "argument"), (Some(0), String::new()));
+    assert_eq!(run("release", "name"), (Some(0), String::new()));
     fs::remove_dir_all(output).ok();
 }
 

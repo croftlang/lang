@@ -109,9 +109,13 @@ impl<'a> Generator<'a> {
         let ty = Type::Named(named.clone());
         writer.bind_parameters(&[("value".to_string(), ty.clone())]);
         for (field, field_type, decl) in &fields {
+            let mut place = format!("p_value->{field}");
+            if !decl.constraints.is_empty() && self.text_capacity(named, field).is_some() {
+                place = writer.load_text(&place);
+            }
             for constraint in &decl.constraints {
                 writer.check_constraint(
-                    &format!("p_value->{field}"),
+                    &place,
                     field_type,
                     constraint,
                     &format!("{}: {field}", named.name),

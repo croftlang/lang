@@ -39,7 +39,7 @@ impl<'a> Checker<'a> {
             }
         }
         let missing: Vec<String> = (self.program.contexts.values())
-            .filter(|c| !c.is_domain && !listed.contains(c.name.name.as_str()))
+            .filter(|c| !c.is_domain && !c.is_standard && !listed.contains(c.name.name.as_str()))
             .map(|c| c.name.name.clone())
             .collect();
         for name in missing {
@@ -67,7 +67,7 @@ impl<'a> Checker<'a> {
         self.program
             .contexts
             .get(name)
-            .is_some_and(|context| !context.is_domain)
+            .is_some_and(|context| !context.is_domain && !context.is_standard)
     }
 
     /// A context may only `use` contexts directly upstream of it.

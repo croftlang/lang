@@ -1,6 +1,7 @@
 //! Checking `dn.toml` against the program: what each target runs, and an
 //! adapter for every port each target needs.
 
+use crate::standard::{is_builtin_port, FILE_STORAGE, STORAGE_CONTEXT};
 use std::collections::BTreeSet;
 
 use dn_syntax::ast::Identifier;
@@ -50,13 +51,15 @@ impl<'a> Checker<'a> {
     fn check_target(&mut self, target: &TargetConfig, needed: &BTreeSet<(String, String)>) {
         let mut bound = BTreeSet::new();
         for (port_name, adapter_name) in &target.adapters {
-            if port_name.name == "Arguments"
+            if let Some(repository) = self.find_quietly(port_name, SymbolKind::Repository) {
+                self.check_storage(target, &repository, adapter_name);
+                continue;
+            }
+            if is_builtin_port(&port_name.name)
                 && self.find_quietly(port_name, SymbolKind::Port).is_none()
             {
-                self.error(
-                    "`Arguments` is built in, so it needs no adapter",
-                    port_name.span,
-                );
+                let message = format!("`{}` is built in, so it needs no adapter", port_name.name);
+                self.error(message, port_name.span);
                 continue;
             }
             let Some(port) = self.find_anywhere(&to_path(port_name), SymbolKind::Port, "a port")
@@ -101,6 +104,50 @@ impl<'a> Checker<'a> {
                 target.name.name
             );
             self.error(message, target.name.span);
+        }
+    }
+
+    /// A repository is bound to an adapter for `Storage`, such as
+    /// `MemoryStorage` or one of the program's own, or to an adapter written
+    /// for the repository itself. `FileStorage` saves through whatever
+    /// adapter the target binds to `Files`.
+    fn check_storage(&mut self, target: &TargetConfig, repository: &Resolved, name: &Identifier) {
+        let Some(adapter) = self.find_anywhere(&to_path(name), SymbolKind::Adapter, "an adapter")
+        else {
+            return;
+        };
+        let context = &self.program.contexts[&adapter.context];
+        let Some(decl) = context
+            .adapters
+            .iter()
+            .find(|a| a.name.name == adapter.name)
+        else {
+            return;
+        };
+        let scope = Scope {
+            context,
+            aggregate: None,
+        };
+        let port = self.resolve(&scope, &decl.port);
+        let is_storage = port
+            .as_ref()
+            .is_some_and(|p| p.context == STORAGE_CONTEXT && p.name == "Storage");
+        if !is_storage && port.as_ref() != Some(repository) {
+            let message = format!(
+                "`{}` is not an adapter for `Storage` or for `{}`, so it can't keep its aggregates",
+                adapter.name, repository.name
+            );
+            self.error(message, name.span);
+            return;
+        }
+        let saves_in_files = adapter.context == STORAGE_CONTEXT && adapter.name == FILE_STORAGE;
+        let binds_files = target.adapters.iter().any(|(port, _)| port.name == "Files");
+        if saves_in_files && !binds_files {
+            let message = format!(
+                "`FileStorage` saves through `Files`, so target `{}` needs an adapter for `Files`, such as `Files = \"StdioFiles\"`",
+                target.name.name
+            );
+            self.error(message, name.span);
         }
     }
 

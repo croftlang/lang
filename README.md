@@ -61,9 +61,11 @@ and entities have one identity, adapters provide their port's operations, and
 `dn.toml` gives every port its services use an adapter on each target.
 
 It also type-checks bodies. Every expression gets a type, failures must be
-handled with `?` or `or`, `match` must handle every variant, and each kind of
+handled with `?` or `or`, `match` must handle every variant, or end with `_`, and each kind of
 body can only do what its kind allows: only commands `set` fields and `emit`
 events, only services and adapters loop, and only adapters call native code.
+Generic values and functions are checked as each instance the program uses,
+such as `Pair<Int, String>`, and each instance becomes C of its own.
 
 `dn compile` writes portable C89 for one target. It has been tested with gcc
 and clang in strict C89 mode; building with cc65 and z88dk is next.
@@ -77,6 +79,12 @@ dn check .                       # check every .dn file in the folder and its su
 dn compile . --target desktop    # check, then write C to target/dn/desktop/
 ```
 
+Every `.c` file in the output folder is part of the program, for example
+`cc -std=c89 target/dn/desktop/*.c -o game`. Besides `program.c` and
+`dn_runtime.c`, it holds your native files and the standard adapters the
+target uses, such as `dn_files.c` for `StdioFiles`, and `dn_http.c` for
+`CurlHttp`, which needs `-lcurl` when linking.
+
 Try it on the example, a small dungeon game split across twelve files:
 
 ```sh
@@ -87,9 +95,9 @@ dn compile examples/dungeon --target spectrum_48k
 ## The project file
 
 `dn.toml` sits beside the `.dn` files and holds what is about the build
-rather than the domain: for each target, the adapter that fills each port
-and the C files holding its native functions. The compiler checks every name
-in it against the program.
+rather than the domain: for each target, the adapter that fills each port,
+where each repository keeps its aggregates, and the C files holding native
+functions. The compiler checks every name in it against the program.
 
 ```toml
 [package]
@@ -102,7 +110,9 @@ native = ["platform/spectrum.c"]
 [target.spectrum_48k.adapters]
 Screen = "SpectrumScreen"
 Keyboard = "SpectrumKeyboard"
-Storage = "DivmmcStorage"
+Files = "DivmmcFiles"
+Rooms = "FileStorage"
+Scoreboards = "FileStorage"
 ```
 
 `dn check` works without a `dn.toml`; `dn compile` needs one.
@@ -163,9 +173,12 @@ cc -std=c89 *.c -o dungeon
   floating point unless the program uses `Float`, and structs are passed by
   pointer, since cc65 can only pass 1, 2 and 4 byte structs by value.
 - **Fixed sizes.** A list holds as many items as the largest `Length` constraint
-  on any list of its item type (16 when there is none), and every string has
-  room for the longest string any constraint allows (32 by default). A whole
-  number field with a `Range` constraint takes the smallest C type that fits.
+  on any list of its item type (16 when there is none). A string field with a
+  `Length` constraint takes just that many characters; every other string has
+  room for 32, or for the longest `Length` in the program if that is longer.
+  Text that doesn't fit is cut short, and a debug build stops and says where.
+  A whole number field with a `Range` constraint takes the smallest C type
+  that fits.
 - **Only what's called.** `dn_runtime.c` holds just the runtime functions the
   program reaches. cc65 and z88dk link a whole C file at once, so anything
   left in would cost memory on an 8-bit machine.
@@ -173,8 +186,13 @@ cc -std=c89 *.c -o dungeon
 - **Events** are queued by commands and kept once the aggregate that raised
   them is saved. When a service ends, its kept events go to the policies;
   events from a failed command, or from a change that was never saved, are dropped.
-- **Repositories** keep their aggregates in memory for now. Saving through
-  the storage port comes later.
+- **Repositories** turn each aggregate into bytes, the hash of its layout
+  and then every field, numbers as four bytes least significant first, so a
+  save reads the same on every machine. The adapter for `Storage` that
+  `dn.toml` binds keeps them under a key such as `rooms12`: in memory by
+  default, or with `FileStorage` in `rooms12.dat` through the target's
+  `Files` adapter. Bytes from a different version of the program load as
+  `StorageDamaged`.
 - **Contracts.** Preconditions with an error, and invariants, are always
   checked. Built with `-DDN_DEBUG`, a program also checks plain preconditions
   and every `where` constraint: on arguments when a function, command or adapter

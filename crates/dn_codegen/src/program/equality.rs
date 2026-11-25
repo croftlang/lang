@@ -44,6 +44,17 @@ impl<'a> Generator<'a> {
                      for (index = 0; index < a->length; index++) {{\n        if (!{same}) {{\n            return 0;\n        }}\n    }}\n    return 1;\n"
                 )
             }
+            // The same keys with the same values, in any order.
+            Type::Map(key, value) => {
+                let same_key = self.compare("a->keys[index]", "b->keys[other]", key);
+                let same_value = self.compare("a->values[index]", "b->values[other]", value);
+                format!(
+                    "    dn_u16 index;\n    dn_u16 other;\n\n    if (a->length != b->length) {{\n        return 0;\n    }}\n    \
+                     for (index = 0; index < a->length; index++) {{\n        \
+                     for (other = 0; other < b->length && !{same_key}; other++) {{\n        }}\n        \
+                     if (other == b->length || !{same_value}) {{\n            return 0;\n        }}\n    }}\n    return 1;\n"
+                )
+            }
             Type::Option(item) => {
                 let same = self.compare("a->value", "b->value", item);
                 format!("    return a->some == b->some && (!a->some || {same});\n")
@@ -70,8 +81,11 @@ impl<'a> Generator<'a> {
             }
             Type::Named(named) => {
                 let fields: Vec<String> = (self.struct_fields(named).into_iter())
-                    .map(|(field, field_type, _)| {
-                        self.compare(&format!("a->{field}"), &format!("b->{field}"), &field_type)
+                    .map(|(field, field_type, _)| match self.text_capacity(named, &field) {
+                        Some(_) => format!(
+                            "dn_text_equal(a->{field}.text, a->{field}.length, b->{field}.text, b->{field}.length)"
+                        ),
+                        None => self.compare(&format!("a->{field}"), &format!("b->{field}"), &field_type),
                     })
                     .collect();
                 let all = if fields.is_empty() {
@@ -91,6 +105,9 @@ impl<'a> Generator<'a> {
         }
         if *ty == Type::String {
             return format!("dn_string_equal(&{a}, &{b})");
+        }
+        if *ty == Type::Bytes {
+            return format!("dn_bytes_equal(&{a}, &{b})");
         }
         format!("{}(&{a}, &{b})", self.equality_for(ty))
     }

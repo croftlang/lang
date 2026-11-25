@@ -1,0 +1,45 @@
+// Generic values and functions, each used with more than one type.
+context Shapes {
+    identity ShapeId: Int where Range(1, 9)
+
+    value Pair<A, B> {
+        first: A
+        second: B
+    }
+
+    value Labelled<T> {
+        label: String where Length(0, 8)
+        item: T
+    }
+
+    fn swap<A, B>(pair: Pair<A, B>): Pair<B, A> = Pair { first: pair.second, second: pair.first }
+
+    fn first_or<T>(items: List<T>, fallback: T): T = items.first.unwrap_or(fallback)
+
+    fn both<T>(a: T, b: T): List<T> = [a, b]
+
+    fn label<T>(item: T): Labelled<T> = Labelled { label: "item", item: item }
+
+    error WrongAnswer
+
+    fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+        if ok {
+            Ok(Unit)
+        }
+        Err(WrongAnswer)
+    }
+
+    service Check(): Result<Unit, WrongAnswer> = {
+        let numbers: Pair<Int, String> = Pair { first: 1, second: "one" }
+        let swapped = swap(numbers)
+        check(swapped.first == "one" && swapped.second == 1)?
+        check(swap(swapped) == numbers)?
+        check(first_or([3, 4], 0) == 3 && first_or([], 9) == 9)?
+        check(first_or(["a"], "b") == "a")?
+        let ids: List<ShapeId> = both(2, 5)
+        check(ids.length == 2 && first_or(ids, 1) == 2)?
+        let named = label(Pair { first: true, second: 7 })
+        check(named.item.second == 7 && named.label == "item")?
+        Unit
+    }
+}

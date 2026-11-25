@@ -5,6 +5,7 @@
 mod arguments;
 mod block;
 mod builtin;
+mod bytes;
 mod call;
 mod constraint;
 mod decimal;
@@ -13,6 +14,7 @@ mod failure;
 mod issue;
 mod list;
 mod list_lambda;
+mod map;
 mod matching;
 mod method;
 mod operator;
@@ -23,6 +25,7 @@ mod record;
 mod repeat;
 mod scope;
 mod string;
+mod text;
 mod unused;
 
 pub(crate) use unused::mentions;
@@ -48,6 +51,8 @@ pub enum Returns {
 pub struct OwnFields {
     pub prefix: String,
     pub fields: Vec<(String, Type)>,
+    /// The aggregate whose fields these are, for a command; `None` for an adapter.
+    pub owner: Option<dn_analysis::types::Resolved>,
 }
 
 pub struct Writer<'g, 'a> {

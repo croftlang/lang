@@ -28,14 +28,11 @@ impl<'a> Generator<'a> {
     }
 
     pub fn operation_parameters(&self, port: &Resolved, operation: &str) -> Vec<(String, Type)> {
-        let context = &self.program.contexts[&port.context];
-        let port_decl = context.ports.iter().find(|p| p.name.name == port.name);
-        let operation =
-            port_decl.and_then(|p| p.operations.iter().find(|op| op.name.name == operation));
-        let parameters = operation
-            .and_then(|op| op.parameters.as_deref())
-            .unwrap_or(&[]);
-        self.lower_parameters(&port.context, None, parameters)
+        let operations = self.model.operations_of(port);
+        let operation = operations.into_iter().find(|op| op.name == operation);
+        (operation.into_iter().flat_map(|op| op.parameters))
+            .map(|(name, ty, _)| (name, ty))
+            .collect()
     }
 
     pub fn command_parameters(&self, aggregate: &Resolved, command: &str) -> Vec<(String, Type)> {

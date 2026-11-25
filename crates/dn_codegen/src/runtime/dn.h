@@ -21,6 +21,15 @@ typedef struct {
     char text[DN_STRING_CAPACITY];
 } dn_string;
 
+#ifndef DN_BYTES_CAPACITY
+#define DN_BYTES_CAPACITY 64
+#endif
+
+typedef struct {
+    dn_u16 length;
+    unsigned char items[DN_BYTES_CAPACITY];
+} dn_bytes;
+
 #define DN_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define DN_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define DN_ABS(a) ((a) < 0 ? -(a) : (a))
@@ -60,10 +69,36 @@ dn_int dn_divide_even(dn_int numerator, dn_int denominator);
 dn_int dn_decimal_multiply(dn_int a, dn_int b, dn_int scale);
 dn_int dn_decimal_divide(dn_int a, dn_int b, dn_int scale);
 void dn_decimal_to_string(dn_int value, dn_int places, dn_string *out);
+
+dn_bool dn_bytes_equal(const dn_bytes *a, const dn_bytes *b);
+dn_bool dn_bytes_get(const dn_bytes *bytes, dn_int index, dn_int *out);
+void dn_bytes_add(const dn_bytes *bytes, dn_int byte, dn_bytes *out);
+void dn_bytes_slice(const dn_bytes *bytes, dn_int start, dn_int end, dn_bytes *out);
+void dn_bytes_to_text(const dn_bytes *bytes, dn_string *out);
+void dn_string_to_bytes(const dn_string *text, dn_bytes *out);
+dn_bool dn_bytes_put_int(dn_bytes *out, dn_int value);
+dn_bool dn_bytes_take_int(const dn_bytes *in, dn_u16 *at, dn_int *out);
+dn_bool dn_bytes_put_length(dn_bytes *out, dn_u16 length);
+dn_bool dn_bytes_take_length(const dn_bytes *in, dn_u16 *at, dn_u16 *out);
+dn_bool dn_bytes_put_string(dn_bytes *out, const dn_string *text);
+dn_bool dn_bytes_take_string(const dn_bytes *in, dn_u16 *at, dn_string *out);
+dn_bool dn_bytes_put_bytes(dn_bytes *out, const dn_bytes *bytes);
+dn_bool dn_bytes_take_bytes(const dn_bytes *in, dn_u16 *at, dn_bytes *out);
+void dn_storage_key(const char *prefix, dn_int identity, dn_string *out);
+
+void dn_text_load(const char *text, dn_u16 length, dn_string *out);
+dn_bool dn_text_store(const dn_string *in, char *text, dn_u16 *length, dn_u16 capacity);
+dn_bool dn_text_equal(const char *a, dn_u16 a_length, const char *b, dn_u16 b_length);
+dn_bool dn_bytes_put_text(dn_bytes *out, const char *text, dn_u16 length);
+dn_bool dn_bytes_take_text(const dn_bytes *in, dn_u16 *at, char *text, dn_u16 *length,
+                           dn_u16 capacity);
 dn_bool dn_string_to_int(const dn_string *text, dn_int *out);
 
 void dn_arguments_set(int count, char **values);
 dn_int dn_argument_count(void);
 void dn_argument(dn_int index, dn_string *out);
+
+/* The built-in Console port: prints a line. */
+void dn_console_print(const dn_string *text, dn_unit *out);
 
 #endif
