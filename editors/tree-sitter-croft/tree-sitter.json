@@ -1,0 +1,19 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "croft",
+      "camelcase": "Croft",
+      "scope": "source.croft",
+      "path": ".",
+      "file-types": ["croft", "cro"],
+      "highlights": "queries/highlights.scm"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Croft grammar for tree-sitter",
+    "links": { "repository": "https://github.com/croftlang/lang" }
+  }
+}

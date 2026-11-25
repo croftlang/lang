@@ -1,6 +1,6 @@
 # Glossary
 
-The shared language for b. These terms mean the same thing in the language,
+The shared language for Croft. These terms mean the same thing in the language,
 the compiler's code, error messages and conversation. If a new concept needs a
 name, add it here first.
 
@@ -12,7 +12,7 @@ Eric Evans' *Domain-Driven Design*. It is the test fixture in
 
 ### Context
 A bounded context: a named boundary inside which every term has one meaning.
-Everything in b is declared inside a context.
+Everything in Croft is declared inside a context.
 
 ### Publish
 The braced list of terms a context lets other contexts use. Aggregates are
@@ -249,11 +249,11 @@ has `Decimal`, `max`, `min` and `abs`. `Std.Collections` has `Map`.
 Each file of a context sees what any of them imports. Standard contexts need
 no arrow in the domain's `contexts`.
 
-Some standard contexts are written in b and join the program when it
+Some standard contexts are written in Croft and join the program when it
 imports from them. `Std.Files` has the `Files` port, with `read`, `write`,
 `append`, `exists` and `remove`, its errors `NotFound`, `NoRoom` and
 `Unreadable`, the enum `FileError` that includes them, and the `StdioFiles`
-adapter, which uses C's stdio: `Files = "StdioFiles"` in `b.toml`.
+adapter, which uses C's stdio: `Files = "StdioFiles"` in `croft.toml`.
 `Std.Http` has the `Http` port, with `get`, `post`, `put` and `delete`, each
 giving a `Response` (its `status`, its `headers` as a map with names in
 lower case, and its `body`) or an `HttpError`:
@@ -269,7 +269,7 @@ What the domain needs from the outside world, by signature only.
 A port for loading and saving one aggregate: `repository Cargos for Cargo`.
 The compiler writes `find` and `save`. `find` fails with the aggregate's
 errors or a `StorageError`, and `save` with a `StorageError`. Each target
-binds the repository in `b.toml` to an adapter for `Storage`, which keeps
+binds the repository in `croft.toml` to an adapter for `Storage`, which keeps
 the bytes the compiler makes from each aggregate under a key such as
 `carg12` for cargo 12: `MemoryStorage`, the default, `FileStorage`, or one of the
 program's own. An adapter can also be written for the repository itself,
@@ -295,13 +295,13 @@ such as the ZX Spectrum, give an empty list.
 ### Console
 The built-in port that prints a line: `console.print("hello")` in a
 service or domain that lists it in `calls`. Every target supplies it, so
-`b.toml` names no adapter for it. A program's own port called `Console`
+`croft.toml` names no adapter for it. A program's own port called `Console`
 replaces it.
 
 ### Adapter
 Implements a port, usually in a `Platform` context: `adapter FixedClock for
 Clock = { ... }`. Must provide every operation the port declares. Which
-targets use it is chosen in `b.toml`, so one adapter can serve several.
+targets use it is chosen in `croft.toml`, so one adapter can serve several.
 
 ### Starting value
 What an adapter's field holds when the program starts, written after its
@@ -318,11 +318,15 @@ Routing's edges to Shipping's legs: `translation LegFrom(edge: Edge): Leg`.
 
 ## Compiler
 
+### Source file
+A file of Croft code, ending in `.croft`, or in `.cro` on machines whose file
+names are limited to 8.3. Either is read in capitals too, as in `CARGO.CRO`.
+
 ### Project
-A folder of `.b` files compiled together as one program, with a `b.toml`.
+A folder of source files compiled together as one program, with a `croft.toml`.
 
 ### Project file
-`b.toml`, beside the `.b` files. Like Rust's `Cargo.toml`, it holds what
+`croft.toml`, beside the source files. Like Rust's `Cargo.toml`, it holds what
 is about the build rather than the domain: the program's name, and for each
 target the adapter that fills each port (`Clock = "SystemClock"`), the C
 files holding its native functions, and optionally a `main` service to run
@@ -345,16 +349,16 @@ context with no relationships is written on its own.
 
 ### Main
 A service a target runs instead of the domain, named by `main` under that
-target in `b.toml`, such as a test entry point. It takes no parameters.
+target in `croft.toml`, such as a test entry point. It takes no parameters.
 
 ### Target
 A machine to build for, such as `spectrum_48k`, `atari_st`, `desktop` or `test`.
 
 ### Check
-Reading, parsing and checking a project without generating code (`b check`).
+Reading, parsing and checking a project without generating code (`croft check`).
 
 ### Compile
-Checking a project, generating code and building it (`b compile`).
+Checking a project, generating code and building it (`croft compile`).
 
 ### Diagnostic
 An error the compiler reports, with its file, line and column.

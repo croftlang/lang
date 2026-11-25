@@ -1,7 +1,7 @@
 {
-  "name": "b-language",
-  "displayName": "b",
-  "description": "Syntax highlighting, errors as you type, hover and go to definition for the b domain language.",
+  "name": "croft-language",
+  "displayName": "Croft",
+  "description": "Syntax highlighting, errors as you type, hover and go to definition for the Croft domain language.",
   "version": "0.1.0",
   "publisher": "briward",
   "license": "MIT",
@@ -14,47 +14,49 @@
   "contributes": {
     "languages": [
       {
-        "id": "b",
+        "id": "croft",
         "aliases": [
-          "b"
+          "Croft",
+          "croft"
         ],
         "extensions": [
-          ".b"
+          ".croft",
+          ".cro"
         ],
         "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
-        "language": "b",
-        "scopeName": "source.b",
-        "path": "./syntaxes/b.tmLanguage.json"
+        "language": "croft",
+        "scopeName": "source.croft",
+        "path": "./syntaxes/croft.tmLanguage.json"
       },
       {
-        "scopeName": "markdown.b.codeblock",
-        "path": "./syntaxes/b.markdown.tmLanguage.json",
+        "scopeName": "markdown.croft.codeblock",
+        "path": "./syntaxes/croft.markdown.tmLanguage.json",
         "injectTo": [
           "text.html.markdown"
         ],
         "embeddedLanguages": {
-          "meta.embedded.block.b": "b"
+          "meta.embedded.block.croft": "croft"
         }
       }
     ],
     "configuration": {
-      "title": "b",
+      "title": "Croft",
       "properties": {
-        "b.server.path": {
+        "croft.server.path": {
           "type": "string",
-          "default": "b",
-          "description": "The `b` command, which runs the language server with `b lsp`. Set this when `b` is not on your PATH."
+          "default": "croft",
+          "description": "The `croft` command, which runs the language server with `croft lsp`. Set this when `croft` is not on your PATH."
         }
       }
     }
   },
   "main": "./extension.js",
   "activationEvents": [
-    "onLanguage:b"
+    "onLanguage:croft"
   ],
   "dependencies": {
     "vscode-languageclient": "^9.0.1"

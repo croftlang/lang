@@ -1,0 +1,20 @@
+# The Logistics project: the adapter that fills each port on each machine.
+# The program runs `domain Logistics`, in logistics.croft.
+
+[package]
+name = "logistics"
+version = "0.1.0"
+
+[target.desktop]
+native = ["platform/desktop.c"]
+
+[target.desktop.adapters]
+HandlingReports = "TerminalReports"
+Clock = "SystemClock"
+Files = "StdioFiles"
+Cargos = "FileStorage"
+HandlingEvents = "FileStorage"
+
+[target.test.adapters]
+HandlingReports = "ScriptedReports"
+Clock = "FixedClock"

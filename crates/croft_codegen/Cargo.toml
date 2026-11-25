@@ -1,0 +1,10 @@
+[package]
+name = "croft_codegen"
+description = "Generates portable C from checked Croft programs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+croft_syntax = { path = "../croft_syntax" }
+croft_analysis = { path = "../croft_analysis" }
