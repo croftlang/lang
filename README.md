@@ -61,9 +61,11 @@ and entities have one identity, adapters provide their port's operations, and
 `dn.toml` gives every port its services use an adapter on each target.
 
 It also type-checks bodies. Every expression gets a type, failures must be
-handled with `?` or `or`, `match` must handle every variant, and each kind of
+handled with `?` or `or`, `match` must handle every variant, or end with `_`, and each kind of
 body can only do what its kind allows: only commands `set` fields and `emit`
 events, only services and adapters loop, and only adapters call native code.
+Generic values and functions are checked as each instance the program uses,
+such as `Pair<Int, String>`, and each instance becomes C of its own.
 
 `dn compile` writes portable C89 for one target. It has been tested with gcc
 and clang in strict C89 mode; building with cc65 and z88dk is next.
