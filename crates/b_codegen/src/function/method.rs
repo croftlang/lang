@@ -44,9 +44,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             Type::Decimal(places) if name == "to_string" => {
                 let number = self.value(receiver, &Type::Decimal(*places));
                 let temp = self.temp(&Type::String);
-                self.line(format!(
-                    "b_decimal_to_string({number}, {places}, &{temp});"
-                ));
+                self.line(format!("b_decimal_to_string({number}, {places}, &{temp});"));
                 temp
             }
             Type::Decimal(places) if name == "round" => {

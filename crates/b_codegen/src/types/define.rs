@@ -21,7 +21,11 @@ impl<'a> Generator<'a> {
             index += 1;
         }
         let texts: String = (self.texts.borrow().iter())
-            .map(|n| format!("typedef struct {{\n    b_u16 length;\n    char text[{n}];\n}} b_text_{n};\n\n"))
+            .map(|n| {
+                format!(
+                    "typedef struct {{\n    b_u16 length;\n    char text[{n}];\n}} b_text_{n};\n\n"
+                )
+            })
             .collect();
         texts + &out
     }

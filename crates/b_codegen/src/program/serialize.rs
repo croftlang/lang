@@ -35,9 +35,8 @@ impl<'a> Generator<'a> {
             let name = self.serializer_for(&ty);
             let c = self.c_type(&ty);
             let write = format!("static b_bool b_write_{name}(const {c} *value, b_bytes *out)");
-            let read = format!(
-                "static b_bool b_read_{name}(const b_bytes *in, b_u16 *at, {c} *value)"
-            );
+            let read =
+                format!("static b_bool b_read_{name}(const b_bytes *in, b_u16 *at, {c} *value)");
             prototypes.push_str(&format!("{write};\n{read};\n"));
             let (write_body, read_body) = self.serializer_bodies(&ty);
             bodies.push_str(&format!(

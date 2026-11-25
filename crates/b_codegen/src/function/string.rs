@@ -35,9 +35,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let start = argument(self, 0, &Type::Int);
                 let end = argument(self, 1, &Type::Int);
                 let temp = self.temp(ty);
-                self.line(format!(
-                    "b_string_slice(&{text}, {start}, {end}, &{temp});"
-                ));
+                self.line(format!("b_string_slice(&{text}, {start}, {end}, &{temp});"));
                 temp
             }
             "to_int" => {

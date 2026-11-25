@@ -57,9 +57,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let start = argument(self, 0);
                 let end = argument(self, 1);
                 let temp = self.temp(ty);
-                self.line(format!(
-                    "b_bytes_slice(&{bytes}, {start}, {end}, &{temp});"
-                ));
+                self.line(format!("b_bytes_slice(&{bytes}, {start}, {end}, &{temp});"));
                 temp
             }
             "to_text" => {
