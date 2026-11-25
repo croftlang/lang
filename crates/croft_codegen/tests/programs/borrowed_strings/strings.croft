@@ -1,0 +1,59 @@
+// Strings passed into functions as borrowed views: literals, parameters
+// passed on, and parameters kept in a value, which copies them.
+context Words
+
+use { trim, split, to_lower, to_upper, starts_with, ends_with, contains, slice, to_int } from Std.Text
+
+error WrongAnswer
+
+value Label {
+    name: String where Length(0, 8)
+    note: String
+}
+
+enum Shape { Circle, Square }
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+// Each arm writes its literal straight into the result.
+fn name_of(shape: Shape): String = match shape {
+    Circle -> "circle"
+    Square -> "square"
+}
+
+fn greeting(name: String): String = "hello " + name
+
+// Passes its parameter on, still borrowed.
+fn shout(text: String): String = greeting(text).to_upper()
+
+fn same(a: String, b: String): Bool = a == b
+
+fn tidy(text: String): String = text.trim().to_lower()
+
+fn label(name: String, note: String): Label = Label { name, note }
+
+fn second_word(line: String): String = line.split(" ").drop(1).first.unwrap_or("")
+
+service Check(): Result<Unit, WrongAnswer> = {
+    check(name_of(Shape.Square) == "square")?
+    check("circle" == name_of(Shape.Circle))?
+    check(greeting("bri") == "hello bri")?
+    check(shout("bri") == "HELLO BRI")?
+    check(same("a", "a"))?
+    check(!same("a", "b"))?
+    check("a" != "b")?
+    check(tidy("  Lamp  ") == "lamp")?
+    let kept = label("key", "rusty")
+    check(kept.name == "key" && kept.note.length == 5)?
+    check(second_word("get matches") == "matches")?
+    check("lighthouse".starts_with("light") && "lighthouse".ends_with("house"))?
+    check("lighthouse".contains("thou") && !"lighthouse".contains("x"))?
+    check("lighthouse".slice(5, 10) == "house")?
+    check("42".to_int() == Some(42))?
+    check("".is_empty && "abc".length == 3)
+}

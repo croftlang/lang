@@ -142,7 +142,11 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         if *ty == Type::String {
-            return format!("croft_string_equal(&{left}, &{right})");
+            return format!(
+                "croft_string_equal({}, {})",
+                self.view_of(left),
+                self.view_of(right)
+            );
         }
 
         if *ty == Type::Bytes {

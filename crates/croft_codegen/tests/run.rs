@@ -392,3 +392,28 @@ fn compiles_the_logistics_fixture_for_every_target() {
 fn runs_operations_a_repository_declares() {
     run_program("repository_operations");
 }
+
+/// Literals and string parameters passed as borrowed views, and copied only
+/// when kept.
+#[test]
+fn borrows_strings_passed_into_functions() {
+    run_program("borrowed_strings");
+}
+
+/// A `match` of string literals writes each straight into the result, with
+/// no temporary string for any arm.
+#[test]
+fn writes_string_literals_straight_into_results() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/borrowed_strings");
+    let output = generate(&source, "test", "borrowed_strings_c");
+    let c = fs::read_to_string(output.join("program.c")).expect("program.c");
+    let start = c.find("void Words_name_of(").expect("name_of");
+    let body = &c[start..start + c[start..].find("\n}\n").expect("its end")];
+    assert!(
+        body.contains("croft_string_set(&(*out), \"circle\");"),
+        "{body}"
+    );
+    assert!(!body.contains("croft_string t"), "{body}");
+    assert!(c.contains("croft_string_view_from(\"square\", 6)"));
+    fs::remove_dir_all(output).ok();
+}

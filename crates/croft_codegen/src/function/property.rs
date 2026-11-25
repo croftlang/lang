@@ -28,10 +28,11 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// A local name's value, or an own field's, read as a full string when
-    /// it is kept in its own size.
+    /// it is kept in its own size, or copied when it is a borrowed parameter.
     pub fn read_name(&mut self, name: &str) -> String {
         if self.lookup(name).is_some() {
-            return self.local_or_field(name);
+            let c = self.local_or_field(name);
+            return self.owned(c);
         }
 
         let Some(own) = &self.own else {
@@ -102,6 +103,13 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     pub fn property(&mut self, inner: &Expr, field: &str) -> String {
         let inner_type = self.type_of(inner, None);
+        if inner_type == Type::String && matches!(field, "length" | "is_empty") {
+            let text = self.view(inner);
+            return match field {
+                "length" => format!("((croft_int) {text}.length)"),
+                _ => format!("({text}.length == 0)"),
+            };
+        }
         let (c, _) = self.eval(inner, None);
 
         match (&inner_type, field) {

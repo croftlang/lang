@@ -59,20 +59,20 @@ static size_t keep_header(char *data, size_t size, size_t count, void *user)
     return length;
 }
 
-static void request(const char *method, const croft_string *url, const croft_bytes *body,
+static void request(const char *method, croft_string_view url, const croft_bytes *body,
                     croft_result_Std_Http_Response_error *out)
 {
-    char address[CROFT_STRING_CAPACITY + 1];
+    char address[1024];
     croft_http_answer answer;
     CURL *curl;
     CURLcode code;
     long status = 0;
     croft_u16 index;
     croft_clear(out, sizeof *out);
-    for (index = 0; index < url->length; index++) {
-        address[index] = url->text[index];
+    for (index = 0; index < url.length && index < sizeof address - 1; index++) {
+        address[index] = url.text[index];
     }
-    address[url->length] = '\0';
+    address[index] = '\0';
     answer.body = &out->value.body;
     answer.too_large = 0;
     curl = curl_easy_init();
@@ -109,22 +109,22 @@ static void request(const char *method, const croft_string *url, const croft_byt
     }
 }
 
-void croft_http_get(const croft_string *url, croft_result_Std_Http_Response_error *out)
+void croft_http_get(croft_string_view url, croft_result_Std_Http_Response_error *out)
 {
     request("GET", url, 0, out);
 }
 
-void croft_http_post(const croft_string *url, const croft_bytes *body, croft_result_Std_Http_Response_error *out)
+void croft_http_post(croft_string_view url, const croft_bytes *body, croft_result_Std_Http_Response_error *out)
 {
     request("POST", url, body, out);
 }
 
-void croft_http_put(const croft_string *url, const croft_bytes *body, croft_result_Std_Http_Response_error *out)
+void croft_http_put(croft_string_view url, const croft_bytes *body, croft_result_Std_Http_Response_error *out)
 {
     request("PUT", url, body, out);
 }
 
-void croft_http_delete(const croft_string *url, croft_result_Std_Http_Response_error *out)
+void croft_http_delete(croft_string_view url, croft_result_Std_Http_Response_error *out)
 {
     request("DELETE", url, 0, out);
 }

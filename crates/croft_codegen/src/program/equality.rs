@@ -126,7 +126,9 @@ impl<'a> Generator<'a> {
         }
 
         if *ty == Type::String {
-            return format!("croft_string_equal(&{a}, &{b})");
+            return format!(
+                "croft_string_equal(croft_string_view_of(&{a}), croft_string_view_of(&{b}))"
+            );
         }
 
         if *ty == Type::Bytes {

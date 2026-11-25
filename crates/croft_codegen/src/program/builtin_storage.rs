@@ -61,14 +61,14 @@ impl<'a> Generator<'a> {
 
         format!(
             "static croft_string croft_memory_keys[{slots}];\nstatic croft_bytes croft_memory_values[{slots}];\nstatic croft_u16 croft_memory_count = 0;\n\n\
-             /* Where a key is kept, or croft_memory_count when it isn't. */\nstatic croft_u16 croft_memory_find(const croft_string *key)\n{{\n    croft_u16 index;\n\n    \
-             for (index = 0; index < croft_memory_count; index++) {{\n        if (croft_string_equal(&croft_memory_keys[index], key)) {{\n            return index;\n        }}\n    }}\n    return croft_memory_count;\n}}\n\n\
-             void croft_memory_storage_load(const croft_string *key, {loaded} *out)\n{{\n    croft_u16 index = croft_memory_find(key);\n\n    \
+             /* Where a key is kept, or croft_memory_count when it isn't. */\nstatic croft_u16 croft_memory_find(croft_string_view key)\n{{\n    croft_u16 index;\n\n    \
+             for (index = 0; index < croft_memory_count; index++) {{\n        if (croft_string_equal(croft_string_view_of(&croft_memory_keys[index]), key)) {{\n            return index;\n        }}\n    }}\n    return croft_memory_count;\n}}\n\n\
+             void croft_memory_storage_load(croft_string_view key, {loaded} *out)\n{{\n    croft_u16 index = croft_memory_find(key);\n\n    \
              croft_clear(out, sizeof *out);\n    out->ok = 1;\n    if (index < croft_memory_count) {{\n        out->value.some = 1;\n        out->value.value = croft_memory_values[index];\n    }}\n}}\n\n\
-             void croft_memory_storage_save(const croft_string *key, const croft_bytes *data, {written} *out)\n{{\n    croft_u16 index = croft_memory_find(key);\n\n    \
+             void croft_memory_storage_save(croft_string_view key, const croft_bytes *data, {written} *out)\n{{\n    croft_u16 index = croft_memory_find(key);\n\n    \
              croft_clear(out, sizeof *out);\n    if (index == croft_memory_count) {{\n        if (croft_memory_count == {slots}) {{\n            out->error.code = {full};\n            return;\n        }}\n        \
-             croft_memory_keys[index] = *key;\n        croft_memory_count++;\n    }}\n    croft_memory_values[index] = *data;\n    out->ok = 1;\n}}\n\n\
-             void croft_memory_storage_remove(const croft_string *key, {written} *out)\n{{\n    croft_u16 index = croft_memory_find(key);\n\n    \
+             croft_string_from_view(key, &croft_memory_keys[index]);\n        croft_memory_count++;\n    }}\n    croft_memory_values[index] = *data;\n    out->ok = 1;\n}}\n\n\
+             void croft_memory_storage_remove(croft_string_view key, {written} *out)\n{{\n    croft_u16 index = croft_memory_find(key);\n\n    \
              croft_clear(out, sizeof *out);\n    out->ok = 1;\n    if (index < croft_memory_count) {{\n        croft_memory_count--;\n        \
              croft_memory_keys[index] = croft_memory_keys[croft_memory_count];\n        croft_memory_values[index] = croft_memory_values[croft_memory_count];\n    }}\n}}\n\n"
         )
@@ -88,16 +88,16 @@ impl<'a> Generator<'a> {
         let unavailable = self.storage_error("StorageUnavailable");
 
         format!(
-            "/* The file for a key: the key and \".dat\". */\nstatic void croft_file_path(const croft_string *key, croft_string *out)\n{{\n    croft_string extension;\n\n    \
-             croft_string_set(&extension, \".dat\");\n    croft_string_join(key, &extension, out);\n}}\n\n\
-             void croft_file_storage_load(const croft_string *key, {loaded} *out)\n{{\n    croft_string path;\n    {read} file;\n\n    \
-             croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_read(&path, &file);\n    \
+            "/* The file for a key: the key and \".dat\". */\nstatic void croft_file_path(croft_string_view key, croft_string *out)\n{{\n    \
+             croft_string_join(key, croft_string_view_from(\".dat\", 4), out);\n}}\n\n\
+             void croft_file_storage_load(croft_string_view key, {loaded} *out)\n{{\n    croft_string path;\n    {read} file;\n\n    \
+             croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_read(croft_string_view_of(&path), &file);\n    \
              if (file.ok) {{\n        out->ok = 1;\n        out->value.some = 1;\n        out->value.value = file.value;\n    }} else if (file.error.code == {missing}) {{\n        out->ok = 1;\n    }} else {{\n        out->error.code = {unavailable};\n    }}\n}}\n\n\
-             void croft_file_storage_save(const croft_string *key, const croft_bytes *data, {written} *out)\n{{\n    croft_string path;\n    {written} file;\n\n    \
-             croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_write(&path, data, &file);\n    \
+             void croft_file_storage_save(croft_string_view key, const croft_bytes *data, {written} *out)\n{{\n    croft_string path;\n    {written} file;\n\n    \
+             croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_write(croft_string_view_of(&path), data, &file);\n    \
              if (file.ok) {{\n        out->ok = 1;\n    }} else {{\n        out->error.code = file.error.code == {no_room} ? {full} : {unavailable};\n    }}\n}}\n\n\
-             void croft_file_storage_remove(const croft_string *key, {written} *out)\n{{\n    croft_string path;\n    {written} file;\n\n    \
-             croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_remove(&path, &file);\n    \
+             void croft_file_storage_remove(croft_string_view key, {written} *out)\n{{\n    croft_string path;\n    {written} file;\n\n    \
+             croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_remove(croft_string_view_of(&path), &file);\n    \
              if (file.ok || file.error.code == {missing}) {{\n        out->ok = 1;\n    }} else {{\n        out->error.code = {unavailable};\n    }}\n}}\n\n"
         )
     }

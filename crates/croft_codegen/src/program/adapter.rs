@@ -142,16 +142,13 @@ impl<'a> Generator<'a> {
                 }
 
                 if let Some(body) = &operation.body {
-                    let value = writer.value(body, &result);
-
+                    let value = writer.value_into("(*out)", body, &result);
                     if let Some(check) =
                         self.result_check(&function, &place, &result, expected.result_constraints)
                     {
                         let passed = writer.pass(value.clone(), &result);
                         writer.debug_call(&format!("{check}({passed});"));
                     }
-
-                    writer.line(format!("*out = {value};"));
                 }
 
                 out.push_str(&writer.finish(&signature));

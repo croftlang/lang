@@ -116,5 +116,5 @@ void croft_storage_key(const char *prefix, croft_int identity, croft_string *out
     croft_string number;
     croft_string_set(out, prefix);
     croft_int_to_string(identity, &number);
-    croft_string_join(out, &number, out);
+    croft_string_join(croft_string_view_of(out), croft_string_view_of(&number), out);
 }

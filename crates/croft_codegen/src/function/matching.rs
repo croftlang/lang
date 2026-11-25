@@ -9,10 +9,23 @@ use crate::names::{c_name, error_code};
 
 impl<'g, 'a> Writer<'g, 'a> {
     pub fn check_match(&mut self, subject: &Expr, arms: &[MatchArm], ty: &Type) -> String {
+        if *ty == Type::Unit {
+            self.arms(subject, arms, ty, None);
+            return "0".to_string();
+        }
+        let result = self.temp(ty);
+        self.arms(subject, arms, ty, Some(&result));
+        result
+    }
+
+    /// A `match` whose arms each write their value straight into `target`.
+    pub fn match_into(&mut self, subject: &Expr, arms: &[MatchArm], ty: &Type, target: &str) {
+        self.arms(subject, arms, ty, Some(target));
+    }
+
+    fn arms(&mut self, subject: &Expr, arms: &[MatchArm], ty: &Type, result: Option<&str>) {
         let subject_type = self.type_of(subject, None);
         let (subject, _) = self.eval(subject, None);
-        let result = (*ty != Type::Unit).then(|| self.temp(ty));
-
         for (index, arm) in arms.iter().enumerate() {
             let (test, bindings) = self.arm_test(&subject, &subject_type, &arm.pattern);
 
@@ -36,10 +49,13 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.bind(&binding.name, c, binding_type);
             }
 
-            let value = self.value(&arm.value, ty);
-
-            if let Some(result) = &result {
-                self.line(format!("{result} = {value};"));
+            match result {
+                Some(result) => {
+                    self.value_into(result, &arm.value, ty);
+                }
+                None => {
+                    self.value(&arm.value, ty);
+                }
             }
 
             self.pop_scope();
@@ -48,8 +64,6 @@ impl<'g, 'a> Writer<'g, 'a> {
         if !arms.is_empty() {
             self.close();
         }
-
-        result.unwrap_or_else(|| "0".to_string())
     }
 
     /// The test for one arm, and what each of its bindings refers to.
