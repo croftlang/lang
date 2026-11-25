@@ -57,7 +57,7 @@ fn check(ok: Bool): Result<Unit, WrongAnswer> = {
 }
 
 service Play(board: Board): Result<Unit, GameError> {
-    uses Boards
+    calls Boards
 } = {
     boards.save(board)?
     issue Score(amount: 5) on Board(board.id)?
@@ -73,7 +73,7 @@ service Tamper(board: Board): Result<Unit, GameError> = {
 }
 
 service Start(): Result<Unit, GameError> {
-    uses Boards
+    calls Boards
 } = {
     let spare = Board { id: 2, points: 0, bonus: 0 }
     let scored = issue Score(amount: 10) on spare?

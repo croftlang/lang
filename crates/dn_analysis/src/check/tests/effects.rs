@@ -23,7 +23,7 @@ fn game(extra: &str) -> String {
 #[test]
 fn accepts_a_service_that_loads_changes_and_saves() {
     let service =
-        "service Play(id: RoomId): Result<Unit, GameError> {\n uses Rooms, Screen\n} = {\n\
+        "service Play(id: RoomId): Result<Unit, GameError> {\n calls Rooms, Screen\n} = {\n\
                    let room = rooms.find(id)?\n let healed = issue Heal(amount: 1) on room?\n\
                    rooms.save(healed)?\n issue Heal(amount: 2) on Room(id)?\n screen.clear()\n}";
     assert_eq!(errors(&game(service)), Vec::<String>::new());
@@ -31,18 +31,18 @@ fn accepts_a_service_that_loads_changes_and_saves() {
 
 #[test]
 fn checks_failures_are_handled_and_can_be_passed_up() {
-    let service = "service Play(id: RoomId): Result<Unit, Room.Error> {\n uses Rooms\n} = {\n rooms.find(id)\n Unit\n}";
+    let service = "service Play(id: RoomId): Result<Unit, Room.Error> {\n calls Rooms\n} = {\n rooms.find(id)\n Unit\n}";
     assert_error(
         &game(service),
         "this `Result` is not handled: add `?`, or `or` and an error",
     );
     let service =
-        "service Play(id: RoomId): Unit {\n uses Rooms\n} = {\n rooms.find(id)?\n Unit\n}";
+        "service Play(id: RoomId): Unit {\n calls Rooms\n} = {\n rooms.find(id)?\n Unit\n}";
     assert_error(
         &game(service),
         "this body cannot fail: give it a `Result` return type",
     );
-    let service = "service Play(id: RoomId): Result<Unit, Room.Error> {\n uses Rooms\n} = {\n issue Heal(amount: 1) on Room(id)?\n}";
+    let service = "service Play(id: RoomId): Result<Unit, Room.Error> {\n calls Rooms\n} = {\n issue Heal(amount: 1) on Room(id)?\n}";
     assert_error(
         &game(service),
         "`Room.Error` does not include `StorageError`, so it cannot be passed up here",
@@ -97,7 +97,7 @@ fn checks_issued_commands_and_their_arguments() {
 
 #[test]
 fn counts_a_loop_through_a_range() {
-    let service = "service Draw(): Unit {\n uses Screen\n} = {\n loop (let row where Range(0, 23)) {\n screen.clear()\n }\n}";
+    let service = "service Draw(): Unit {\n calls Screen\n} = {\n loop (let row where Range(0, 23)) {\n screen.clear()\n }\n}";
     assert_eq!(errors(&game(service)), Vec::<String>::new());
     let service = "service Draw(): Unit = {\n loop (let row where Length(0, 23)) {\n Unit\n }\n}";
     assert_error(
@@ -109,8 +109,8 @@ fn counts_a_loop_through_a_range() {
 #[test]
 fn gives_services_their_command_line_arguments() {
     let service =
-        "service Start(): Bool {\n uses Arguments\n} = arguments.all().contains(\"--demo\")";
+        "service Start(): Bool {\n calls Arguments\n} = arguments.all().contains(\"--demo\")";
     assert_eq!(errors(&game(service)), Vec::<String>::new());
-    let service = "service Start(): Bool {\n uses Arguments\n} = arguments.all().contains(3)";
+    let service = "service Start(): Bool {\n calls Arguments\n} = arguments.all().contains(3)";
     assert_error(&game(service), "expected `String`, found `Int`");
 }

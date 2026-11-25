@@ -3,7 +3,7 @@ context Dungeon
 
 // Saves the first room, so the game has somewhere to start.
 service SetUpRooms(): Result<Unit, StorageError> {
-    uses Rooms
+    calls Rooms
 } = rooms.save(first_room())
 
 // Two enemies between the player and the exit.

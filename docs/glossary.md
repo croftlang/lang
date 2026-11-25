@@ -94,7 +94,7 @@ builds, which stop with a message.
 
 ### Contract
 What a piece of code needs and what it promises, written before its body:
-its preconditions and, for services, `uses` in the braces between the
+its preconditions and, for services, `calls` in the braces between the
 signature and `=`; the `where` rules on its parameters and result; and, for
 an aggregate, its invariants. The braces are left out when there is nothing
 to say. Debug builds check every `where` rule as the program runs, and
@@ -206,7 +206,7 @@ port's error.
 
 ### Arguments
 The built-in port that gives a program its command-line arguments. A
-service lists it in `uses` and calls `arguments.all()` for a
+service lists it in `calls`, then reads `arguments.all()` for a
 `List<String>`. Every target supplies it; targets without a command line,
 such as the ZX Spectrum, give an empty list.
 
@@ -243,7 +243,7 @@ instead of the domain.
 The whole program: `domain Game { ... } = { ... }`, one per program, outside
 every context. Like a function, it has a contract and a body. The contract
 holds the context map, imports what the body needs from the contexts with
-`use`, and names the ports it calls with `uses`. The body runs
+`use`, and names the ports it calls with `calls`. The body runs
 first: it sets up each context's starting data through services those
 contexts publish, then runs the program. It can pass up any error with `?`;
 the program then prints the error's name and stops with exit code 1.

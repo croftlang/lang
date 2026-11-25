@@ -6,7 +6,7 @@ use super::{Checker, Scope};
 use crate::symbols::SymbolKind;
 
 impl<'a> Checker<'a> {
-    /// Every port a service uses, directly or through a repository.
+    /// Every port a service calls, directly or through a repository.
     pub(super) fn ports_used_by_services(&self) -> BTreeSet<(String, String)> {
         let mut ports = BTreeSet::new();
         for context in self.program.contexts.values() {
@@ -14,7 +14,10 @@ impl<'a> Checker<'a> {
                 context,
                 aggregate: None,
             };
-            let services = context.functions.iter().flat_map(|function| &function.uses);
+            let services = context
+                .functions
+                .iter()
+                .flat_map(|function| &function.calls);
             for path in services {
                 let Some(found) = self.resolve(&scope, path) else {
                     continue;

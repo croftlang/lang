@@ -11,7 +11,7 @@ domain Game {
     use { SetUpRooms, PlayTurn, FIRST_ROOM, GAME_TITLE, Position, Screen, Keyboard } from Dungeon
     use { SetUpScoring } from Scoring
 
-    uses Screen, Keyboard, Arguments
+    calls Screen, Keyboard, Arguments
 } = {
     SetUpRooms()?
     SetUpScoring()?

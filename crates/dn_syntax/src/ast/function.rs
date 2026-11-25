@@ -24,7 +24,8 @@ pub struct FunctionDecl {
     pub return_type: Option<TypeExpr>,
     pub return_rules: Vec<Rule>,
     pub preconditions: Vec<Expr>,
-    pub uses: Vec<Path>,
+    /// The ports a service or domain calls: `calls Screen, Keyboard`.
+    pub calls: Vec<Path>,
     pub body: Option<Expr>,
 }
 

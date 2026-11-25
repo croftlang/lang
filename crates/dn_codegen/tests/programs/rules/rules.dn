@@ -16,7 +16,7 @@ context Clinic {
     fn count(numbers: List<Int> where each Even): Int = numbers.length
 
     service Start(): Unit {
-        uses Arguments
+        calls Arguments
     } = {
         let chosen = arguments.all()
         if chosen.contains("argument") {

@@ -116,8 +116,9 @@ pub struct DomainDecl {
     /// The context map: `Dungeon -> Scoring` means Scoring is downstream of
     /// Dungeon, so Scoring may use what Dungeon publishes.
     pub relations: Vec<(Identifier, Identifier)>,
-    pub uses_from: Vec<UseDecl>,
+    /// What it imports from contexts with `use { ... } from`.
+    pub uses: Vec<UseDecl>,
     /// The ports the body calls, as a service lists them.
-    pub uses: Vec<Path>,
+    pub calls: Vec<Path>,
     pub body: Expr,
 }

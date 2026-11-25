@@ -52,13 +52,13 @@ fn reads_rules_on_fields_and_parameters() {
 
 #[test]
 fn reads_a_contract_with_preconditions_and_uses() {
-    let source = "context Dungeon {\n    service Play(id: RoomId): Unit {\n        uses Keyboard, Screen\n        \
+    let source = "context Dungeon {\n    service Play(id: RoomId): Unit {\n        calls Keyboard, Screen\n        \
                   id > 0 or NotFound\n    } = Unit\n}";
     let file = parse_ok(source);
     let ContextItem::Function(play) = &only_context(&file).items[0] else {
         panic!("expected a service")
     };
-    assert_eq!(play.uses.len(), 2);
+    assert_eq!(play.calls.len(), 2);
     assert_eq!(play.preconditions.len(), 1);
 }
 
@@ -96,15 +96,15 @@ fn keeps_doc_comments() {
 
 #[test]
 fn reads_a_domain() {
-    let source = "domain Game {\n    contexts { Dungeon, Scoring }\n    use { PlayTurn } from Dungeon\n    uses Keyboard\n} = {\n    PlayTurn()?\n}";
+    let source = "domain Game {\n    contexts { Dungeon, Scoring }\n    use { PlayTurn } from Dungeon\n    calls Keyboard\n} = {\n    PlayTurn()?\n}";
     let file = parse_ok(source);
     let [domain] = &file.domains[..] else {
         panic!("expected one domain")
     };
     assert_eq!(domain.name.name, "Game");
     assert_eq!(domain.contexts.len(), 2);
-    assert_eq!(domain.uses_from[0].from.name, "Dungeon");
-    assert_eq!(domain.uses[0].text(), "Keyboard");
+    assert_eq!(domain.uses[0].from.name, "Dungeon");
+    assert_eq!(domain.calls[0].text(), "Keyboard");
 }
 
 #[test]
@@ -151,5 +151,13 @@ fn explains_where_an_adapter_body_goes() {
             "context Platform {\n adapter NullScreen for Screen {\n fn clear() = Unit\n }\n}"
         ),
         "an adapter's body comes after `=`: `adapter Name for Port = { ... }`"
+    );
+}
+
+#[test]
+fn explains_that_ports_are_listed_with_calls() {
+    assert_eq!(
+        parse_error("context Dungeon {\n service Play(): Unit {\n uses Screen\n } = Unit\n}"),
+        "the ports a body calls are listed with `calls`: `calls Screen, Keyboard`"
     );
 }

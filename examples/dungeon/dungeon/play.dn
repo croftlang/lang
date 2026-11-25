@@ -9,7 +9,7 @@ enum GameError {
 
 // Applies one key press to the room, saves it and redraws it.
 service PlayTurn(room_id: RoomId, pressed: Option<Key>): Result<Unit, GameError> {
-    uses Screen, Rooms
+    calls Screen, Rooms
 } = {
     let room = rooms.find(room_id)?
     let changed = match pressed {

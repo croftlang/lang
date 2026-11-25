@@ -7,7 +7,7 @@ const GAME: &str = "context Game {\n\
     port Clock {\n fn tick(): Unit\n}\n\
     adapter TestScreen for Screen = {\n fn clear() = Unit\n}\n\
     adapter TestClock for Clock = {\n fn tick() = Unit\n}\n\
-    service Main(): Unit {\n uses Screen\n} = Unit\n\
+    service Main(): Unit {\n calls Screen\n} = Unit\n\
     service Turn(count: Int): Unit = Unit\n}";
 
 /// Checks the game with a `dn.toml`, giving each error with its line in the file.

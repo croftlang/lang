@@ -29,7 +29,7 @@ context Scoring {
 
     // Saves an empty scoreboard, for the points to go on.
     service SetUpScoring(): Result<Unit, StorageError> {
-        uses Scoreboards
+        calls Scoreboards
     } = scoreboards.save(Scoreboard { id: MAIN_SCOREBOARD, points: 0 })
 
     policy ScoreOnDefeat when Room.EnemyDefeated {

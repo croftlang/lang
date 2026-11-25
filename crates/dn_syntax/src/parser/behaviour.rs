@@ -28,7 +28,7 @@ impl Parser {
             return_type = Some(self.parse_type()?);
             return_rules = self.parse_rules()?;
         }
-        let (preconditions, uses) = self.parse_contract()?;
+        let (preconditions, calls) = self.parse_contract()?;
         let body = if self.eat(&TokenKind::Equal) {
             Some(self.parse_expression()?)
         } else {
@@ -42,22 +42,23 @@ impl Parser {
             return_type,
             return_rules,
             preconditions,
-            uses,
+            calls,
             body,
         })
     }
 
     /// The braces between a signature and its body: preconditions, one per
-    /// line, and the ports a service `uses`. Left out when empty.
+    /// line, and the ports a service `calls`. Left out when empty.
     fn parse_contract(&mut self) -> ParseResult<(Vec<Expr>, Vec<Path>)> {
-        let (mut preconditions, mut uses) = (Vec::new(), Vec::new());
+        let (mut preconditions, mut calls) = (Vec::new(), Vec::new());
         if !self.eat(&TokenKind::LeftBrace) {
-            return Ok((preconditions, uses));
+            return Ok((preconditions, calls));
         }
         while !self.eat(&TokenKind::RightBrace) {
-            if self.eat_keyword(Keyword::Uses) {
+            self.reject_uses()?;
+            if self.eat_keyword(Keyword::Calls) {
                 loop {
-                    uses.push(self.parse_path()?);
+                    calls.push(self.parse_path()?);
                     if !self.eat(&TokenKind::Comma) {
                         break;
                     }
@@ -66,7 +67,7 @@ impl Parser {
                 preconditions.push(self.parse_expression()?);
             }
         }
-        Ok((preconditions, uses))
+        Ok((preconditions, calls))
     }
 
     /// `policy DropLootOnDefeat when Room.EnemyDefeated { ... }`
@@ -99,5 +100,16 @@ impl Parser {
             parameters,
             body,
         })
+    }
+
+    /// The ports a body calls were once listed with `uses`, which reads too
+    /// much like `use`, so the old word gets an error that names the new one.
+    pub(super) fn reject_uses(&mut self) -> ParseResult<()> {
+        if self.check_word("uses") {
+            let message =
+                "the ports a body calls are listed with `calls`: `calls Screen, Keyboard`";
+            return Err(crate::span::Diagnostic::new(message, self.span()));
+        }
+        Ok(())
     }
 }

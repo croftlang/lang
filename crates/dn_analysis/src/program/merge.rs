@@ -73,7 +73,7 @@ impl Context {
     pub(super) fn from_domain(domain: &DomainDecl) -> Context {
         let mut context = Context::new(domain.name.clone());
         context.is_domain = true;
-        context.uses = domain.uses_from.clone();
+        context.uses = domain.uses.clone();
         context.functions.push(FunctionDecl {
             doc: domain.doc.clone(),
             kind: FunctionKind::Domain,
@@ -82,7 +82,7 @@ impl Context {
             return_type: None,
             return_rules: Vec::new(),
             preconditions: Vec::new(),
-            uses: domain.uses.clone(),
+            calls: domain.calls.clone(),
             body: Some(domain.body.clone()),
         });
         context

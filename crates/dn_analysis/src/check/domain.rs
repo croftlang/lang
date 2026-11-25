@@ -49,7 +49,7 @@ impl<'a> Checker<'a> {
             );
             self.error(message, domain.name.span);
         }
-        for use_decl in &domain.uses_from {
+        for use_decl in &domain.uses {
             if self.is_context(&use_decl.from.name) && !listed.contains(use_decl.from.name.as_str())
             {
                 let message = format!(

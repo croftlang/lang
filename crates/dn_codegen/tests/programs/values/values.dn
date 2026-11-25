@@ -37,7 +37,7 @@ fn share(total: Decimal<2>, people: Int): Decimal<2> = total / people
 fn first_long(words: List<String>): Option<String> = words.find(w -> w.length > 3)
 
 service Start(): Result<Unit, WrongAnswer> {
-    uses Arguments
+    calls Arguments
 } = {
     let a = Point { x: START_X, y: 4 }
     let b = a with { x: 10 }

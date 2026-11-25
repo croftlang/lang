@@ -40,15 +40,15 @@ fn checks_ports_only_declare_operations() {
 #[test]
 fn checks_services_use_ports() {
     let source = dungeon(&format!(
-        "{SCREEN}\nservice Play(): Unit {{\n uses Screen, Position\n}} = Unit"
+        "{SCREEN}\nservice Play(): Unit {{\n calls Screen, Position\n}} = Unit"
     ));
     assert_error(
         &source,
         "expected a port or repository, but `Position` is a value",
     );
     assert_error(
-        &dungeon("fn f(): Int {\n uses Screen\n} = 3"),
-        "only a service can use ports",
+        &dungeon("fn f(): Int {\n calls Screen\n} = 3"),
+        "only a service can call ports",
     );
 }
 

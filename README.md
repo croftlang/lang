@@ -126,7 +126,7 @@ domain Game {
     use { SetUpRooms, PlayTurn, FIRST_ROOM, Keyboard } from Dungeon
     use { SetUpScoring } from Scoring
 
-    uses Keyboard
+    calls Keyboard
 } = {
     SetUpRooms()?
     SetUpScoring()?

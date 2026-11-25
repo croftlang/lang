@@ -1,4 +1,4 @@
-//! What a body starts with: its parameters, the ports a service uses, its
+//! What a body starts with: its parameters, the ports a service calls, its
 //! preconditions, and the type its last line must have.
 
 use dn_syntax::ast::{Expr, ExprKind, Parameter};
@@ -17,9 +17,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
-    /// A service sees each port and repository it uses under its snake_case name.
-    pub(super) fn bind_uses(&mut self, uses: &[dn_syntax::ast::Path]) {
-        for path in uses {
+    /// A service sees each port and repository it calls under its snake_case name.
+    pub(super) fn bind_calls(&mut self, calls: &[dn_syntax::ast::Path]) {
+        for path in calls {
             let handle = match self.checker.resolve(&self.scope, path) {
                 Some(found) if found.kind == SymbolKind::Repository => Type::Repository(found),
                 Some(found) => Type::Port(found),

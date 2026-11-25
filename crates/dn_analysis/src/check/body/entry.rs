@@ -77,7 +77,7 @@ impl<'a> Checker<'a> {
         let mut body = BodyChecker::new(self, scope, kind, result.clone());
         body.bind_parameters(function.parameters.as_deref().unwrap_or(&[]));
         if matches!(function.kind, FunctionKind::Service | FunctionKind::Domain) {
-            body.bind_uses(&function.uses);
+            body.bind_calls(&function.calls);
         }
         for precondition in &function.preconditions {
             body.check_precondition(precondition);
