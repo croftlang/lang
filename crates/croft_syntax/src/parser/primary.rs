@@ -8,6 +8,7 @@ use crate::token::TokenKind;
 impl Parser {
     pub(super) fn parse_primary(&mut self) -> ParseResult<Expr> {
         let span = self.span();
+
         let kind = match self.peek().kind.clone() {
             TokenKind::Int(value) => self.literal(ExprKind::Int(value)),
             TokenKind::Float(value) => self.literal(ExprKind::Float(value)),
@@ -16,7 +17,9 @@ impl Parser {
             TokenKind::Keyword(Keyword::False) => self.literal(ExprKind::Bool(false)),
             TokenKind::LeftParen => {
                 self.advance();
+
                 let inner = self.with_records(true, Self::parse_expression)?;
+
                 self.expect(&TokenKind::RightParen)?;
                 return Ok(inner);
             }
@@ -29,12 +32,15 @@ impl Parser {
             TokenKind::Keyword(Keyword::Issue) => ExprKind::Issue(self.parse_issue()?),
             TokenKind::Keyword(Keyword::Emit) => {
                 self.advance();
+
                 let event = self.parse_path()?;
+
                 let fields = if self.check(&TokenKind::LeftBrace) && !self.peek().newline_before {
                     self.parse_field_values()?
                 } else {
                     Vec::new()
                 };
+
                 ExprKind::Emit(event, fields)
             }
             TokenKind::Keyword(Keyword::Native) => {
@@ -50,6 +56,7 @@ impl Parser {
             _ if self.is_identifier() => ExprKind::Name(self.expect_identifier()?.name),
             _ => return Err(self.unexpected("an expression")),
         };
+
         Ok(self.make_expr(kind, span))
     }
 
@@ -61,14 +68,19 @@ impl Parser {
     /// `issue Attack(enemy_id: target, damage: 5) on room`
     fn parse_issue(&mut self) -> ParseResult<Issue> {
         self.expect_keyword(Keyword::Issue)?;
+
         let command = self.expect_identifier()?;
+
         let arguments = if self.check(&TokenKind::LeftParen) {
             self.parse_arguments()?
         } else {
             Vec::new()
         };
+
         self.expect_word("on")?;
+
         let target = Box::new(self.parse_postfix(false)?);
+
         Ok(Issue {
             command,
             arguments,

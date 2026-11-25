@@ -4,19 +4,19 @@ An aggregate is the consistency boundary around its entities and values. Its own
 
 ```croft
 aggregate Room {
-    identity id: RoomId
+    id: RoomId
     player: Player
     enemies: List<Enemy> where Length(0, MAX_ENEMIES), each Alive
     exit: Position
 
     entity Player {
-        identity id: PlayerId
+        id: PlayerId
         position: Position
         lives: Int where Range(0, 9)
     }
 
     entity Enemy {
-        identity id: EnemyId
+        id: EnemyId
         position: Position
         hit_points: Int where Range(0, 100)
     }

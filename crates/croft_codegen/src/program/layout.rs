@@ -10,9 +10,11 @@ impl<'a> Generator<'a> {
     /// The most bytes a value of the type can take once written.
     pub fn serialized_size(&self, ty: &Type) -> i64 {
         let ty = self.canonical(ty);
+
         if self.is_scalar(&ty) {
             return 4;
         }
+
         match &ty {
             Type::String => 2 + self.sizes.string_capacity,
             Type::Bytes => 2 + self.sizes.bytes_capacity,
@@ -28,6 +30,7 @@ impl<'a> Generator<'a> {
                         .map(|(_, ty)| self.serialized_size(ty))
                         .sum::<i64>()
                 });
+
                 4 + variants.max().unwrap_or(0)
             }
             Type::Named(named) => (self.struct_fields(named).into_iter())
@@ -44,6 +47,7 @@ impl<'a> Generator<'a> {
     /// saved form would. Its hash goes at the start of every saved file.
     pub fn layout(&self, ty: &Type) -> String {
         let ty = self.canonical(ty);
+
         match &ty {
             Type::List(item) => format!("List<{}>", self.layout(item)),
             Type::Option(item) => format!("Option<{}>", self.layout(item)),
@@ -54,9 +58,11 @@ impl<'a> Generator<'a> {
                         let fields: Vec<String> = (variant.fields.iter())
                             .map(|(name, ty)| format!("{name}:{}", self.layout(ty)))
                             .collect();
+
                         format!("{}({})", variant.name, fields.join(","))
                     })
                     .collect();
+
                 format!("{}{{{}}}", named.name, variants.join("|"))
             }
             Type::Named(named) if !self.is_scalar(&ty) => {
@@ -66,6 +72,7 @@ impl<'a> Generator<'a> {
                         None => format!("{name}:{}", self.layout(&ty)),
                     })
                     .collect();
+
                 format!("{}{{{}}}", named.name, fields.join(","))
             }
             other => other.to_string(),
@@ -76,9 +83,11 @@ impl<'a> Generator<'a> {
 /// A 16-bit FNV-1a hash, small enough to check on an 8-bit machine.
 pub fn layout_hash(layout: &str) -> u16 {
     let mut hash: u32 = 0x811c_9dc5;
+
     for byte in layout.bytes() {
         hash ^= u32::from(byte);
         hash = hash.wrapping_mul(0x0100_0193);
     }
+
     ((hash >> 16) ^ (hash & 0xffff)) as u16
 }

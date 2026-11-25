@@ -40,50 +40,63 @@ pub struct Generator<'a> {
 impl<'a> Generator<'a> {
     pub fn new(program: &'a Program, target: &str) -> Result<Generator<'a>, String> {
         let model = Model::new(program);
+
         let Some(manifest) = &program.manifest else {
             return Err(
                 "the program has no croft.toml, so there is nothing to compile".to_string(),
             );
         };
+
         let Some(target_config) = manifest.target(target) else {
             let names: Vec<String> = manifest
                 .targets
                 .iter()
                 .map(|t| format!("`{}`", t.name.name))
                 .collect();
+
             return Err(format!(
                 "croft.toml has no target `{target}`; it has {}",
                 names.join(", ")
             ));
         };
+
         let mut bindings = HashMap::new();
         let mut storages = HashMap::new();
+
         for (port, adapter) in &target_config.adapters {
             if let Some(repository) = find(&model, &port.name, SymbolKind::Repository) {
                 if let Some(adapter) = find(&model, &adapter.name, SymbolKind::Adapter) {
                     storages.insert(repository, adapter);
                 }
+
                 continue;
             }
+
             let port = find(&model, &port.name, SymbolKind::Port);
             let adapter = find(&model, &adapter.name, SymbolKind::Adapter);
+
             if let (Some(port), Some(adapter)) = (port, adapter) {
                 bindings.insert(port, adapter);
             }
         }
+
         let start = match (&target_config.main, program.domains.first()) {
             (Some(main), _) => find(&model, &main.name, SymbolKind::Service),
             (None, Some(domain)) => model.lookup(&domain.name.name, &domain.name.name),
             (None, None) => None,
         };
+
         let start = start
             .ok_or_else(|| format!("target `{target}` has nothing to run: declare a `domain`"))?;
+
         if let Some(memory) = model.lookup("Std.Storage", "MemoryStorage") {
             for repository in model.all(SymbolKind::Repository) {
                 storages.entry(repository).or_insert_with(|| memory.clone());
             }
         }
+
         let sizes = Sizes::measure(program, &model);
+
         let mut generator = Generator {
             program,
             model,
@@ -101,7 +114,9 @@ impl<'a> Generator<'a> {
             texts: RefCell::default(),
             natives: RefCell::default(),
         };
+
         generator.make_room_for_storage();
+
         Ok(generator)
     }
 
@@ -109,11 +124,13 @@ impl<'a> Generator<'a> {
     /// file name such as `rooms12.dat`.
     fn make_room_for_storage(&mut self) {
         let mut largest = 0;
+
         for repository in self.storages.keys() {
             if let Some(aggregate) = self.model.repository_aggregate(repository) {
                 largest = largest.max(4 + self.serialized_size(&Type::Named(aggregate)));
             }
         }
+
         if !self.storages.is_empty() {
             self.sizes.bytes_capacity = self.sizes.bytes_capacity.max(largest);
             self.sizes.string_capacity = self.sizes.string_capacity.max(12);
@@ -124,10 +141,12 @@ impl<'a> Generator<'a> {
 /// Finds a declaration by name in any context; `Dungeon.PlayGame` names the context.
 fn find(model: &Model, name: &str, kind: SymbolKind) -> Option<Resolved> {
     let all = model.all(kind);
+
     if let Some((context, rest)) = name.split_once('.') {
         if let Some(found) = all.iter().find(|r| r.context == context && r.name == rest) {
             return Some(found.clone());
         }
     }
+
     all.into_iter().find(|r| r.name == name)
 }

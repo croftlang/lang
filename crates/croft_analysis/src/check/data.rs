@@ -7,31 +7,15 @@ use croft_syntax::ast::{
 };
 
 use super::{Checker, Scope};
+use crate::program::{identifies, Context};
 use crate::symbols::SymbolKind;
 
 impl<'a> Checker<'a> {
-    /// A value has no identity; an entity has exactly one.
-    pub(super) fn check_value(&mut self, scope: &Scope, value: &ValueDecl, is_entity: bool) {
+    /// A value, or an entity's fields and invariants. An entity's identity
+    /// is checked with its aggregate's.
+    pub(super) fn check_value(&mut self, scope: &Scope, value: &ValueDecl) {
         self.check_fields(scope, &value.fields);
-        let identities: Vec<_> = value
-            .fields
-            .iter()
-            .filter(|field| field.is_identity)
-            .collect();
-        let name = &value.name;
-        if is_entity && identities.len() != 1 {
-            let message = format!("entity `{}` needs exactly one `identity` field", name.name);
-            self.error(message, name.span);
-        }
-        if !is_entity {
-            for field in identities {
-                let message = format!(
-                    "value `{}` cannot have an identity; make it an entity",
-                    name.name
-                );
-                self.error(message, field.name.span);
-            }
-        }
+
         for invariant in &value.invariants {
             self.check_invariant(scope, invariant);
         }
@@ -40,11 +24,13 @@ impl<'a> Checker<'a> {
     /// `invariant ExitClear or ExitBlocked`: a constraint, and the error it fails with.
     pub(super) fn check_invariant(&mut self, scope: &Scope, invariant: &Invariant) {
         self.check_constraint_use(scope, &invariant.constraint);
+
         let Some(error) = &invariant.error else {
             let message = "an invariant needs the error it fails with: `invariant Name or Error`";
             self.error(message, invariant.constraint.name.span());
             return;
         };
+
         match expr_path(error) {
             Some(path) => {
                 self.expect_kind(scope, &path, &[SymbolKind::Error], "an error");
@@ -55,14 +41,18 @@ impl<'a> Checker<'a> {
 
     pub(super) fn check_enum(&mut self, scope: &Scope, enum_decl: &EnumDecl) {
         let mut seen = HashSet::new();
+
         for variant in &enum_decl.variants {
             if !seen.insert(variant.name.name.as_str()) {
                 let message = format!("variant `{}` is declared more than once", variant.name.name);
                 self.error(message, variant.name.span);
             }
+
             self.check_fields(scope, &variant.fields);
         }
+
         let kinds = [SymbolKind::Enum, SymbolKind::Error, SymbolKind::ErrorSet];
+
         for include in &enum_decl.includes {
             self.expect_kind(scope, include, &kinds, "an enum or errors to include");
         }
@@ -71,15 +61,92 @@ impl<'a> Checker<'a> {
     /// An identity is a distinct type built on `Int` or `String`.
     pub(super) fn check_identity(&mut self, scope: &Scope, identity: &IdentityDecl) {
         let base = identity.ty.path.text();
+
         if base != "Int" && base != "String" {
             let message = format!(
                 "identity `{}` must be an `Int` or a `String`",
                 identity.name.name
             );
+
             self.error(message, identity.ty.path.span());
         }
+
         self.check_constraints(scope, &identity.constraints, Some(&identity.ty));
+        self.check_identity_owner(scope, identity);
     }
+
+    /// `for` names one aggregate or entity in the identity's own context, and
+    /// no other identity is for it too.
+    fn check_identity_owner(&mut self, scope: &Scope, identity: &IdentityDecl) {
+        let context = scope.context;
+        let written = identity.owner.text();
+        let span = identity.owner.span();
+        let owners = owners_named(context, &identity.owner);
+
+        match owners.as_slice() {
+            [] => {
+                let is_value = context.values.iter().any(|v| v.name.name == written);
+
+                let message = if is_value {
+                    format!("`{written}` is a value, which has no identity; make it an entity")
+                } else {
+                    format!(
+                        "identity `{}` is for `{written}`, but `{}` has no aggregate or entity \
+                         by that name",
+                        identity.name.name, context.name.name
+                    )
+                };
+
+                self.error(message, span);
+            }
+            [found] => {
+                let first = context
+                    .identities
+                    .iter()
+                    .find(|other| owners_named(context, &other.owner).contains(found));
+
+                if let Some(first) = first.filter(|first| first.name.name != identity.name.name) {
+                    let message = format!(
+                        "`{found}` is already identified by `{}`; it has only one identity",
+                        first.name.name
+                    );
+
+                    self.error(message, span);
+                }
+            }
+            _ => {
+                let message = format!(
+                    "`{written}` could be {}; write which one, such as `{}`",
+                    owners.join(" or "),
+                    owners[0]
+                );
+
+                self.error(message, span);
+            }
+        }
+    }
+}
+
+/// The aggregates and entities an identity's `for` could mean, written in
+/// full: `Room`, `Room.Enemy`.
+fn owners_named(context: &Context, owner: &Path) -> Vec<String> {
+    let mut owners = Vec::new();
+
+    for aggregate in &context.aggregates {
+        let name = aggregate.name.name.as_str();
+
+        if identifies(owner, name, None) {
+            owners.push(name.to_string());
+        }
+
+        for entity in &aggregate.entities {
+            if identifies(owner, name, Some(&entity.name.name)) {
+                owners.push(format!("{name}.{}", entity.name.name));
+            }
+        }
+    }
+
+    owners
 }
 
 /// The name an expression spells, if it is just a name: `ExitBlocked`, `Room.NotFound`.
@@ -90,6 +157,7 @@ pub(super) fn expr_path(value: &Expr) -> Option<Path> {
                 name: name.clone(),
                 span: value.span,
             };
+
             Some(Path {
                 segments: vec![segment],
             })

@@ -14,12 +14,14 @@ impl<'a> Generator<'a> {
         let mut done = HashSet::new();
         let mut out = String::new();
         let mut index = 0;
+
         loop {
             let next = self.used_types.borrow().0.get(index).cloned();
             let Some(ty) = next else { break };
             self.define(&ty, &mut done, &mut out);
             index += 1;
         }
+
         let texts: String = (self.texts.borrow().iter())
             .map(|n| {
                 format!(
@@ -27,17 +29,21 @@ impl<'a> Generator<'a> {
                 )
             })
             .collect();
+
         texts + &out
     }
 
     fn define(&self, ty: &Type, done: &mut HashSet<Type>, out: &mut String) {
         let ty = self.canonical(ty);
+
         if !done.insert(ty.clone()) {
             return;
         }
+
         for dependency in self.dependencies(&ty) {
             self.define(&dependency, done, out);
         }
+
         out.push_str(&self.definition(&ty));
     }
 
@@ -82,6 +88,7 @@ impl<'a> Generator<'a> {
                     let scope = &self.program.contexts[&named.context];
                     let identity = scope.identities.iter().find(|i| i.name.name == named.name);
                     let constraints = identity.map_or(&[][..], |i| &i.constraints[..]);
+
                     format!(
                         "typedef {} {};\n\n",
                         int_width(self.program, &self.model, &named.context, constraints),
@@ -95,6 +102,7 @@ impl<'a> Generator<'a> {
                         .into_iter()
                         .map(|(name, _, c)| format!("    {c} {name};\n"))
                         .collect();
+
                     struct_definition(&c_name(named), &fields.concat())
                 }
             },
@@ -110,5 +118,6 @@ pub fn struct_definition(name: &str, fields: &str) -> String {
     } else {
         fields
     };
+
     format!("typedef struct {{\n{fields}}} {name};\n\n")
 }

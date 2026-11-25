@@ -21,15 +21,19 @@ impl<'a> Checker<'a> {
     /// The variants of an enum, with every included error or enum spread out.
     pub(super) fn variants_of(&self, named: &Resolved) -> Vec<Variant<'a>> {
         let mut variants = Vec::new();
+
         if named.kind == SymbolKind::Enum {
             let context = &self.program.contexts[&named.context];
+
             let Some(decl) = context.enums.iter().find(|e| e.name.name == named.name) else {
                 return variants;
             };
+
             let scope = Scope {
                 context,
                 aggregate: None,
             };
+
             for variant in &decl.variants {
                 variants.push(Variant {
                     name: variant.name.name.clone(),
@@ -39,6 +43,7 @@ impl<'a> Checker<'a> {
                     declared_in: named.clone(),
                 });
             }
+
             for include in &decl.includes {
                 if let Some(included) = self.resolve(&scope, include) {
                     variants.extend(self.variants_of(&included));
@@ -47,12 +52,14 @@ impl<'a> Checker<'a> {
         } else {
             for error in self.error_members(named) {
                 let fields = self.fields_of(&error).unwrap_or(&[]);
+
                 let name = error
                     .name
                     .rsplit('.')
                     .next()
                     .unwrap_or(&error.name)
                     .to_string();
+
                 variants.push(Variant {
                     name,
                     fields,
@@ -62,6 +69,7 @@ impl<'a> Checker<'a> {
                 });
             }
         }
+
         variants
     }
 }

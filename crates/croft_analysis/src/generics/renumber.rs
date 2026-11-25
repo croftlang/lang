@@ -15,7 +15,9 @@ pub fn renumber(
     value.id.source = source;
     value.id.index = *next;
     *next += 1;
+
     let mut each = |child: &mut Expr| renumber(child, source, next, types);
+
     match &mut value.kind {
         ExprKind::Int(_)
         | ExprKind::Float(_)
@@ -35,6 +37,7 @@ pub fn renumber(
         | ExprKind::Lambda(_, inner) => each(inner),
         ExprKind::Call(callee, arguments) => {
             each(callee);
+
             for argument in arguments {
                 each(&mut argument.value);
             }
@@ -48,6 +51,7 @@ pub fn renumber(
         }
         ExprKind::With(base, fields) => {
             each(base);
+
             for field in fields {
                 if let Some(value) = &mut field.value {
                     each(value);
@@ -63,6 +67,7 @@ pub fn renumber(
         }
         ExprKind::Match(subject, arms) => {
             each(subject);
+
             for arm in arms {
                 each(&mut arm.value);
             }
@@ -75,6 +80,7 @@ pub fn renumber(
                         if let Some(ty) = ty {
                             types(ty);
                         }
+
                         each(value);
                     }
                     Statement::Set(_, value) | Statement::Expr(value) => each(value),
@@ -83,6 +89,7 @@ pub fn renumber(
         }
         ExprKind::Issue(issue) => {
             each(&mut issue.target);
+
             for argument in &mut issue.arguments {
                 each(&mut argument.value);
             }

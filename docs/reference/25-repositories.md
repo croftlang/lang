@@ -1,11 +1,27 @@
 # Repositories
 
-A port for loading and saving one aggregate. The compiler writes find and save, turning each aggregate into bytes and back, and each target binds the repository in dn.toml to an adapter for the built-in Storage port, which keeps the bytes under a key: MemoryStorage, the default, FileStorage, or one of the program's own. An adapter can also be written for the repository itself, to keep aggregates its own way, such as in table columns. StorageError and Storage are built in, and need no import.
+A port for keeping one aggregate. The developer declares its operations, named in the ubiquitous language, and every operation works on the aggregate it is for: each one takes or gives back that aggregate, its identity, or plain values, and never another aggregate. Every operation can fail with StorageError, so swapping one adapter for another never changes a signature. An adapter for the repository keeps aggregates its own way, such as in table columns. Or croft.toml can bind the repository to an adapter for the built-in Storage port, which keeps the bytes the compiler makes from each aggregate under a key: MemoryStorage, the default, FileStorage, or one of the program's own. Storage can only provide operations of three shapes: find by identity, giving back an Option or failing with the aggregate's NotFound error; save the aggregate; and remove by identity. A repository with any other operation needs an adapter of its own, and check says so for each target that binds it to Storage. Issuing a command on `Room(id)` loads and saves through the repository, so it needs a find that fails with NotFound, and a save. Written with no body, a repository has find and save. StorageError and Storage are built in, and need no import.
 
 ```croft
+// no body: find and save
 repository Rooms for Room
 // gives: find(id: RoomId): Result<Room, Room.Error or StorageError>
 //        save(room: Room): Result<Unit, StorageError>
+
+// its own operations
+repository Cargos for Cargo {
+    fn find(id: CargoId): Result<Option<Cargo>, StorageError>
+    fn awaiting_customs(): Result<List<Cargo>, StorageError>
+    fn save(cargo: Cargo): Result<Unit, StorageError>
+    fn remove(id: CargoId): Result<Unit, StorageError>
+}
+
+// a find that fails when nothing is kept, as issuing on Cargo(id) needs
+enum Lookup {
+    include Cargo.NotFound
+    include StorageError
+}
+// fn load(id: CargoId): Result<Cargo, Lookup>
 
 // StorageError: StorageFull, StorageDamaged, StorageUnavailable
 // StorageDamaged: written by a different version of the program, or damaged
@@ -24,17 +40,20 @@ adapter RedisStorage for Storage = {
     fn remove(key) = native redis_del(key)
 }
 
-// or how aggregates are kept, written for one repository
-adapter PostgresRooms for Rooms = {
-    fn find(id) = native pg_find_room(id)
-    fn save(room) = native pg_save_room(room)
+// how cargos are kept, written for the repository
+adapter PostgresCargos for Cargos = {
+    fn find(id) = native pg_find_cargo(id)
+    fn awaiting_customs() = native pg_cargos_awaiting_customs()
+    fn save(cargo) = native pg_save_cargo(cargo)
+    fn remove(id) = native pg_remove_cargo(id)
 }
 
-// dn.toml
+// croft.toml
 // [target.spectrum_48k.adapters]
 // Files = "DivmmcFiles"
 // Rooms = "FileStorage"      // rooms12.dat for room 12
 //
 // [target.server.adapters]
-// Rooms = "PostgresRooms"
+// Rooms = "MemoryStorage"
+// Cargos = "PostgresCargos"  // Storage has no awaiting_customs, so Cargos needs its own adapter
 ```

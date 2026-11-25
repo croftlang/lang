@@ -1,6 +1,7 @@
 // Generic values and functions, each used with more than one type.
 context Shapes {
-    identity ShapeId: Int where Range(1, 9)
+    identity ShapeId for Shape: Int where Range(1, 9)
+    aggregate Shape { id: ShapeId }
 
     value Pair<A, B> {
         first: A

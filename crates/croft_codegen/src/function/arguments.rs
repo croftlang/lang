@@ -14,6 +14,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     ) -> Vec<Option<&'e Expr>> {
         let mut ordered = vec![None; parameters.len()];
         let mut position = 0;
+
         for argument in arguments {
             let index = match &argument.name {
                 Some(name) => parameters.iter().position(|p| p == &name.name),
@@ -22,10 +23,12 @@ impl<'g, 'a> Writer<'g, 'a> {
                     Some(position - 1)
                 }
             };
+
             if let Some(slot) = index.and_then(|index| ordered.get_mut(index)) {
                 *slot = Some(&argument.value);
             }
         }
+
         ordered
     }
 
@@ -39,13 +42,16 @@ impl<'g, 'a> Writer<'g, 'a> {
         let names: Vec<String> = parameters.iter().map(|(name, _)| name.clone()).collect();
         let values = self.ordered(arguments, &names);
         let mut passed = Vec::new();
+
         for ((_, ty), value) in parameters.iter().zip(values) {
             let c = match value {
                 Some(value) => self.value(value, ty),
                 None => "0".to_string(),
             };
+
             passed.push(self.pass(c, ty));
         }
+
         passed
     }
 
@@ -53,6 +59,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         if self.gen.is_scalar(ty) {
             return c;
         }
+
         match c
             .strip_prefix("(*")
             .and_then(|inner| inner.strip_suffix(')'))

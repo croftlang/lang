@@ -10,13 +10,19 @@ impl Parser {
     /// `port Screen { fn clear(): Unit }`
     pub(super) fn parse_port(&mut self) -> ParseResult<PortDecl> {
         let doc = self.doc();
+
         self.expect_keyword(Keyword::Port)?;
+
         let name = self.expect_identifier()?;
+
         self.expect(&TokenKind::LeftBrace)?;
+
         let mut operations = Vec::new();
+
         while !self.eat(&TokenKind::RightBrace) {
             operations.push(self.parse_operation()?);
         }
+
         Ok(PortDecl {
             doc,
             name,
@@ -28,17 +34,25 @@ impl Parser {
     /// chosen in `croft.toml`.
     pub(super) fn parse_adapter(&mut self) -> ParseResult<AdapterDecl> {
         let doc = self.doc();
+
         self.expect_keyword(Keyword::Adapter)?;
+
         let name = self.expect_identifier()?;
+
         self.expect_word("for")?;
+
         let port = self.parse_path()?;
+
         if self.check(&TokenKind::LeftBrace) {
             let message = "an adapter's body comes after `=`: `adapter Name for Port = { ... }`";
             return Err(Diagnostic::new(message, self.span()));
         }
+
         self.expect(&TokenKind::Equal)?;
         self.expect(&TokenKind::LeftBrace)?;
+
         let (mut fields, mut operations) = (Vec::new(), Vec::new());
+
         while !self.eat(&TokenKind::RightBrace) {
             if self.check_keyword(Keyword::Fn) {
                 operations.push(self.parse_operation()?);
@@ -46,6 +60,7 @@ impl Parser {
                 fields.push(self.parse_field()?);
             }
         }
+
         Ok(AdapterDecl {
             doc,
             name,
@@ -60,27 +75,49 @@ impl Parser {
         if !self.check_keyword(Keyword::Fn) {
             return Err(self.unexpected("`fn`"));
         }
+
         let mut operation = self.parse_function()?;
         operation.kind = FunctionKind::Operation;
+
         Ok(operation)
     }
 
-    /// `repository Rooms for Room`
+    /// `repository Rooms for Room`, or with operations of its own:
+    /// `repository Rooms for Room { fn find(id: RoomId): ... }`
     pub(super) fn parse_repository(&mut self) -> ParseResult<RepositoryDecl> {
         let doc = self.doc();
+
         self.expect_keyword(Keyword::Repository)?;
+
         let name = self.expect_identifier()?;
+
         self.expect_word("for")?;
+
         let aggregate = self.parse_path()?;
+
         if self.check_word("in") && !self.peek().newline_before {
             let message =
                 "a repository's storage is chosen in croft.toml, such as `Rooms = \"FileStorage\"`";
             return Err(Diagnostic::new(message, self.span()));
         }
+
+        let operations = if self.eat(&TokenKind::LeftBrace) {
+            let mut operations = Vec::new();
+
+            while !self.eat(&TokenKind::RightBrace) {
+                operations.push(self.parse_operation()?);
+            }
+
+            Some(operations)
+        } else {
+            None
+        };
+
         Ok(RepositoryDecl {
             doc,
             name,
             aggregate,
+            operations,
         })
     }
 }

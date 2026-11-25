@@ -3,10 +3,10 @@
 // and an adapter for Storage, which keeps the bytes the compiler makes for
 // each till.
 context Shop {
-    identity ShelfId: Int where Range(1, 99)
+    identity ShelfId for Shelf: Int where Range(1, 99)
 
     aggregate Shelf {
-        identity id: ShelfId
+        id: ShelfId
         stock: Int where Range(0, 255)
 
         error NotFound
@@ -28,10 +28,10 @@ context Shop {
         }
     }
 
-    identity TillId: Int where Range(1, 9)
+    identity TillId for Till: Int where Range(1, 9)
 
     aggregate Till {
-        identity id: TillId
+        id: TillId
         cash: Int
 
         error NotFound

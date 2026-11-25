@@ -25,6 +25,7 @@ impl<'a> Checker<'a> {
     pub(super) fn lookup(&self, context: &str, name: &str) -> Option<Resolved> {
         let symbol = self.tables.get(context)?.get(name)?;
         let (context, name) = (context.to_string(), name.to_string());
+
         Some(Resolved {
             context,
             name,
@@ -36,6 +37,7 @@ impl<'a> Checker<'a> {
         let Some(context) = self.program.contexts.get(context) else {
             return false;
         };
+
         context.publish.iter().any(|path| path.text() == name)
     }
 
@@ -44,12 +46,15 @@ impl<'a> Checker<'a> {
     pub(super) fn resolve(&self, scope: &Scope, path: &Path) -> Option<Resolved> {
         let found = self.find_path(scope, path)?;
         let mut references = self.references.borrow_mut();
+
         for end in 1..path.segments.len() {
             let prefix = Path {
                 segments: path.segments[..end].to_vec(),
             };
+
             if let Some(target) = self.find_path(scope, &prefix) {
                 let segment = &path.segments[end - 1];
+
                 references.push(Reference {
                     span: segment.span,
                     name: segment.name.clone(),
@@ -57,41 +62,51 @@ impl<'a> Checker<'a> {
                 });
             }
         }
+
         let last = path.last();
+
         references.push(Reference {
             span: last.span,
             name: last.name.clone(),
             target: found.clone(),
         });
+
         Some(found)
     }
 
     fn find_path(&self, scope: &Scope, path: &Path) -> Option<Resolved> {
         let text = path.text();
         let local = scope.context.name.name.as_str();
+
         if let Some(aggregate) = scope.aggregate {
             if let Some(found) = self.lookup(local, &format!("{aggregate}.{text}")) {
                 return Some(found);
             }
         }
+
         if let Some(found) = self.lookup(local, &text) {
             return Some(found);
         }
+
         for use_decl in &scope.context.uses {
             if use_decl.names.iter().any(|name| name.text() == text) {
                 return self.lookup(&use_decl.from.text(), &text);
             }
         }
+
         // `StorageError` and its errors need no import.
         if self.is_published(STORAGE_CONTEXT, &text) {
             return self.lookup(STORAGE_CONTEXT, &text);
         }
+
         let (first, rest) = path.segments.split_first()?;
         let rest: Vec<&str> = rest.iter().map(|segment| segment.name.as_str()).collect();
         let rest = rest.join(".");
+
         if !rest.is_empty() && self.is_published(&first.name, &rest) {
             return self.lookup(&first.name, &rest);
         }
+
         None
     }
 
@@ -104,6 +119,7 @@ impl<'a> Checker<'a> {
         expected: &str,
     ) -> Option<Resolved> {
         let text = path.text();
+
         match self.resolve(scope, path) {
             None => {
                 let message = crate::standard::not_found_message(expected, &text);
@@ -112,10 +128,12 @@ impl<'a> Checker<'a> {
             }
             Some(found) if !kinds.contains(&found.kind) => {
                 let actual = found.kind.describe();
+
                 self.error(
                     format!("expected {expected}, but `{text}` is {actual}"),
                     path.span(),
                 );
+
                 None
             }
             Some(found) => Some(found),

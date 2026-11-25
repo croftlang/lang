@@ -19,6 +19,7 @@ impl<'a> Generator<'a> {
                 self.model.lower_type(context, aggregate, ty)
             })
         };
+
         parameters
             .iter()
             .map(|p| (p.name.name.clone(), lower(p)))
@@ -34,22 +35,27 @@ impl<'a> Generator<'a> {
         result: Option<&Type>,
     ) -> String {
         let mut list: Vec<String> = leading.to_vec();
+
         for (parameter, ty) in parameters {
             let c_type = self.c_type(ty);
+
             list.push(if self.is_scalar(ty) {
                 format!("{c_type} p_{parameter}")
             } else {
                 format!("const {c_type} *p_{parameter}")
             });
         }
+
         if let Some(result) = result {
             list.push(format!("{} *out", self.c_type(result)));
         }
+
         let list = if list.is_empty() {
             "void".to_string()
         } else {
             list.join(", ")
         };
+
         format!("void {name}({list})")
     }
 }
@@ -60,11 +66,13 @@ impl<'g, 'a> Writer<'g, 'a> {
         for (name, ty) in parameters {
             let c = format!("p_{name}");
             self.parameter(&c);
+
             let value = if self.gen.is_scalar(ty) {
                 c
             } else {
                 format!("(*{c})")
             };
+
             self.bind(name, value, ty.clone());
         }
     }

@@ -1,0 +1,90 @@
+// Repositories that declare their own operations: Shelves, whose finds,
+// save and remove Storage provides, and Tills, with a query of its own and
+// an adapter written for it.
+context Shop {
+    identity ShelfId: Int where Range(1, 99)
+
+    aggregate Shelf {
+        identity id: ShelfId
+        stock: Int where Range(0, 255)
+
+        error NotFound
+
+        command Restock = {
+            set stock = stock + 5
+        }
+    }
+
+    enum Lookup {
+        include Shelf.NotFound
+        include StorageError
+    }
+
+    repository Shelves for Shelf {
+        fn find(id: ShelfId): Result<Option<Shelf>, StorageError>
+        fn load(id: ShelfId): Result<Shelf, Lookup>
+        fn keep(shelf: Shelf): Result<Unit, StorageError>
+        fn clear(id: ShelfId): Result<Unit, StorageError>
+    }
+
+    identity TillId: Int where Range(1, 9)
+
+    aggregate Till {
+        identity id: TillId
+        cash: Int
+    }
+
+    repository Tills for Till {
+        fn save(till: Till): Result<Unit, StorageError>
+        fn holding_over(cash: Int): Result<List<Till>, StorageError>
+    }
+
+    adapter ListTills for Tills = {
+        tills: List<Till> where Length(0, 4) = []
+
+        fn save(till) = {
+            set tills = tills.filter(kept -> kept.id != till.id).add(till)
+            Ok(Unit)
+        }
+
+        fn holding_over(cash) = Ok(tills.filter(till -> till.cash > cash))
+    }
+
+    error WrongAnswer
+
+    fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+        if ok {
+            Ok(Unit)
+        }
+        Err(WrongAnswer)
+    }
+
+    enum Failure {
+        include Shelf.Error
+        include StorageError
+        include WrongAnswer
+    }
+
+    service Check(): Result<Unit, Failure> {
+        calls Shelves, Tills
+    } = {
+        let nothing = shelves.find(4)?
+        check(nothing.is_none)?
+        shelves.keep(Shelf { id: 4, stock: 10 })?
+        let kept = shelves.find(4)?
+        check(kept.map(shelf -> shelf.stock).unwrap_or(0) == 10)?
+        issue Restock on Shelf(4)?
+        let restocked = shelves.load(4)?
+        check(restocked.stock == 15)?
+        shelves.clear(4)?
+        let missing = match shelves.load(4) {
+            Ok(shelf) -> false
+            Err(error) -> true
+        }
+        check(missing)?
+        tills.save(Till { id: 1, cash: 20 })?
+        tills.save(Till { id: 2, cash: 80 })?
+        let rich = tills.holding_over(50)?
+        check(rich.length == 1)
+    }
+}

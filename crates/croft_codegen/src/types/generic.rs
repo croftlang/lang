@@ -8,9 +8,11 @@ use crate::Generator;
 impl<'a> Generator<'a> {
     pub fn generic_definition(&self, ty: &Type) -> String {
         let name = self.c_type(ty);
+
         let fields = match ty {
             Type::List(item) => {
                 let capacity = self.sizes.list_capacity(item);
+
                 format!(
                     "    croft_u16 length;\n    {} items[{capacity}];\n",
                     self.c_type(item)
@@ -18,6 +20,7 @@ impl<'a> Generator<'a> {
             }
             Type::Map(key, value) => {
                 let capacity = self.sizes.map_capacity(ty);
+
                 format!(
                     "    croft_u16 length;\n    {} keys[{capacity}];\n    {} values[{capacity}];\n",
                     self.c_type(key),
@@ -36,6 +39,7 @@ impl<'a> Generator<'a> {
             }
             _ => return String::new(),
         };
+
         struct_definition(&name, &fields)
     }
 }

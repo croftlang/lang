@@ -91,6 +91,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 /// The name an expression spells, if it is just a name: `ExitBlocked`, `Room.NotFound`.
 pub fn path_of(value: &croft_syntax::ast::Expr) -> Option<croft_syntax::ast::Path> {
     use croft_syntax::ast::{ExprKind, Identifier, Path};
+
     match &value.kind {
         ExprKind::Name(name) => Some(Path {
             segments: vec![Identifier {

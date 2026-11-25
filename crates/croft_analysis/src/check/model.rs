@@ -1,6 +1,7 @@
 //! A read-only view of a checked program's declarations, for code generation.
 
 use super::operations::Operation;
+use super::repository::StorageShape;
 use std::collections::HashMap;
 
 use croft_syntax::ast::{Field, Path, TypeExpr};
@@ -26,11 +27,13 @@ pub struct Model<'a> {
 impl<'a> Model<'a> {
     pub fn new(program: &'a Program) -> Model<'a> {
         let mut errors = Vec::new();
+
         let tables: HashMap<_, _> = program
             .contexts
             .iter()
             .map(|(name, context)| (name.clone(), build_table(context, &mut errors)))
             .collect();
+
         Model {
             checker: Checker {
                 program,
@@ -48,6 +51,7 @@ impl<'a> Model<'a> {
         let context = &self.checker.program.contexts[context];
         let aggregate =
             aggregate.and_then(|name| context.aggregates.iter().find(|a| a.name.name == name));
+
         Scope {
             context,
             aggregate: aggregate.map(|a| a.name.name.as_str()),
@@ -70,6 +74,7 @@ impl<'a> Model<'a> {
     pub fn fields(&self, named: &Resolved) -> Vec<(String, Type, &'a Field)> {
         let scope = self.checker.scope_of(named);
         let fields = self.checker.fields_of(named).unwrap_or(&[]);
+
         fields
             .iter()
             .map(|f| {
@@ -102,5 +107,18 @@ impl<'a> Model<'a> {
 
     pub fn repository_aggregate(&self, repository: &Resolved) -> Option<Resolved> {
         self.checker.repository_aggregate(repository)
+    }
+
+    /// Which shape a repository's operation has, if `Storage` can provide it.
+    pub fn storage_shape(&self, repository: &Resolved, operation: &str) -> Option<StorageShape> {
+        let aggregate = self.checker.repository_aggregate(repository)?;
+        let operations = self.checker.operations_of(repository);
+        let operation = operations.iter().find(|op| op.name == operation)?;
+        self.checker.storage_shape(&aggregate, operation)
+    }
+
+    /// The find and save `issue ... on Room(id)` loads and saves through.
+    pub fn find_and_save(&self, repository: &Resolved) -> Option<(Operation<'a>, Operation<'a>)> {
+        self.checker.find_and_save(repository)
     }
 }

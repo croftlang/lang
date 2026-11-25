@@ -15,14 +15,18 @@ impl Parser {
         mut parameters: Option<&mut Vec<Parameter>>,
     ) -> ParseResult<(Vec<Expr>, Vec<Path>)> {
         let (mut preconditions, mut calls) = (Vec::new(), Vec::new());
+
         if !self.eat(&TokenKind::LeftBrace) {
             return Ok((preconditions, calls));
         }
+
         while !self.eat(&TokenKind::RightBrace) {
             self.reject_uses()?;
+
             if self.eat_keyword(Keyword::Calls) {
                 loop {
                     calls.push(self.parse_path()?);
+
                     if !self.eat(&TokenKind::Comma) {
                         break;
                     }
@@ -33,6 +37,7 @@ impl Parser {
                 preconditions.push(self.parse_expression()?);
             }
         }
+
         Ok((preconditions, calls))
     }
 
@@ -44,6 +49,7 @@ impl Parser {
                 "the ports a body calls are listed with `calls`: `calls Screen, Keyboard`";
             return Err(Diagnostic::new(message, self.span()));
         }
+
         Ok(())
     }
 
@@ -57,6 +63,7 @@ impl Parser {
         let constraints = self.parse_constraints()?;
         let parameter =
             parameters.and_then(|all| all.iter_mut().find(|p| p.name.name == name.name));
+
         match parameter {
             Some(parameter) => parameter.constraints.extend(constraints),
             None => {
@@ -64,9 +71,11 @@ impl Parser {
                     "`{}` is not a parameter, so it can't have constraints here",
                     name.name
                 );
+
                 return Err(Diagnostic::new(message, name.span));
             }
         }
+
         Ok(())
     }
 }

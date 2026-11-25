@@ -14,18 +14,22 @@ impl<'a> Checker<'a> {
         if found.kind != SymbolKind::Value {
             return None;
         }
+
         let context = &self.program.contexts[&found.context];
         let value = context.values.iter().find(|v| v.name.name == found.name)?;
+
         (!value.type_parameters.is_empty()).then_some(value)
     }
 
     /// The generic function a name refers to, if it is one.
     pub(super) fn generic_function(&self, found: &Resolved) -> Option<&'a FunctionDecl> {
         let context = &self.program.contexts[&found.context];
+
         let function = context
             .functions
             .iter()
             .find(|f| f.name.name == found.name)?;
+
         (!function.type_parameters.is_empty()).then_some(function)
     }
 
@@ -39,19 +43,24 @@ impl<'a> Checker<'a> {
     ) -> Option<Resolved> {
         let context = &scope.context.name.name;
         let name = instance_name(&template.name, &arguments);
+
         if let Some(found) = self.lookup(context, &name) {
             return Some(found);
         }
+
         let request = Request {
             context: context.clone(),
             template_context: template.context.clone(),
             template: template.name.clone(),
             arguments,
         };
+
         let mut requests = self.requests.borrow_mut();
+
         if !requests.contains(&request) {
             requests.push(request);
         }
+
         None
     }
 
@@ -63,8 +72,10 @@ impl<'a> Checker<'a> {
                     "a type parameter is a single capital letter, such as `T`, not `{}`",
                     parameter.name
                 );
+
                 self.error(message, parameter.span);
             }
+
             if parameters[..index].iter().any(|p| p.name == parameter.name) {
                 let message = format!("type parameter `{}` is named twice", parameter.name);
                 self.error(message, parameter.span);

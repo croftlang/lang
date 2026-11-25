@@ -48,23 +48,90 @@ pub struct Context {
 impl Program {
     pub fn from_files(files: Vec<File>) -> Program {
         let mut program = Program::default();
+
         for file in files {
             program.domains.extend(file.domains);
+
             for part in file.contexts {
                 let name = part.name.name.clone();
+
                 let context = program
                     .contexts
                     .entry(name)
                     .or_insert_with(|| Context::new(part.name.clone()));
+
                 context.add_items(part.items);
             }
         }
+
+        for context in program.contexts.values_mut() {
+            context.mark_identity_fields();
+        }
+
         if let Some(domain) = program.domains.first() {
             if !program.contexts.contains_key(&domain.name.name) {
                 let context = Context::from_domain(domain);
                 program.contexts.insert(domain.name.name.clone(), context);
             }
         }
+
         program
+    }
+}
+
+impl Context {
+    /// Marks the field that holds each aggregate's and entity's own identity:
+    /// the one of the identity type declared `for` it.
+    fn mark_identity_fields(&mut self) {
+        for aggregate in &mut self.aggregates {
+            let owner = aggregate.name.name.clone();
+
+            if let Some(identity) = identity_for(&self.identities, &owner, None) {
+                mark_fields(&mut aggregate.fields, identity);
+            }
+
+            for entity in &mut aggregate.entities {
+                let name = entity.name.name.as_str();
+
+                if let Some(identity) = identity_for(&self.identities, &owner, Some(name)) {
+                    mark_fields(&mut entity.fields, identity);
+                }
+            }
+        }
+    }
+
+    /// The identity declared for an aggregate, or for an entity inside it.
+    pub fn identity_for(&self, aggregate: &str, entity: Option<&str>) -> Option<&IdentityDecl> {
+        identity_for(&self.identities, aggregate, entity)
+    }
+}
+
+fn identity_for<'a>(
+    identities: &'a [IdentityDecl],
+    aggregate: &str,
+    entity: Option<&str>,
+) -> Option<&'a IdentityDecl> {
+    identities
+        .iter()
+        .find(|identity| identifies(&identity.owner, aggregate, entity))
+}
+
+/// Whether an identity's `for` names this aggregate or entity. An entity is
+/// written by its own name or, to tell it apart, as `Room.Enemy`.
+pub fn identifies(owner: &Path, aggregate: &str, entity: Option<&str>) -> bool {
+    let names: Vec<&str> = owner.segments.iter().map(|s| s.name.as_str()).collect();
+
+    match (entity, names.as_slice()) {
+        (None, [name]) => *name == aggregate,
+        (Some(entity), [name]) => *name == entity,
+        (Some(entity), [outer, name]) => *outer == aggregate && *name == entity,
+        _ => false,
+    }
+}
+
+fn mark_fields(fields: &mut [Field], identity: &IdentityDecl) {
+    for field in fields {
+        let path = &field.ty.path.segments;
+        field.is_identity = path.len() == 1 && path[0].name == identity.name.name;
     }
 }

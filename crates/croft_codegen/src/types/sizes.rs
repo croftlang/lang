@@ -34,47 +34,58 @@ impl Sizes {
             list_capacity: HashMap::new(),
             map_capacity: HashMap::new(),
         };
+
         for (name, context) in &program.contexts {
             let mut fields: Vec<(&TypeExpr, &[ConstraintUse], Option<&str>)> = Vec::new();
+
             let records = context
                 .values
                 .iter()
                 .map(|v| (&v.fields, None))
                 .chain(context.errors.iter().map(|e| (&e.fields, None)));
+
             let records = records.chain(context.adapters.iter().map(|a| (&a.fields, None)));
+
             let records = records.chain(
                 context
                     .enums
                     .iter()
                     .flat_map(|e| e.variants.iter().map(|v| (&v.fields, None))),
             );
+
             let aggregates = context.aggregates.iter().flat_map(|a| {
                 let scope = Some(a.name.name.as_str());
                 let nested = a.entities.iter().map(move |e| (&e.fields, scope));
+
                 let records = a
                     .errors
                     .iter()
                     .chain(&a.events)
                     .map(move |r| (&r.fields, scope));
+
                 std::iter::once((&a.fields, scope))
                     .chain(nested)
                     .chain(records)
             });
+
             for (list, aggregate) in records.chain(aggregates) {
                 fields.extend(
                     list.iter()
                         .map(|f| (&f.ty, f.constraints.as_slice(), aggregate)),
                 );
             }
+
             let functions = context
                 .functions
                 .iter()
                 .chain(context.ports.iter().flat_map(|p| &p.operations))
                 .map(|f| (f, None));
+
             let commands = context.aggregates.iter().flat_map(|a| {
                 let scope = Some(a.name.name.as_str());
                 a.commands.iter().map(move |c| (c, scope))
             });
+
             // A `where` on a parameter or on the result sizes the list as
             // much as one on a field does.
             for (function, aggregate) in functions.chain(commands) {
@@ -83,18 +94,23 @@ impl Sizes {
                         fields.push((ty, &parameter.constraints, aggregate));
                     }
                 }
+
                 if let Some(ty) = &function.return_type {
                     fields.push((ty, &function.return_constraints, aggregate));
                 }
             }
+
             for (ty, constraints, aggregate) in fields {
                 sizes.add(program, model, name, aggregate, ty, constraints);
             }
         }
+
         if sizes.bytes_capacity == 0 {
             sizes.bytes_capacity = DEFAULT_BYTES_CAPACITY;
         }
+
         sizes.string_capacity = sizes.string_capacity.max(DEFAULT_STRING_CAPACITY);
+
         sizes
     }
 
@@ -117,6 +133,7 @@ impl Sizes {
         else {
             return;
         };
+
         match ty.path.text().as_str() {
             "String" => self.string_capacity = self.string_capacity.max(longest),
             "Bytes" => self.bytes_capacity = self.bytes_capacity.max(longest),
@@ -124,6 +141,7 @@ impl Sizes {
                 let Some(item) = ty.arguments.first() else {
                     return;
                 };
+
                 let item = model.lower_type(context, aggregate, item);
                 let capacity = self.list_capacity.entry(item).or_insert(0);
                 *capacity = (*capacity).max(longest);
@@ -132,17 +150,20 @@ impl Sizes {
                 let [key, value] = ty.arguments.as_slice() else {
                     return;
                 };
+
                 let key = model.lower_type(context, aggregate, key);
                 let value = model.lower_type(context, aggregate, value);
                 let map = Type::map(key.clone(), value.clone());
                 let capacity = self.map_capacity.entry(map).or_insert(0);
                 *capacity = (*capacity).max(longest);
+
                 // `keys` and `values` give lists, which need room for every entry.
                 for item in [key, value] {
                     let list = self
                         .list_capacity
                         .entry(item)
                         .or_insert(DEFAULT_LIST_CAPACITY);
+
                     *list = (*list).max(longest);
                 }
             }

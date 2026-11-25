@@ -20,6 +20,7 @@ pub fn c_name(named: &Resolved) -> String {
 /// `_`, and runs of them one, with none at the end.
 fn c_identifier(name: &str) -> String {
     let mut out = String::new();
+
     for c in name.chars() {
         if c.is_ascii_alphanumeric() || c == '_' {
             out.push(c);
@@ -27,6 +28,7 @@ fn c_identifier(name: &str) -> String {
             out.push('_');
         }
     }
+
     out.trim_end_matches('_').to_string()
 }
 
@@ -48,6 +50,7 @@ pub fn aggregate_kind(aggregate: &Resolved) -> String {
 /// Escapes text for a C string literal.
 pub fn c_string(text: &str) -> String {
     let mut escaped = String::from("\"");
+
     for c in text.chars() {
         match c {
             '"' => escaped.push_str("\\\""),
@@ -57,7 +60,9 @@ pub fn c_string(text: &str) -> String {
             _ => escaped.push('?'),
         }
     }
+
     escaped.push('"');
+
     escaped
 }
 
@@ -66,6 +71,7 @@ impl<'a> Generator<'a> {
     /// type here records it, so its definition is generated.
     pub fn c_type(&self, ty: &Type) -> String {
         let ty = self.canonical(ty);
+
         let name = match &ty {
             Type::Int | Type::Decimal(_) => "croft_int".to_string(),
             Type::Float => "double".to_string(),
@@ -84,7 +90,9 @@ impl<'a> Generator<'a> {
                 format!("croft_result_{}_{}", self.short(value), self.short(error))
             }
         };
+
         self.use_type(&ty);
+
         name
     }
 
@@ -106,6 +114,7 @@ impl<'a> Generator<'a> {
 
     fn short(&self, ty: &Type) -> String {
         let name = self.c_type(ty);
+
         name.strip_prefix("croft_")
             .map(str::to_string)
             .unwrap_or(name)
@@ -113,6 +122,7 @@ impl<'a> Generator<'a> {
 
     fn use_type(&self, ty: &Type) {
         let mut used = self.used_types.borrow_mut();
+
         if used.1.insert(ty.clone()) {
             used.0.push(ty.clone());
         }

@@ -44,33 +44,42 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// The finished function: its signature, declarations, then statements.
     pub fn finish(self, signature: &str) -> String {
         let mut out = format!("{signature}\n{{\n");
+
         let used = |declaration: &&String| {
             let name = declaration
                 .trim_end_matches(';')
                 .rsplit(' ')
                 .next()
                 .unwrap_or_default();
+
             self.lines.iter().any(|line| mentions(line, name))
         };
+
         let declarations: Vec<&String> = self.declarations.iter().filter(used).collect();
+
         for declaration in &declarations {
             out.push_str(declaration);
             out.push('\n');
         }
+
         if !declarations.is_empty() && !self.lines.is_empty() {
             out.push('\n');
         }
+
         // A parameter only used in debug-build lines is still unused otherwise.
         let release: Vec<&String> = release_lines(&self.lines);
+
         for parameter in &self.parameters {
             if !release.iter().any(|line| mentions(line, parameter)) {
                 out.push_str(&format!("    (void) {parameter};\n"));
             }
         }
+
         for line in &self.lines {
             out.push_str(line);
             out.push('\n');
         }
+
         // A variable a release build only writes to, such as a value built
         // just to be checked in debug builds, is marked as used.
         for declaration in &declarations {
@@ -79,6 +88,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 .rsplit(' ')
                 .next()
                 .unwrap_or_default();
+
             if release
                 .iter()
                 .all(|line| !mentions(line, name) || is_write_to(line, name))
@@ -86,7 +96,9 @@ impl<'g, 'a> Writer<'g, 'a> {
                 out.push_str(&format!("    (void) {name};\n"));
             }
         }
+
         out.push_str("}\n\n");
+
         out
     }
 }

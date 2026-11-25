@@ -19,6 +19,7 @@ pub fn evaluate(program: &Program, model: &Model, context: &str, value: &Expr) -
                 evaluate(program, model, context, left)?,
                 evaluate(program, model, context, right)?,
             );
+
             match op {
                 BinaryOp::Add => left.checked_add(right),
                 BinaryOp::Subtract => left.checked_sub(right),
@@ -40,11 +41,14 @@ pub fn evaluate(program: &Program, model: &Model, context: &str, value: &Expr) -
                     span: value.span,
                 }],
             };
+
             let found = model
                 .resolve(context, None, &path)
                 .filter(|f| f.kind == SymbolKind::Const)?;
+
             let owner = &program.contexts[&found.context];
             let constant = owner.consts.iter().find(|c| c.name.name == found.name)?;
+
             evaluate(program, model, &found.context, &constant.value)
         }
         _ => None,
@@ -59,14 +63,17 @@ pub fn scale(places: u32) -> i64 {
 /// A literal such as `2.5` as a whole number of the smallest unit: 250 for two places.
 pub fn scaled(text: &str, places: u32) -> i64 {
     let (whole, part) = text.split_once('.').unwrap_or((text, ""));
+
     let mut digits: String = whole
         .chars()
         .chain(part.chars())
         .filter(|c| *c != '_')
         .collect();
+
     for _ in part.len()..places as usize {
         digits.push('0');
     }
+
     digits.parse().unwrap_or(0)
 }
 

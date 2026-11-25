@@ -45,6 +45,7 @@ pub fn to_path(name: &Identifier) -> Path {
         name: segment.to_string(),
         span: name.span,
     });
+
     Path {
         segments: segments.collect(),
     }
@@ -54,11 +55,13 @@ pub fn to_path(name: &Identifier) -> Path {
 fn span_at(text: &str, offset: usize, source: SourceId) -> Span {
     let before = &text[..offset.min(text.len())];
     let line = before.matches('\n').count() as u32 + 1;
+
     let column = before
         .rsplit('\n')
         .next()
         .map_or(0, |rest| rest.chars().count()) as u32
         + 1;
+
     Span {
         source,
         line,

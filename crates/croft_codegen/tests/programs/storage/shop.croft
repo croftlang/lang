@@ -9,8 +9,8 @@ context Shop {
     use { Map } from Std.Collections
     use { to_bytes } from Std.Text
 
-    identity ShelfId: Int where Range(1, 99)
-    identity ItemId: Int where Range(0, 9)
+    identity ShelfId for Shelf: Int where Range(1, 99)
+    identity ItemId for Item: Int where Range(0, 9)
 
     enum Label {
         Plain
@@ -18,7 +18,7 @@ context Shop {
     }
 
     aggregate Shelf {
-        identity id: ShelfId
+        id: ShelfId
         name: String where Length(0, 16)
         price: Decimal<2>
         label: Label
@@ -27,7 +27,7 @@ context Shop {
         items: List<Item> where Length(0, 4)
 
         entity Item {
-            identity id: ItemId
+            id: ItemId
             count: Int where Range(0, 255)
             open: Bool
         }

@@ -18,11 +18,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     ) -> Type {
         let name = method.name.as_str();
         let span = method.span;
+
         let found = match receiver {
             Type::Unknown => {
                 for argument in arguments {
                     self.expr(&argument.value, None);
                 }
+
                 return Type::Unknown;
             }
             Type::Port(port) => return self.port_operation(port, method, arguments),
@@ -31,9 +33,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             Type::Bytes => {
                 let context = self.scope.context;
+
                 if name == "to_text" {
                     self.checker.check_standard(context, name, span);
                 }
+
                 self.bytes_method(name, arguments, span)
             }
             Type::String => {
@@ -52,11 +56,14 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             Type::Option(item) => self.option_method(item, name, arguments, span, expected),
             _ => None,
         };
+
         let Some(found) = found else {
             self.error(format!("`{receiver}` has no method `{name}`"), span);
             return Type::Unknown;
         };
+
         self.note_member(method, receiver, &found, MemberKind::Operation, None);
+
         found
     }
 
@@ -74,7 +81,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             .enumerate()
             .map(|(index, ty)| (format!("argument {}", index + 1), ty.clone()))
             .collect();
+
         self.check_arguments(arguments, &parameters, name, span, false);
+
         Some(result)
     }
 }

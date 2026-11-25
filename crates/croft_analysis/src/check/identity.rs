@@ -10,7 +10,9 @@ impl<'a> Checker<'a> {
         let Some(named) = ty.named(&[SymbolKind::Identity]) else {
             return false;
         };
+
         let identities = &self.program.contexts[&named.context].identities;
+
         identities
             .iter()
             .any(|i| i.name.name == named.name && i.ty.path.text() == "Int")
@@ -19,9 +21,11 @@ impl<'a> Checker<'a> {
     /// The type of an aggregate's identity field, such as `RoomId` for `Room`.
     pub(super) fn identity_of(&self, aggregate: &Resolved) -> Type {
         let fields = self.fields_of(aggregate).unwrap_or(&[]);
+
         let Some(identity) = fields.iter().find(|field| field.is_identity) else {
             return Type::Unknown;
         };
+
         self.lower_type(&self.scope_of(aggregate), &identity.ty)
     }
 
@@ -30,12 +34,15 @@ impl<'a> Checker<'a> {
     pub(crate) fn single_value_inner(&self, ty: &Type) -> Option<Type> {
         let named = ty.named(&[SymbolKind::Value])?;
         let scope = self.scope_of(named);
+
         let value = scope
             .context
             .values
             .iter()
             .find(|v| v.name.name == named.name)?;
+
         let field = value.fields.first().filter(|_| value.single)?;
+
         Some(self.lower_type(&scope, &field.ty))
     }
 }

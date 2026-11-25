@@ -38,8 +38,10 @@ impl SymbolTable {
                 format!("`{name}` is declared more than once"),
                 span,
             ));
+
             return;
         }
+
         self.symbols.insert(name, Symbol { kind, span });
     }
 

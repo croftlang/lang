@@ -19,15 +19,19 @@ pub const FLAGS: [&str; 7] = [
 
 pub fn source_files(folder: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
+
     for entry in fs::read_dir(folder).expect("a program folder") {
         let path = entry.expect("a folder entry").path();
+
         if path.is_dir() {
             found.extend(source_files(&path));
         } else if croft_syntax::is_source_file(&path) {
             found.push(path);
         }
     }
+
     found.sort();
+
     found
 }
 
@@ -40,20 +44,25 @@ pub fn generate(folder: &Path, target: &str, name: &str) -> PathBuf {
             parse(&fs::read_to_string(path).unwrap(), SourceId(index as u32)).expect("valid syntax")
         })
         .collect();
+
     let toml =
         fs::read_to_string(folder.join(croft_analysis::MANIFEST_FILE)).expect("a croft.toml");
     let manifest =
         croft_analysis::Manifest::parse(&toml, SourceId(999)).expect("a valid croft.toml");
     let program =
         croft_analysis::check(files, Some(manifest)).unwrap_or_else(|errors| panic!("{errors:#?}"));
+
     let output = std::env::temp_dir().join(format!(
         "croft_codegen_{name}_{target}_{}",
         std::process::id()
     ));
+
     fs::create_dir_all(&output).unwrap();
+
     for file in croft_codegen::generate(&program, target).expect("generated C") {
         fs::write(output.join(&file.name), file.contents).unwrap();
     }
+
     output
 }
 
@@ -88,7 +97,9 @@ pub fn run_program_at(source: &Path, name: &str) {
         eprintln!("skipping {name}: no C compiler named `cc`");
         return;
     }
+
     let output = generate(source, "test", name);
+
     let built = compile(
         &output,
         &[
@@ -99,18 +110,22 @@ pub fn run_program_at(source: &Path, name: &str) {
             "program",
         ],
     );
+
     assert!(
         built.status.success(),
         "{}",
         String::from_utf8_lossy(&built.stderr)
     );
+
     let ran = Command::new(output.join("program"))
         .output()
         .expect("the program runs");
+
     assert!(
         ran.status.success(),
         "a check failed: {}",
         String::from_utf8_lossy(&ran.stdout)
     );
+
     fs::remove_dir_all(output).ok();
 }

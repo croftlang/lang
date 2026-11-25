@@ -9,14 +9,17 @@ impl<'a> Checker<'a> {
     /// error of `Room`, and an enum is every error it includes.
     pub(super) fn error_members(&self, named: &Resolved) -> Vec<Resolved> {
         let context = &self.program.contexts[&named.context];
+
         match named.kind {
             SymbolKind::Error => vec![named.clone()],
             SymbolKind::ErrorSet => {
                 let aggregate = named.name.trim_end_matches(".Error");
+
                 let errors = context
                     .aggregates
                     .iter()
                     .filter(|a| a.name.name == aggregate);
+
                 errors
                     .flat_map(|a| &a.errors)
                     .filter_map(|error| {
@@ -29,8 +32,10 @@ impl<'a> Checker<'a> {
                     context,
                     aggregate: None,
                 };
+
                 let decl = context.enums.iter().find(|e| e.name.name == named.name);
                 let includes = decl.into_iter().flat_map(|decl| &decl.includes);
+
                 includes
                     .filter_map(|include| self.resolve(&scope, include))
                     .flat_map(|included| self.error_members(&included))
@@ -88,9 +93,11 @@ impl<'a> Checker<'a> {
     fn includes_errors(&self, to: &Resolved, from: &Resolved) -> bool {
         let members = self.error_members(to);
         let from_members = self.error_members(from);
+
         if from.kind == SymbolKind::ErrorSet && from_members.is_empty() {
             return !members.is_empty() || to.kind == SymbolKind::ErrorSet;
         }
+
         !from_members.is_empty() && from_members.iter().all(|error| members.contains(error))
     }
 }

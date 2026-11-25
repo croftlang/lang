@@ -20,6 +20,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         let left_type = self.type_of(left, None);
         let right_type = self.type_of(right, None);
         let both = left_type == decimal && right_type == decimal;
+
         match op {
             BinaryOp::Multiply if !both => {
                 let left = self.value(left, &left_type);

@@ -19,11 +19,13 @@ pub fn int_width(
             let [low, high] = constraint.arguments.as_slice() else {
                 return None;
             };
+
             Some((
                 evaluate(program, model, context, low)?,
                 evaluate(program, model, context, high)?,
             ))
         });
+
     match range {
         Some((low, high)) if low >= 0 && high <= 255 => "croft_u8",
         Some((low, high)) if low >= 0 && high <= 65535 => "croft_u16",

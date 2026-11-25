@@ -25,6 +25,7 @@ pub enum SymbolKind {
 impl SymbolKind {
     pub fn is_type(self) -> bool {
         use SymbolKind::*;
+
         matches!(
             self,
             Value | Entity | Aggregate | Enum | Identity | Error | ErrorSet | Event
@@ -33,6 +34,7 @@ impl SymbolKind {
 
     pub fn describe(self) -> &'static str {
         use SymbolKind::*;
+
         match self {
             Value => "a value",
             Entity => "an entity",

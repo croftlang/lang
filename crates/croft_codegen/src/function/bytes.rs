@@ -12,20 +12,25 @@ impl<'g, 'a> Writer<'g, 'a> {
             .iter()
             .map(|value| self.value(value, &Type::Int))
             .collect();
+
         let bytes = self.temp(&Type::Bytes);
         let capacity = self.gen.sizes.bytes_capacity;
+
         self.line(format!(
             "{bytes}.length = {};",
             values.len().min(capacity as usize)
         ));
+
         if values.len() as i64 > capacity {
             self.line(format!(
                 "CROFT_CHECK(0, \"bytes hold at most {capacity}\");"
             ));
         }
+
         for (index, value) in values.iter().take(capacity as usize).enumerate() {
             self.line(format!("{bytes}.items[{index}] = (unsigned char) {value};"));
         }
+
         bytes
     }
 
@@ -40,13 +45,16 @@ impl<'g, 'a> Writer<'g, 'a> {
             Some(argument) => writer.value(&argument.value, &Type::Int),
             None => "0".to_string(),
         };
+
         match name {
             "get" => {
                 let index = argument(self, 0);
                 let temp = self.temp(ty);
+
                 self.line(format!(
                     "{temp}.some = croft_bytes_get(&{bytes}, {index}, &{temp}.value);"
                 ));
+
                 temp
             }
             "add" => {
@@ -59,9 +67,11 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let start = argument(self, 0);
                 let end = argument(self, 1);
                 let temp = self.temp(ty);
+
                 self.line(format!(
                     "croft_bytes_slice(&{bytes}, {start}, {end}, &{temp});"
                 ));
+
                 temp
             }
             "to_text" => {

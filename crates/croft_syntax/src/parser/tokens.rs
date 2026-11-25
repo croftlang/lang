@@ -22,9 +22,11 @@ impl Parser {
 
     pub(super) fn advance(&mut self) -> Token {
         let token = self.peek().clone();
+
         if token.kind != TokenKind::EndOfFile {
             self.position += 1;
         }
+
         token
     }
 
@@ -43,9 +45,11 @@ impl Parser {
 
     pub(super) fn eat(&mut self, kind: &TokenKind) -> bool {
         let matches = self.check(kind);
+
         if matches {
             self.advance();
         }
+
         matches
     }
 
@@ -57,6 +61,7 @@ impl Parser {
         if self.check(kind) {
             return Ok(self.advance());
         }
+
         Err(self.unexpected(&kind.describe()))
     }
 
@@ -69,19 +74,23 @@ impl Parser {
             self.advance();
             return Ok(());
         }
+
         Err(self.unexpected(&format!("`{word}`")))
     }
 
     /// A name. `event` and `error` also work as names, as in `event.source`.
     pub(super) fn expect_identifier(&mut self) -> ParseResult<Identifier> {
         let span = self.span();
+
         let name = match &self.peek().kind {
             TokenKind::Identifier(name) => name.clone(),
             TokenKind::Keyword(Keyword::Event) => "event".to_string(),
             TokenKind::Keyword(Keyword::Error) => "error".to_string(),
             _ => return Err(self.unexpected("a name")),
         };
+
         self.advance();
+
         Ok(Identifier { name, span })
     }
 
@@ -90,12 +99,15 @@ impl Parser {
     pub(super) fn expect_field_name(&mut self) -> ParseResult<Identifier> {
         if let TokenKind::Keyword(keyword) = self.peek().kind {
             let span = self.span();
+
             self.advance();
+
             return Ok(Identifier {
                 name: keyword.as_str().to_string(),
                 span,
             });
         }
+
         self.expect_identifier()
     }
 

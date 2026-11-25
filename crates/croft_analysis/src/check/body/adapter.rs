@@ -15,10 +15,13 @@ impl<'a> Checker<'a> {
             let ty = self.lower_type(&scope, &field.ty);
             BodyChecker::new(self, scope, BodyKind::Constant, ty.clone()).expect(value, &ty);
         }
+
         let Some(port) = self.resolve(&scope, &adapter.port) else {
             return;
         };
+
         let expected_operations = self.operations_of(&port);
+
         for operation in &adapter.operations {
             let Some(expected) = expected_operations
                 .iter()
@@ -26,19 +29,25 @@ impl<'a> Checker<'a> {
             else {
                 continue;
             };
+
             let result = expected.result.clone();
+
             let parameters: Vec<(String, Type)> = (expected.parameters.iter())
                 .map(|(name, ty, _)| (name.clone(), ty.clone()))
                 .collect();
+
             let mut body = BodyChecker::new(self, scope, BodyKind::Adapter(adapter), result);
+
             let names = operation
                 .parameters
                 .iter()
                 .flatten()
                 .map(|p| (p.name.name.clone(), p.name.span));
+
             for ((name, span), (_, ty)) in names.zip(parameters) {
                 body.bind(&name, ty, false, Some(span));
             }
+
             if let Some(value) = &operation.body {
                 body.expect_body(value);
             }

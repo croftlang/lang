@@ -18,32 +18,41 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         expected: Option<&Type>,
     ) -> Option<(Type, Variant<'a>)> {
         let name = path.last().name.as_str();
+
         let candidates: Vec<Type> = if path.segments.len() > 1 {
             let owner = Path {
                 segments: path.segments[..path.segments.len() - 1].to_vec(),
             };
+
             let found = self.checker.resolve(&self.scope, &owner)?;
+
             vec![Type::Named(found)]
         } else if let Some(expected) = expected.and_then(|ty| ty.named(&ENUM_KINDS)) {
             vec![Type::Named(expected.clone())]
         } else {
             let enums = self.scope.context.enums.iter();
             let context = self.scope.context.name.name.as_str();
+
             enums
                 .filter_map(|e| self.checker.lookup(context, &e.name.name))
                 .map(Type::Named)
                 .collect()
         };
+
         let mut matches = candidates.into_iter().filter_map(|ty| {
             let named = ty.named(&ENUM_KINDS)?.clone();
+
             let variant = self
                 .checker
                 .variants_of(&named)
                 .into_iter()
                 .find(|v| v.name == name)?;
+
             Some((ty, variant))
         });
+
         let first = matches.next()?;
+
         matches.next().is_none().then_some(first)
     }
 }

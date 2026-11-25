@@ -17,10 +17,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         span: Span,
     ) -> Option<Type> {
         let list = Type::list(item.clone());
+
         let key = match entity_of(item) {
             Some(entity) => self.checker.identity_of(entity),
             None => Type::Int,
         };
+
         match name {
             "contains" if entity_of(item).is_some() => {
                 self.fixed(name, arguments, &[key], Type::Bool, span)
@@ -90,6 +92,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         span: Span,
     ) {
         let found = self.lambda_argument(name, arguments, item, span);
+
         if !self.checker.accepts(result, &found) {
             self.error(
                 format!("the lambda passed to `{name}` must give back `{result}`, found `{found}`"),
@@ -108,13 +111,16 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         if expected == Some(&Type::Bytes) {
             return self.bytes_literal(items);
         }
+
         let expected_item = match expected {
             Some(Type::List(item)) if !item.is_unknown() => Some((**item).clone()),
             _ => None,
         };
+
         let Some((first, rest)) = items.split_first() else {
             return Type::list(expected_item.unwrap_or(Type::Unknown));
         };
+
         let item = match expected_item {
             Some(item) => {
                 self.expect(first, &item);
@@ -122,9 +128,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             None => self.expr(first, None),
         };
+
         for other in rest {
             self.expect(other, &item);
         }
+
         Type::list(item)
     }
 }

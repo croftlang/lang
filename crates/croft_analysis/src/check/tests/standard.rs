@@ -20,6 +20,7 @@ fn joins_a_standard_context_when_it_is_imported() {
 #[test]
 fn names_the_import_a_standard_name_needs() {
     let source = NOTES.replace("use { Files, FileError, NotFound } from Std.Files", "");
+
     assert_eq!(
         errors(&source),
         [

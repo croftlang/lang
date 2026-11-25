@@ -2,19 +2,23 @@
 pub fn to_snake_case(name: &str) -> String {
     let mut result = String::new();
     let chars: Vec<char> = name.chars().collect();
+
     for (index, &c) in chars.iter().enumerate() {
         if c.is_uppercase() {
             let previous_is_lower = index > 0 && chars[index - 1].is_lowercase();
             let next_is_lower = chars.get(index + 1).is_some_and(|n| n.is_lowercase());
             let previous_is_upper = index > 0 && chars[index - 1].is_uppercase();
+
             if index > 0 && (previous_is_lower || (previous_is_upper && next_is_lower)) {
                 result.push('_');
             }
+
             result.extend(c.to_lowercase());
         } else {
             result.push(c);
         }
     }
+
     result
 }
 

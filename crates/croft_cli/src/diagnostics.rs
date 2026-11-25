@@ -8,15 +8,18 @@ pub fn print_diagnostics(project: &Project, diagnostics: &[Diagnostic]) {
     for diagnostic in diagnostics {
         eprintln!("{}", format_diagnostic(project, diagnostic));
     }
+
     let count = diagnostics.len();
     eprintln!("\n{count} error{} found", if count == 1 { "" } else { "s" });
 }
 
 fn format_diagnostic(project: &Project, diagnostic: &Diagnostic) -> String {
     let span = diagnostic.span;
+
     let Some(file) = project.files.get(span.source.0 as usize) else {
         return format!("error: {}", diagnostic.message);
     };
+
     let mut text = format!(
         "{}:{}:{}: error: {}",
         file.path.display(),
@@ -24,17 +27,21 @@ fn format_diagnostic(project: &Project, diagnostic: &Diagnostic) -> String {
         span.column,
         diagnostic.message
     );
+
     if let Some(line) = file.text.lines().nth(span.line.saturating_sub(1) as usize) {
         let gutter = span.line.to_string();
         let padding = " ".repeat(gutter.len());
+
         let caret_offset: String = line
             .chars()
             .take(span.column.saturating_sub(1) as usize)
             .map(|c| if c == '\t' { '\t' } else { ' ' })
             .collect();
+
         text.push_str(&format!(
             "\n{padding} |\n{gutter} | {line}\n{padding} | {caret_offset}^"
         ));
     }
+
     text
 }

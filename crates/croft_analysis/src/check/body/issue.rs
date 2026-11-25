@@ -19,6 +19,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         ) {
             self.error("only services, policies and functions can issue commands; a command changes one aggregate", span);
         }
+
         let (aggregate, by_identity) = match self.loaded_aggregate(&issue.target) {
             Some(aggregate) => (Some(aggregate), true),
             None => match self.expr(&issue.target, None) {
@@ -29,32 +30,65 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                         format!("commands are issued on an aggregate, not on `{other}`"),
                         issue.target.span,
                     );
+
                     (None, false)
                 }
             },
         };
+
         let Some(aggregate) = aggregate else {
             for argument in &issue.arguments {
                 self.expr(&argument.value, None);
             }
+
             return Type::Unknown;
         };
+
         let meaning = if by_identity {
             Meaning::IssueByIdentity(aggregate.clone())
         } else {
             Meaning::IssueOnValue(aggregate.clone())
         };
+
         self.note(Some(id), meaning);
         self.issue_arguments(&aggregate, &issue.command, &issue.arguments);
+
         let errors = self
             .checker
             .lookup(&aggregate.context, &format!("{}.Error", aggregate.name));
+
         let errors = errors.map_or(Type::Unknown, Type::Named);
+
         if !by_identity {
             return Type::result(Type::Named(aggregate), errors);
         }
-        let storage = self.checker.storage_error();
-        Type::result(Type::Unit, Type::Errors(vec![errors, storage]))
+
+        let mut all = vec![errors];
+        let repository = self.checker.repository_for(&aggregate);
+
+        match repository.and_then(|r| self.checker.find_and_save(&r)) {
+            Some((find, save)) => {
+                for result in [find.result, save.result] {
+                    if let Type::Result(_, error) = result {
+                        match *error {
+                            Type::Errors(errors) => all.extend(errors),
+                            error => all.push(error),
+                        }
+                    }
+                }
+            }
+            None => all.push(self.checker.storage_error()),
+        }
+
+        let mut errors: Vec<Type> = Vec::new();
+
+        for error in all {
+            if !errors.contains(&error) {
+                errors.push(error);
+            }
+        }
+
+        Type::result(Type::Unit, Type::Errors(errors))
     }
 
     /// The aggregate named by an `on Room(id)` target, after checking `id`.
@@ -62,26 +96,41 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let ExprKind::Call(callee, arguments) = &target.kind else {
             return None;
         };
+
         let path = expr_path(callee)?;
+
         let aggregate = self
             .checker
             .resolve(&self.scope, &path)
             .filter(|f| f.kind == SymbolKind::Aggregate)?;
+
         if !matches!(self.kind, BodyKind::Service | BodyKind::Policy) {
             self.error(
                 "only services and policies can load an aggregate by its identity",
                 target.span,
             );
         }
-        if self.checker.repository_for(&aggregate).is_none() {
-            self.error(
+
+        match self.checker.repository_for(&aggregate) {
+            None => self.error(
                 format!("`{}` has no repository to load it from", aggregate.name),
                 target.span,
-            );
+            ),
+            Some(repository) if self.checker.find_and_save(&repository).is_none() => {
+                let message = format!(
+                    "issuing a command on `{}(...)` loads and saves it through `{}`, which needs a find by identity that fails with `{}.NotFound`, and a save",
+                    aggregate.name, repository.name, aggregate.name
+                );
+
+                self.error(message, target.span);
+            }
+            Some(_) => {}
         }
+
         let identity = self.checker.identity_of(&aggregate);
         let parameters = [("identity".to_string(), identity)];
         self.check_arguments(arguments, &parameters, &aggregate.name, target.span, false);
+
         Some(aggregate)
     }
 
@@ -92,11 +141,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         arguments: &[Argument],
     ) {
         let scope = self.checker.scope_of(aggregate);
+
         let decl = scope
             .context
             .aggregates
             .iter()
             .find(|a| a.name.name == aggregate.name);
+
         let Some(command_decl) =
             decl.and_then(|a| a.commands.iter().find(|c| c.name.name == command.name))
         else {
@@ -104,8 +155,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 format!("`{}` has no command `{}`", aggregate.name, command.name),
                 command.span,
             );
+
             return;
         };
+
         let reference = crate::facts::Reference {
             span: command.span,
             name: command.name.clone(),
@@ -115,10 +168,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 kind: crate::symbols::SymbolKind::Command,
             },
         };
+
         self.checker.references.get_mut().push(reference);
+
         let parameters: Vec<(String, Type)> = (command_decl.parameters.iter().flatten())
             .map(|p| (p.name.name.clone(), self.checker.parameter_type(&scope, p)))
             .collect();
+
         self.check_arguments(arguments, &parameters, &command.name, command.span, true);
     }
 }

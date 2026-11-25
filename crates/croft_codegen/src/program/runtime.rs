@@ -16,8 +16,10 @@ pub fn trim_runtime(runtime: &str, program: &str) -> String {
     let (preamble, pieces) = split_functions(runtime);
     let mut kept = vec![false; pieces.len()];
     let mut reached = vec![program.to_string()];
+
     loop {
         let mut changed = false;
+
         for (index, piece) in pieces.iter().enumerate() {
             if !kept[index] && reached.iter().any(|text| mentions(text, piece.name)) {
                 kept[index] = true;
@@ -25,16 +27,20 @@ pub fn trim_runtime(runtime: &str, program: &str) -> String {
                 changed = true;
             }
         }
+
         if !changed {
             break;
         }
     }
+
     let mut source = preamble;
+
     for (piece, keep) in pieces.iter().zip(kept) {
         if keep {
             source.push_str(&piece.text);
         }
     }
+
     source
 }
 
@@ -47,19 +53,24 @@ fn split_functions(source: &str) -> (String, Vec<Piece<'_>>) {
     let mut pieces = Vec::new();
     let mut pending = String::new();
     let mut current: Option<(&str, String)> = None;
+
     for line in source.lines() {
         if let Some((name, text)) = current.as_mut() {
             text.push_str(line);
             text.push('\n');
+
             if line == "}" {
                 pieces.push(Piece {
                     name,
                     text: std::mem::take(text),
                 });
+
                 current = None;
             }
+
             continue;
         }
+
         match function_name(line) {
             Some(name) => current = Some((name, std::mem::take(&mut pending) + line + "\n")),
             None if pieces.is_empty() && !is_comment_or_blank(line) => {
@@ -73,9 +84,11 @@ fn split_functions(source: &str) -> (String, Vec<Piece<'_>>) {
             }
         }
     }
+
     if pieces.is_empty() {
         preamble.push_str(&pending);
     }
+
     (preamble, pieces)
 }
 
@@ -84,8 +97,10 @@ fn function_name(line: &str) -> Option<&str> {
     if line.starts_with([' ', '\t', '#', '/', '*', '}']) || line.ends_with(';') {
         return None;
     }
+
     let before = &line[..line.find('(')?];
     let name = before.rsplit([' ', '*']).next()?;
+
     (!name.is_empty()).then_some(name)
 }
 

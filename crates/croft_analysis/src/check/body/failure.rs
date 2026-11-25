@@ -26,7 +26,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     /// Works on a `Result`, an `Option`, and a `Bool` check.
     pub(super) fn or_else(&mut self, value: &Expr, error: &Expr) -> Type {
         let found = self.expr(value, None);
+
         self.check_failure(error);
+
         match found {
             Type::Result(value, _) | Type::Option(value) => *value,
             Type::Bool => Type::Unit,
@@ -36,6 +38,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     format!("`or` needs a `Result`, `Option` or `Bool`, found `{other}`"),
                     value.span,
                 );
+
                 Type::Unknown
             }
         }
@@ -47,13 +50,16 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let found = self.expr(error, expected.as_ref());
         let is_error =
             matches!(&found, Type::Named(n) if self.checker.is_error_type(n)) || found.is_unknown();
+
         if !is_error {
             self.error(
                 format!("expected an error after `or`, found `{found}`"),
                 error.span,
             );
+
             return;
         }
+
         self.check_error_passes(&found, error.span);
     }
 
@@ -73,10 +79,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                             .iter()
                             .filter(|e| !self.checker.accepts(&own, e))
                             .cloned();
+
                         Type::Errors(missing.collect())
                     }
                     other => other.clone(),
                 };
+
                 self.error(
                     format!("`{own}` does not include `{missing}`, so it cannot be passed up here"),
                     span,

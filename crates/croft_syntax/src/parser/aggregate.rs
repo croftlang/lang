@@ -10,17 +10,22 @@ impl Parser {
     /// line that claims the rest of the file.
     pub(super) fn parse_aggregate(&mut self, context_braced: bool) -> ParseResult<AggregateDecl> {
         let doc = self.doc();
+
         self.expect_keyword(Keyword::Aggregate)?;
+
         let name = self.expect_identifier()?;
         let braced = context_braced || self.check(&TokenKind::LeftBrace);
+
         let end = if braced {
             TokenKind::RightBrace
         } else {
             TokenKind::EndOfFile
         };
+
         if braced {
             self.expect(&TokenKind::LeftBrace)?;
         }
+
         let mut aggregate = AggregateDecl {
             doc,
             name,
@@ -31,14 +36,25 @@ impl Parser {
             events: Vec::new(),
             commands: Vec::new(),
         };
+
         while !self.check(&end) {
             self.parse_aggregate_member(&mut aggregate)?;
         }
+
         self.advance();
+
         Ok(aggregate)
     }
 
     fn parse_aggregate_member(&mut self, aggregate: &mut AggregateDecl) -> ParseResult<()> {
+        let misplaced = self
+            .misplaced_in_aggregate()
+            .or_else(|| self.identity_in_fields(Some(&aggregate.name.name)));
+
+        if let Some(misplaced) = misplaced {
+            return Err(misplaced);
+        }
+
         match self.peek().kind {
             TokenKind::Keyword(Keyword::Entity) => {
                 aggregate.entities.push(self.parse_value(Keyword::Entity)?)
@@ -56,31 +72,39 @@ impl Parser {
             TokenKind::EndOfFile => return Err(self.unexpected("`}`")),
             _ => aggregate.fields.push(self.parse_field()?),
         }
+
         Ok(())
     }
 
     /// `invariant ExitClear or ExitBlocked`
     pub(super) fn parse_invariant(&mut self) -> ParseResult<Invariant> {
         self.expect_keyword(Keyword::Invariant)?;
+
         let constraint = self.parse_constraint_use()?;
+
         let error = if self.eat_keyword(Keyword::Or) {
             Some(self.parse_or_operand()?)
         } else {
             None
         };
+
         Ok(Invariant { constraint, error })
     }
 
     /// An error or event: `event EnemyDamaged { enemy_id: EnemyId  remaining: Int }`.
     pub(super) fn parse_record(&mut self, keyword: Keyword) -> ParseResult<RecordDecl> {
         let doc = self.doc();
+
         self.expect_keyword(keyword)?;
+
         let name = self.expect_identifier()?;
+
         let fields = if self.check(&TokenKind::LeftBrace) && !self.peek().newline_before {
             self.parse_field_block()?
         } else {
             Vec::new()
         };
+
         Ok(RecordDecl { doc, name, fields })
     }
 }

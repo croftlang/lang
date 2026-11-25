@@ -11,12 +11,15 @@ impl<'g, 'a> Writer<'g, 'a> {
     pub fn variable(&mut self, base: &str, ty: &Type) -> String {
         let mut name = base.to_string();
         let mut count = 1;
+
         while !self.names.insert(name.clone()) {
             count += 1;
             name = format!("{base}_{count}");
         }
+
         let c_type = self.gen.c_type(ty);
         self.declarations.push(format!("    {c_type} {name};"));
+
         name
     }
 
@@ -24,11 +27,14 @@ impl<'g, 'a> Writer<'g, 'a> {
     pub fn raw_variable(&mut self, base: &str, c_type: &str) -> String {
         let mut name = base.to_string();
         let mut count = 1;
+
         while !self.names.insert(name.clone()) {
             count += 1;
             name = format!("{base}_{count}");
         }
+
         self.declarations.push(format!("    {c_type} {name};"));
+
         name
     }
 
@@ -36,9 +42,11 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// failure never carries an unset value around.
     pub fn temp(&mut self, ty: &Type) -> String {
         let temp = self.variable("t", ty);
+
         if matches!(ty, Type::Option(_) | Type::Result(..)) {
             self.line(format!("croft_clear(&{temp}, sizeof {temp});"));
         }
+
         temp
     }
 

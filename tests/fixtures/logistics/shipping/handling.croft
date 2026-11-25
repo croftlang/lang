@@ -5,7 +5,7 @@ context Shipping
 // part of the cargo, so a dock registering an event never waits for someone
 // rerouting the cargo, and the history of a busy cargo stays small.
 aggregate HandlingEvent {
-    identity id: HandlingEventId
+    id: HandlingEventId
     tracking_id: TrackingId
     activity: HandlingActivity
     completed_on: Day

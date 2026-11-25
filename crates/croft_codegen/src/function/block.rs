@@ -9,17 +9,22 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// Writes a block's statements and gives back its last line's value.
     pub fn block(&mut self, statements: &[Statement], want: &Type) -> String {
         self.push_scope();
+
         let mut result = "0".to_string();
+
         for (index, statement) in statements.iter().enumerate() {
             let is_last = index + 1 == statements.len();
+
             match statement {
                 Statement::Let(name, _, value) => {
                     let ty = self.gen.facts.kept_as(value.id).clone();
+
                     if !usage::statements_use(&statements[index + 1..], &name.name) {
                         // Never read: work it out for its effects, with no variable.
                         self.eval(value, None);
                         continue;
                     }
+
                     let c = self.value(value, &ty);
                     let variable = self.variable(&format!("v_{}", name.name), &ty);
                     self.line(format!("{variable} = {c};"));
@@ -28,10 +33,12 @@ impl<'g, 'a> Writer<'g, 'a> {
                 Statement::Set(name, value) => {
                     let (target, ty) = self.set_target(&name.name);
                     let c = self.value(value, &ty);
+
                     let own = self
                         .own
                         .as_ref()
                         .filter(|_| self.lookup(&name.name).is_none());
+
                     match own.map(|own| {
                         (
                             own.prefix.trim_end_matches('.').to_string(),
@@ -53,7 +60,9 @@ impl<'g, 'a> Writer<'g, 'a> {
                 },
             }
         }
+
         self.pop_scope();
+
         result
     }
 
@@ -62,10 +71,13 @@ impl<'g, 'a> Writer<'g, 'a> {
         if let Some((c, ty)) = self.lookup(name) {
             return (c, ty);
         }
+
         let own = self.own.as_ref();
+
         let ty = own
             .and_then(|own| own.fields.iter().find(|(f, _)| f == name))
             .map_or(Type::Unknown, |(_, ty)| ty.clone());
+
         (self.local_or_field(name), ty)
     }
 
@@ -73,10 +85,13 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// when it only takes steps, the function carries on after it.
     pub fn guard(&mut self, condition: &Expr, block: &Expr) {
         let condition = self.value(condition, &Type::Bool);
+
         let ExprKind::Block(statements) = &block.kind else {
             return;
         };
+
         self.open(format!("if ({condition})"));
+
         if self.is_steps(statements) {
             self.block(statements, &Type::Unit);
         } else {
@@ -84,9 +99,11 @@ impl<'g, 'a> Writer<'g, 'a> {
                 Returns::Value(ty) => ty.clone(),
                 _ => Type::Unit,
             };
+
             let value = self.block(statements, &result);
             self.give_back(value);
         }
+
         self.close();
     }
 
@@ -107,6 +124,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         if let Returns::Value(_) = self.returns {
             self.line(format!("*out = {value};"));
         }
+
         self.line("return;");
     }
 }

@@ -16,21 +16,26 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         expected: Option<&Type>,
     ) -> Option<Type> {
         let found = self.checker.resolve(&self.scope, path);
+
         match found.as_ref().map(|found| found.kind) {
             Some(SymbolKind::Const) => {
                 let found = found.unwrap();
                 let scope = self.checker.scope_of(&found);
+
                 let constant = scope
                     .context
                     .consts
                     .iter()
                     .find(|c| c.name.name == found.name)?;
+
                 let ty = self.checker.lower_type(&scope, &constant.ty);
+
                 self.note(id, Meaning::Const(found));
                 return Some(ty);
             }
             Some(SymbolKind::Error) => {
                 let found = found.unwrap();
+
                 if self
                     .checker
                     .fields_of(&found)
@@ -41,8 +46,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                         path.text(),
                         path.text()
                     );
+
                     self.error(message, path.span());
                 }
+
                 self.note(id, Meaning::Error(found.clone()));
                 return Some(Type::Named(found));
             }
@@ -53,21 +60,26 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             None => {}
         }
+
         let (ty, variant) = self.find_variant(path, expected)?;
+
         if !variant.fields.is_empty() {
             let message = format!(
                 "`{}` needs its fields: `{}(...)`",
                 variant.name,
                 path.text()
             );
+
             self.error(message, path.span());
         }
+
         if let Type::Named(owner) = &ty {
             self.note(
                 id,
                 Meaning::Variant(owner.clone(), variant.name.clone(), variant.error.clone()),
             );
         }
+
         Some(ty)
     }
 

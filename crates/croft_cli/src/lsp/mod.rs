@@ -42,6 +42,7 @@ use croft_syntax::SourceId;
 
 pub fn run() -> Result<(), String> {
     let (connection, io_threads) = Connection::stdio();
+
     let capabilities = ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
@@ -52,21 +53,27 @@ pub fn run() -> Result<(), String> {
         }),
         ..ServerCapabilities::default()
     };
+
     let capabilities = serde_json::to_value(capabilities).map_err(|e| e.to_string())?;
+
     let initialize = connection
         .initialize(capabilities)
         .map_err(|error| error.to_string())?;
+
     let params: InitializeParams =
         serde_json::from_value(initialize).map_err(|error| error.to_string())?;
+
     let mut server = Server {
         connection: &connection,
         session: Session::new(workspace_root(&params)),
         changed: HashSet::new(),
     };
+
     server.serve()?;
     // The thread reading stdin only ends when the editor closes it, which
     // some editors do only after the server exits, so it is not waited for.
     drop(io_threads);
+
     Ok(())
 }
 
@@ -103,12 +110,15 @@ impl Server<'_> {
                     Err(RecvTimeoutError::Disconnected) => return Ok(()),
                 }
             };
+
             match message {
                 Message::Request(request) => {
                     let shutdown = self.connection.handle_shutdown(&request);
+
                     if shutdown.map_err(|error| error.to_string())? {
                         return Ok(());
                     }
+
                     // An answer is about the text as it is now.
                     self.check_changed();
                     self.request(request);
@@ -122,6 +132,7 @@ impl Server<'_> {
     /// Checks each project with a changed file, once.
     fn check_changed(&mut self) {
         let mut checked = HashSet::new();
+
         for path in std::mem::take(&mut self.changed) {
             if checked.insert(self.session.project_key(&path)) {
                 self.refresh(&path);
@@ -131,6 +142,7 @@ impl Server<'_> {
 
     fn request(&mut self, request: Request) {
         let id = request.id.clone();
+
         let result = match request.method.as_str() {
             HoverRequest::METHOD => params::<HoverParams>(request)
                 .map(|p| serde_json::to_value(self.hover(&p.text_document_position_params))),
@@ -143,11 +155,13 @@ impl Server<'_> {
                 return;
             }
         };
+
         let response = match result {
             Ok(Ok(value)) => Response::new_ok(id, value),
             Ok(Err(error)) => Response::new_err(id, -32603, error.to_string()),
             Err(message) => Response::new_err(id, -32602, message),
         };
+
         self.reply(response);
     }
 
@@ -157,6 +171,7 @@ impl Server<'_> {
 
     fn notification(&mut self, notification: Notification) {
         let method = notification.method.clone();
+
         let changed = match method.as_str() {
             DidOpenTextDocument::METHOD => notification_params::<DidOpenTextDocument>(notification)
                 .and_then(|p| {
@@ -183,6 +198,7 @@ impl Server<'_> {
             }
             _ => None,
         };
+
         // The standard library's files are only there to be read.
         if let Some(path) = changed.filter(|path| standard::source_at(path).is_none()) {
             self.changed.insert(path);
@@ -194,12 +210,16 @@ impl Server<'_> {
         let Ok(key) = self.session.refresh(path) else {
             return;
         };
+
         let state = &self.session.projects[&key];
+
         for file in &state.files {
             let Some(uri) = path_to_uri(&file.path) else {
                 continue;
             };
+
             let text = self.session.current_text(file);
+
             let diagnostics = state
                 .diagnostics
                 .iter()
@@ -212,8 +232,10 @@ impl Server<'_> {
                     ..Diagnostic::default()
                 })
                 .collect();
+
             let params = PublishDiagnosticsParams::new(uri, diagnostics, None);
             let notification = Notification::new(PublishDiagnostics::METHOD.to_string(), params);
+
             let _ = self
                 .connection
                 .sender
@@ -226,14 +248,18 @@ impl Server<'_> {
     fn file<'s>(&'s self, path: &Path) -> Option<(&'s ProjectState, SourceId, &'s str)> {
         if let Some((id, text)) = standard::source_at(path) {
             let mut projects = self.session.projects.values();
+
             let state = projects.find(|state| {
                 (state.analysis.symbols.values())
                     .any(|table| table.symbols.values().any(|s| s.span.source == id))
             })?;
+
             return Some((state, id, text));
         }
+
         let state = self.session.project_for(path)?;
         let file = state.file_at(path)?;
+
         Some((state, file.id, &file.text))
     }
 
@@ -253,6 +279,7 @@ impl Server<'_> {
         let (state, found, text) = self.at(at)?;
         let markdown = lookup::hover(state, &found)?;
         let (span, length) = found.written();
+
         Some(Hover {
             contents: HoverContents::Markup(MarkupContent {
                 kind: MarkupKind::Markdown,
@@ -265,13 +292,16 @@ impl Server<'_> {
     fn definition(&self, at: &TextDocumentPositionParams) -> Option<GotoDefinitionResponse> {
         let (state, found, _) = self.at(at)?;
         let (span, length) = lookup::definition(state, &found)?;
+
         let (path, text) = match state.file(span.source) {
             Some(file) => (file.path.clone(), file.text.as_str()),
             // The standard library, written out to be opened.
             None => (standard::path_of(span.source)?, state.text(span.source)?),
         };
+
         let uri: Uri = path_to_uri(&path)?;
         let range = name_range(text, span, length);
+
         Some(GotoDefinitionResponse::Scalar(Location::new(uri, range)))
     }
 
@@ -288,9 +318,11 @@ impl Server<'_> {
 
 fn params<P: serde::de::DeserializeOwned>(request: Request) -> Result<P, String> {
     let method = request.method.clone();
+
     let (_, params) = request
         .extract::<P>(&method)
         .map_err(|error: ExtractError<Request>| format!("{error:?}"))?;
+
     Ok(params)
 }
 

@@ -14,14 +14,17 @@ impl<'g, 'a> Writer<'g, 'a> {
             let Type::Named(error) = ty else {
                 return "0".to_string();
             };
+
             let temp = self.error_value(error);
             let prefix = format!("{temp}.fields.{}", c_name(error));
             self.set_named_fields(&prefix, None, &self.field_types(error), fields);
             return temp;
         }
+
         let temp = self.temp(ty);
         self.set_fields(&temp, ty, fields);
         self.check_fields(&temp, ty);
+
         temp
     }
 
@@ -49,14 +52,17 @@ impl<'g, 'a> Writer<'g, 'a> {
     ) {
         for given in fields {
             let name = &given.name.name;
+
             let field_type = types
                 .iter()
                 .find(|(f, _)| f == name)
                 .map_or(Type::Unknown, |(_, ty)| ty.clone());
+
             let value = match &given.value {
                 Some(value) => self.value(value, &field_type),
                 None => self.read_name(name),
             };
+
             self.write_field(owner, target, name, &value);
         }
     }
@@ -76,31 +82,40 @@ impl<'g, 'a> Writer<'g, 'a> {
             .variants(owner)
             .into_iter()
             .find(|v| v.name == variant);
+
         let Some(info) = info else {
             return "0".to_string();
         };
+
         let names: Vec<String> = info.fields.iter().map(|(name, _)| name.clone()).collect();
         let values = self.ordered(arguments, &names);
         let owner_is_error = self.gen.model.is_error(&Type::Named(owner.clone()));
+
         let (temp, prefix) = if error.is_some() || owner_is_error {
             let error = error
                 .cloned()
                 .unwrap_or_else(|| self.gen.own_error(owner, &info));
+
             let temp = self.temp(&Type::Errors(Vec::new()));
             self.line(format!("{temp}.code = {};", error_code(&error)));
+
             let prefix = format!("{temp}.fields.{}", c_name(&error));
+
             (temp, prefix)
         } else {
             let temp = self.temp(ty);
             self.line(format!("{temp}.tag = {}_{variant};", c_name(owner)));
+
             let prefix = format!("{temp}.as.{variant}");
             (temp, prefix)
         };
+
         for ((name, field_type), value) in info.fields.iter().zip(values) {
             let Some(value) = value else { continue };
             let value = self.value(value, field_type);
             self.line(format!("{prefix}.{name} = {value};"));
         }
+
         temp
     }
 }

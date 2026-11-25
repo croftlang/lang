@@ -12,7 +12,7 @@ pub mod symbols;
 pub mod types;
 
 pub use builtin_members::built_in_members;
-pub use check::{analyze, check, Analysis, Model, Operation, VariantInfo};
+pub use check::{analyze, check, Analysis, Model, Operation, StorageShape, VariantInfo};
 pub use facts::{Facts, LocalName, Meaning, Member, MemberKind, Reference};
 pub use manifest::{Manifest, TargetConfig, MANIFEST_FILE};
 pub use program::{Context, Program};

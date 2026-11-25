@@ -11,6 +11,7 @@ impl<'a> Generator<'a> {
     /// Parameters of a function, translation, service or constraint declared in Croft.
     pub fn parameters_of(&self, found: &Resolved) -> Vec<(String, Type)> {
         let context = &self.program.contexts[&found.context];
+
         let parameters = if found.kind == SymbolKind::Constraint {
             context
                 .constraints
@@ -24,12 +25,14 @@ impl<'a> Generator<'a> {
                 .find(|f| f.name.name == found.name)
                 .and_then(|f| f.parameters.as_deref())
         };
+
         self.lower_parameters(&found.context, None, parameters.unwrap_or(&[]))
     }
 
     pub fn operation_parameters(&self, port: &Resolved, operation: &str) -> Vec<(String, Type)> {
         let operations = self.model.operations_of(port);
         let operation = operations.into_iter().find(|op| op.name == operation);
+
         (operation.into_iter().flat_map(|op| op.parameters))
             .map(|(name, ty, _)| (name, ty))
             .collect()
@@ -37,12 +40,15 @@ impl<'a> Generator<'a> {
 
     pub fn command_parameters(&self, aggregate: &Resolved, command: &str) -> Vec<(String, Type)> {
         let context = &self.program.contexts[&aggregate.context];
+
         let decl = context
             .aggregates
             .iter()
             .find(|a| a.name.name == aggregate.name);
+
         let command = decl.and_then(|a| a.commands.iter().find(|c| c.name.name == command));
         let parameters = command.and_then(|c| c.parameters.as_deref()).unwrap_or(&[]);
+
         self.lower_parameters(&aggregate.context, Some(&aggregate.name), parameters)
     }
 
@@ -67,6 +73,7 @@ impl<'a> Generator<'a> {
         let is_number = match self.model.identity_of(aggregate) {
             Type::Named(named) => {
                 let context = &self.program.contexts[&named.context];
+
                 context
                     .identities
                     .iter()
@@ -74,6 +81,7 @@ impl<'a> Generator<'a> {
             }
             other => other == Type::Int,
         };
+
         if is_number {
             format!("(croft_int) {identity}")
         } else {
@@ -84,6 +92,7 @@ impl<'a> Generator<'a> {
     /// The name of an aggregate's identity field.
     pub fn identity_field(&self, aggregate: &Resolved) -> String {
         let fields = self.model.fields(aggregate);
+
         fields
             .into_iter()
             .find(|(_, _, f)| f.is_identity)

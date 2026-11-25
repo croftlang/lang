@@ -19,11 +19,13 @@ pub struct Output {
 pub fn compile(arguments: &[String]) -> Result<(), String> {
     let (path, target) = parse_arguments(arguments)?;
     let output = write_c(&path, target)?;
+
     println!(
         "Wrote C for target `{}` to {}",
         output.target,
         output.folder.display()
     );
+
     Ok(())
 }
 
@@ -32,11 +34,13 @@ pub fn parse_arguments(arguments: &[String]) -> Result<(PathBuf, Option<String>)
     let mut path = None;
     let mut target = None;
     let mut rest = arguments.iter();
+
     while let Some(argument) = rest.next() {
         if argument == "--target" {
             let name = rest
                 .next()
                 .ok_or("`--target` needs a name, such as `--target desktop`")?;
+
             target = Some(name.clone());
         } else if let Some(name) = argument.strip_prefix("--target=") {
             target = Some(name.to_string());
@@ -48,50 +52,63 @@ pub fn parse_arguments(arguments: &[String]) -> Result<(PathBuf, Option<String>)
             return Err(format!("unexpected argument `{argument}`"));
         }
     }
+
     Ok((path.unwrap_or_else(|| PathBuf::from(".")), target))
 }
 
 /// Checks the project at `path`, then writes its C for `target` to `target/croft/<target>`.
 pub fn write_c(path: &Path, target: Option<String>) -> Result<Output, String> {
     let (project, program) = load_and_check(path)?;
+
     let Some(manifest) = &program.manifest else {
         let folder = project.folder.display();
+
         return Err(format!(
             "`{folder}` has no croft.toml, which says what to run and on which targets"
         ));
     };
+
     let Some(target) = target else {
         let targets: Vec<&str> = manifest
             .targets
             .iter()
             .map(|t| t.name.name.as_str())
             .collect();
+
         return Err(format!(
             "choose a target with `--target`; croft.toml has: {}",
             targets.join(", ")
         ));
     };
+
     let files = croft_codegen::generate(&program, &target)?;
     let folder = project.folder.join("target").join("croft").join(&target);
     fs::create_dir_all(&folder)
         .map_err(|error| format!("cannot create `{}`: {error}", folder.display()))?;
+
     let mut sources = Vec::new();
+
     for file in &files {
         write(&folder.join(&file.name), &file.contents)?;
+
         if file.name.ends_with(".c") {
             sources.push(file.name.clone());
         }
     }
+
     for native in manifest.target(&target).map_or(&[][..], |t| &t.native[..]) {
         let source = project.folder.join(&native.name);
         let name = Path::new(&native.name).file_name().unwrap_or_default();
         fs::copy(&source, folder.join(name))
             .map_err(|error| format!("cannot copy native file `{}`: {error}", source.display()))?;
+
         let name = name.to_string_lossy().into_owned();
+
         if name.ends_with(".c") {
             sources.push(name);
         }
     }
+
     Ok(Output {
         name: manifest.name.name.clone(),
         target,

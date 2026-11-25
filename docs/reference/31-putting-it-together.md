@@ -16,9 +16,9 @@ context Dungeon {
     const SCREEN_HEIGHT: Int = 192
     const MAX_ENEMIES: Int = 16
 
-    identity RoomId: Int where Range(1, 20)
-    identity PlayerId: Int where Range(1, 2)
-    identity EnemyId: Int where Range(0, MAX_ENEMIES - 1)
+    identity RoomId for Room: Int where Range(1, 20)
+    identity PlayerId for Player: Int where Range(1, 2)
+    identity EnemyId for Enemy: Int where Range(0, MAX_ENEMIES - 1)
 
     enum Direction { North, East, South, West }
 
@@ -29,20 +29,20 @@ context Dungeon {
     }
 
     aggregate Room {
-        identity id: RoomId
+        id: RoomId
         player: Player
         enemies: List<Enemy> where Length(0, MAX_ENEMIES), each Alive
         exit: Position
 
         // Entities live only inside their aggregate.
         entity Player {
-            identity id: PlayerId
+            id: PlayerId
             position: Position
             lives: Int where Range(0, 9)
         }
 
         entity Enemy {
-            identity id: EnemyId
+            id: EnemyId
             position: Position
             hit_points: Int where Range(0, 100)
         }

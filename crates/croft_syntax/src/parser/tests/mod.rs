@@ -31,6 +31,7 @@ fn only_context(file: &File) -> &ContextDecl {
 /// The body of the only function in `context Test { ... }`.
 fn function_body(source: &str) -> Expr {
     let file = parse_ok(&format!("context Test {{\n{source}\n}}"));
+
     match &only_context(&file).items[..] {
         [ContextItem::Function(function)] => function.body.clone().expect("a body"),
         other => panic!("expected one function, found {other:?}"),

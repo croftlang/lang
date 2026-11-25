@@ -86,7 +86,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             Type::Result(_, error) => Some((**error).clone()),
             _ => None,
         };
+
         let locals = vec![HashMap::new()];
+
         BodyChecker {
             checker,
             scope,
@@ -108,12 +110,15 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         if let Some(span) = defined {
             self.note_local(name, &ty, span, defined);
         }
+
         let scope = self.locals.last_mut().expect("a local scope");
+
         let local = Local {
             ty,
             settable,
             defined,
         };
+
         scope.insert(name.to_string(), local);
     }
 
@@ -139,6 +144,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         if *receiver == Type::Unknown {
             return;
         }
+
         self.checker.facts.members.push(crate::facts::Member {
             span: member.span,
             name: member.name.clone(),
@@ -154,7 +160,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let Type::Named(named) = ty else {
             return None;
         };
+
         let fields = self.checker.fields_of(named)?;
+
         Some(fields.iter().find(|f| f.name.name == field)?.name.span)
     }
 
@@ -165,7 +173,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     /// Runs `check` with a new innermost scope for names.
     pub(super) fn nested<T>(&mut self, check: impl FnOnce(&mut Self) -> T) -> T {
         self.locals.push(HashMap::new());
+
         let result = check(self);
+
         self.locals.pop();
         result
     }

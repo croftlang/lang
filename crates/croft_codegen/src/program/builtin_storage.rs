@@ -17,14 +17,18 @@ impl<'a> Generator<'a> {
                 .filter(|s| s.context == "Std.Storage" && s.name == name)
                 .count()
         };
+
         let mut out = String::new();
         let memory = uses("MemoryStorage");
+
         if memory > 0 {
             out.push_str(&self.memory_storage(memory * MEMORY_SLOTS));
         }
+
         if uses("FileStorage") > 0 {
             out.push_str(&self.file_storage());
         }
+
         out
     }
 
@@ -33,7 +37,9 @@ impl<'a> Generator<'a> {
             Type::option(Type::Bytes),
             Type::Errors(Vec::new()),
         ));
+
         let written = self.c_type(&Type::result(Type::Unit, Type::Errors(Vec::new())));
+
         (loaded, written)
     }
 
@@ -43,6 +49,7 @@ impl<'a> Generator<'a> {
         } else {
             "Std.Files"
         };
+
         self.model
             .lookup(context, name)
             .map_or("0".to_string(), |error| error_code(&error))
@@ -51,6 +58,7 @@ impl<'a> Generator<'a> {
     fn memory_storage(&self, slots: usize) -> String {
         let (loaded, written) = self.storage_types();
         let full = self.storage_error("StorageFull");
+
         format!(
             "static croft_string croft_memory_keys[{slots}];\nstatic croft_bytes croft_memory_values[{slots}];\nstatic croft_u16 croft_memory_count = 0;\n\n\
              /* Where a key is kept, or croft_memory_count when it isn't. */\nstatic croft_u16 croft_memory_find(const croft_string *key)\n{{\n    croft_u16 index;\n\n    \
@@ -69,13 +77,16 @@ impl<'a> Generator<'a> {
     fn file_storage(&self) -> String {
         let (loaded, written) = self.storage_types();
         let read = self.c_type(&Type::result(Type::Bytes, Type::Errors(Vec::new())));
+
         let files = (self.bindings.iter())
             .find(|(port, _)| port.context == "Std.Files" && port.name == "Files")
             .map_or("croft_no_files".to_string(), |(_, adapter)| c_name(adapter));
+
         let missing = self.storage_error("NotFound");
         let no_room = self.storage_error("NoRoom");
         let full = self.storage_error("StorageFull");
         let unavailable = self.storage_error("StorageUnavailable");
+
         format!(
             "/* The file for a key: the key and \".dat\". */\nstatic void croft_file_path(const croft_string *key, croft_string *out)\n{{\n    croft_string extension;\n\n    \
              croft_string_set(&extension, \".dat\");\n    croft_string_join(key, &extension, out);\n}}\n\n\

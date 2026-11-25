@@ -11,21 +11,27 @@ const MAX_SHIFT: i64 = croft_analysis::MAX_SHIFT;
 impl<'g, 'a> Writer<'g, 'a> {
     pub(super) fn binary(&mut self, op: BinaryOp, left: &Expr, right: &Expr, ty: &Type) -> String {
         use BinaryOp::*;
+
         if matches!(op, And | Or) {
             return self.logic(op == And, left, right);
         }
+
         if matches!(op, ShiftLeft | ShiftRight) {
             return self.shift(op == ShiftLeft, left, right);
         }
+
         if let Type::Decimal(places) = ty {
             return self.decimal_arithmetic(op, left, right, *places);
         }
+
         let left_type = self.type_of(left, None);
         let (left, _) = self.eval(left, None);
         let right = self.value(right, &left_type);
+
         match op {
             Equal | NotEqual => {
                 let equal = self.equal(&left, &right, &left_type);
+
                 if op == Equal {
                     equal
                 } else {
@@ -53,6 +59,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                     BitXor => "^",
                     _ => unreachable!("handled above"),
                 };
+
                 format!("({left} {symbol} {right})")
             }
         }
@@ -65,15 +72,18 @@ impl<'g, 'a> Writer<'g, 'a> {
         let right_value = self.value(right, &Type::Bool);
         let steps = self.take_since(mark);
         let symbol = if is_and { "&&" } else { "||" };
+
         if steps.is_empty() {
             return format!("({left} {symbol} {right_value})");
         }
+
         let temp = self.temp(&Type::Bool);
         self.line(format!("{temp} = {left};"));
         self.open(format!("if ({}{temp})", if is_and { "" } else { "!" }));
         self.put_back(steps);
         self.line(format!("{temp} = {right_value};"));
         self.close();
+
         temp
     }
 
@@ -83,24 +93,29 @@ impl<'g, 'a> Writer<'g, 'a> {
     fn shift(&mut self, is_left: bool, left: &Expr, right: &Expr) -> String {
         let value = self.value(left, &Type::Int);
         let constant = evaluate(self.gen.program, &self.gen.model, &self.context, right);
+
         let amount = match constant {
             Some(amount) => amount.to_string(),
             None => {
                 let amount = self.value(right, &Type::Int);
                 let temp = self.temp(&Type::Int);
                 self.line(format!("{temp} = {amount};"));
+
                 self.line(format!(
                     "CROFT_CHECK({temp} >= 0 && {temp} < {MAX_SHIFT}, \"shift by less than 0 or more than {}\");",
                     MAX_SHIFT - 1
                 ));
+
                 temp
             }
         };
+
         let name = if is_left {
             "CROFT_SHIFT_LEFT"
         } else {
             "CROFT_SHIFT_RIGHT"
         };
+
         format!("{name}({value}, {amount})")
     }
 }

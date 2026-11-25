@@ -43,6 +43,7 @@ impl ProjectState {
         if let Some(file) = self.file(id) {
             return Some(&file.text);
         }
+
         croft_analysis::standard::STANDARD_SOURCES
             .iter()
             .find(|(context, _)| croft_analysis::standard::standard_source_id(context) == id)
@@ -102,10 +103,12 @@ impl Session {
             if folder.join(MANIFEST_FILE).is_file() {
                 return folder.to_path_buf();
             }
+
             if Some(folder) == self.root.as_deref() {
                 break;
             }
         }
+
         path.to_path_buf()
     }
 
@@ -120,37 +123,47 @@ impl Session {
             Err(_) if self.open.contains_key(changed) => Vec::new(),
             Err(message) => return Err(message),
         };
+
         // New files open in the editor that have not been saved yet.
         let is_source = |path: &Path| croft_syntax::is_source_file(path);
+
         let mut unsaved: Vec<PathBuf> = (self.open.keys())
             .filter(|path| is_source(path) && !paths.contains(path))
             .filter(|path| self.project_key(path) == key)
             .cloned()
             .collect();
+
         if is_source(changed)
             && !paths.iter().any(|path| path == changed)
             && !unsaved.iter().any(|p| p == changed)
         {
             unsaved.push(changed.to_path_buf());
         }
+
         unsaved.sort();
         paths.splice(0..0, unsaved);
+
         let (mut sources, mut manifest) = (Vec::new(), None);
         let (mut files, mut diagnostics) = (Vec::new(), Vec::new());
+
         for path in paths {
             let text = match self.open.get(&path) {
                 Some(text) => text.clone(),
                 None => std::fs::read_to_string(&path).unwrap_or_default(),
             };
+
             let id = self.id_for(&path);
+
             if path.file_name().is_some_and(|name| name == MANIFEST_FILE) {
                 match Manifest::parse(&text, id) {
                     Ok(parsed) => manifest = Some(parsed),
                     Err(error) => diagnostics.push(error),
                 }
+
                 files.push(CheckedFile { path, id, text });
                 continue;
             }
+
             let checked_text = match parse(&text, id) {
                 Ok(tree) => {
                     self.last_parsed
@@ -160,6 +173,7 @@ impl Session {
                 }
                 Err(error) => {
                     diagnostics.push(error);
+
                     match self.last_parsed.get(&path) {
                         Some((old_text, tree)) => {
                             sources.push(tree.clone());
@@ -169,14 +183,17 @@ impl Session {
                     }
                 }
             };
+
             files.push(CheckedFile {
                 path,
                 id,
                 text: checked_text,
             });
         }
+
         let analysis = croft_analysis::analyze(sources, manifest);
         diagnostics.extend(analysis.diagnostics.iter().cloned());
+
         Ok(ProjectState {
             analysis,
             files,

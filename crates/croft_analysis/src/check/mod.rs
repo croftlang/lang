@@ -42,6 +42,7 @@ use crate::symbols::SymbolTable;
 
 pub use model::{Model, VariantInfo};
 pub use operations::Operation;
+pub use repository::StorageShape;
 pub(crate) use resolve::{Resolved, Scope};
 
 pub use rounds::{analyze, check, Analysis};
@@ -73,34 +74,43 @@ impl<'a> Checker<'a> {
             context,
             aggregate: None,
         };
+
         self.check_names(context);
         self.check_publish(context);
         self.check_uses(context);
+
         for value in &context.values {
             if value.type_parameters.is_empty() {
-                self.check_value(&scope, value, false);
+                self.check_value(&scope, value);
             } else {
                 self.check_type_parameters(&value.type_parameters);
             }
         }
+
         for enum_decl in &context.enums {
             self.check_enum(&scope, enum_decl);
         }
+
         for error in &context.errors {
             self.check_fields(&scope, &error.fields);
         }
+
         for constant in &context.consts {
             self.check_type(&scope, &constant.ty, false);
         }
+
         for identity in &context.identities {
             self.check_identity(&scope, identity);
         }
+
         for constraint in &context.constraints {
             self.check_constraint(&scope, constraint);
         }
+
         for aggregate in &context.aggregates {
             self.check_aggregate(context, aggregate);
         }
+
         for function in &context.functions {
             if function.type_parameters.is_empty() {
                 self.check_function(&scope, function);
@@ -108,15 +118,19 @@ impl<'a> Checker<'a> {
                 self.check_type_parameters(&function.type_parameters);
             }
         }
+
         for policy in &context.policies {
             self.check_policy(&scope, policy);
         }
+
         for port in &context.ports {
             self.check_port(&scope, port);
         }
+
         for adapter in &context.adapters {
             self.check_adapter(&scope, adapter);
         }
+
         for repository in &context.repositories {
             self.check_repository(&scope, repository);
         }

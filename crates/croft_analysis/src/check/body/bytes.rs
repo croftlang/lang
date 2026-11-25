@@ -11,6 +11,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     pub(super) fn bytes_literal(&mut self, items: &[Expr]) -> Type {
         for item in items {
             self.expect(item, &Type::Int);
+
             if let ExprKind::Int(number) = item.kind {
                 if !(0..=255).contains(&number) {
                     self.error(
@@ -20,6 +21,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 }
             }
         }
+
         Type::Bytes
     }
 
@@ -33,6 +35,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         span: Span,
     ) -> Option<Type> {
         let int = Type::Int;
+
         match name {
             "get" => self.fixed(name, arguments, &[int], Type::option(Type::Int), span),
             "add" => self.fixed(name, arguments, &[int], Type::Bytes, span),

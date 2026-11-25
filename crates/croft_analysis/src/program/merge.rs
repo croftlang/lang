@@ -54,13 +54,16 @@ impl Context {
             .aggregates
             .iter_mut()
             .find(|a| a.name.name == part.name.name);
+
         let Some(aggregate) = existing else {
             self.aggregates.push(part);
             return;
         };
+
         if aggregate.doc.is_empty() {
             aggregate.doc = part.doc;
         }
+
         aggregate.fields.extend(part.fields);
         aggregate.invariants.extend(part.invariants);
         aggregate.entities.extend(part.entities);
@@ -75,6 +78,7 @@ impl Context {
         let mut context = Context::new(domain.name.clone());
         context.is_domain = true;
         context.uses = domain.uses.clone();
+
         context.functions.push(FunctionDecl {
             type_parameters: Vec::new(),
             doc: domain.doc.clone(),
@@ -87,6 +91,7 @@ impl Context {
             calls: domain.calls.clone(),
             body: Some(domain.body.clone()),
         });
+
         context
     }
 }

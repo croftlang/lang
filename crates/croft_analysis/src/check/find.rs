@@ -14,16 +14,20 @@ impl<'a> Checker<'a> {
         expected: &str,
     ) -> Option<Resolved> {
         let text = path.text();
+
         let mut found: Vec<Resolved> = self
             .tables
             .keys()
             .filter_map(|context| self.lookup(context, &text))
             .collect();
+
         if let [first, rest @ ..] = &path.segments[..] {
             let rest: Vec<&str> = rest.iter().map(|segment| segment.name.as_str()).collect();
             found.extend(self.lookup(&first.name, &rest.join(".")));
         }
+
         found.retain(|resolved| resolved.kind == kind);
+
         match found.len() {
             1 => found.pop(),
             0 => {
@@ -31,13 +35,16 @@ impl<'a> Checker<'a> {
                     format!("cannot find {expected} named `{text}`"),
                     path.span(),
                 );
+
                 None
             }
             _ => {
                 let message = format!(
                     "`{text}` is declared in more than one context; write `Context.{text}`"
                 );
+
                 self.error(message, path.span());
+
                 None
             }
         }

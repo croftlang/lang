@@ -6,44 +6,58 @@
 use super::{ParseResult, Parser};
 use crate::ast::{ContextDecl, ContextItem, File, UseDecl};
 use crate::keyword::Keyword;
-use crate::span::Diagnostic;
 use crate::token::TokenKind;
 
 impl Parser {
     pub(super) fn parse_file(&mut self) -> ParseResult<File> {
         let mut file = File::default();
+
         while !self.check(&TokenKind::EndOfFile) {
             if self.check_keyword(Keyword::Domain) {
                 file.domains.push(self.parse_domain()?);
                 continue;
             }
+
             if !self.check_keyword(Keyword::Context) {
+                if let Some(misplaced) = self.misplaced_in_file() {
+                    return Err(misplaced);
+                }
+
                 return Err(self.unexpected("`context` or `domain`"));
             }
+
             file.contexts.push(self.parse_context()?);
         }
+
         Ok(file)
     }
 
     fn parse_context(&mut self) -> ParseResult<ContextDecl> {
         self.expect_keyword(Keyword::Context)?;
+
         let name = self.expect_identifier()?;
         let braced = self.eat(&TokenKind::LeftBrace);
+
         let end = if braced {
             TokenKind::RightBrace
         } else {
             TokenKind::EndOfFile
         };
+
         let mut items = Vec::new();
+
         while !self.check(&end) {
             if self.check(&TokenKind::EndOfFile) {
                 return Err(self.unexpected("`}`"));
             }
+
             items.push(self.parse_context_item(braced)?);
         }
+
         if braced {
             self.advance();
         }
+
         Ok(ContextDecl { name, items })
     }
 
@@ -51,6 +65,7 @@ impl Parser {
         let TokenKind::Keyword(keyword) = self.peek().kind else {
             return Err(self.unexpected("a declaration"));
         };
+
         let item = match keyword {
             Keyword::Publish => {
                 self.advance();
@@ -71,21 +86,24 @@ impl Parser {
             Keyword::Port => ContextItem::Port(self.parse_port()?),
             Keyword::Adapter => ContextItem::Adapter(self.parse_adapter()?),
             Keyword::Repository => ContextItem::Repository(self.parse_repository()?),
-            Keyword::Entity => {
-                let message = "an entity belongs inside an aggregate; a thing with identity \
-                               on its own is an `aggregate` with no entities";
-                return Err(Diagnostic::new(message, self.span()));
+            _ => {
+                return Err(self
+                    .misplaced_in_context()
+                    .unwrap_or_else(|| self.unexpected("a declaration")));
             }
-            _ => return Err(self.unexpected("a declaration")),
         };
+
         Ok(item)
     }
 
     /// `use { EnemyId, Room.EnemyDefeated } from Dungeon`
     pub(super) fn parse_use(&mut self) -> ParseResult<UseDecl> {
         self.expect_keyword(Keyword::Use)?;
+
         let names = self.parse_path_list()?;
+
         self.expect_word("from")?;
+
         let from = self.parse_path()?;
         Ok(UseDecl { names, from })
     }

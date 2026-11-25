@@ -14,8 +14,10 @@ use crate::Generator;
 impl<'a> Generator<'a> {
     pub fn commands(&self, prototypes: &mut Vec<String>) -> String {
         let mut out = String::new();
+
         for found in self.model.all(SymbolKind::Aggregate) {
             let context = &self.program.contexts[&found.context];
+
             let Some(aggregate) = context
                 .aggregates
                 .iter()
@@ -23,10 +25,12 @@ impl<'a> Generator<'a> {
             else {
                 continue;
             };
+
             for command in &aggregate.commands {
                 out.push_str(&self.command(&found, aggregate, command, prototypes));
             }
         }
+
         out
     }
 
@@ -44,63 +48,80 @@ impl<'a> Generator<'a> {
         let name = format!("{}_{}", c_name(found), command.name.name);
         let signature = self.signature(&name, &leading, &parameters, Some(&result));
         prototypes.push(format!("{signature};"));
+
         let mut writer = Writer::new(self, &found.context, Returns::Command);
         writer.aggregate = Some(found.name.clone());
+
         let fields = self
             .model
             .fields(found)
             .into_iter()
             .map(|(name, ty, _)| (name, ty))
             .collect();
+
         writer.own = Some(OwnFields {
             prefix: "self.".to_string(),
             fields,
             owner: Some(found.clone()),
         });
+
         writer.reserve("p_self");
+
         let own_copy = writer.raw_variable("self", &self.c_type(&aggregate_type));
         let mark = writer.raw_variable("mark", "croft_u16");
+
         writer.line(format!("{own_copy} = *p_self;"));
         writer.line(format!("{mark} = croft_events_mark();"));
         writer.line(format!("(void) {mark};"));
         writer.bind_parameters(&parameters);
+
         let label = format!("{}.{}", found.name, command.name.name);
+
         let place = CheckPlace {
             context: &found.context,
             aggregate: Some(&found.name),
             label: &label,
         };
+
         let constraints = command
             .parameters
             .iter()
             .flatten()
             .map(|p| p.constraints.as_slice());
+
         let checked: Vec<(String, Type, &[croft_syntax::ast::ConstraintUse])> = parameters
             .iter()
             .zip(constraints)
             .map(|((name, ty), constraints)| (name.clone(), ty.clone(), constraints))
             .collect();
+
         if let Some(call) = self.argument_check(&name, &place, &checked) {
             writer.debug_call(&call);
         }
+
         writer.preconditions(&command.preconditions, &command.name.name);
+
         if let Some(body) = &command.body {
             writer.value(body, &Type::Unit);
         }
+
         for invariant in &aggregate.invariants {
             let constraint = self.model.resolve(
                 &found.context,
                 Some(&found.name),
                 &invariant.constraint.name,
             );
+
             let Some(constraint) = constraint.filter(|c| c.kind == SymbolKind::Constraint) else {
                 continue;
             };
+
             let rest: Vec<(String, Type)> = self
                 .parameters_of(&constraint)
                 .into_iter()
                 .skip(1)
                 .collect();
+
             let arguments: Vec<croft_syntax::ast::Argument> =
                 (invariant.constraint.arguments.iter())
                     .map(|value| croft_syntax::ast::Argument {
@@ -108,20 +129,26 @@ impl<'a> Generator<'a> {
                         value: value.clone(),
                     })
                     .collect();
+
             let mut passed = vec![format!("&{own_copy}")];
             passed.extend(writer.pass_all(&arguments, &rest));
+
             let holds = writer.call_into(&c_name(&constraint), passed, &Type::Bool);
             writer.open(format!("if (!{holds})"));
+
             let error = invariant
                 .error
                 .as_ref()
                 .map_or("0".to_string(), |error| writer.invariant_error(error));
+
             writer.fail(&error);
             writer.close();
         }
+
         writer.check_fields(&own_copy, &aggregate_type);
         writer.line("out->ok = 1;");
         writer.line(format!("out->value = {own_copy};"));
+
         writer.finish(&signature)
     }
 }
@@ -132,11 +159,13 @@ impl<'g, 'a> Writer<'g, 'a> {
     fn invariant_error(&mut self, error: &croft_syntax::ast::Expr) -> String {
         let path = crate::function::path_of(error);
         let aggregate = self.aggregate.clone();
+
         let found = path.and_then(|path| {
             self.gen
                 .model
                 .resolve(&self.context, aggregate.as_deref(), &path)
         });
+
         match found {
             Some(error) if error.kind == SymbolKind::Error => self.error_value(&error),
             _ => self.value(error, &Type::Errors(Vec::new())),

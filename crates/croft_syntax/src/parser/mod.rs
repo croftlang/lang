@@ -11,6 +11,7 @@ mod data;
 mod domain;
 mod expression;
 mod file;
+mod placement;
 mod postfix;
 mod primary;
 mod repeat;
@@ -26,6 +27,7 @@ use crate::token::Token;
 
 pub fn parse(source: &str, source_id: SourceId) -> Result<File, Diagnostic> {
     let tokens = tokenize(source, source_id)?;
+
     Parser {
         tokens,
         position: 0,
@@ -53,7 +55,9 @@ impl Parser {
             source: self.source_id,
             index: self.next_expr,
         };
+
         self.next_expr += 1;
+
         Expr { kind, span, id }
     }
 }

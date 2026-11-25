@@ -25,6 +25,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 } else {
                     item.clone()
                 };
+
                 self.fixed(
                     name,
                     arguments,
@@ -50,19 +51,24 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 format!("`{name}` takes 1 argument, a lambda such as `e -> e.id`"),
                 span,
             );
+
             return Type::Unknown;
         };
+
         let ExprKind::Lambda(parameters, body) = &argument.value.kind else {
             self.error(
                 format!("`{name}` needs a lambda, such as `e -> e.id`"),
                 argument.value.span,
             );
+
             return Type::Unknown;
         };
+
         self.nested(|checker| {
             for parameter in parameters {
                 checker.bind(&parameter.name, item.clone(), false, Some(parameter.span));
             }
+
             checker.expr(body, None)
         })
     }

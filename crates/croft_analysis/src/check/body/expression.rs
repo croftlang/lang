@@ -28,27 +28,33 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             },
             _ => return,
         };
+
         let facts = &self.checker.facts;
+
         let meaning = facts.meanings.get(&id).or_else(|| match &value.kind {
             ExprKind::Call(callee, _) => facts.meanings.get(&callee.id),
             _ => None,
         });
+
         let target = match meaning {
             Some(Meaning::Const(found) | Meaning::Error(found) | Meaning::Declared(found)) => found,
             Some(Meaning::Variant(_, _, Some(error))) => error,
             Some(Meaning::Variant(enum_type, _, None)) => enum_type,
             _ => return,
         };
+
         let reference = crate::facts::Reference {
             span,
             name: name.clone(),
             target: target.clone(),
         };
+
         self.checker.references.get_mut().push(reference);
     }
 
     fn expr_kind(&mut self, value: &Expr, expected: Option<&Type>) -> Type {
         let span = value.span;
+
         match &value.kind {
             ExprKind::Int(_) => Type::Int,
             ExprKind::Float(text) => self.float(text, span, expected),
@@ -72,6 +78,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     "a lambda can only be passed to a list or option method",
                     span,
                 );
+
                 Type::Unknown
             }
             ExprKind::If(condition, block) => {
@@ -99,9 +106,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             UnaryOp::Negate => {
                 let ty = self.expr(operand, expected);
+
                 if !ty.is_number() {
                     self.error(format!("cannot negate `{ty}`"), operand.span);
                 }
+
                 ty
             }
             UnaryOp::BitNot => {
@@ -113,6 +122,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
     pub(super) fn binary(&mut self, op: BinaryOp, left: &Expr, right: &Expr) -> Type {
         use BinaryOp::*;
+
         match op {
             And | Or => {
                 self.expect(left, &Type::Bool);
@@ -126,23 +136,31 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             Less | LessEqual | Greater | GreaterEqual => {
                 let ty = self.expr(left, None);
+
                 if !ty.is_number() && !self.checker.is_int_identity(&ty) {
                     self.error(format!("cannot compare `{ty}` by size"), left.span);
                 }
+
                 self.expect(right, &ty);
+
                 Type::Bool
             }
             Add | Subtract | Multiply | Divide | Remainder => {
                 let ty = self.expr(left, None);
+
                 if let Some(ty) = self.decimal_arithmetic(op, &ty, left, right) {
                     return ty;
                 }
+
                 let joins_strings = op == Add && ty == Type::String;
+
                 if !ty.is_number() && !joins_strings {
                     self.error(format!("cannot do arithmetic on `{ty}`"), left.span);
                     return Type::Unknown;
                 }
+
                 self.expect(right, &ty);
+
                 ty
             }
             BitAnd | BitOr | BitXor => {
@@ -153,6 +171,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             ShiftLeft | ShiftRight => {
                 self.expect(left, &Type::Int);
                 self.expect(right, &Type::Int);
+
                 if let ExprKind::Int(amount) = right.kind {
                     if !(0..MAX_SHIFT).contains(&amount) {
                         self.error(
@@ -161,6 +180,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                         );
                     }
                 }
+
                 Type::Int
             }
         }

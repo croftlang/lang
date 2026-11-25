@@ -5,7 +5,7 @@ Context and aggregate headers claim the rest of the file
 context Dungeon
 aggregate Room
 
-identity id: RoomId
+id: RoomId
 enemies: List<Enemy> where Length(0, MAX_ENEMIES), each Alive
 invariant ExitClear or ExitBlocked
 error EnemyMissing { enemy_id: EnemyId }

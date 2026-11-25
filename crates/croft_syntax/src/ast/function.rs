@@ -56,10 +56,13 @@ pub struct AdapterDecl {
     pub operations: Vec<FunctionDecl>,
 }
 
-/// `repository Rooms for Room`. Where it saves is chosen in croft.toml.
+/// `repository Rooms for Room`, or `repository Rooms for Room { fn ... }`
+/// with operations of its own. Where it saves is chosen in croft.toml.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RepositoryDecl {
     pub doc: Vec<String>,
     pub name: Identifier,
     pub aggregate: Path,
+    /// The operations it declares, or `None` for `find` and `save`.
+    pub operations: Option<Vec<FunctionDecl>>,
 }

@@ -20,17 +20,21 @@ fn prints_through_the_console() {
     if !has_c_compiler() {
         return;
     }
+
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/hello");
     let output = generate(&source, "test", "hello");
     let built = compile(&output, &["croft_runtime.c", "program.c", "-o", "program"]);
+
     assert!(
         built.status.success(),
         "{}",
         String::from_utf8_lossy(&built.stderr)
     );
+
     let ran = std::process::Command::new(output.join("program"))
         .output()
         .expect("it runs");
+
     assert_eq!(String::from_utf8_lossy(&ran.stdout), "5\n");
     fs::remove_dir_all(output).ok();
 }
@@ -42,8 +46,10 @@ fn reads_and_writes_files() {
     if !has_c_compiler() {
         return;
     }
+
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/files");
     let output = generate(&source, "test", "files");
+
     let built = compile(
         &output,
         &[
@@ -54,20 +60,25 @@ fn reads_and_writes_files() {
             "program",
         ],
     );
+
     assert!(
         built.status.success(),
         "{}",
         String::from_utf8_lossy(&built.stderr)
     );
+
     let ran = std::process::Command::new(output.join("program"))
         .current_dir(&output)
         .output()
         .expect("it runs");
+
     assert_eq!(ran.status.code(), Some(1));
+
     assert_eq!(
         String::from_utf8_lossy(&ran.stdout),
         "first line, then more\nStd.Files.NotFound\n"
     );
+
     assert!(!output.join("notes.txt").exists());
     fs::remove_dir_all(output).ok();
 }
@@ -79,8 +90,10 @@ fn saves_and_finds_aggregates_in_files() {
     if !has_c_compiler() {
         return;
     }
+
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/storage");
     let output = generate(&source, "test", "storage");
+
     let built = compile(
         &output,
         &[
@@ -92,15 +105,18 @@ fn saves_and_finds_aggregates_in_files() {
             "program",
         ],
     );
+
     assert!(
         built.status.success(),
         "{}",
         String::from_utf8_lossy(&built.stderr)
     );
+
     let ran = std::process::Command::new(output.join("program"))
         .current_dir(&output)
         .output()
         .expect("it runs");
+
     assert_eq!(String::from_utf8_lossy(&ran.stdout), "ok\n");
     assert!(ran.status.success());
     fs::remove_dir_all(output).ok();
@@ -135,8 +151,10 @@ fn checks_rules_in_debug_builds() {
     if !has_c_compiler() {
         return;
     }
+
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/constraints");
     let output = generate(&source, "test", "constraints");
+
     let debug = compile(
         &output,
         &[
@@ -147,28 +165,35 @@ fn checks_rules_in_debug_builds() {
             "debug",
         ],
     );
+
     assert!(
         debug.status.success(),
         "{}",
         String::from_utf8_lossy(&debug.stderr)
     );
+
     let release = compile(&output, &["croft_runtime.c", "program.c", "-o", "release"]);
+
     assert!(
         release.status.success(),
         "{}",
         String::from_utf8_lossy(&release.stderr)
     );
+
     let run = |program: &str, argument: &str| {
         let ran = std::process::Command::new(output.join(program))
             .arg(argument)
             .output()
             .expect("it runs");
+
         (
             ran.status.code(),
             String::from_utf8_lossy(&ran.stdout).trim().to_string(),
         )
     };
+
     assert_eq!(run("debug", "none"), (Some(0), String::new()));
+
     assert_eq!(
         run("debug", "argument"),
         (
@@ -176,10 +201,12 @@ fn checks_rules_in_debug_builds() {
             "heal: amount must satisfy Range(1, 50)".to_string()
         )
     );
+
     assert_eq!(
         run("debug", "result"),
         (Some(1), "half: the result must satisfy Even".to_string())
     );
+
     assert_eq!(
         run("debug", "field"),
         (
@@ -187,10 +214,12 @@ fn checks_rules_in_debug_builds() {
             "Dose: amount must satisfy Range(1, 50)".to_string()
         )
     );
+
     assert_eq!(
         run("debug", "each"),
         (Some(1), "count: numbers must satisfy each Even".to_string())
     );
+
     assert_eq!(
         run("debug", "score"),
         (
@@ -198,6 +227,7 @@ fn checks_rules_in_debug_builds() {
             "Score: value must satisfy Range(0, 999)".to_string()
         )
     );
+
     assert_eq!(
         run("debug", "pay"),
         (
@@ -205,10 +235,12 @@ fn checks_rules_in_debug_builds() {
             "pay: amount must satisfy Range(0.01, 99.99)".to_string()
         )
     );
+
     assert_eq!(
         run("debug", "shift"),
         (Some(1), "shift by less than 0 or more than 31".to_string())
     );
+
     assert_eq!(
         run("debug", "name"),
         (
@@ -216,6 +248,7 @@ fn checks_rules_in_debug_builds() {
             "Patient: name is longer than 8 characters".to_string()
         )
     );
+
     assert_eq!(
         run("debug", "join"),
         (
@@ -223,6 +256,7 @@ fn checks_rules_in_debug_builds() {
             "joined text is longer than a string can hold".to_string()
         )
     );
+
     assert_eq!(run("release", "argument"), (Some(0), String::new()));
     assert_eq!(run("release", "name"), (Some(0), String::new()));
     fs::remove_dir_all(output).ok();
@@ -233,17 +267,21 @@ fn stops_with_the_error_when_the_domain_fails() {
     if !has_c_compiler() {
         return;
     }
+
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/failing");
     let output = generate(&source, "test", "failing");
     let built = compile(&output, &["croft_runtime.c", "program.c", "-o", "program"]);
+
     assert!(
         built.status.success(),
         "{}",
         String::from_utf8_lossy(&built.stderr)
     );
+
     let ran = std::process::Command::new(output.join("program"))
         .output()
         .expect("the program runs");
+
     assert_eq!(ran.status.code(), Some(1));
     assert_eq!(String::from_utf8_lossy(&ran.stdout).trim(), "Shop.Closed");
     fs::remove_dir_all(output).ok();
@@ -266,15 +304,19 @@ fn ships_the_cargo_as_scripted() {
     if !has_c_compiler() {
         return;
     }
+
     let output = generate(&logistics(), "test", "logistics_outcome");
     let harness = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/harness/logistics_outcome.c");
     fs::copy(harness, output.join("outcome.c")).unwrap();
+
     let renamed = compile(&output, &["-c", "-Dmain=croft_program_main", "program.c"]);
+
     assert!(
         renamed.status.success(),
         "{}",
         String::from_utf8_lossy(&renamed.stderr)
     );
+
     let built = compile(
         &output,
         &[
@@ -286,19 +328,24 @@ fn ships_the_cargo_as_scripted() {
             "outcome",
         ],
     );
+
     assert!(
         built.status.success(),
         "{}",
         String::from_utf8_lossy(&built.stderr)
     );
+
     let ran = std::process::Command::new(output.join("outcome"))
         .output()
         .expect("the harness runs");
+
     let printed = String::from_utf8_lossy(&ran.stdout);
+
     assert_eq!(
         printed,
         "Claimed at FIHEL\nRouted\nstatus 0\nlegs 2\nclaimed 1 at FIHEL\nmisdirected 0\nlast event 1 on day 10\n"
     );
+
     fs::remove_dir_all(output).ok();
 }
 
@@ -307,20 +354,34 @@ fn compiles_the_logistics_fixture_for_every_target() {
     if !has_c_compiler() {
         return;
     }
+
     let fixture = logistics();
+
     for target in ["test", "desktop"] {
         let output = generate(&fixture, target, "logistics");
         let mut files = vec!["-c", "croft_runtime.c", "program.c"];
+
         if target == "desktop" {
             fs::copy(fixture.join("platform/desktop.c"), output.join("desktop.c")).unwrap();
             files.extend(["croft_files.c", "desktop.c"]);
         }
+
         let built = compile(&output, &files);
+
         assert!(
             built.status.success(),
             "{target}: {}",
             String::from_utf8_lossy(&built.stderr)
         );
+
         fs::remove_dir_all(output).ok();
     }
+}
+
+/// Repositories that declare their own operations: finds, a save and a
+/// remove that Storage provides, and a query an adapter written for the
+/// repository answers.
+#[test]
+fn runs_operations_a_repository_declares() {
+    run_program("repository_operations");
 }

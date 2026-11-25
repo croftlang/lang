@@ -17,15 +17,18 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     ) -> Type {
         if let Some(local) = self.local(name) {
             let (ty, defined) = (local.ty.clone(), local.defined);
+
             self.note(id, Meaning::Local);
             self.note_local(name, &ty, span, defined);
             return ty;
         }
+
         if let Some(ty) = self.own_field(name, span, false) {
             self.note(id, Meaning::OwnField);
             self.note_own_field(name, span, &ty);
             return ty;
         }
+
         match name {
             "Unit" => {
                 self.note(id, Meaning::Unit);
@@ -37,16 +40,20 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             _ => {}
         }
+
         let path = Path {
             segments: vec![Identifier {
                 name: name.to_string(),
                 span,
             }],
         };
+
         if let Some(ty) = self.type_path(id, &path, expected) {
             return ty;
         }
+
         self.error(format!("cannot find `{name}` here"), span);
+
         Type::Unknown
     }
 
@@ -57,19 +64,24 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             BodyKind::Adapter(adapter) => (&adapter.name.name, &adapter.fields),
             _ => return,
         };
+
         let defined = fields
             .iter()
             .find(|f| f.name.name == name)
             .map(|f| f.name.span);
+
         let context = &self.scope.context.name.name;
+
         let receiver = self
             .checker
             .lookup(context, owner)
             .map_or(Type::Unknown, Type::Named);
+
         let member = Identifier {
             name: name.to_string(),
             span,
         };
+
         self.note_member(&member, &receiver, ty, MemberKind::Field, defined);
     }
 
@@ -81,9 +93,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             BodyKind::Adapter(adapter) => &adapter.fields,
             _ => return None,
         };
+
         let field = fields
             .iter()
             .find(|field| field.name.name == name && !(for_set && field.is_identity))?;
+
         Some(self.checker.lower_type(&self.scope, &field.ty))
     }
 }
