@@ -18,6 +18,7 @@ impl Parser {
             _ => unreachable!("only called on a function keyword"),
         };
         let name = self.expect_identifier()?;
+        let type_parameters = self.parse_type_parameters()?;
         let mut parameters = if self.check(&TokenKind::LeftParen) {
             Some(self.parse_parameters()?)
         } else {
@@ -38,6 +39,7 @@ impl Parser {
             doc,
             kind,
             name,
+            type_parameters,
             parameters,
             return_type,
             return_constraints,

@@ -57,10 +57,24 @@ impl<'a> Checker<'a> {
         if generic && is_type_parameter(&name) {
             return;
         }
-        if found > 0 {
-            self.error(format!("`{name}` takes no type arguments"), span);
+        let resolved = self.resolve(scope, &ty.path);
+        let template = resolved.as_ref().and_then(|r| self.generic_value(r));
+        match template {
+            Some(template) if found != template.type_parameters.len() => {
+                let parameters: Vec<&str> = (template.type_parameters.iter())
+                    .map(|p| p.name.as_str())
+                    .collect();
+                let message = format!(
+                    "`{name}` takes {} type arguments, for `{name}<{}>`, found {found}",
+                    parameters.len(),
+                    parameters.join(", ")
+                );
+                self.error(message, span);
+            }
+            None if found > 0 => self.error(format!("`{name}` takes no type arguments"), span),
+            _ => {}
         }
-        match self.resolve(scope, &ty.path) {
+        match resolved {
             None => self.error(crate::standard::not_found_message("a type", &name), span),
             Some(found) if !found.kind.is_type() => {
                 let actual = found.kind.describe();

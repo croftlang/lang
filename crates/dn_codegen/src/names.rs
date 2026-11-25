@@ -6,13 +6,28 @@ use dn_analysis::Type;
 
 use crate::Generator;
 
-/// `Dungeon_Room_Enemy` for `Room.Enemy` in context `Dungeon`.
+/// `Dungeon_Room_Enemy` for `Room.Enemy` in context `Dungeon`, and
+/// `Shop_Pair_Int_String` for the instance `Pair<Int, String>`.
 pub fn c_name(named: &Resolved) -> String {
     format!(
         "{}_{}",
-        named.context.replace('.', "_"),
-        named.name.replace('.', "_")
+        c_identifier(&named.context),
+        c_identifier(&named.name)
     )
+}
+
+/// A dn name as a C identifier: anything but letters, digits and `_` becomes
+/// `_`, and runs of them one, with none at the end.
+fn c_identifier(name: &str) -> String {
+    let mut out = String::new();
+    for c in name.chars() {
+        if c.is_ascii_alphanumeric() || c == '_' {
+            out.push(c);
+        } else if !out.ends_with('_') {
+            out.push('_');
+        }
+    }
+    out.trim_end_matches('_').to_string()
 }
 
 /// The C name for an error's code: `DN_ERROR_Dungeon_Room_NotFound`.

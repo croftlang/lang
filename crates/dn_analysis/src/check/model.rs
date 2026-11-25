@@ -37,6 +37,7 @@ impl<'a> Model<'a> {
                 tables,
                 errors,
                 facts: Facts::default(),
+                requests: std::cell::RefCell::default(),
             },
         }
     }

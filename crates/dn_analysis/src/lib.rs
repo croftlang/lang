@@ -2,6 +2,7 @@
 
 pub mod check;
 pub mod facts;
+pub mod generics;
 pub mod manifest;
 pub mod naming;
 pub mod program;

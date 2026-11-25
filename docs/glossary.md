@@ -30,6 +30,15 @@ ports and repositories live at context level.
 A value object: defined only by its fields, equal when its fields are equal,
 and never changed. Made with its type name, `Position { x: 10, y: 20 }`.
 
+### Generic
+A value or function written once for many types, with type parameters that
+are single capital letters: `value Pair<A, B> { first: A  second: B }`,
+`fn first_or<T>(items: List<T>, fallback: T): T`. Each use with different
+types is an instance, such as `Pair<Int, String>` or `first_or<RoomId>`, which
+the compiler makes and checks as if it had been written out by hand, so a
+mistake in a template shows where it is used. A call's type parameters come
+from what it is given, and from the type it must give back.
+
 ### Single-value type
 A value around one value of another type, so it can't be mixed up with
 other uses of that type: `value Score: Int where Range(0, 999_999)`. Made

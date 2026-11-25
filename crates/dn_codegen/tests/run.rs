@@ -106,6 +106,11 @@ fn keeps_aggregates_through_adapters_of_the_programs_own() {
 }
 
 #[test]
+fn makes_an_instance_of_each_generic_for_each_type() {
+    run_program("generics");
+}
+
+#[test]
 fn runs_commands_events_policies_and_repositories() {
     run_program("game");
 }

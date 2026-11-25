@@ -61,6 +61,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             self.error(format!("cannot find `{name}` here"), path.span());
             return Type::Unknown;
         };
+        if self.checker.generic_function(&found).is_some() {
+            return self.call_generic(id, &found, arguments, span, expected);
+        }
         self.note(Some(id), Meaning::Declared(found.clone()));
         match found.kind {
             SymbolKind::Function | SymbolKind::Translation | SymbolKind::Constraint => {

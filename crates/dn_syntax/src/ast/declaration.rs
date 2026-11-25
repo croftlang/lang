@@ -40,6 +40,8 @@ pub struct UseDecl {
 pub struct ValueDecl {
     pub doc: Vec<String>,
     pub name: Identifier,
+    /// `A` and `B` in `value Pair<A, B> { first: A  second: B }`.
+    pub type_parameters: Vec<Identifier>,
     pub fields: Vec<Field>,
     pub invariants: Vec<Invariant>,
     /// Written `value Score: Int where Range(0, 999_999)`: a type of its own

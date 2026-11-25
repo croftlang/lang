@@ -14,6 +14,7 @@ mod expect;
 mod expression;
 mod failure;
 mod field;
+mod generic_call;
 mod issue;
 mod list;
 mod map;

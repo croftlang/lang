@@ -45,6 +45,10 @@ impl<'a> Generator<'a> {
             let Some(decl) = context.functions.iter().find(|f| f.name.name == found.name) else {
                 return String::new();
             };
+            // A generic template is compiled only as its instances.
+            if !decl.type_parameters.is_empty() {
+                return String::new();
+            }
             let result = self.function_result(&found.context, decl);
             let constraints = decl
                 .parameters

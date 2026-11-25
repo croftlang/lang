@@ -24,7 +24,12 @@ impl<'a> Checker<'a> {
             body.bind_parameters(&constraint.parameters);
             body.expect(&constraint.body, &Type::Bool);
         }
-        for function in &context.functions {
+        // A generic template is checked as each of its instances.
+        for function in context
+            .functions
+            .iter()
+            .filter(|f| f.type_parameters.is_empty())
+        {
             let kind = match function.kind {
                 FunctionKind::Service | FunctionKind::Domain => BodyKind::Service,
                 _ => BodyKind::Function,

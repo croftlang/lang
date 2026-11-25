@@ -93,7 +93,10 @@ fn gets_and_posts_through_curl() {
         .output()
         .expect("it runs");
     server.join().expect("the server ends");
-    assert_eq!(String::from_utf8_lossy(&ran.stdout), "200\nhello\n5\nsent\n");
+    assert_eq!(
+        String::from_utf8_lossy(&ran.stdout),
+        "200\nhello\n5\nsent\n"
+    );
     assert!(ran.status.success());
     fs::remove_dir_all(output).ok();
     fs::remove_dir_all(folder).ok();

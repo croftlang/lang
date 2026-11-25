@@ -20,6 +20,8 @@ pub struct FunctionDecl {
     pub doc: Vec<String>,
     pub kind: FunctionKind,
     pub name: Identifier,
+    /// `T` in `fn first<T>(items: List<T>): Option<T>`.
+    pub type_parameters: Vec<Identifier>,
     pub parameters: Option<Vec<Parameter>>,
     pub return_type: Option<TypeExpr>,
     pub return_constraints: Vec<ConstraintUse>,

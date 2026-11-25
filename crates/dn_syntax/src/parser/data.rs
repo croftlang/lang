@@ -11,6 +11,11 @@ impl Parser {
         let doc = self.doc();
         self.expect_keyword(keyword)?;
         let name = self.expect_identifier()?;
+        let type_parameters = if keyword == Keyword::Value {
+            self.parse_type_parameters()?
+        } else {
+            Vec::new()
+        };
         if keyword == Keyword::Value && self.check(&TokenKind::Colon) {
             return self.parse_single_value(doc, name);
         }
@@ -27,6 +32,7 @@ impl Parser {
         Ok(ValueDecl {
             doc,
             name,
+            type_parameters,
             fields,
             invariants,
             single: false,
@@ -53,6 +59,7 @@ impl Parser {
         Ok(ValueDecl {
             doc,
             name,
+            type_parameters: Vec::new(),
             fields: vec![field],
             invariants: Vec::new(),
             single: true,

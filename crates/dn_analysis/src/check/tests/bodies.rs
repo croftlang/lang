@@ -243,3 +243,26 @@ fn checks_maps() {
         "an empty map needs its type from where it goes, such as `let stock: Map<String, Int> = [:]`",
     );
 }
+
+#[test]
+fn checks_generics_through_their_instances() {
+    let source = "context Shop {\n value Pair<A, B> { first: A  second: B }\n fn swap<A, B>(pair: Pair<A, B>): Pair<B, A> = Pair { first: pair.second, second: pair.first }\n fn f(): Pair<String, Int> = swap(Pair { first: 1, second: \"a\" })\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+    assert_error(
+        "context Shop {\n value Pair<A, B> { first: A  second: B }\n fn f(pair: Pair<Int>): Int = 0\n}",
+        "`Pair` takes 2 type arguments, for `Pair<A, B>`, found 1",
+    );
+    assert_error(
+        "context Shop {\n fn first<Item>(items: List<Item>): Option<Item> = items.first\n}",
+        "a type parameter is a single capital letter, such as `T`, not `Item`",
+    );
+    assert_error(
+        "context Shop {\n fn none<T>(): Option<T> = None\n fn f(): Int = {\n let x = none()\n 0\n }\n}",
+        "cannot work out `T` for `none` from what it is given",
+    );
+    // A template's body is checked as each instance, so a mistake shows when it is used.
+    assert_error(
+        "context Shop {\n fn twice<T>(x: T): T = x + x\n fn f(): Bool = twice(true)\n}",
+        "cannot do arithmetic on `Bool`",
+    );
+}
