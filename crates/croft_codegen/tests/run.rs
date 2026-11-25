@@ -417,3 +417,15 @@ fn writes_string_literals_straight_into_results() {
     assert!(c.contains("croft_string_view_from(\"square\", 6)"));
     fs::remove_dir_all(output).ok();
 }
+
+/// Two or more Bool fields packed into bits: read, set, compared and saved.
+#[test]
+fn packs_bool_fields_into_bits() {
+    run_program("flags");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/flags");
+    let output = generate(&source, "test", "flags_c");
+    let header = fs::read_to_string(output.join("program.h")).expect("program.h");
+    assert!(header.contains("croft_u8 croft_flags[2];"), "{header}");
+    assert!(!header.contains("croft_bool has_key;"), "{header}");
+    fs::remove_dir_all(output).ok();
+}

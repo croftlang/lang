@@ -35,6 +35,13 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// Writes `value` into field `field` of `owner` at `place`: by
     /// assignment, or through `store_text` when it is kept in its own size.
     pub fn write_field(&mut self, owner: Option<&Resolved>, place: &str, field: &str, value: &str) {
+        if let Some((byte, mask)) = owner.and_then(|owner| self.gen.flag_bit(owner, field)) {
+            let flags = format!("{place}.croft_flags[{byte}]");
+            self.line(format!(
+                "{flags} = (croft_u8) ({value} ? ({flags} | {mask}) : ({flags} & ~{mask}));"
+            ));
+            return;
+        }
         match owner.and_then(|owner| self.gen.text_capacity(owner, field)) {
             Some(capacity) => {
                 let label = format!("{}: {field}", owner.map_or("", |o| o.name.as_str()));
@@ -46,6 +53,9 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// Reads field `field` of `owner` at `place`.
     pub fn read_field(&mut self, owner: Option<&Resolved>, place: &str, field: &str) -> String {
+        if let Some((byte, mask)) = owner.and_then(|owner| self.gen.flag_bit(owner, field)) {
+            return format!("(({place}.croft_flags[{byte}] & {mask}) != 0)");
+        }
         let place = format!("{place}.{field}");
 
         match owner.and_then(|owner| self.gen.text_capacity(owner, field)) {

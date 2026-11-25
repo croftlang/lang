@@ -141,7 +141,20 @@ impl<'a> Generator<'a> {
             Type::Named(named) => {
                 let (mut write, mut read) = (String::new(), String::new());
 
+                for byte in 0..self.flag_bytes(named) {
+                    let place = format!("value->croft_flags[{byte}]");
+                    write.push_str(&format!(
+                        "    if (!croft_bytes_put_byte(out, {place})) {{\n        return 0;\n    }}\n"
+                    ));
+                    read.push_str(&format!(
+                        "    if (!croft_bytes_take_byte(in, at, &{place})) {{\n        return 0;\n    }}\n"
+                    ));
+                }
+
                 for (field, field_type, _) in self.struct_fields(named) {
+                    if self.flag_bit(named, &field).is_some() {
+                        continue;
+                    }
                     let place = format!("value->{field}");
 
                     if let Some(capacity) = self.text_capacity(named, &field) {
