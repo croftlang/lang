@@ -98,9 +98,22 @@ impl<'a> Generator<'a> {
             None => "the default".to_string(),
         };
 
+        let bounded: Vec<String> = self.texts.borrow().iter().map(i64::to_string).collect();
+
+        let sizes = if bounded.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "  Strings kept in sizes of their own hold {} characters.\n",
+                bounded.join(", ")
+            )
+        };
+
         format!(
-            "\nStrings\n  Every string the program builds holds {capacity} characters \
-             ({} bytes), {from}.\n  A lower `Length` there shrinks every one of them.\n",
+            "\nStrings\n  Each string is kept in the most characters it can need, from the \
+             literals and `Length`s it comes from.\n{sizes}  A string with nothing to bound it, \
+             such as a parameter with no `Length`, holds {capacity} characters ({} bytes), \
+             {from}.\n",
             2 + capacity
         )
     }

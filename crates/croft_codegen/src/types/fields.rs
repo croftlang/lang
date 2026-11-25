@@ -7,6 +7,7 @@
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::Resolved;
 use croft_analysis::Type;
+use croft_syntax::ast::ConstraintUse;
 
 use super::constant::evaluate;
 use super::width::int_width;
@@ -76,15 +77,28 @@ impl<'a> Generator<'a> {
             return None;
         }
 
-        let length = declared
-            .constraints
+        let capacity = self.length_bound(&owner.context, &declared.constraints)?;
+
+        (capacity < self.sizes.string_capacity).then_some(capacity.max(1))
+    }
+
+    /// The most a `Length` among `constraints` allows, when there is one.
+    pub fn length_bound(&self, context: &str, constraints: &[ConstraintUse]) -> Option<i64> {
+        let length = constraints
             .iter()
             .find(|c| !c.each && c.name.text() == "Length")?;
 
         let high = length.arguments.last()?;
-        let capacity = evaluate(self.program, &self.model, &owner.context, high)?;
 
-        (capacity < self.sizes.string_capacity).then_some(capacity.max(1))
+        evaluate(self.program, &self.model, context, high)
+    }
+
+    /// A string parameter's type: bounded by its `Length`, when it has one.
+    pub fn parameter_type(&self, context: &str, ty: Type, constraints: &[ConstraintUse]) -> Type {
+        match (ty, self.length_bound(context, constraints)) {
+            (Type::String, Some(length)) => self.text_type(length),
+            (ty, _) => ty,
+        }
     }
 
     /// Where a `Bool` field is kept when its owner's flags are packed: the

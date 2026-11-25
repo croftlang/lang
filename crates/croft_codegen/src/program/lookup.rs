@@ -49,7 +49,9 @@ impl<'a> Generator<'a> {
         let operation = operations.into_iter().find(|op| op.name == operation);
 
         (operation.into_iter().flat_map(|op| op.parameters))
-            .map(|(name, ty, _)| (name, ty))
+            .map(|(name, ty, constraints)| {
+                (name, self.parameter_type(&port.context, ty, constraints))
+            })
             .collect()
     }
 

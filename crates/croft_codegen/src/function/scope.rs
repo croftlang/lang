@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use croft_analysis::Type;
 
 use super::Writer;
+use crate::types::bounds::has_bound;
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// Declares a C variable with a name not used yet in this function.
@@ -20,7 +21,26 @@ impl<'g, 'a> Writer<'g, 'a> {
         let c_type = self.gen.c_type(ty);
         self.declarations.push(format!("    {c_type} {name};"));
 
-        name
+        self.typed(name, ty)
+    }
+
+    /// Records that `c`, a C name or place, holds a value of `ty`, when that
+    /// has a bounded string in it, and gives back `c`.
+    pub fn typed(&mut self, c: String, ty: &Type) -> String {
+        if has_bound(ty) {
+            self.bounded.insert(c.clone(), ty.clone());
+        }
+
+        c
+    }
+
+    /// The type of the value `c` holds: `ty` with the bounds of its strings,
+    /// when `c` was recorded with them.
+    pub fn bounded_type(&self, c: &str, ty: &Type) -> Type {
+        match self.bounded.get(c) {
+            Some(bounded) => self.gen.keep_bound(bounded, ty),
+            None => ty.clone(),
+        }
     }
 
     /// Declares a C variable of a type that is not a Croft type, such as `croft_event`.
@@ -52,6 +72,8 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// Makes a Croft name refer to a C expression in the innermost scope.
     pub fn bind(&mut self, name: &str, c: String, ty: Type) {
+        let c = self.typed(c, &ty);
+
         self.scopes
             .last_mut()
             .expect("a scope")

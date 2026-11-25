@@ -27,6 +27,10 @@ pub enum Type {
     Decimal(u32),
     Bool,
     String,
+    /// A string that holds at most this many characters. Only code
+    /// generation makes one, once it has worked out how long a string can
+    /// be; the checker never does, so every rule about `String` sees it as one.
+    Text(u16),
     /// A sequence of bytes, each from 0 to 255: file contents, a save, a
     /// network message.
     Bytes,
@@ -92,7 +96,7 @@ impl fmt::Display for Type {
             Type::Float => write!(f, "Float"),
             Type::Decimal(places) => write!(f, "Decimal<{places}>"),
             Type::Bool => write!(f, "Bool"),
-            Type::String => write!(f, "String"),
+            Type::String | Type::Text(_) => write!(f, "String"),
             Type::Bytes => write!(f, "Bytes"),
             Type::Unit => write!(f, "Unit"),
             Type::List(item) => write!(f, "List<{item}>"),

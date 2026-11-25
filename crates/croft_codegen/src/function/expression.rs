@@ -6,11 +6,21 @@ use croft_syntax::ast::{Expr, ExprKind, UnaryOp};
 
 use super::Writer;
 use crate::names::c_string;
+use crate::types::bounds::{is_string, unbounded};
 use crate::types::constant::{scale, scaled};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// The value of `value`, as a C expression of the C type for `want`.
     pub fn value(&mut self, value: &Expr, want: &Type) -> String {
+        // A literal is written straight into a string of the size wanted.
+        if let ExprKind::String(_) = &value.kind {
+            if is_string(want) {
+                let temp = self.temp(want);
+                self.assign(&temp, value, want);
+                return temp;
+            }
+        }
+
         let (c, ty) = self.eval(value, Some(want));
         self.convert(c, &ty, want)
     }
@@ -26,8 +36,16 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
     }
 
-    /// The value of an expression as a C expression, and its type.
+    /// The value of an expression as a C expression, and its type, with the
+    /// bounds of any strings it holds.
     pub fn eval(&mut self, value: &Expr, want: Option<&Type>) -> (String, Type) {
+        let (c, ty) = self.eval_unbounded(value, want);
+        let ty = self.bounded_type(&c, &ty);
+
+        (c, ty)
+    }
+
+    fn eval_unbounded(&mut self, value: &Expr, want: Option<&Type>) -> (String, Type) {
         let ty = self.type_of(value, want);
 
         let c = match &value.kind {
@@ -38,7 +56,8 @@ impl<'g, 'a> Writer<'g, 'a> {
             },
             ExprKind::Bool(flag) => (if *flag { "1" } else { "0" }).to_string(),
             ExprKind::String(text) => {
-                let temp = self.temp(&Type::String);
+                let literal = self.gen.text_type(text.chars().count() as i64);
+                let temp = self.temp(&literal);
                 self.line(format!(
                     "croft_string_set({}, CROFT_OUT({temp}));",
                     c_string(text)
@@ -110,6 +129,12 @@ impl<'g, 'a> Writer<'g, 'a> {
             return c;
         }
 
+        if unbounded(from) == unbounded(to) {
+            let temp = self.temp(to);
+            self.copy_into(&temp, &c, from, to);
+            return temp;
+        }
+
         match (to, from) {
             (Type::Result(value, _), from) if !matches!(from, Type::Result(..)) => {
                 let inner = self.convert(c, from, value);
@@ -119,6 +144,125 @@ impl<'g, 'a> Writer<'g, 'a> {
                 temp
             }
             _ => c,
+        }
+    }
+
+    /// Works out `value` and writes it into `target`, a place of type `ty`.
+    pub fn assign(&mut self, target: &str, value: &Expr, ty: &Type) {
+        if let (ExprKind::String(text), true) = (&value.kind, is_string(ty)) {
+            self.line(format!(
+                "croft_string_set({}, CROFT_OUT({target}));",
+                c_string(text)
+            ));
+
+            let room = self.gen.bound(ty);
+
+            if text.chars().count() as i64 > room {
+                self.line(format!(
+                    "CROFT_CHECK(0, \"text is longer than {room} characters\");"
+                ));
+            }
+
+            return;
+        }
+
+        let (c, from) = self.eval(value, Some(ty));
+
+        if unbounded(&from) == unbounded(ty) {
+            self.copy_into(target, &c, &from, ty);
+        } else {
+            let c = self.convert(c, &from, ty);
+            self.line(format!("{target} = {c};"));
+        }
+    }
+
+    /// Writes `source`, of type `from`, into `target`, of type `to`, which
+    /// differ at most in the bounds of their strings. A string longer than
+    /// `to` has room for is cut short, and stops a debug build.
+    pub fn copy_into(&mut self, target: &str, source: &str, from: &Type, to: &Type) {
+        if self.gen.c_type(from) == self.gen.c_type(to) {
+            self.line(format!("{target} = {source};"));
+            return;
+        }
+
+        match (from, to) {
+            (from, to) if is_string(from) && is_string(to) => {
+                let view = self.view_of(source);
+                let room = self.gen.bound(to);
+
+                if self.gen.bound(from) <= room {
+                    self.line(format!("croft_string_copy({view}, CROFT_OUT({target}));"));
+                    return;
+                }
+
+                self.open(format!(
+                    "if (!croft_string_copy({view}, CROFT_OUT({target})))"
+                ));
+                self.line(format!(
+                    "CROFT_CHECK(0, \"text is longer than {room} characters\");"
+                ));
+
+                self.close();
+            }
+            (Type::List(from), Type::List(to)) => {
+                let index = self.variable("index", &Type::Int);
+                self.line(format!("{target}.length = {source}.length;"));
+
+                self.open(format!(
+                    "for ({index} = 0; {index} < (croft_int) {source}.length; {index}++)"
+                ));
+
+                let (target, source) = (
+                    format!("{target}.items[{index}]"),
+                    format!("{source}.items[{index}]"),
+                );
+
+                self.copy_into(&target, &source, from, to);
+                self.close();
+            }
+            (Type::Option(from), Type::Option(to)) => {
+                self.line(format!("{target}.some = {source}.some;"));
+
+                self.open(format!("if ({source}.some)"));
+                let (target, source) = (format!("{target}.value"), format!("{source}.value"));
+                self.copy_into(&target, &source, from, to);
+                self.close();
+            }
+            (Type::Result(from, from_error), Type::Result(to, to_error)) => {
+                self.line(format!("{target}.ok = {source}.ok;"));
+
+                self.open(format!("if ({source}.ok)"));
+                let (value, given) = (format!("{target}.value"), format!("{source}.value"));
+                self.copy_into(&value, &given, from, to);
+                self.close();
+
+                self.open("else");
+                let (error, given) = (format!("{target}.error"), format!("{source}.error"));
+                self.copy_into(&error, &given, from_error, to_error);
+                self.close();
+            }
+            (Type::Map(from_key, from_value), Type::Map(to_key, to_value)) => {
+                let index = self.variable("index", &Type::Int);
+                self.line(format!("{target}.length = {source}.length;"));
+
+                self.open(format!(
+                    "for ({index} = 0; {index} < (croft_int) {source}.length; {index}++)"
+                ));
+
+                for (part, from, to) in
+                    [("keys", from_key, to_key), ("values", from_value, to_value)]
+                {
+                    let (target, source) = (
+                        format!("{target}.{part}[{index}]"),
+                        format!("{source}.{part}[{index}]"),
+                    );
+
+                    self.copy_into(&target, &source, from, to);
+                }
+
+                self.close();
+            }
+            _ => self.line(format!("{target} = {source};")),
         }
     }
 
@@ -144,7 +288,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             return format!("({left} == {right})");
         }
 
-        if *ty == Type::String {
+        if is_string(ty) {
             return format!(
                 "croft_string_equal({}, {})",
                 self.view_of(left),

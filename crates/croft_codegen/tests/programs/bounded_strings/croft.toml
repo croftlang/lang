@@ -1,0 +1,5 @@
+[package]
+name = "bounded_strings"
+
+[target.test]
+main = "Check"

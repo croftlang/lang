@@ -85,7 +85,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 continue;
             }
 
-            let (c, _) = self.eval(&argument.value, None);
+            let c = self.value(&argument.value, &ty);
             let c_type = self.gen.c_type(&ty);
 
             parameters.push(if self.gen.is_scalar(&ty) {

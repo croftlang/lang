@@ -8,6 +8,7 @@ use croft_syntax::ast::Expr;
 
 use super::Writer;
 use crate::names::{c_name, error_code};
+use crate::types::bounds::is_string;
 
 impl<'g, 'a> Writer<'g, 'a> {
     pub fn name(&mut self, value: &Expr, name: &str, ty: &Type) -> String {
@@ -30,9 +31,8 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// A local name's value, or an own field's, read as a full string when
     /// it is kept in its own size, or copied when it is a borrowed parameter.
     pub fn read_name(&mut self, name: &str) -> String {
-        if self.lookup(name).is_some() {
-            let c = self.local_or_field(name);
-            return self.owned(c);
+        if let Some((c, ty)) = self.lookup(name) {
+            return self.owned(c, &ty);
         }
 
         let Some(own) = &self.own else {
@@ -104,7 +104,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     pub fn property(&mut self, inner: &Expr, field: &str) -> String {
         let inner_type = self.type_of(inner, None);
 
-        if inner_type == Type::String && matches!(field, "length" | "is_empty") {
+        if is_string(&inner_type) && matches!(field, "length" | "is_empty") {
             let text = self.view(inner);
 
             return match field {
@@ -113,13 +113,13 @@ impl<'g, 'a> Writer<'g, 'a> {
             };
         }
 
-        let (c, _) = self.eval(inner, None);
+        let (c, inner_type) = self.eval(inner, None);
 
         match (&inner_type, field) {
-            (Type::String | Type::Bytes | Type::List(_), "length") => {
+            (Type::String | Type::Text(_) | Type::Bytes | Type::List(_), "length") => {
                 format!("((croft_int) {c}.length)")
             }
-            (Type::String | Type::Bytes | Type::List(_), "is_empty") => {
+            (Type::String | Type::Text(_) | Type::Bytes | Type::List(_), "is_empty") => {
                 format!("({c}.length == 0)")
             }
             (Type::Map(..), "length") => format!("((croft_int) {c}.length)"),

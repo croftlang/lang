@@ -28,6 +28,23 @@ impl<'g, 'a> Writer<'g, 'a> {
             None => "0".to_string(),
         };
 
+        // The methods that give back the list's own items keep their bounds.
+        let ty = match name {
+            "get" | "find" | "min_by" | "max_by" => {
+                self.gen.keep_bound(&Type::option(item.clone()), ty)
+            }
+            "remove" | "replace" | "drop" | "take" | "filter" => {
+                self.gen.keep_bound(&Type::list(item.clone()), ty)
+            }
+            _ => ty.clone(),
+        };
+
+        let ty = &ty;
+
+        if name == "add" {
+            return self.add(list, item, arguments, ty);
+        }
+
         let index = self.variable("index", &Type::Int);
         let each = format!("for ({index} = 0; {index} < (croft_int) {list}.length; {index}++)");
         let current = format!("{list}.items[{index}]");
@@ -81,20 +98,6 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.line(format!("if ({current}.{field} == {replacement}.{field}) {temp}.items[{index}] = {replacement};"));
                 self.close();
             }
-            "add" => {
-                let added = first(self, item);
-                let capacity = self.gen.sizes.list_capacity(item);
-
-                self.line(format!("{temp} = {list};"));
-
-                self.line(format!(
-                    "CROFT_CHECK({temp}.length < {capacity}, \"a list is full\");"
-                ));
-
-                self.line(format!(
-                    "if ({temp}.length < {capacity}) {temp}.items[{temp}.length++] = {added};"
-                ));
-            }
             "drop" | "take" => {
                 let count = first(self, &Type::Int);
 
@@ -111,6 +114,42 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             _ => self.list_lambda_method(list, item, name, arguments, ty, (&temp, &index)),
         }
+
+        temp
+    }
+
+    /// `list.add(item)`: a list with room for the strings of both.
+    fn add(&mut self, list: &str, item: &Type, arguments: &[Argument], ty: &Type) -> String {
+        let Some(argument) = arguments.first() else {
+            return "0".to_string();
+        };
+
+        let (added, added_type) = self.eval(&argument.value, Some(item));
+        let wider = self.gen.wider(item, &added_type);
+        let ty = self.gen.keep_bound(&Type::list(wider), ty);
+
+        let Type::List(kept) = &ty else {
+            return "0".to_string();
+        };
+
+        // The added item as one of the list's type, but for its bounds.
+        let kept = (**kept).clone();
+        let given = self.gen.keep_bound(&added_type, &kept);
+        let added = self.convert(added, &added_type, &given);
+
+        let capacity = self.gen.sizes.list_capacity(item);
+        let temp = self.temp(&ty);
+        self.copy_into(&temp, list, &Type::list(item.clone()), &ty);
+
+        self.line(format!(
+            "CROFT_CHECK({temp}.length < {capacity}, \"a list is full\");"
+        ));
+
+        self.open(format!("if ({temp}.length < {capacity})"));
+        let slot = format!("{temp}.items[{temp}.length]");
+        self.copy_into(&slot, &added, &given, &kept);
+        self.line(format!("{temp}.length++;"));
+        self.close();
 
         temp
     }
@@ -133,23 +172,22 @@ impl<'g, 'a> Writer<'g, 'a> {
             return "0".to_string();
         };
 
-        let values: Vec<String> = items.iter().map(|value| self.value(value, item)).collect();
         let list = self.temp(ty);
         let capacity = self.gen.sizes.list_capacity(item);
 
         self.line(format!(
             "{list}.length = {};",
-            values.len().min(capacity as usize)
+            items.len().min(capacity as usize)
         ));
 
-        if values.len() as i64 > capacity {
+        if items.len() as i64 > capacity {
             self.line(format!(
                 "CROFT_CHECK(0, \"a list has more than {capacity} items\");"
             ));
         }
 
-        for (index, value) in values.iter().take(capacity as usize).enumerate() {
-            self.line(format!("{list}.items[{index}] = {value};"));
+        for (index, value) in items.iter().take(capacity as usize).enumerate() {
+            self.assign(&format!("{list}.items[{index}]"), value, item);
         }
 
         list

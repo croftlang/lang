@@ -1,24 +1,12 @@
-//! String fields kept in a `croft_text_N` of their own size: read into a full
-//! string, and written back with a check, in debug builds, that they fit.
+//! String fields kept in a `croft_text_N` of their own size: read where
+//! they are, and written with a check, in debug builds, that they fit.
 
 use croft_analysis::types::Resolved;
-use croft_analysis::Type;
 
 use super::Writer;
 
 impl<'g, 'a> Writer<'g, 'a> {
-    /// The field at `place` as a full string.
-    pub fn load_text(&mut self, place: &str) -> String {
-        let temp = self.temp(&Type::String);
-
-        self.line(format!(
-            "croft_string_copy(CROFT_VIEW({place}), CROFT_OUT({temp}));"
-        ));
-
-        temp
-    }
-
-    /// Writes `value`, a full string, into the field at `place`. Text that
+    /// Writes `value`, any string, into the field at `place`. Text that
     /// doesn't fit is cut short, and stops a debug build.
     pub fn store_text(&mut self, place: &str, value: &str, capacity: i64, label: &str) {
         let value = self.view_of(value);
@@ -65,7 +53,10 @@ impl<'g, 'a> Writer<'g, 'a> {
         let place = format!("{place}.{field}");
 
         match owner.and_then(|owner| self.gen.text_capacity(owner, field)) {
-            Some(_) => self.load_text(&place),
+            Some(capacity) => {
+                let ty = self.gen.text_type(capacity);
+                self.typed(place, &ty)
+            }
             None => place,
         }
     }

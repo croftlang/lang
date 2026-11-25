@@ -7,10 +7,11 @@ use super::Writer;
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// `text` is a `croft_string_view`, kept in a variable so the string it
-    /// borrows from is read once.
+    /// borrows from is read once, of a string of type `bounded`. A string
+    /// made from it is no longer than it.
     pub fn string_method(
         &mut self,
-        text: &str,
+        (text, bounded): (&str, &Type),
         name: &str,
         arguments: &[Argument],
         ty: &Type,
@@ -39,14 +40,14 @@ impl<'g, 'a> Writer<'g, 'a> {
                 format!("croft_string_{name}({text}, {part})")
             }
             "to_upper" | "to_lower" | "trim" => {
-                let temp = self.temp(ty);
+                let temp = self.temp(bounded);
                 self.line(format!("croft_string_{name}({text}, CROFT_OUT({temp}));"));
                 temp
             }
             "slice" => {
                 let start = number(self, 0);
                 let end = number(self, 1);
-                let temp = self.temp(ty);
+                let temp = self.temp(bounded);
 
                 self.line(format!(
                     "croft_string_slice({text}, {start}, {end}, CROFT_OUT({temp}));"
@@ -72,7 +73,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let separator = self.raw_variable("separator", "croft_string_view");
                 let value = part(self, 0);
                 self.line(format!("{separator} = {value};"));
-                self.split(&text, &separator, ty)
+                self.split(&text, &separator, &Type::list(bounded.clone()))
             }
             _ => "0".to_string(),
         }

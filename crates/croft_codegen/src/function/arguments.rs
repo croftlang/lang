@@ -4,6 +4,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::{Argument, Expr};
 
 use super::Writer;
+use crate::types::bounds::is_string;
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// The argument for each parameter, by name or position.
@@ -45,7 +46,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         for ((_, ty), value) in parameters.iter().zip(values) {
             let passed_value = match value {
-                Some(value) if *ty == Type::String => self.view(value),
+                Some(value) if is_string(ty) => self.view(value),
                 Some(value) => {
                     let c = self.value(value, ty);
                     self.pass(c, ty)
@@ -60,7 +61,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     pub fn pass(&self, c: String, ty: &Type) -> String {
-        if *ty == Type::String {
+        if is_string(ty) {
             return self.view_of(&c);
         }
 
