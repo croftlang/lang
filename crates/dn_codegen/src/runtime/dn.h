@@ -85,6 +85,13 @@ dn_bool dn_bytes_take_string(const dn_bytes *in, dn_u16 *at, dn_string *out);
 dn_bool dn_bytes_put_bytes(dn_bytes *out, const dn_bytes *bytes);
 dn_bool dn_bytes_take_bytes(const dn_bytes *in, dn_u16 *at, dn_bytes *out);
 void dn_storage_key(const char *prefix, dn_int identity, dn_string *out);
+
+void dn_text_load(const char *text, dn_u16 length, dn_string *out);
+dn_bool dn_text_store(const dn_string *in, char *text, dn_u16 *length, dn_u16 capacity);
+dn_bool dn_text_equal(const char *a, dn_u16 a_length, const char *b, dn_u16 b_length);
+dn_bool dn_bytes_put_text(dn_bytes *out, const char *text, dn_u16 length);
+dn_bool dn_bytes_take_text(const dn_bytes *in, dn_u16 *at, char *text, dn_u16 *length,
+                           dn_u16 capacity);
 dn_bool dn_string_to_int(const dn_string *text, dn_int *out);
 
 void dn_arguments_set(int count, char **values);

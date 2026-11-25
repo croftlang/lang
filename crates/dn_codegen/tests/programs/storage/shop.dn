@@ -91,6 +91,7 @@ context Shop {
         check(files.exists("shelve12.dat"))?
         let found = shelves.find(12)?
         check(found == shelf)?
+        check(found.name == "Garden" && found.name.length == 6)?
         let missing = match shelves.find(13) {
             Ok(other) -> false
             Err(error) -> is_missing(error)

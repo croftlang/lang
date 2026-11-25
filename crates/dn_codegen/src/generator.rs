@@ -31,6 +31,8 @@ pub struct Generator<'a> {
     pub(crate) checks: RefCell<Vec<(String, String)>>,
     /// Types whose field-constraint check has been generated.
     pub(crate) checked_types: RefCell<HashSet<Resolved>>,
+    /// The capacities of the `dn_text_N` structs string fields are kept in.
+    pub(crate) texts: RefCell<std::collections::BTreeSet<i64>>,
     /// Native C functions called by adapters, with their prototypes.
     pub(crate) natives: RefCell<Vec<(String, String)>>,
 }
@@ -94,6 +96,7 @@ impl<'a> Generator<'a> {
             equalities: RefCell::default(),
             checks: RefCell::default(),
             checked_types: RefCell::default(),
+            texts: RefCell::default(),
             natives: RefCell::default(),
         };
         generator.make_room_for_storage();

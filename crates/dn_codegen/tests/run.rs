@@ -190,7 +190,22 @@ fn checks_rules_in_debug_builds() {
         run("debug", "shift"),
         (Some(1), "shift by less than 0 or more than 31".to_string())
     );
+    assert_eq!(
+        run("debug", "name"),
+        (
+            Some(1),
+            "Patient: name is longer than 8 characters".to_string()
+        )
+    );
+    assert_eq!(
+        run("debug", "join"),
+        (
+            Some(1),
+            "joined text is longer than a string can hold".to_string()
+        )
+    );
     assert_eq!(run("release", "argument"), (Some(0), String::new()));
+    assert_eq!(run("release", "name"), (Some(0), String::new()));
     fs::remove_dir_all(output).ok();
 }
 

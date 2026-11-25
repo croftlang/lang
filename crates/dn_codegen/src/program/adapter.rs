@@ -80,6 +80,7 @@ impl<'a> Generator<'a> {
                 writer.own = Some(OwnFields {
                     prefix: format!("{name}_state."),
                     fields: fields.clone(),
+                    owner: None,
                 });
                 let names: Vec<String> = operation
                     .parameters

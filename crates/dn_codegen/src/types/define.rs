@@ -20,7 +20,10 @@ impl<'a> Generator<'a> {
             self.define(&ty, &mut done, &mut out);
             index += 1;
         }
-        out
+        let texts: String = (self.texts.borrow().iter())
+            .map(|n| format!("typedef struct {{\n    dn_u16 length;\n    char text[{n}];\n}} dn_text_{n};\n\n"))
+            .collect();
+        texts + &out
     }
 
     fn define(&self, ty: &Type, done: &mut HashSet<Type>, out: &mut String) {

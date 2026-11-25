@@ -55,6 +55,7 @@ impl<'a> Generator<'a> {
         writer.own = Some(OwnFields {
             prefix: "self.".to_string(),
             fields,
+            owner: Some(found.clone()),
         });
         writer.reserve("p_self");
         let own_copy = writer.raw_variable("self", &self.c_type(&aggregate_type));

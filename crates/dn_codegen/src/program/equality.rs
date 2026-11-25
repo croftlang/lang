@@ -81,8 +81,11 @@ impl<'a> Generator<'a> {
             }
             Type::Named(named) => {
                 let fields: Vec<String> = (self.struct_fields(named).into_iter())
-                    .map(|(field, field_type, _)| {
-                        self.compare(&format!("a->{field}"), &format!("b->{field}"), &field_type)
+                    .map(|(field, field_type, _)| match self.text_capacity(named, &field) {
+                        Some(_) => format!(
+                            "dn_text_equal(a->{field}.text, a->{field}.length, b->{field}.text, b->{field}.length)"
+                        ),
+                        None => self.compare(&format!("a->{field}"), &format!("b->{field}"), &field_type),
                     })
                     .collect();
                 let all = if fields.is_empty() {

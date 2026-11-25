@@ -14,7 +14,9 @@ pub const DEFAULT_STRING_CAPACITY: i64 = 32;
 pub const DEFAULT_BYTES_CAPACITY: i64 = 64;
 
 pub struct Sizes {
-    /// The longest string any constraint allows. Every string has room for it.
+    /// The room every working string has: the default, or the longest
+    /// string any constraint allows if that is longer. A string field with a
+    /// shorter `Length` is kept in a size of its own.
     pub string_capacity: i64,
     /// The most bytes any constraint allows. Every `Bytes` has room for them.
     pub bytes_capacity: i64,
@@ -80,9 +82,7 @@ impl Sizes {
         if sizes.bytes_capacity == 0 {
             sizes.bytes_capacity = DEFAULT_BYTES_CAPACITY;
         }
-        if sizes.string_capacity == 0 {
-            sizes.string_capacity = DEFAULT_STRING_CAPACITY;
-        }
+        sizes.string_capacity = sizes.string_capacity.max(DEFAULT_STRING_CAPACITY);
         sizes
     }
 

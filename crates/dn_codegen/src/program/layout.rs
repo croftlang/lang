@@ -31,7 +31,10 @@ impl<'a> Generator<'a> {
                 4 + variants.max().unwrap_or(0)
             }
             Type::Named(named) => (self.struct_fields(named).into_iter())
-                .map(|(_, ty, _)| self.serialized_size(&ty))
+                .map(|(field, ty, _)| match self.text_capacity(named, &field) {
+                    Some(capacity) => 2 + capacity,
+                    None => self.serialized_size(&ty),
+                })
                 .sum(),
             _ => 0,
         }
@@ -58,7 +61,10 @@ impl<'a> Generator<'a> {
             }
             Type::Named(named) if !self.is_scalar(&ty) => {
                 let fields: Vec<String> = (self.struct_fields(named).into_iter())
-                    .map(|(name, ty, _)| format!("{name}:{}", self.layout(&ty)))
+                    .map(|(name, ty, _)| match self.text_capacity(named, &name) {
+                        Some(capacity) => format!("{name}:String<{capacity}>"),
+                        None => format!("{name}:{}", self.layout(&ty)),
+                    })
                     .collect();
                 format!("{}{{{}}}", named.name, fields.join(","))
             }

@@ -28,7 +28,21 @@ impl<'g, 'a> Writer<'g, 'a> {
                 Statement::Set(name, value) => {
                     let (target, ty) = self.set_target(&name.name);
                     let c = self.value(value, &ty);
-                    self.line(format!("{target} = {c};"));
+                    let own = self
+                        .own
+                        .as_ref()
+                        .filter(|_| self.lookup(&name.name).is_none());
+                    match own.map(|own| {
+                        (
+                            own.prefix.trim_end_matches('.').to_string(),
+                            own.owner.clone(),
+                        )
+                    }) {
+                        Some((prefix, owner)) => {
+                            self.write_field(owner.as_ref(), &prefix, &name.name, &c)
+                        }
+                        None => self.line(format!("{target} = {c};")),
+                    }
                 }
                 Statement::Expr(value) => match &value.kind {
                     ExprKind::If(condition, block) => self.guard(condition, block),

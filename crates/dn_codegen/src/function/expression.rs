@@ -117,7 +117,11 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// in debug builds: `Score(120)`, or `120` where a `Score` is expected.
     pub fn wrap_single_value(&mut self, value: String, ty: &Type) -> String {
         let temp = self.temp(ty);
-        self.line(format!("{temp}.value = {value};"));
+        let owner = match ty {
+            Type::Named(owner) => Some(owner.clone()),
+            _ => None,
+        };
+        self.write_field(owner.as_ref(), &temp, "value", &value);
         self.check_fields(&temp, ty);
         temp
     }

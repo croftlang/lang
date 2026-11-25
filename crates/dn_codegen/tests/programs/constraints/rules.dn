@@ -13,6 +13,11 @@ context Clinic {
 
     value Score: Int where Range(0, 999)
 
+    // Kept in eight characters of its own, not the size of every string.
+    value Patient {
+        name: String where Length(1, 8)
+    }
+
     fn pay(amount: Decimal<2> where Range(0.01, 99.99)): Decimal<2> = amount
 
     fn half(number: Int): Int where Even = number / 2
@@ -43,6 +48,12 @@ context Clinic {
         }
         if chosen.contains("pay") {
             let paid = pay(120)
+        }
+        if chosen.contains("name") {
+            let patient = Patient { name: "Bartholomew" }
+        }
+        if chosen.contains("join") {
+            let joined = "a sentence of twenty " + "and another of twenty"
         }
         if chosen.contains("shift") {
             let shifted = 1 << chosen.length * 40

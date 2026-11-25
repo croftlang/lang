@@ -123,8 +123,17 @@ impl<'a> Generator<'a> {
             Type::Named(named) => {
                 let (mut write, mut read) = (String::new(), String::new());
                 for (field, field_type, _) in self.struct_fields(named) {
-                    let (w, r) =
-                        self.serialize_value(&format!("value->{field}"), &field_type, "    ");
+                    let place = format!("value->{field}");
+                    if let Some(capacity) = self.text_capacity(named, &field) {
+                        write.push_str(&format!(
+                            "    if (!dn_bytes_put_text(out, {place}.text, {place}.length)) {{\n        return 0;\n    }}\n"
+                        ));
+                        read.push_str(&format!(
+                            "    if (!dn_bytes_take_text(in, at, {place}.text, &{place}.length, {capacity})) {{\n        return 0;\n    }}\n"
+                        ));
+                        continue;
+                    }
+                    let (w, r) = self.serialize_value(&place, &field_type, "    ");
                     write.push_str(&w);
                     read.push_str(&r);
                 }

@@ -61,6 +61,7 @@ void dn_bytes_to_text(const dn_bytes *bytes, dn_string *out)
         out->text[out->length] = (char) bytes->items[index];
         out->length++;
     }
+    DN_CHECK(index == bytes->length, "bytes are longer than a string can hold");
 }
 
 void dn_string_to_bytes(const dn_string *text, dn_bytes *out)
@@ -71,4 +72,5 @@ void dn_string_to_bytes(const dn_string *text, dn_bytes *out)
         out->items[out->length] = (unsigned char) text->text[index];
         out->length++;
     }
+    DN_CHECK(index == text->length, "text is longer than bytes can hold");
 }

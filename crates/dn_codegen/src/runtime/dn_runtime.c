@@ -54,6 +54,7 @@ void dn_string_join(const dn_string *a, const dn_string *b, dn_string *out)
         joined.text[joined.length] = b->text[index];
         joined.length++;
     }
+    DN_CHECK(index == b->length, "joined text is longer than a string can hold");
     *out = joined;
 }
 

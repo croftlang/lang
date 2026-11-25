@@ -86,9 +86,9 @@ impl<'g, 'a> Writer<'g, 'a> {
                 .map_or(Type::Unknown, |(_, t)| t.clone());
             let value = match &given.value {
                 Some(value) => self.value(value, &field_type),
-                None => self.local_or_field(field),
+                None => self.read_name(field),
             };
-            self.line(format!("{queued}.as.{name}.{field} = {value};"));
+            self.write_field(Some(&found), &format!("{queued}.as.{name}"), field, &value);
         }
         let owner = Resolved {
             context: self.context.clone(),
