@@ -85,6 +85,14 @@ The built-in constraints. `Range(low, high)` limits a number. `Length(low, high)
 limits the item count of a list or the character count of a string, and
 `Length(n)` means exactly n. The compiler also uses them to decide memory size.
 
+### Capacity
+How much a string, list or `Bytes` can hold, fixed when the program is
+compiled. A string field with a `Length` constraint holds exactly that many
+characters. Every other string, such as a parameter, a `let` or a joined
+string, holds 32 characters, or the longest `Length` in the program if that
+is longer. A string too long for where it goes is cut short; in a debug
+build that stops the program and says which field it was.
+
 ### Where
 Attaches constraints to a type, on a field, parameter or return type:
 `damage: Int where Range(1, 20)`.

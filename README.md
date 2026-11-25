@@ -173,9 +173,12 @@ cc -std=c89 *.c -o dungeon
   floating point unless the program uses `Float`, and structs are passed by
   pointer, since cc65 can only pass 1, 2 and 4 byte structs by value.
 - **Fixed sizes.** A list holds as many items as the largest `Length` constraint
-  on any list of its item type (16 when there is none), and every string has
-  room for the longest string any constraint allows (32 by default). A whole
-  number field with a `Range` constraint takes the smallest C type that fits.
+  on any list of its item type (16 when there is none). A string field with a
+  `Length` constraint takes just that many characters; every other string has
+  room for 32, or for the longest `Length` in the program if that is longer.
+  Text that doesn't fit is cut short, and a debug build stops and says where.
+  A whole number field with a `Range` constraint takes the smallest C type
+  that fits.
 - **Only what's called.** `dn_runtime.c` holds just the runtime functions the
   program reaches. cc65 and z88dk link a whole C file at once, so anything
   left in would cost memory on an 8-bit machine.
