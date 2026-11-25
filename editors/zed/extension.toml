@@ -4,13 +4,13 @@ description = "Syntax highlighting, outline and indentation for the b domain lan
 version = "0.1.0"
 schema_version = 1
 authors = ["Bri Ward"]
-repository = "https://github.com/briward/b"
+repository = "https://github.com/croftlang/lang"
 
 # The grammar lives in this repository, in editors/tree-sitter-b. Zed builds
 # it from the commit named by `rev`, so `rev` must be a pushed commit that
 # contains it. For local work, see editors/zed/README.md.
 [grammars.b]
-repository = "https://github.com/briward/b"
+repository = "https://github.com/croftlang/lang"
 rev = "0e491cbb2cd84e4a8435fe282afbd69aee5ccde4"
 path = "editors/tree-sitter-b"
 

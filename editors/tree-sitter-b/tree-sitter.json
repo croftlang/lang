@@ -14,6 +14,6 @@
     "version": "0.1.0",
     "license": "MIT",
     "description": "b grammar for tree-sitter",
-    "links": { "repository": "https://github.com/briward/b" }
+    "links": { "repository": "https://github.com/croftlang/lang" }
   }
 }
