@@ -1,9 +1,22 @@
-//! Turning checked dn programs into Rust.
+//! Generates portable C89 from a checked dn program, for one target.
 
-pub mod cargo;
-pub mod rust;
-mod rust_names;
-mod source_text;
+mod function;
+mod generator;
+mod names;
+mod program;
+mod types;
 
-pub use cargo::{cargo_manifest, crate_name};
-pub use rust::generate_rust;
+use dn_analysis::Program;
+
+pub use generator::Generator;
+
+/// One generated file: its name and its contents.
+pub struct GeneratedFile {
+    pub name: String,
+    pub contents: String,
+}
+
+/// Generates the C files for a program on one target, such as `desktop` or `spectrum_48k`.
+pub fn generate(program: &Program, target: &str) -> Result<Vec<GeneratedFile>, String> {
+    Generator::new(program, target)?.generate()
+}

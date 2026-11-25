@@ -1,0 +1,64 @@
+//! Names, fields, records and `with`.
+
+use dn_syntax::ast::{ExprId, Identifier, Path};
+use dn_syntax::Span;
+
+use super::{BodyChecker, BodyKind};
+use crate::facts::Meaning;
+use crate::types::Type;
+
+impl<'c, 'a> BodyChecker<'c, 'a> {
+    pub(super) fn name(
+        &mut self,
+        id: Option<ExprId>,
+        name: &str,
+        span: Span,
+        expected: Option<&Type>,
+    ) -> Type {
+        if let Some(local) = self.local(name) {
+            let ty = local.ty.clone();
+            self.note(id, Meaning::Local);
+            return ty;
+        }
+        if let Some(ty) = self.own_field(name, span, false) {
+            self.note(id, Meaning::OwnField);
+            return ty;
+        }
+        match name {
+            "Unit" => {
+                self.note(id, Meaning::Unit);
+                return Type::Unit;
+            }
+            "None" => {
+                self.note(id, Meaning::NoneValue);
+                return Type::option(Type::Unknown);
+            }
+            _ => {}
+        }
+        let path = Path {
+            segments: vec![Identifier {
+                name: name.to_string(),
+                span,
+            }],
+        };
+        if let Some(ty) = self.type_path(id, &path, expected) {
+            return ty;
+        }
+        self.error(format!("cannot find `{name}` here"), span);
+        Type::Unknown
+    }
+
+    /// A field of the command's aggregate or of the adapter. `for_set` leaves
+    /// out the identity, which never changes.
+    pub(super) fn own_field(&self, name: &str, _span: Span, for_set: bool) -> Option<Type> {
+        let fields = match self.kind {
+            BodyKind::Command(aggregate) => &aggregate.fields,
+            BodyKind::Adapter(adapter) => &adapter.fields,
+            _ => return None,
+        };
+        let field = fields
+            .iter()
+            .find(|field| field.name.name == name && !(for_set && field.is_identity))?;
+        Some(self.checker.lower_type(&self.scope, &field.ty))
+    }
+}

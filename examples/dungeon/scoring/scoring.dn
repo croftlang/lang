@@ -1,0 +1,39 @@
+// Points for the player, kept apart from the dungeon itself.
+context Scoring {
+    publish { SetUpScoring }
+
+    use { Room.EnemyDefeated } from Dungeon
+    use { min } from Std.Numbers
+
+    identity ScoreboardId: Int where Range(1, 4)
+
+    const MAIN_SCOREBOARD: ScoreboardId = 1
+    const POINTS_PER_ENEMY: Int = 100
+
+    aggregate Scoreboard {
+        identity id: ScoreboardId
+        points: Int where Range(0, 999_999)
+
+        event PointsAdded { total: Int }
+
+        command AddPoints(amount: Int where Range(1, 1000)) = {
+            set points = min(999_999, points + amount)
+            emit PointsAdded { total: points }
+        }
+
+        command Reset = {
+            set points = 0
+        }
+    }
+
+    repository Scoreboards for Scoreboard
+
+    // Saves an empty scoreboard, for the points to go on.
+    service SetUpScoring(): Result<Unit, StorageError> {
+        calls Scoreboards
+    } = scoreboards.save(Scoreboard { id: MAIN_SCOREBOARD, points: 0 })
+
+    policy ScoreOnDefeat when Room.EnemyDefeated {
+        issue AddPoints(amount: POINTS_PER_ENEMY) on Scoreboard(MAIN_SCOREBOARD)
+    }
+}

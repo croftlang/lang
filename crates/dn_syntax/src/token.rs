@@ -1,30 +1,20 @@
+use crate::keyword::Keyword;
 use crate::span::Span;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
     Identifier(String),
+    Keyword(Keyword),
     Int(i64),
-    Float(f64),
+    /// A number with a fractional part, kept as written so a `Decimal` gets it exactly.
+    Float(String),
     String(String),
-
-    // Keywords
-    Struct,
-    Enum,
-    Const,
-    Constraint,
-    Port,
-    Adapter,
-    For,
-    Fn,
-    Is,
-    True,
-    False,
-
-    // Punctuation
     LeftBrace,
     RightBrace,
     LeftParen,
     RightParen,
+    LeftBracket,
+    RightBracket,
     Less,
     Greater,
     LessEqual,
@@ -44,58 +34,32 @@ pub enum TokenKind {
     And,
     Or,
     Not,
-
+    Ampersand,
+    Pipe,
+    Caret,
+    Tilde,
+    ShiftLeft,
+    ShiftRight,
+    Question,
     EndOfFile,
 }
 
 impl TokenKind {
-    pub fn keyword(word: &str) -> Option<TokenKind> {
-        let kind = match word {
-            "struct" => TokenKind::Struct,
-            "enum" => TokenKind::Enum,
-            "const" => TokenKind::Const,
-            "constraint" => TokenKind::Constraint,
-            "port" => TokenKind::Port,
-            "adapter" => TokenKind::Adapter,
-            "for" => TokenKind::For,
-            "fn" => TokenKind::Fn,
-            "is" => TokenKind::Is,
-            "true" => TokenKind::True,
-            "false" => TokenKind::False,
-            _ => return None,
-        };
-        Some(kind)
-    }
-
     /// How the token is shown in error messages.
     pub fn describe(&self) -> String {
-        match self {
-            TokenKind::Identifier(name) => format!("identifier `{name}`"),
-            TokenKind::Int(value) => format!("integer `{value}`"),
-            TokenKind::Float(value) => format!("float `{value}`"),
-            TokenKind::String(_) => "string".to_string(),
-            TokenKind::EndOfFile => "end of file".to_string(),
-            other => format!("`{}`", other.symbol()),
-        }
-    }
-
-    fn symbol(&self) -> &'static str {
-        match self {
-            TokenKind::Struct => "struct",
-            TokenKind::Enum => "enum",
-            TokenKind::Const => "const",
-            TokenKind::Constraint => "constraint",
-            TokenKind::Port => "port",
-            TokenKind::Adapter => "adapter",
-            TokenKind::For => "for",
-            TokenKind::Fn => "fn",
-            TokenKind::Is => "is",
-            TokenKind::True => "true",
-            TokenKind::False => "false",
+        let symbol = match self {
+            TokenKind::Identifier(name) => return format!("`{name}`"),
+            TokenKind::Keyword(keyword) => return format!("`{}`", keyword.as_str()),
+            TokenKind::Int(value) => return format!("`{value}`"),
+            TokenKind::Float(value) => return format!("`{value}`"),
+            TokenKind::String(_) => return "a string".to_string(),
+            TokenKind::EndOfFile => return "the end of the file".to_string(),
             TokenKind::LeftBrace => "{",
             TokenKind::RightBrace => "}",
             TokenKind::LeftParen => "(",
             TokenKind::RightParen => ")",
+            TokenKind::LeftBracket => "[",
+            TokenKind::RightBracket => "]",
             TokenKind::Less => "<",
             TokenKind::Greater => ">",
             TokenKind::LessEqual => "<=",
@@ -115,8 +79,15 @@ impl TokenKind {
             TokenKind::And => "&&",
             TokenKind::Or => "||",
             TokenKind::Not => "!",
-            _ => "?",
-        }
+            TokenKind::Ampersand => "&",
+            TokenKind::Pipe => "|",
+            TokenKind::Caret => "^",
+            TokenKind::Tilde => "~",
+            TokenKind::ShiftLeft => "<<",
+            TokenKind::ShiftRight => ">>",
+            TokenKind::Question => "?",
+        };
+        format!("`{symbol}`")
     }
 }
 
@@ -124,4 +95,8 @@ impl TokenKind {
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
+    /// True when a line break comes between this token and the one before.
+    pub newline_before: bool,
+    /// Comment lines directly above this token, with no blank line between.
+    pub doc: Vec<String>,
 }

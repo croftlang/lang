@@ -1,95 +1,112 @@
-use std::collections::HashMap;
+//! The types a body's expressions can have.
+
 use std::fmt;
 
-/// A resolved dn type.
-#[derive(Debug, Clone, PartialEq)]
+use crate::symbols::SymbolKind;
+
+/// Shifts stay below the width of the smallest `Int` on any target, 32 bits.
+pub const MAX_SHIFT: i64 = 32;
+
+/// The most decimal places a `Decimal` can have, so its value fits 32 bits.
+pub const MAX_PLACES: i64 = 6;
+
+/// A declaration a name refers to: its context, its full name there, and its kind.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Resolved {
+    pub context: String,
+    pub name: String,
+    pub kind: SymbolKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     Int,
     Float,
+    /// A fixed-point number with this many decimal places, kept as a whole
+    /// number of hundredths for `Decimal<2>`.
+    Decimal(u32),
     Bool,
     String,
+    /// A sequence of bytes, each from 0 to 255: file contents, a save, a
+    /// network message.
+    Bytes,
     Unit,
     List(Box<Type>),
+    /// Keys, each with a value, such as how many of each item the player holds.
+    Map(Box<Type>, Box<Type>),
     Option(Box<Type>),
     Result(Box<Type>, Box<Type>),
-    Struct(String),
-    Enum(String),
-    /// A type parameter of a generic constraint, such as `T`.
-    Generic(String),
-    /// The enum itself used as a value, as in `Currency.Gbp`.
-    EnumName(String),
+    /// A value, entity, aggregate, enum, identity, error, error set or event.
+    Named(Resolved),
+    /// One of several errors, such as what loading, changing and saving can fail with.
+    Errors(Vec<Type>),
+    /// What a service holds for a port it uses, such as `keyboard`.
+    Port(Resolved),
+    /// What a service holds for a repository it uses, such as `rooms`.
+    Repository(Resolved),
+    /// Not known: after an error has been reported, or the item type of `None`.
+    Unknown,
 }
 
 impl Type {
-    /// Types passed by value rather than by reference in generated code.
-    pub fn is_copy(&self) -> bool {
+    pub fn list(item: Type) -> Type {
+        Type::List(Box::new(item))
+    }
+
+    pub fn map(key: Type, value: Type) -> Type {
+        Type::Map(Box::new(key), Box::new(value))
+    }
+
+    pub fn option(item: Type) -> Type {
+        Type::Option(Box::new(item))
+    }
+
+    pub fn result(value: Type, error: Type) -> Type {
+        Type::Result(Box::new(value), Box::new(error))
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        matches!(self, Type::Unknown)
+    }
+
+    pub fn is_number(&self) -> bool {
         matches!(
             self,
-            Type::Int | Type::Float | Type::Bool | Type::Unit | Type::Enum(_)
+            Type::Int | Type::Float | Type::Decimal(_) | Type::Unknown
         )
     }
 
-    pub fn is_numeric(&self) -> bool {
-        matches!(self, Type::Int | Type::Float)
+    /// The declaration behind a named type, if it is one of `kinds`.
+    pub fn named(&self, kinds: &[SymbolKind]) -> Option<&Resolved> {
+        match self {
+            Type::Named(named) if kinds.contains(&named.kind) => Some(named),
+            _ => None,
+        }
     }
 }
 
 impl fmt::Display for Type {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Type::Int => write!(f, "Int"),
             Type::Float => write!(f, "Float"),
+            Type::Decimal(places) => write!(f, "Decimal<{places}>"),
             Type::Bool => write!(f, "Bool"),
             Type::String => write!(f, "String"),
+            Type::Bytes => write!(f, "Bytes"),
             Type::Unit => write!(f, "Unit"),
             Type::List(item) => write!(f, "List<{item}>"),
+            Type::Map(key, value) => write!(f, "Map<{key}, {value}>"),
             Type::Option(item) => write!(f, "Option<{item}>"),
-            Type::Result(ok, error) => write!(f, "Result<{ok}, {error}>"),
-            Type::Struct(name) | Type::Enum(name) | Type::Generic(name) => write!(f, "{name}"),
-            Type::EnumName(name) => write!(f, "enum {name}"),
-        }
-    }
-}
-
-/// Matches `actual` against `expected`, binding type parameters on the way.
-/// Returns false when the types cannot match.
-pub fn unify(expected: &Type, actual: &Type, bindings: &mut HashMap<String, Type>) -> bool {
-    match (expected, actual) {
-        (Type::Generic(name), _) => match bindings.get(name) {
-            Some(bound) => bound.clone() == *actual,
-            None => {
-                bindings.insert(name.clone(), actual.clone());
-                true
+            Type::Result(value, error) => write!(f, "Result<{value}, {error}>"),
+            Type::Named(named) | Type::Port(named) | Type::Repository(named) => {
+                write!(f, "{}", named.name)
             }
-        },
-        (Type::List(a), Type::List(b)) | (Type::Option(a), Type::Option(b)) => {
-            unify(a, b, bindings)
+            Type::Errors(errors) => {
+                let names: Vec<String> = errors.iter().map(Type::to_string).collect();
+                write!(f, "{}", names.join(" or "))
+            }
+            Type::Unknown => write!(f, "_"),
         }
-        (Type::Result(a_ok, a_error), Type::Result(b_ok, b_error)) => {
-            unify(a_ok, b_ok, bindings) && unify(a_error, b_error, bindings)
-        }
-        _ => expected == actual,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn binds_generic_once() {
-        let mut bindings = HashMap::new();
-        let list_of_t = Type::List(Box::new(Type::Generic("T".into())));
-        assert!(unify(
-            &list_of_t,
-            &Type::List(Box::new(Type::Int)),
-            &mut bindings
-        ));
-        assert_eq!(bindings["T"], Type::Int);
-        assert!(!unify(
-            &Type::Generic("T".into()),
-            &Type::String,
-            &mut bindings
-        ));
     }
 }

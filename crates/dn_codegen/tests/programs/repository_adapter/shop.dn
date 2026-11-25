@@ -1,0 +1,95 @@
+// Two ways to keep aggregates somewhere of the program's own: an adapter
+// written for the Shelves repository itself, which keeps shelves in a list,
+// and an adapter for Storage, which keeps the bytes the compiler makes for
+// each till.
+context Shop {
+    identity ShelfId: Int where Range(1, 99)
+
+    aggregate Shelf {
+        identity id: ShelfId
+        stock: Int where Range(0, 255)
+
+        error NotFound
+    }
+
+    repository Shelves for Shelf
+
+    adapter ListShelves for Shelves = {
+        shelves: List<Shelf> where Length(0, 4) = []
+
+        fn find(id) = match shelves.find(shelf -> shelf.id == id) {
+            Some(shelf) -> Ok(shelf)
+            None -> Err(Shelf.NotFound)
+        }
+
+        fn save(shelf) = {
+            set shelves = shelves.filter(kept -> kept.id != shelf.id).add(shelf)
+            Ok(Unit)
+        }
+    }
+
+    identity TillId: Int where Range(1, 9)
+
+    aggregate Till {
+        identity id: TillId
+        cash: Int
+
+        error NotFound
+    }
+
+    repository Tills for Till
+
+    value Entry {
+        key: String where Length(1, 8)
+        data: Bytes
+    }
+
+    adapter ListStorage for Storage = {
+        entries: List<Entry> where Length(0, 4) = []
+
+        fn load(key) = Ok(entries.find(entry -> entry.key == key).map(entry -> entry.data))
+
+        fn save(key, data) = {
+            set entries = entries.filter(entry -> entry.key != key).add(Entry { key: key, data: data })
+            Ok(Unit)
+        }
+
+        fn remove(key) = {
+            set entries = entries.filter(entry -> entry.key != key)
+            Ok(Unit)
+        }
+    }
+
+    error WrongAnswer
+
+    fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+        if ok {
+            Ok(Unit)
+        }
+        Err(WrongAnswer)
+    }
+
+    enum Failure {
+        include Shelf.Error
+        include Till.Error
+        include StorageError
+        include WrongAnswer
+    }
+
+    service Check(): Result<Unit, Failure> {
+        calls Shelves, Tills
+    } = {
+        tills.save(Till { id: 2, cash: -40 })?
+        let till = tills.find(2)?
+        check(till.cash == -40)?
+        shelves.save(Shelf { id: 4, stock: 10 })?
+        shelves.save(Shelf { id: 4, stock: 12 })?
+        let found = shelves.find(4)?
+        check(found.stock == 12)?
+        let missing = match shelves.find(5) {
+            Ok(shelf) -> false
+            Err(error) -> true
+        }
+        check(missing)
+    }
+}

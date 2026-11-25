@@ -1,6 +1,6 @@
 [package]
 name = "dn_codegen"
-description = "Rust code generation for the dn language"
+description = "Generates portable C from checked dn programs"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
