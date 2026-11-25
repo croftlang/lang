@@ -172,7 +172,14 @@ impl<'g, 'a> Writer<'g, 'a> {
             return "0".to_string();
         };
 
-        let list = self.temp(ty);
+        // An empty list holds no strings.
+        let ty = if items.is_empty() {
+            self.gen.narrowest(ty)
+        } else {
+            ty.clone()
+        };
+
+        let list = self.temp(&ty);
         let capacity = self.gen.sizes.list_capacity(item);
 
         self.line(format!(

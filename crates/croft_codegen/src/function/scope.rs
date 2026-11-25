@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use croft_analysis::Type;
 
-use super::Writer;
+use super::{Returns, Writer};
 use crate::types::bounds::has_bound;
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -32,6 +32,24 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         c
+    }
+
+    /// Notes a value of `ty` written to `target`, when that is the result.
+    pub fn note_result(&mut self, target: &str, ty: &Type) {
+        let Returns::Value(result) = &self.returns else {
+            return;
+        };
+
+        if target != "(*out)" {
+            return;
+        }
+
+        let given = self.gen.keep_bound(ty, result);
+
+        self.returned = Some(match &self.returned {
+            Some(earlier) => self.gen.wider(earlier, &given),
+            None => given,
+        });
     }
 
     /// The type of the value `c` holds: `ty` with the bounds of its strings,

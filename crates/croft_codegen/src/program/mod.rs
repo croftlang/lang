@@ -31,6 +31,8 @@ const RUNTIME_SOURCE: &str = concat!(
 
 impl<'a> Generator<'a> {
     pub fn generate(&self) -> Result<Vec<GeneratedFile>, String> {
+        self.settle_results();
+
         let mut prototypes = Vec::new();
         let (defines, globals, init) = self.constants();
         let functions = self.functions(&mut prototypes);

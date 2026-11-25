@@ -47,6 +47,21 @@ impl<'a> Generator<'a> {
         Type::Text(length.max(1) as u16)
     }
 
+    /// `ty` with each string as short as it can be: the type of `None`,
+    /// `[]` or `Err(e)`, which hold no string at all.
+    pub fn narrowest(&self, ty: &Type) -> Type {
+        match ty {
+            Type::String | Type::Text(_) => self.text_type(1),
+            Type::List(item) => Type::list(self.narrowest(item)),
+            Type::Option(item) => Type::option(self.narrowest(item)),
+            Type::Map(key, value) => Type::map(self.narrowest(key), self.narrowest(value)),
+            Type::Result(value, error) => {
+                Type::result(self.narrowest(value), self.narrowest(error))
+            }
+            other => other.clone(),
+        }
+    }
+
     /// The most characters a string of `ty` holds.
     pub fn bound(&self, ty: &Type) -> i64 {
         match ty {

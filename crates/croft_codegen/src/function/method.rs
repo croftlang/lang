@@ -101,8 +101,10 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         let parameters = self.gen.operation_parameters(port, name);
         let passed = self.pass_all(arguments, &parameters);
+        let result = self.gen.operation_result(port, name);
+        let result = self.gen.keep_bound(&result, ty);
 
-        self.call_into(&format!("{}_{name}", c_name(&adapter)), passed, ty)
+        self.call_into(&format!("{}_{name}", c_name(&adapter)), passed, &result)
     }
 
     /// An operation on a built-in port, which the runtime supplies on every target.

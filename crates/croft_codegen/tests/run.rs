@@ -459,7 +459,8 @@ fn keeps_strings_in_the_size_they_can_need() {
 }
 
 /// `split` on a parameter with a `Length` makes a list of strings that
-/// size, not of the longest string anywhere.
+/// size, not of the longest string anywhere, and a function's result is as
+/// long as what it gives back.
 #[test]
 fn sizes_strings_from_where_they_come_from() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/bounded_strings");
@@ -471,5 +472,11 @@ fn sizes_strings_from_where_they_come_from() {
 
     assert!(body.contains("croft_list_text_12 t"), "{body}");
     assert!(!body.contains("croft_string t"), "{body}");
+
+    // Results are as long as what the body gives back, or their own `Length`.
+    assert!(c.contains("void Words_noun_of(const Words_Command *p_given, croft_text_7 *out)"));
+    assert!(c.contains("void Words_second(croft_string_view p_line, croft_text_23 *out)"));
+    assert!(c.contains("void Words_code(croft_text_10 *out)"));
+    assert!(c.contains("void Words_dots(croft_int p_count, croft_string *out)"));
     fs::remove_dir_all(output).ok();
 }

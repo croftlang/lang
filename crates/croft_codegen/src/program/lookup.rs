@@ -98,6 +98,49 @@ impl<'a> Generator<'a> {
         }
     }
 
+    /// What a function or translation gives back, when its strings have
+    /// bounds: a `Length` on its result, or what its body was found to give.
+    pub fn result_of(&self, found: &Resolved) -> Option<Type> {
+        if !matches!(found.kind, SymbolKind::Function | SymbolKind::Translation) {
+            return None;
+        }
+
+        let decl = (self.program.contexts.get(&found.context))
+            .and_then(|context| context.functions.iter().find(|f| f.name.name == found.name))?;
+
+        let declared = self.function_result(&found.context, decl);
+
+        if self
+            .length_bound(&found.context, &decl.return_constraints)
+            .is_some()
+        {
+            return Some(self.parameter_type(&found.context, declared, &decl.return_constraints));
+        }
+
+        self.results.borrow().get(found).cloned()
+    }
+
+    /// Whether a function's result has a `Length` of its own, so its body
+    /// is held to that rather than giving its size.
+    pub fn has_result_length(&self, found: &Resolved) -> bool {
+        (self.program.contexts.get(&found.context))
+            .and_then(|context| context.functions.iter().find(|f| f.name.name == found.name))
+            .is_some_and(|decl| {
+                self.length_bound(&found.context, &decl.return_constraints)
+                    .is_some()
+            })
+    }
+
+    /// What a port operation gives back: bounded by a `Length` on its result.
+    pub fn operation_result(&self, port: &Resolved, operation: &str) -> Type {
+        let operations = self.model.operations_of(port);
+
+        match operations.into_iter().find(|op| op.name == operation) {
+            Some(op) => self.parameter_type(&port.context, op.result, op.result_constraints),
+            None => Type::Unknown,
+        }
+    }
+
     /// What a queued event is filed under, so saving its aggregate finds it:
     /// the identity, when it is a number. Text identities share one key.
     pub fn event_key(&self, aggregate: &Resolved, identity: &str) -> String {

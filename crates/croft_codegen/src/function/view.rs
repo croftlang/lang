@@ -71,12 +71,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// `match` writes into it, so neither needs a temporary of its own.
     pub fn value_into(&mut self, target: &str, value: &Expr, ty: &Type) -> String {
         match &value.kind {
-            ExprKind::String(text) if is_string(ty) => {
-                self.line(format!(
-                    "croft_string_set({}, CROFT_OUT({target}));",
-                    c_string(text)
-                ));
-            }
+            ExprKind::String(_) if is_string(ty) => self.assign(target, value, ty),
             ExprKind::Match(subject, arms) if *ty != Type::Unit => {
                 self.match_into(subject, arms, ty, target);
             }
