@@ -135,3 +135,11 @@ fn reads_the_starting_value_of_an_adapter_field() {
         matches!(field.value.as_ref().map(|v| &v.kind), Some(crate::ast::ExprKind::List(items)) if items.len() == 2)
     );
 }
+
+#[test]
+fn explains_that_an_entity_belongs_in_an_aggregate() {
+    assert_eq!(
+        parse_error("context Shop {\n entity Item {\n identity id: ItemId\n }\n}"),
+        "an entity belongs inside an aggregate; a thing with identity on its own is an `aggregate` with no entities"
+    );
+}

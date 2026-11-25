@@ -6,6 +6,7 @@
 use super::{ParseResult, Parser};
 use crate::ast::{ContextDecl, ContextItem, File, UseDecl};
 use crate::keyword::Keyword;
+use crate::span::Diagnostic;
 use crate::token::TokenKind;
 
 impl Parser {
@@ -70,6 +71,11 @@ impl Parser {
             Keyword::Port => ContextItem::Port(self.parse_port()?),
             Keyword::Adapter => ContextItem::Adapter(self.parse_adapter()?),
             Keyword::Repository => ContextItem::Repository(self.parse_repository()?),
+            Keyword::Entity => {
+                let message = "an entity belongs inside an aggregate; a thing with identity \
+                               on its own is an `aggregate` with no entities";
+                return Err(Diagnostic::new(message, self.span()));
+            }
             _ => return Err(self.unexpected("a declaration")),
         };
         Ok(item)
