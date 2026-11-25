@@ -39,6 +39,7 @@ impl<'a> Generator<'a> {
             Type::Bool | Type::Unit => 1,
             Type::String => 2 + self.sizes.string_capacity,
             Type::Text(length) => 2 + i64::from(*length),
+            Type::Borrowed(_) => POINTER_SIZE + 2,
             Type::Bytes => 2 + self.sizes.bytes_capacity,
             Type::List(item) => 2 + self.sizes.list_capacity(item) * self.memory_size(item),
             Type::Map(key, value) => {

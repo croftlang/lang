@@ -46,6 +46,28 @@ fn noun_of(given: Command): String = match given {
     Wait -> "nothing"
 }
 
+// A result as long as the longest thing it gives back, or its own `Length`.
+fn code(): String where Length(0, 10) = "ab"
+
+fn dots(count: Int): String = {
+    if count <= 0 {
+        "done"
+    }
+    dots(count - 1) + "."
+}
+
+fn first_long(found: List<String>): Option<String> = {
+    if found.is_empty {
+        None
+    }
+    Some(found.first.unwrap_or("") + "!")
+}
+
+// Parts borrowed from the line, kept in a field, passed on, and given back.
+fn labelled(line: String where Length(0, 12)): Label = Label { name: line.split(" ").last.unwrap_or("none") }
+
+fn last_word(line: String where Length(0, 12)): String = line.trim().split(" ").last.unwrap_or("")
+
 fn greet(label: Label): String = "hello " + label.name + ", " + 42.to_string()
 
 service Check(): Result<Unit, WrongAnswer> = {
@@ -58,8 +80,17 @@ service Check(): Result<Unit, WrongAnswer> = {
     check(noun_of(read_command("look")) == "nothing")?
     check(greet(Label { name: "bri" }) == "hello bri, 42")?
     check(shout("short") == "short!")?
+    check(code() == "ab" && dots(3) == "done...")?
+    check(first_long(found).unwrap_or("") == "get!" && first_long([]).is_none)?
     let longer = ["a"].add("much longer than a")
     check(longer.last.unwrap_or("") == "much longer than a")?
+    check(labelled("a key").name == "key" && last_word(" a lamp ") == "lamp")?
+    check(greet(labelled("x bri")) == "hello bri, 42")?
+    // Splitting what is set later copies the parts, so they keep their words.
+    let said = "one two"
+    let parts = said.split(" ")
+    set said = "six ten"
+    check(parts.first.unwrap_or("") == "one" && said == "six ten")?
     let label = "a"
     set label = "set to something longer"
     check(label == "set to something longer")?

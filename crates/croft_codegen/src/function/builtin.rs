@@ -1,9 +1,10 @@
 //! Built-in functions: `max`, `min`, `abs`, `Some`, `Ok`, `Err`, `Range` and `Length`.
 
 use croft_analysis::Type;
-use croft_syntax::ast::Argument;
+use croft_syntax::ast::{Argument, ExprKind};
 
 use super::Writer;
+use crate::types::bounds::is_string;
 
 impl<'g, 'a> Writer<'g, 'a> {
     pub fn builtin(&mut self, name: &str, arguments: &[Argument], ty: &Type) -> String {
@@ -32,14 +33,41 @@ impl<'g, 'a> Writer<'g, 'a> {
                     _ => return "0".to_string(),
                 };
 
-                let temp = self.temp(ty);
-                self.line(format!("{temp}.{flag} = {on};"));
+                let Some(argument) = arguments.first() else {
+                    return "0".to_string();
+                };
 
-                match arguments.first() {
-                    Some(argument) => {
-                        self.assign(&format!("{temp}.{field}"), &argument.value, &inner)
+                // `Some(x)` and `Ok(x)` keep the bounds of `x`. `Err(e)` holds
+                // no value, so its value takes the least room.
+                let (c, given) = match &argument.value.kind {
+                    ExprKind::String(text) if is_string(&inner) => {
+                        (None, self.gen.text_type(text.chars().count() as i64))
                     }
-                    None => self.line(format!("{temp}.{field} = 0;")),
+                    _ => {
+                        let (c, bounded) = self.eval(&argument.value, Some(&inner));
+                        let given = self.gen.keep_bound(&bounded, &inner);
+                        (Some(self.convert(c, &bounded, &given)), given)
+                    }
+                };
+
+                let made = match ty {
+                    Type::Option(_) => Type::option(given.clone()),
+                    Type::Result(_, error) if name == "Ok" => {
+                        Type::result(given.clone(), (**error).clone())
+                    }
+                    Type::Result(value, _) => {
+                        Type::result(self.gen.narrowest(value), given.clone())
+                    }
+                    _ => ty.clone(),
+                };
+
+                let temp = self.temp(&made);
+                self.line(format!("{temp}.{flag} = {on};"));
+                let place = format!("{temp}.{field}");
+
+                match c {
+                    Some(c) => self.copy_into(&place, &c, &given, &given),
+                    None => self.assign(&place, &argument.value, &given),
                 }
 
                 temp

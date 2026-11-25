@@ -35,6 +35,10 @@ pub struct Generator<'a> {
     pub(crate) texts: RefCell<std::collections::BTreeSet<i64>>,
     /// Native C functions called by adapters, with their prototypes.
     pub(crate) natives: RefCell<Vec<(String, String)>>,
+    /// What each function and translation gives back, with the bounds of its
+    /// strings worked out from its body. One that isn't here gives back
+    /// its declared type.
+    pub(crate) results: RefCell<HashMap<Resolved, Type>>,
 }
 
 impl<'a> Generator<'a> {
@@ -113,6 +117,7 @@ impl<'a> Generator<'a> {
             checked_types: RefCell::default(),
             texts: RefCell::default(),
             natives: RefCell::default(),
+            results: RefCell::default(),
         };
 
         generator.make_room_for_storage();
@@ -135,6 +140,42 @@ impl<'a> Generator<'a> {
             self.sizes.bytes_capacity = self.sizes.bytes_capacity.max(largest);
             self.sizes.string_capacity = self.sizes.string_capacity.max(12);
         }
+    }
+}
+
+/// What writing functions adds to a `Generator`, saved so a round of
+/// `settle_results` leaves no trace.
+pub(crate) struct SavedState {
+    serialized: (Vec<Type>, HashSet<Type>),
+    used_types: (Vec<Type>, HashSet<Type>),
+    equalities: (Vec<Type>, HashSet<Type>),
+    checks: Vec<(String, String)>,
+    checked_types: HashSet<Resolved>,
+    texts: std::collections::BTreeSet<i64>,
+    natives: Vec<(String, String)>,
+}
+
+impl<'a> Generator<'a> {
+    pub(crate) fn save_state(&self) -> SavedState {
+        SavedState {
+            serialized: self.serialized.borrow().clone(),
+            used_types: self.used_types.borrow().clone(),
+            equalities: self.equalities.borrow().clone(),
+            checks: self.checks.borrow().clone(),
+            checked_types: self.checked_types.borrow().clone(),
+            texts: self.texts.borrow().clone(),
+            natives: self.natives.borrow().clone(),
+        }
+    }
+
+    pub(crate) fn restore_state(&self, saved: &SavedState) {
+        *self.serialized.borrow_mut() = saved.serialized.clone();
+        *self.used_types.borrow_mut() = saved.used_types.clone();
+        *self.equalities.borrow_mut() = saved.equalities.clone();
+        *self.checks.borrow_mut() = saved.checks.clone();
+        *self.checked_types.borrow_mut() = saved.checked_types.clone();
+        *self.texts.borrow_mut() = saved.texts.clone();
+        *self.natives.borrow_mut() = saved.natives.clone();
     }
 }
 

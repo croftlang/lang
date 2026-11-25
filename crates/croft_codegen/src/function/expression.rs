@@ -12,13 +12,16 @@ use crate::types::constant::{scale, scaled};
 impl<'g, 'a> Writer<'g, 'a> {
     /// The value of `value`, as a C expression of the C type for `want`.
     pub fn value(&mut self, value: &Expr, want: &Type) -> String {
-        // A literal is written straight into a string of the size wanted.
-        if let ExprKind::String(_) = &value.kind {
-            if is_string(want) {
-                let temp = self.temp(want);
-                self.assign(&temp, value, want);
-                return temp;
-            }
+        // A value made for a place of its own owns its strings.
+        let want = &self.gen.owned_type(want);
+
+        // A literal, `[]` or `None` is written straight into the type wanted.
+        if matches!(value.kind, ExprKind::String(_)) && is_string(want)
+            || self.is_empty(value, want)
+        {
+            let temp = self.temp(want);
+            self.assign(&temp, value, want);
+            return temp;
         }
 
         let (c, ty) = self.eval(value, Some(want));
@@ -155,6 +158,9 @@ impl<'g, 'a> Writer<'g, 'a> {
                 c_string(text)
             ));
 
+            let literal = self.gen.text_type(text.chars().count() as i64);
+            self.note_result(target, &literal);
+
             let room = self.gen.bound(ty);
 
             if text.chars().count() as i64 > room {
@@ -166,13 +172,36 @@ impl<'g, 'a> Writer<'g, 'a> {
             return;
         }
 
+        if self.is_empty(value, ty) {
+            match ty {
+                Type::List(_) => self.line(format!("{target}.length = 0;")),
+                _ => self.line(format!("croft_clear(&{target}, sizeof {target});")),
+            }
+
+            let empty = self.gen.narrowest(ty);
+            self.note_result(target, &empty);
+            return;
+        }
+
         let (c, from) = self.eval(value, Some(ty));
 
         if unbounded(&from) == unbounded(ty) {
             self.copy_into(target, &c, &from, ty);
         } else {
             let c = self.convert(c, &from, ty);
+            self.note_result(target, ty);
             self.line(format!("{target} = {c};"));
+        }
+    }
+
+    /// Whether `value` is `[]` for a list of `ty`, or `None` for an option.
+    fn is_empty(&self, value: &Expr, ty: &Type) -> bool {
+        match (&value.kind, ty) {
+            (ExprKind::List(items), Type::List(_)) => items.is_empty(),
+            (ExprKind::Name(_) | ExprKind::Field(..), Type::Option(_)) => {
+                matches!(self.gen.facts.meaning(value.id), Some(Meaning::NoneValue))
+            }
+            _ => false,
         }
     }
 
@@ -180,6 +209,8 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// differ at most in the bounds of their strings. A string longer than
     /// `to` has room for is cut short, and stops a debug build.
     pub fn copy_into(&mut self, target: &str, source: &str, from: &Type, to: &Type) {
+        self.note_result(target, from);
+
         if self.gen.c_type(from) == self.gen.c_type(to) {
             self.line(format!("{target} = {source};"));
             return;

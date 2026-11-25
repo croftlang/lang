@@ -4,6 +4,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::{Argument, ExprKind};
 
 use super::Writer;
+use crate::names::c_string;
 
 impl<'g, 'a> Writer<'g, 'a> {
     pub(super) fn option_method(
@@ -55,7 +56,22 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         // A literal is only written out when it is needed.
         if let ExprKind::String(text) = &argument.value.kind {
-            let literal = self.gen.text_type(text.chars().count() as i64);
+            let length = text.chars().count();
+
+            // A borrowed string, or else the literal, which stays put too.
+            if let Type::Borrowed(bound) = item {
+                let ty = Type::Borrowed((*bound).max(length as u16));
+                let temp = self.temp(&ty);
+
+                self.line(format!(
+                    "{temp} = {option}.some ? {option}.value : croft_string_view_from({}, {length});",
+                    c_string(text)
+                ));
+
+                return temp;
+            }
+
+            let literal = self.gen.text_type(length as i64);
             let ty = self.gen.keep_bound(&self.gen.wider(item, &literal), ty);
             let temp = self.temp(&ty);
 

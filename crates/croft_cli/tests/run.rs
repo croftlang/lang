@@ -17,7 +17,7 @@ const HELLO: &str = "\
 context Greeter {
   publish { greet }
 
-  fn greet(): String where Length(0, 11) = {
+  fn greet(): String where Length(0, 12) = {
     \"Hello, World\"
   }
 }

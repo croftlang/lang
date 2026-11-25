@@ -8,7 +8,9 @@ use super::Writer;
 impl<'g, 'a> Writer<'g, 'a> {
     /// `text` is a `croft_string_view`, kept in a variable so the string it
     /// borrows from is read once, of a string of type `bounded`. A string
-    /// made from it is no longer than it.
+    /// made from it is no longer than it. When what it borrows stays put,
+    /// `trim`, `slice` and each part of `split` borrow from it too, rather
+    /// than being copied.
     pub fn string_method(
         &mut self,
         (text, bounded): (&str, &Type),
@@ -16,6 +18,10 @@ impl<'g, 'a> Writer<'g, 'a> {
         arguments: &[Argument],
         ty: &Type,
     ) -> String {
+        let stable = self.is_stable(text);
+        let owned = self.gen.owned_type(bounded);
+        let part_type = Type::Borrowed(self.gen.bound(bounded) as u16);
+
         let borrowed = self.raw_variable("text", "croft_string_view");
         self.line(format!("{borrowed} = {text};"));
         let text = borrowed;
@@ -39,20 +45,29 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let part = part(self, 0);
                 format!("croft_string_{name}({text}, {part})")
             }
-            "to_upper" | "to_lower" | "trim" => {
-                let temp = self.temp(bounded);
+            "to_upper" | "to_lower" => {
+                let temp = self.temp(&owned);
                 self.line(format!("croft_string_{name}({text}, CROFT_OUT({temp}));"));
                 temp
             }
-            "slice" => {
-                let start = number(self, 0);
-                let end = number(self, 1);
-                let temp = self.temp(bounded);
+            "trim" | "slice" => {
+                let part = match name {
+                    "trim" => format!("croft_string_trimmed({text})"),
+                    _ => {
+                        let start = number(self, 0);
+                        let end = number(self, 1);
+                        format!("croft_string_part({text}, {start}, {end})")
+                    }
+                };
 
-                self.line(format!(
-                    "croft_string_slice({text}, {start}, {end}, CROFT_OUT({temp}));"
-                ));
+                if stable {
+                    let temp = self.temp(&part_type);
+                    self.line(format!("{temp} = {part};"));
+                    return temp;
+                }
 
+                let temp = self.temp(&owned);
+                self.line(format!("croft_string_copy({part}, CROFT_OUT({temp}));"));
                 temp
             }
             "to_int" => {
@@ -73,15 +88,17 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let separator = self.raw_variable("separator", "croft_string_view");
                 let value = part(self, 0);
                 self.line(format!("{separator} = {value};"));
-                self.split(&text, &separator, &Type::list(bounded.clone()))
+                let item = if stable { part_type } else { owned };
+                self.split(&text, &separator, &item)
             }
             _ => "0".to_string(),
         }
     }
 
-    /// `line.split(",")`: the parts between each separator.
-    fn split(&mut self, text: &str, separator: &str, ty: &Type) -> String {
-        let parts = self.temp(ty);
+    /// `line.split(",")`: the parts between each separator, each borrowed
+    /// from `text` or copied, as `item` says.
+    fn split(&mut self, text: &str, separator: &str, item: &Type) -> String {
+        let parts = self.temp(&Type::list(item.clone()));
         let start = self.variable("start", &Type::Int);
         let found = self.variable("found", &Type::Int);
 
@@ -93,7 +110,16 @@ impl<'g, 'a> Writer<'g, 'a> {
             "{found} = croft_string_find({text}, {separator}, {start});"
         ));
 
-        self.line(format!("croft_string_slice({text}, {start}, {found} < 0 ? {text}.length : {found}, CROFT_OUT({parts}.items[{parts}.length]));"));
+        let part =
+            format!("croft_string_part({text}, {start}, {found} < 0 ? {text}.length : {found})");
+
+        let slot = format!("{parts}.items[{parts}.length]");
+
+        match item {
+            Type::Borrowed(_) => self.line(format!("{slot} = {part};")),
+            _ => self.line(format!("croft_string_copy({part}, CROFT_OUT({slot}));")),
+        }
+
         self.line(format!("{parts}.length++;"));
 
         let capacity = self.gen.sizes.list_capacity(&Type::String);

@@ -10,14 +10,14 @@ use crate::Generator;
 
 /// Whether a value of `ty` is a string, of any size.
 pub fn is_string(ty: &Type) -> bool {
-    matches!(ty, Type::String | Type::Text(_))
+    matches!(ty, Type::String | Type::Text(_) | Type::Borrowed(_))
 }
 
 /// `ty` with every bounded string a plain `String` again: the type the
 /// checker gave it.
 pub fn unbounded(ty: &Type) -> Type {
     match ty {
-        Type::Text(_) => Type::String,
+        Type::Text(_) | Type::Borrowed(_) => Type::String,
         Type::List(item) => Type::list(unbounded(item)),
         Type::Option(item) => Type::option(unbounded(item)),
         Type::Map(key, value) => Type::map(unbounded(key), unbounded(value)),
@@ -29,7 +29,7 @@ pub fn unbounded(ty: &Type) -> Type {
 /// Whether `ty` holds a bounded string anywhere.
 pub fn has_bound(ty: &Type) -> bool {
     match ty {
-        Type::Text(_) => true,
+        Type::Text(_) | Type::Borrowed(_) => true,
         Type::List(item) | Type::Option(item) => has_bound(item),
         Type::Map(key, value) | Type::Result(key, value) => has_bound(key) || has_bound(value),
         _ => false,
@@ -47,18 +47,51 @@ impl<'a> Generator<'a> {
         Type::Text(length.max(1) as u16)
     }
 
+    /// `ty` with each string as short as it can be: the type of `None`,
+    /// `[]` or `Err(e)`, which hold no string at all.
+    pub fn narrowest(&self, ty: &Type) -> Type {
+        match ty {
+            Type::String | Type::Text(_) => self.text_type(1),
+            Type::List(item) => Type::list(self.narrowest(item)),
+            Type::Option(item) => Type::option(self.narrowest(item)),
+            Type::Map(key, value) => Type::map(self.narrowest(key), self.narrowest(value)),
+            Type::Result(value, error) => {
+                Type::result(self.narrowest(value), self.narrowest(error))
+            }
+            other => other.clone(),
+        }
+    }
+
+    /// `ty` with each borrowed string a string of its own, as a value that
+    /// leaves the function, or is written to, needs.
+    pub fn owned_type(&self, ty: &Type) -> Type {
+        match ty {
+            Type::Borrowed(length) => self.text_type(i64::from(*length)),
+            Type::List(item) => Type::list(self.owned_type(item)),
+            Type::Option(item) => Type::option(self.owned_type(item)),
+            Type::Map(key, value) => Type::map(self.owned_type(key), self.owned_type(value)),
+            Type::Result(value, error) => {
+                Type::result(self.owned_type(value), self.owned_type(error))
+            }
+            other => other.clone(),
+        }
+    }
+
     /// The most characters a string of `ty` holds.
     pub fn bound(&self, ty: &Type) -> i64 {
         match ty {
-            Type::Text(length) => i64::from(*length),
+            Type::Text(length) | Type::Borrowed(length) => i64::from(*length),
             _ => self.sizes.string_capacity,
         }
     }
 
     /// A type with room for a value of either `a` or `b`, which differ only
     /// in the bounds of their strings.
+    /// Two borrowed strings give a borrowed string; a borrowed string and
+    /// one of its own give one of its own.
     pub fn wider(&self, a: &Type, b: &Type) -> Type {
         match (a, b) {
+            (Type::Borrowed(a), Type::Borrowed(b)) => Type::Borrowed((*a).max(*b)),
             (a, b) if is_string(a) && is_string(b) => {
                 self.text_type(self.bound(a).max(self.bound(b)))
             }

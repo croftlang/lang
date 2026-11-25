@@ -20,7 +20,8 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             Some(Meaning::Unit) => "0".to_string(),
             Some(Meaning::NoneValue) => {
-                let temp = self.temp(ty);
+                let none = self.gen.narrowest(ty);
+                let temp = self.temp(&none);
                 self.line(format!("{temp}.some = 0;"));
                 temp
             }

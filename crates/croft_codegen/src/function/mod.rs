@@ -79,6 +79,12 @@ pub struct Writer<'g, 'a> {
     /// C names and places whose strings have a bound, and their types:
     /// `t_3` is a `List<Text(32)>`, `p_line` a `Text(32)`.
     pub(crate) bounded: HashMap<String, Type>,
+    /// What the function was seen to give back: its result type, with the
+    /// bounds of every value written to `out`.
+    pub(crate) returned: Option<Type>,
+    /// Temporaries that keep what was first written to them until the
+    /// function returns, so a string can be borrowed from one.
+    pub(crate) stable: HashSet<String>,
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -99,6 +105,8 @@ impl<'g, 'a> Writer<'g, 'a> {
             scopes: vec![HashMap::new()],
             views: HashSet::new(),
             bounded: HashMap::new(),
+            returned: None,
+            stable: HashSet::new(),
         }
     }
 }

@@ -27,8 +27,15 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                     let declared = self.declarations.len();
                     // A name `set` later needs room for whatever it is set to.
-                    let (c, ty) = if usage::statements_set(&statements[index + 1..], &name.name) {
-                        (self.value(value, &ty), ty)
+                    let set_later = usage::statements_set(&statements[index + 1..], &name.name);
+
+                    let (c, ty) = if set_later {
+                        let c = self.value(value, &ty);
+
+                        // What it holds changes, so nothing may borrow from it.
+                        self.stable.remove(&c);
+
+                        (c, ty)
                     } else {
                         let (c, bounded) = self.eval(value, Some(&ty));
                         let kept = self.gen.keep_bound(&bounded, &ty);

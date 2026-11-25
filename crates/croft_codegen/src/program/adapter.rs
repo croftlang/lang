@@ -78,7 +78,7 @@ impl<'a> Generator<'a> {
                     continue;
                 };
 
-                let result = expected.result.clone();
+                let result = self.operation_result(port, &operation.name.name);
 
                 let parameters: Vec<(String, Type)> = (expected.parameters.iter())
                     .map(|(name, ty, _)| (name.clone(), ty.clone()))

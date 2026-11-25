@@ -92,15 +92,19 @@ limits the item count of a list or the character count of a string, and
 
 ### Capacity
 How much a string, list or `Bytes` can hold, fixed when the program is
-compiled. A string field, variant field or parameter with a `Length`
+compiled. A string field, variant field, parameter or result with a `Length`
 constraint holds that many characters. A string the program builds holds as
 many as it can need: a literal is as long as it is, `trim`, `slice` and each
-part of `split` are no longer than the string they come from, and a joined
-string is as long as both parts. A string with nothing to bound it, such as
-a parameter with no `Length` or a `let` that is `set` again later, holds 32
-characters, or the longest `Length` in the program if that is longer. A
-string too long for where it goes is cut short; in a debug build that stops
-the program and says which field it was.
+part of `split` are no longer than the string they come from, a joined
+string is as long as both parts, and a function gives back a string as long
+as the longest it can return. Each part of `split`, and the result of `trim`
+or `slice`, borrows its characters from the string it comes from rather than
+copying them, unless that string can change before the function returns. A
+string with nothing to bound it, such as a parameter with no `Length` or a
+`let` that is `set` again later, holds 32 characters, or the longest
+`Length` in the program if that is longer. A string too long for where it
+goes is cut short; in a debug build that stops the program and says which
+field it was.
 
 ### Where
 Attaches constraints to a type, on a field, parameter or return type:

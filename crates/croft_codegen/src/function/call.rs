@@ -8,6 +8,7 @@ use croft_syntax::ast::{Argument, Expr, ExprKind};
 
 use super::Writer;
 use crate::names::c_name;
+use crate::types::bounds::unbounded;
 
 impl<'g, 'a> Writer<'g, 'a> {
     pub fn call(
@@ -51,7 +52,12 @@ impl<'g, 'a> Writer<'g, 'a> {
         let passed = self.pass_all(arguments, &parameters);
 
         if found.kind != SymbolKind::Service {
-            return self.call_into(&c_name(found), passed, ty);
+            let result = match self.gen.result_of(found) {
+                Some(result) => self.gen.keep_bound(&result, ty),
+                None => ty.clone(),
+            };
+
+            return self.call_into(&c_name(found), passed, &result);
         }
 
         // The events the service raises, and kept, are handled once it ends.
@@ -97,7 +103,8 @@ impl<'g, 'a> Writer<'g, 'a> {
             passed.push(self.pass(c, &ty));
         }
 
-        let result = want.cloned().unwrap_or(Type::Unit);
+        // Native C always writes a full string, whatever size is wanted.
+        let result = want.map_or(Type::Unit, unbounded);
         parameters.push(format!("{} *", self.gen.c_type(&result)));
 
         self.gen.natives.borrow_mut().push((

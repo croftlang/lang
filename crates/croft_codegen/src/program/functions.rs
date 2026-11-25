@@ -1,5 +1,7 @@
 //! Functions, translations, services and constraints.
 
+use std::collections::HashMap;
+
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::Resolved;
 use croft_analysis::Type;
@@ -10,6 +12,9 @@ use super::constraints::CheckPlace;
 use crate::function::{Returns, Writer};
 use crate::names::c_name;
 use crate::Generator;
+
+/// How many times `settle_results` writes every function before giving up.
+const RESULT_ROUNDS: usize = 8;
 
 impl<'a> Generator<'a> {
     /// Every function, translation, service and constraint, as C.
@@ -23,14 +28,52 @@ impl<'a> Generator<'a> {
             SymbolKind::Service,
         ] {
             for found in self.model.all(kind) {
-                out.push_str(&self.function(&found, prototypes));
+                out.push_str(&self.function(&found, prototypes).0);
             }
         }
 
         out
     }
 
-    fn function(&self, found: &Resolved, prototypes: &mut Vec<String>) -> String {
+    /// Works out what each function and translation gives back, so a short
+    /// string comes back in a short string. Each round writes every function
+    /// with the results the last round found, starting from their declared
+    /// types, until no result changes. A result is only ever narrowed to
+    /// what its body gives, so every round's results are safe to use.
+    pub fn settle_results(&self) {
+        let saved = self.save_state();
+
+        for _ in 0..RESULT_ROUNDS {
+            let mut found = HashMap::new();
+
+            for kind in [SymbolKind::Function, SymbolKind::Translation] {
+                for function in self.model.all(kind) {
+                    if self.has_result_length(&function) {
+                        continue;
+                    }
+
+                    if let (_, Some(returned)) = self.function(&function, &mut Vec::new()) {
+                        found.insert(function, returned);
+                    }
+                }
+            }
+
+            self.restore_state(&saved);
+
+            if found == *self.results.borrow() {
+                return;
+            }
+
+            *self.results.borrow_mut() = found;
+        }
+
+        // Still changing, as recursion can make it: every result keeps its
+        // declared type.
+        self.results.borrow_mut().clear();
+    }
+
+    /// A function as C, and what its body was seen to give back.
+    fn function(&self, found: &Resolved, prototypes: &mut Vec<String>) -> (String, Option<Type>) {
         let context = &self.program.contexts[&found.context];
 
         let (result, preconditions, body, constraints, return_constraints) = if found.kind
@@ -41,21 +84,22 @@ impl<'a> Generator<'a> {
                 .iter()
                 .find(|c| c.name.name == found.name)
             else {
-                return String::new();
+                return (String::new(), None);
             };
 
             (Type::Bool, &[][..], Some(&decl.body), Vec::new(), &[][..])
         } else {
             let Some(decl) = context.functions.iter().find(|f| f.name.name == found.name) else {
-                return String::new();
+                return (String::new(), None);
             };
 
             // A generic template is compiled only as its instances.
             if !decl.type_parameters.is_empty() {
-                return String::new();
+                return (String::new(), None);
             }
 
-            let result = self.function_result(&found.context, decl);
+            let declared = self.function_result(&found.context, decl);
+            let result = self.result_of(found).unwrap_or(declared);
 
             let constraints = decl
                 .parameters
@@ -108,7 +152,9 @@ impl<'a> Generator<'a> {
             }
         }
 
-        writer.finish(&signature)
+        let returned = writer.returned.clone();
+
+        (writer.finish(&signature), returned)
     }
 }
 
