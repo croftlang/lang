@@ -1,0 +1,23 @@
+// Adapters written in b, for running the game in tests.
+context Platform
+
+adapter NullScreen for Screen = {
+    fn clear() = Unit
+    fn draw_sprite(sprite, at) = Unit
+    fn draw_text(text, at) = Unit
+}
+
+adapter ScriptedKeyboard for Keyboard = {
+    // Two steps right, one down, then four attacks: enough to defeat the
+    // nearest enemy, which has 20 hit points.
+    keys: List<Key> where Length(0, 32) = [Right, Right, Down, Fire, Fire, Fire, Fire]
+
+    // Gives the next scripted key, then forgets it. Quits when none are left.
+    fn pressed() = match keys.first {
+        Some(next) -> {
+            set keys = keys.drop(1)
+            Some(next)
+        }
+        None -> Some(Quit)
+    }
+}

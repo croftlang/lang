@@ -1,6 +1,0 @@
-[package]
-name = "dn_syntax"
-description = "Lexer, parser and syntax tree for the dn language"
-version.workspace = true
-edition.workspace = true
-license.workspace = true

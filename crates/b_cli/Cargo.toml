@@ -1,0 +1,15 @@
+[package]
+name = "b_cli"
+description = "The b command-line tool"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "b"
+path = "src/main.rs"
+
+[dependencies]
+b_syntax = { path = "../b_syntax" }
+b_analysis = { path = "../b_analysis" }
+b_codegen = { path = "../b_codegen" }
