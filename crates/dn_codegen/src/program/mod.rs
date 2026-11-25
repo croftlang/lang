@@ -2,12 +2,12 @@
 //! prototype, and one C file with every function.
 
 mod adapter;
+mod builtin_storage;
 mod command;
 mod constant;
 mod constraints;
 mod equality;
 mod events;
-mod file_storage;
 mod functions;
 mod layout;
 mod lookup;
@@ -39,6 +39,7 @@ impl<'a> Generator<'a> {
         let (adapter_state, adapters) = self.adapters(&mut prototypes);
         let repositories = self.repositories(&mut prototypes);
         let serializers = self.serializer_functions();
+        let storage = self.builtin_storage();
         let main = self.main_function();
         let error_names = self.error_names(&mut prototypes);
         let event_definition = self.event_definition();
@@ -57,7 +58,7 @@ impl<'a> Generator<'a> {
             prototypes.join("\n")
         );
         let source = format!(
-            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{checks}{equalities}{functions}{commands}{events}{adapters}{serializers}{repositories}{error_names}{main}"
+            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{checks}{equalities}{functions}{commands}{events}{storage}{adapters}{serializers}{repositories}{error_names}{main}"
         );
         let runtime_header = RUNTIME_HEADER
             .replace(

@@ -9,7 +9,7 @@ pub mod standard;
 pub mod symbols;
 pub mod types;
 
-pub use check::{check, Model, VariantInfo};
+pub use check::{check, Model, Operation, VariantInfo};
 pub use facts::{Facts, Meaning};
 pub use manifest::{Manifest, TargetConfig, MANIFEST_FILE};
 pub use program::{Context, Program};

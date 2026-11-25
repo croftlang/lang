@@ -17,6 +17,7 @@ mod manifest;
 mod model;
 mod model_types;
 mod names;
+mod operations;
 mod ports;
 mod publish;
 mod repository;
@@ -37,16 +38,17 @@ use crate::program::{Context, Program};
 use crate::symbols::{build_table, SymbolTable};
 
 pub use model::{Model, VariantInfo};
+pub use operations::Operation;
 pub(crate) use resolve::{Resolved, Scope};
 
 /// Merges the files into one program and checks it, with the project file if there is one.
 pub fn check(files: Vec<File>, manifest: Option<Manifest>) -> Result<Program, Vec<Diagnostic>> {
     let mut files = files;
-    let saves_in_files = manifest.as_ref().is_some_and(|m| {
-        (m.targets.iter().flat_map(|t| &t.adapters))
-            .any(|(_, storage)| storage.name == crate::standard::FILE_STORAGE)
-    });
-    crate::standard::add_standard_sources(&mut files, saves_in_files);
+    let bound: Vec<String> = (manifest.iter().flat_map(|m| &m.targets))
+        .flat_map(|t| &t.adapters)
+        .map(|(_, adapter)| adapter.name.clone())
+        .collect();
+    crate::standard::add_standard_sources(&mut files, &bound);
     let mut program = Program::from_files(files);
     for (name, context) in &mut program.contexts {
         context.is_standard = crate::standard::standard_source(name).is_some();

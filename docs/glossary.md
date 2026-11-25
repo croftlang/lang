@@ -228,9 +228,18 @@ What the domain needs from the outside world, by signature only.
 ### Repository
 A port for loading and saving one aggregate: `repository Rooms for Room`.
 The compiler writes `find` and `save`. `find` fails with the aggregate's
-errors or a `StorageError`, and `save` with a `StorageError`. Where it keeps
-them is chosen for each target in `dn.toml`: `Rooms = "MemoryStorage"`, the
-default, or `Rooms = "FileStorage"`.
+errors or a `StorageError`, and `save` with a `StorageError`. Each target
+binds the repository in `dn.toml` to an adapter for `Storage`, which keeps
+the bytes the compiler makes from each aggregate under a key such as
+`rooms12`: `MemoryStorage`, the default, `FileStorage`, or one of the
+program's own. An adapter can also be written for the repository itself,
+`adapter SqlRooms for Rooms = { fn find(id) = ... fn save(room) = ... }`,
+to keep aggregates its own way.
+
+### Storage
+The built-in port that repositories keep their aggregates through: `load`
+gives the bytes kept under a key, or `None`, `save` keeps them, and `remove`
+drops them. `MemoryStorage` and `FileStorage` are its built-in adapters.
 
 ### StorageError
 What loading or saving an aggregate can fail with, built in to every

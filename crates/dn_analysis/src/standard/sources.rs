@@ -6,13 +6,20 @@ use dn_syntax::{parse, SourceId};
 
 use super::{standard_source, STANDARD_SOURCES, STORAGE_CONTEXT};
 
-/// The source id given to standard contexts, which no project file has.
-pub const STANDARD_SOURCE: SourceId = SourceId(u32::MAX);
+/// The source id of a standard context: counting down from the top, so no
+/// project file has one, and each context's expressions are told apart.
+pub fn standard_source_id(context: &str) -> SourceId {
+    let index = STANDARD_SOURCES
+        .iter()
+        .position(|(name, _)| *name == context);
+    SourceId(u32::MAX - index.unwrap_or(0) as u32)
+}
 
 /// Adds the standard contexts written in dn that the program needs: those
-/// any file imports from, `Std.Storage` when there is a repository, and
-/// `Std.Files` when a target saves a repository in `FileStorage`.
-pub fn add_standard_sources(files: &mut Vec<File>, saves_in_files: bool) {
+/// any file imports from, `Std.Storage` when there is a repository, and the
+/// context of any standard adapter dn.toml binds, such as `Std.Files` for
+/// `StdioFiles`. `FileStorage` saves through `Files`, so it brings both.
+pub fn add_standard_sources(files: &mut Vec<File>, bound: &[String]) {
     let mut imported: Vec<String> = Vec::new();
     let has_repository = (files
         .iter()
@@ -22,8 +29,13 @@ pub fn add_standard_sources(files: &mut Vec<File>, saves_in_files: bool) {
     if has_repository {
         imported.push(STORAGE_CONTEXT.to_string());
     }
-    if saves_in_files {
-        imported.push("Std.Files".to_string());
+    for adapter in bound {
+        if adapter == super::FILE_STORAGE {
+            imported.push("Std.Files".to_string());
+        }
+        if let Some(context) = standard_context_publishing(adapter) {
+            imported.push(context.to_string());
+        }
     }
     for file in files.iter() {
         let context_uses =
@@ -42,9 +54,11 @@ pub fn add_standard_sources(files: &mut Vec<File>, saves_in_files: bool) {
             }
         }
     }
+    imported.sort();
+    imported.dedup();
     for name in imported {
         let source = standard_source(&name).unwrap_or_default();
-        let Ok(mut file) = parse(source, STANDARD_SOURCE) else {
+        let Ok(mut file) = parse(source, standard_source_id(&name)) else {
             continue;
         };
         for context in &mut file.contexts {
@@ -58,7 +72,7 @@ pub fn add_standard_sources(files: &mut Vec<File>, saves_in_files: bool) {
 /// so a missing import can be named in the error.
 pub fn standard_context_publishing(name: &str) -> Option<&'static str> {
     STANDARD_SOURCES.iter().find_map(|(context, source)| {
-        let file = parse(source, STANDARD_SOURCE).ok()?;
+        let file = parse(source, standard_source_id(context)).ok()?;
         let publishes = file.contexts.iter().flat_map(|c| &c.items).any(|item| {
             matches!(item, ContextItem::Publish(paths) if paths.iter().any(|p| p.text() == name))
         });

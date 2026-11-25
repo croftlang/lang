@@ -181,12 +181,13 @@ cc -std=c89 *.c -o dungeon
 - **Events** are queued by commands and kept once the aggregate that raised
   them is saved. When a service ends, its kept events go to the policies;
   events from a failed command, or from a change that was never saved, are dropped.
-- **Repositories** keep their aggregates in memory unless `dn.toml` says
-  `FileStorage`. Then each aggregate is a file of its own, such as
-  `rooms12.dat`, written through the target's `Files` adapter: the hash of
-  the aggregate's layout, then every field, numbers as four bytes least
-  significant first, so a save reads the same on every machine. A file from a
-  different version of the program loads as `StorageDamaged`.
+- **Repositories** turn each aggregate into bytes, the hash of its layout
+  and then every field, numbers as four bytes least significant first, so a
+  save reads the same on every machine. The adapter for `Storage` that
+  `dn.toml` binds keeps them under a key such as `rooms12`: in memory by
+  default, or with `FileStorage` in `rooms12.dat` through the target's
+  `Files` adapter. Bytes from a different version of the program load as
+  `StorageDamaged`.
 - **Contracts.** Preconditions with an error, and invariants, are always
   checked. Built with `-DDN_DEBUG`, a program also checks plain preconditions
   and every `where` constraint: on arguments when a function, command or adapter

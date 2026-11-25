@@ -101,6 +101,11 @@ fn saves_and_finds_aggregates_in_files() {
 }
 
 #[test]
+fn keeps_aggregates_through_adapters_of_the_programs_own() {
+    run_program("repository_adapter");
+}
+
+#[test]
 fn runs_commands_events_policies_and_repositories() {
     run_program("game");
 }

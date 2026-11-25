@@ -109,14 +109,12 @@ dn_bool dn_bytes_take_bytes(const dn_bytes *in, dn_u16 *at, dn_bytes *out)
     return 1;
 }
 
-/* The file an aggregate is saved in: the repository's prefix, its identity
-   and ".dat", which fits the 8.3 names of FAT disks. */
-void dn_storage_path(const char *prefix, dn_int identity, dn_string *out)
+/* The key an aggregate is kept under: the repository's prefix and its
+   identity, short enough for the 8.3 names of FAT disks. */
+void dn_storage_key(const char *prefix, dn_int identity, dn_string *out)
 {
     dn_string number;
     dn_string_set(out, prefix);
     dn_int_to_string(identity, &number);
-    dn_string_join(out, &number, out);
-    dn_string_set(&number, ".dat");
     dn_string_join(out, &number, out);
 }

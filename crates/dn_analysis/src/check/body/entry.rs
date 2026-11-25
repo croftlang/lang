@@ -87,7 +87,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    pub(super) fn parameter_type(&self, scope: &Scope, parameter: &Parameter) -> Type {
+    pub(crate) fn parameter_type(&self, scope: &Scope, parameter: &Parameter) -> Type {
         parameter
             .types
             .first()

@@ -121,7 +121,11 @@ fn keeps_repositories_in_memory_or_in_files() {
         vec!["8: `FileStorage` saves through `Files`, so target `test` needs an adapter for `Files`, such as `Files = \"StdioFiles\"`"]
     );
     assert_eq!(
+        check_shop("Shelves = \"StdioFiles\"\nFiles = \"StdioFiles\"\n"),
+        vec!["8: `StdioFiles` is not an adapter for `Storage` or for `Shelves`, so it can't keep its aggregates"]
+    );
+    assert_eq!(
         check_shop("Shelves = \"Cloud\"\n"),
-        vec!["8: a repository is kept in `MemoryStorage` or `FileStorage`, not `Cloud`"]
+        vec!["8: cannot find an adapter named `Cloud`"]
     );
 }

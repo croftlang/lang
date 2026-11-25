@@ -18,25 +18,17 @@ impl<'a> Checker<'a> {
         let Some(port) = self.resolve(&scope, &adapter.port) else {
             return;
         };
-        let port_scope = self.scope_of(&port);
-        let ports = &port_scope.context.ports;
-        let Some(port_decl) = ports.iter().find(|p| p.name.name == port.name) else {
-            return;
-        };
+        let expected_operations = self.operations_of(&port);
         for operation in &adapter.operations {
-            let Some(expected) = port_decl
-                .operations
+            let Some(expected) = expected_operations
                 .iter()
-                .find(|op| op.name.name == operation.name.name)
+                .find(|op| op.name == operation.name.name)
             else {
                 continue;
             };
-            let result = expected
-                .return_type
-                .as_ref()
-                .map_or(Type::Unit, |ty| self.lower_type(&port_scope, ty));
-            let parameters: Vec<(String, Type)> = (expected.parameters.iter().flatten())
-                .map(|p| (p.name.name.clone(), self.parameter_type(&port_scope, p)))
+            let result = expected.result.clone();
+            let parameters: Vec<(String, Type)> = (expected.parameters.iter())
+                .map(|(name, ty, _)| (name.clone(), ty.clone()))
                 .collect();
             let mut body = BodyChecker::new(self, scope, BodyKind::Adapter(adapter), result);
             let names = operation

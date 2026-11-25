@@ -24,60 +24,54 @@ impl<'a> Checker<'a> {
             );
             self.error(message, field.name.span);
         }
-        let Some(found) = self.expect_kind(scope, &adapter.port, &[SymbolKind::Port], "a port")
+        let kinds = [SymbolKind::Port, SymbolKind::Repository];
+        let Some(found) = self.expect_kind(scope, &adapter.port, &kinds, "a port or repository")
         else {
             return;
         };
-        let ports = &self.program.contexts[&found.context].ports;
-        let port = ports
-            .iter()
-            .find(|port| port.name.name == found.name)
-            .expect("a resolved port");
+        let expected = self.operations_of(&found);
+        let noun = if found.kind == SymbolKind::Repository {
+            "repository"
+        } else {
+            "port"
+        };
         for operation in &adapter.operations {
-            let expected = port
-                .operations
-                .iter()
-                .find(|op| op.name.name == operation.name.name);
-            match expected {
-                Some(expected) => {
-                    self.check_adapter_operation(operation, expected, &port.name.name)
-                }
+            match expected.iter().find(|op| op.name == operation.name.name) {
+                Some(expected) => self.check_adapter_operation(
+                    operation,
+                    expected.parameters.len(),
+                    &format!("{noun} `{}`", found.name),
+                ),
                 None => {
                     let message = format!(
-                        "port `{}` has no operation `{}`",
-                        port.name.name, operation.name.name
+                        "{noun} `{}` has no operation `{}`",
+                        found.name, operation.name.name
                     );
                     self.error(message, operation.name.span);
                 }
             }
         }
-        for expected in &port.operations {
+        for expected in &expected {
             if !adapter
                 .operations
                 .iter()
-                .any(|op| op.name.name == expected.name.name)
+                .any(|op| op.name.name == expected.name)
             {
                 let message = format!(
-                    "adapter `{}` does not provide `{}` from port `{}`",
-                    adapter.name.name, expected.name.name, port.name.name
+                    "adapter `{}` does not provide `{}` from {noun} `{}`",
+                    adapter.name.name, expected.name, found.name
                 );
                 self.error(message, adapter.name.span);
             }
         }
     }
 
-    fn check_adapter_operation(
-        &mut self,
-        operation: &FunctionDecl,
-        expected: &FunctionDecl,
-        port: &str,
-    ) {
+    fn check_adapter_operation(&mut self, operation: &FunctionDecl, wanted: usize, port: &str) {
         let name = &operation.name;
-        let count = |op: &FunctionDecl| op.parameters.as_ref().map_or(0, Vec::len);
-        let (found, wanted) = (count(operation), count(expected));
+        let found = operation.parameters.as_ref().map_or(0, Vec::len);
         if found != wanted {
             let message = format!(
-                "`{}` takes {wanted} parameters in port `{port}`, found {found}",
+                "`{}` takes {wanted} parameters in {port}, found {found}",
                 name.name
             );
             self.error(message, name.span);

@@ -61,7 +61,8 @@ pub const STANDARD_SOURCES: [(&str, &str); 3] = [
 /// need no import: `StorageError` and its errors.
 pub const STORAGE_CONTEXT: &str = "Std.Storage";
 
-/// The built-in storages a repository can be bound to in dn.toml.
+/// The built-in adapters for `Storage`: where a repository keeps its
+/// aggregates when dn.toml names nothing else, and in files.
 pub const MEMORY_STORAGE: &str = "MemoryStorage";
 pub const FILE_STORAGE: &str = "FileStorage";
 
@@ -75,4 +76,4 @@ pub fn standard_source(context: &str) -> Option<&'static str> {
 
 mod sources;
 
-pub use sources::{add_standard_sources, not_found_message, STANDARD_SOURCE};
+pub use sources::{add_standard_sources, not_found_message, standard_source_id};
