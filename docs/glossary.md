@@ -4,7 +4,9 @@ The shared language for b. These terms mean the same thing in the language,
 the compiler's code, error messages and conversation. If a new concept needs a
 name, add it here first.
 
-Examples come from Dungeon, the small game used throughout the design.
+Examples come from Logistics, a small cargo shipping system after the one in
+Eric Evans' *Domain-Driven Design*. It is the test fixture in
+`tests/fixtures/logistics`.
 
 ## Structure
 
@@ -17,7 +19,7 @@ The braced list of terms a context lets other contexts use. Aggregates are
 never published, only their identities, values and events.
 
 ### Use
-How a context imports published terms: `use { EnemyId, Room.EnemyDefeated } from Dungeon`.
+How a context imports published terms: `use { Edge, Path } from Routing`.
 
 ### Context level
 Declared directly inside a context rather than inside an aggregate. Values,
@@ -28,42 +30,42 @@ ports and repositories live at context level.
 
 ### Value
 A value object: defined only by its fields, equal when its fields are equal,
-and never changed. Made with its type name, `Position { x: 10, y: 20 }`.
+and never changed. Made with its type name, `RouteSpecification { origin: "CNHKG", destination: "FIHEL", arrival_deadline: 30 }`.
 
 ### Generic
 A value or function written once for many types, with type parameters that
 are single capital letters: `value Pair<A, B> { first: A  second: B }`,
 `fn first_or<T>(items: List<T>, fallback: T): T`. Each use with different
-types is an instance, such as `Pair<Int, String>` or `first_or<RoomId>`, which
+types is an instance, such as `Pair<Int, String>` or `first_or<TrackingId>`, which
 the compiler makes and checks as if it had been written out by hand, so a
 mistake in a template shows where it is used. A call's type parameters come
 from what it is given, and from the type it must give back.
 
 ### Single-value type
 A value around one value of another type, so it can't be mixed up with
-other uses of that type: `value Score: Int where Range(0, 999_999)`. Made
-with `Score(120)`, or a literal where a `Score` is expected, and read with
-`score.value`. It has none of the operators of the type it holds, so
-`Score(score.value + 10)` makes a new one, and its constraints are checked
+other uses of that type: `value Day: Int where Range(0, 3650)`. Made
+with `Day(30)`, or a literal where a `Day` is expected, and read with
+`day.value`. It has none of the operators of the type it holds, so
+`Day(day.value + 1)` makes a new one, and its constraints are checked
 there.
 
 ### With
-Makes a changed copy of a value: `start with { x: start.x + 1 }`. The original
+Makes a changed copy of a value: `route with { destination: "NLRTM" }`. The original
 is untouched.
 
 ### Field
 One named, typed part of a value, entity, aggregate or error:
-`hit_points: Int where Range(0, 100)`.
+`arrives: Int where Range(0, MAX_DAY)`.
 
 ### Enum
-A fixed set of named variants, which can carry data: `Coins(count: Int)`.
+A fixed set of named variants, which can carry data: `Held(days: Int)`.
 
 ### Const
 A named value fixed at compile time, in UPPER_SNAKE_CASE.
 
 ### Identity
-A distinct type whose only job is to tell entities apart. An `EnemyId` can
-never be used where a `RoomId` is expected.
+A distinct type whose only job is to tell entities apart. A `TrackingId` can
+never be used where a `HandlingEventId` is expected.
 
 ### Entity
 Something with an identity that stays the same while its other fields change.
@@ -95,24 +97,24 @@ build that stops the program and says which field it was.
 
 ### Where
 Attaches constraints to a type, on a field, parameter or return type:
-`damage: Int where Range(1, 20)`.
+`deadline: Int where Range(0, 3650)`.
 
 ### Each
-Applies a constraint to every item in a list: `where Length(0, 16), each Alive`.
+Applies a constraint to every item in a list: `where Length(0, MAX_LEGS), each GoesSomewhere`.
 For constraints about being in that list, not about the item itself.
 
 ### Invariant
 A constraint on an aggregate as a whole, declared inside it and checked after
-every command: `invariant ExitClear or ExitBlocked`.
+every command: `invariant ClaimedAtDestination or ClaimedElsewhere`.
 
 ### Error
 A named way that working with an aggregate can fail, optionally with fields:
-`error EnemyMissing { enemy_id: EnemyId }`. Errors are part of the domain;
-messages shown to the player are not.
+`error NoSuchCargo { tracking_id: TrackingId }`. Errors are part of the domain;
+messages shown to the customer are not.
 
 ### Precondition
 A condition in a contract that must hold for the code to run. With an error,
-`in_stock > 0 or OutOfStock { item }`, it is a failure the domain expects:
+`delivery.transport_status != Claimed or AlreadyClaimed`, it is a failure the domain expects:
 always checked, and handled by the caller like any other failure. Without
 one, `!numbers.is_empty`, it is a mistake by the caller: checked in debug
 builds, which stop with a message.
@@ -121,8 +123,8 @@ builds, which stop with a message.
 What a piece of code needs and what it promises, written before its body:
 its preconditions and, for services, `calls` in the braces between the
 signature and `=`; the `where` constraints on its parameters and result, which
-a parameter can have after its type or in the braces (`damage where
-Range(1, 20)`); and, for
+a parameter can have after its type or in the braces (`deadline where
+Range(0, 3650)`); and, for
 an aggregate, its invariants. The braces are left out when there is nothing
 to say. Debug builds check every `where` constraint as the program runs, and
 stop with a message naming the constraint that broke. A contract states domain
@@ -137,9 +139,9 @@ The only way to change an aggregate. Declared inside it, with an optional
 contract and a body.
 
 ### Issue
-Sends a command to one aggregate: `issue Attack(...) on room` for a value you
-hold, or `issue Reset on Scoreboard(MAIN_SCOREBOARD)` to load, change and save
-by identity. Arguments are always named.
+Sends a command to one aggregate: `issue AssignToRoute(...) on cargo` for a value
+you hold, or `issue RecordHandling(...) on Cargo(event.tracking_id)` to load,
+change and save by identity. Arguments are always named.
 
 ### Event
 Something that happened, named in the past tense, declared inside the
@@ -150,11 +152,11 @@ not kept.
 
 ### Policy
 A reaction to an event that issues a command, often in another aggregate or
-context.
+context: `policy UpdateDelivery when HandlingEvent.Registered { ... }`.
 
 ### Function
 A pure calculation that doesn't belong to one value or aggregate:
-`fn distance(start: Position, end: Position): Int = ...`. With no return
+`fn satisfies(itinerary: Itinerary, route: RouteSpecification): Bool = ...`. With no return
 type, a function, service or port operation gives back `Unit`.
 
 ### Service
@@ -203,14 +205,15 @@ includes it. `or` fails with a more specific error instead. `or` works on a
 A `Result` that is neither passed up nor the body's result doesn't compile.
 
 ### Result
-What a body that can fail gives back: `Result<Room, Room.Error>`. A body
+What a body that can fail gives back: `Result<Cargo, Cargo.Error>`. A body
 whose last line is a plain value counts as success, so a service returning
-`Result<Unit, GameError>` can end with a port call.
+`Result<Unit, ShippingError>` can end with a port call.
 
 ### Error set
-All of an aggregate's errors at once, written `Room.Error`. An enum can
+All of an aggregate's errors at once, written `Cargo.Error`. An enum can
 `include` error sets and single errors, so one type covers every way a
-service can fail.
+service can fail. An aggregate with no errors, such as `HandlingEvent`, has
+an empty set: it never fails, so any error type can pass it up.
 
 ### Built-ins
 Functions and methods every program has, with no import. Functions: `Some`,
@@ -222,7 +225,7 @@ and `remove` by identity. Options: `is_some`, `is_none`, `map`, `unwrap_or`.
 
 ### Map
 Keys, each with a value, imported with `use { Map } from Std.Collections`:
-`let stock: Map<String, Int> = ["sword": 1, "key": 2]`, or `[:]` when empty.
+`let berths: Map<String, Int> = ["CNHKG": 4, "FIHEL": 2]`, or `[:]` when empty.
 `get` gives an `Option` of a key's value, `set` and `remove` give a changed
 copy, and `contains`, `length`, `is_empty`, `keys` and `values` read it. Two
 maps are equal when they hold the same keys with the same values, in any
@@ -263,14 +266,14 @@ which also handles HTTPS, so a program that binds it is linked with `-lcurl`.
 What the domain needs from the outside world, by signature only.
 
 ### Repository
-A port for loading and saving one aggregate: `repository Rooms for Room`.
+A port for loading and saving one aggregate: `repository Cargos for Cargo`.
 The compiler writes `find` and `save`. `find` fails with the aggregate's
 errors or a `StorageError`, and `save` with a `StorageError`. Each target
 binds the repository in `b.toml` to an adapter for `Storage`, which keeps
 the bytes the compiler makes from each aggregate under a key such as
-`rooms12`: `MemoryStorage`, the default, `FileStorage`, or one of the
+`carg12` for cargo 12: `MemoryStorage`, the default, `FileStorage`, or one of the
 program's own. An adapter can also be written for the repository itself,
-`adapter SqlRooms for Rooms = { fn find(id) = ... fn save(room) = ... }`,
+`adapter SqlCargos for Cargos = { fn find(id) = ... fn save(cargo) = ... }`,
 to keep aggregates its own way.
 
 ### Storage
@@ -296,21 +299,22 @@ service or domain that lists it in `calls`. Every target supplies it, so
 replaces it.
 
 ### Adapter
-Implements a port, usually in a `Platform` context: `adapter NullScreen for
-Screen = { ... }`. Must provide every operation the port declares. Which
+Implements a port, usually in a `Platform` context: `adapter FixedClock for
+Clock = { ... }`. Must provide every operation the port declares. Which
 targets use it is chosen in `b.toml`, so one adapter can serve several.
 
 ### Starting value
 What an adapter's field holds when the program starts, written after its
-type and constraints: `keys: List<Key> where Length(0, 32) = [Right, Fire]`. Every
+type and constraints: `voyages: List<String> where Length(0, 8) = ["V100", "V200"]`. Every
 adapter field needs one; no other field has one.
 
 ### Native
-Calls a C function from an adapter: `native sprite_draw(sprite, at.x, at.y)`.
+Calls a C function from an adapter: `native terminal_next_report()`.
 Only allowed inside adapters.
 
 ### Translation
-The anti-corruption layer: maps one context's term to another's.
+The anti-corruption layer: maps one context's term to another's, such as
+Routing's edges to Shipping's legs: `translation LegFrom(edge: Edge): Leg`.
 
 ## Compiler
 
@@ -320,12 +324,12 @@ A folder of `.b` files compiled together as one program, with a `b.toml`.
 ### Project file
 `b.toml`, beside the `.b` files. Like Rust's `Cargo.toml`, it holds what
 is about the build rather than the domain: the program's name, and for each
-target the adapter that fills each port (`Screen = "SpectrumScreen"`), the C
+target the adapter that fills each port (`Clock = "SystemClock"`), the C
 files holding its native functions, and optionally a `main` service to run
 instead of the domain.
 
 ### Domain
-The whole program: `domain Game { ... } = { ... }`, one per program, outside
+The whole program: `domain Logistics { ... } = { ... }`, one per program, outside
 every context. Like a function, it has a contract and a body. The contract
 holds the context map, imports what the body needs from the contexts with
 `use`, and names the ports it calls with `calls`. The body runs
@@ -335,7 +339,7 @@ the program then prints the error's name and stops with exit code 1.
 
 ### Context map
 The `contexts` block of the domain: every context, and arrows from upstream
-to downstream, `Dungeon -> Scoring`. A context may only `use` contexts
+to downstream, `Routing -> Shipping`. A context may only `use` contexts
 directly upstream of it, and the arrows may not go round in a circle. A
 context with no relationships is written on its own.
 

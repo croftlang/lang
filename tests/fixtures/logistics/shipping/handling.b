@@ -1,0 +1,27 @@
+// Handling events: what was done to each cargo, as the docks report it.
+context Shipping
+
+// One thing done to a cargo at a port. It is an aggregate of its own, not
+// part of the cargo, so a dock registering an event never waits for someone
+// rerouting the cargo, and the history of a busy cargo stays small.
+aggregate HandlingEvent {
+    identity id: HandlingEventId
+    tracking_id: TrackingId
+    activity: HandlingActivity
+    completed_on: Day
+
+    event Registered { tracking_id: TrackingId  activity: HandlingActivity }
+
+    // Registering is the only thing that happens to a handling event; after
+    // that, it never changes.
+    command Register = {
+        emit Registered { tracking_id, activity }
+    }
+}
+
+repository HandlingEvents for HandlingEvent
+
+// The cargo learns where it is from every event registered for it.
+policy UpdateDelivery when HandlingEvent.Registered {
+    issue RecordHandling(activity: event.activity) on Cargo(event.tracking_id)
+}
