@@ -3,7 +3,7 @@
 use dn_analysis::Type;
 use dn_syntax::ast::{Expr, ExprKind, Statement};
 
-use super::{Returns, Writer};
+use super::{usage, Returns, Writer};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// Writes a block's statements and gives back its last line's value.
@@ -15,6 +15,11 @@ impl<'g, 'a> Writer<'g, 'a> {
             match statement {
                 Statement::Let(name, value) => {
                     let ty = self.type_of(value, None);
+                    if !usage::statements_use(&statements[index + 1..], &name.name) {
+                        // Never read: work it out for its effects, with no variable.
+                        self.eval(value, None);
+                        continue;
+                    }
                     let c = self.value(value, &ty);
                     let variable = self.variable(&format!("v_{}", name.name), &ty);
                     self.line(format!("{variable} = {c};"));

@@ -41,6 +41,6 @@ impl<'a> Generator<'a> {
                 c_string(&name)
             ));
         }
-        format!("{signature}\n{{\n{body}    return \"an unknown error\";\n}}\n\n")
+        format!("{signature}\n{{\n{body}    (void) code;\n    return \"an unknown error\";\n}}\n\n")
     }
 }

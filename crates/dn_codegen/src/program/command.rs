@@ -6,6 +6,7 @@ use dn_analysis::types::Resolved;
 use dn_analysis::Type;
 use dn_syntax::ast::{AggregateDecl, FunctionDecl};
 
+use super::rules::CheckPlace;
 use crate::function::{OwnFields, Returns, Writer};
 use crate::names::c_name;
 use crate::Generator;
@@ -62,6 +63,25 @@ impl<'a> Generator<'a> {
         writer.line(format!("{mark} = dn_events_mark();"));
         writer.line(format!("(void) {mark};"));
         writer.bind_parameters(&parameters);
+        let label = format!("{}.{}", found.name, command.name.name);
+        let place = CheckPlace {
+            context: &found.context,
+            aggregate: Some(&found.name),
+            label: &label,
+        };
+        let rules = command
+            .parameters
+            .iter()
+            .flatten()
+            .map(|p| p.rules.as_slice());
+        let checked: Vec<(String, Type, &[dn_syntax::ast::Rule])> = parameters
+            .iter()
+            .zip(rules)
+            .map(|((name, ty), rules)| (name.clone(), ty.clone(), rules))
+            .collect();
+        if let Some(call) = self.argument_check(&name, &place, &checked) {
+            writer.debug_call(&call);
+        }
         writer.preconditions(&command.preconditions, &command.name.name);
         if let Some(body) = &command.body {
             writer.value(body, &Type::Unit);
@@ -97,6 +117,7 @@ impl<'a> Generator<'a> {
             writer.fail(&error);
             writer.close();
         }
+        writer.check_fields(&own_copy, &aggregate_type);
         writer.line("out->ok = 1;");
         writer.line(format!("out->value = {own_copy};"));
         writer.finish(&signature)

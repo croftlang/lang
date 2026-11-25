@@ -21,6 +21,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
         let temp = self.temp(ty);
         self.set_fields(&temp, ty, fields);
+        self.check_fields(&temp, ty);
         temp
     }
 

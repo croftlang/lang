@@ -1,0 +1,34 @@
+// Breaks one rule, chosen by the command-line argument, so the test can see
+// each kind of check stop a debug build.
+context Clinic {
+    constraint Even(number: Int) = number % 2 == 0
+
+    value Dose {
+        amount: Int where Range(1, 50)
+    }
+
+    fn heal(amount: Int where Range(1, 50)): Int = amount * 2
+
+    fn half(number: Int): Int where Even = number / 2
+
+    fn count(numbers: List<Int> where each Even): Int = numbers.length
+
+    service Start(): Unit {
+        uses Arguments
+    } = {
+        let chosen = arguments.all()
+        if chosen.contains("argument") {
+            let healed = heal(70)
+        }
+        if chosen.contains("result") {
+            let halved = half(6)
+        }
+        if chosen.contains("field") {
+            let dose = Dose { amount: 70 }
+        }
+        if chosen.contains("each") {
+            let counted = count([2, 3])
+        }
+        Unit
+    }
+}

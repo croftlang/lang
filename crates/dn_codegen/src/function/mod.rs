@@ -19,8 +19,10 @@ mod output;
 mod property;
 mod record;
 mod repeat;
+mod rule;
 mod scope;
 mod string;
+mod usage;
 
 use std::collections::{HashMap, HashSet};
 

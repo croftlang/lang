@@ -19,6 +19,67 @@ fn runs_commands_events_policies_and_repositories() {
     run_program("game");
 }
 
+/// Each broken rule stops a debug build with a message naming it, and a
+/// release build doesn't check.
+#[test]
+fn checks_rules_in_debug_builds() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/rules");
+    let output = generate(&source, "test", "rules");
+    let debug = compile(
+        &output,
+        &["-DDN_DEBUG", "dn_runtime.c", "program.c", "-o", "debug"],
+    );
+    assert!(
+        debug.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debug.stderr)
+    );
+    let release = compile(&output, &["dn_runtime.c", "program.c", "-o", "release"]);
+    assert!(
+        release.status.success(),
+        "{}",
+        String::from_utf8_lossy(&release.stderr)
+    );
+    let run = |program: &str, argument: &str| {
+        let ran = std::process::Command::new(output.join(program))
+            .arg(argument)
+            .output()
+            .expect("it runs");
+        (
+            ran.status.code(),
+            String::from_utf8_lossy(&ran.stdout).trim().to_string(),
+        )
+    };
+    assert_eq!(run("debug", "none"), (Some(0), String::new()));
+    assert_eq!(
+        run("debug", "argument"),
+        (
+            Some(1),
+            "heal: amount must satisfy Range(1, 50)".to_string()
+        )
+    );
+    assert_eq!(
+        run("debug", "result"),
+        (Some(1), "half: the result must satisfy Even".to_string())
+    );
+    assert_eq!(
+        run("debug", "field"),
+        (
+            Some(1),
+            "Dose: amount must satisfy Range(1, 50)".to_string()
+        )
+    );
+    assert_eq!(
+        run("debug", "each"),
+        (Some(1), "count: numbers must satisfy each Even".to_string())
+    );
+    assert_eq!(run("release", "argument"), (Some(0), String::new()));
+    fs::remove_dir_all(output).ok();
+}
+
 #[test]
 fn stops_with_the_error_when_the_domain_fails() {
     if !has_c_compiler() {

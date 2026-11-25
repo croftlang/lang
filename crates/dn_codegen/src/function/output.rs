@@ -15,6 +15,11 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.depth += 1;
     }
 
+    /// A preprocessor line, such as `#ifdef DN_DEBUG`, at the start of the line.
+    pub fn directive(&mut self, text: &str) {
+        self.lines.push(text.to_string());
+    }
+
     pub fn close(&mut self) {
         self.depth -= 1;
         self.line("}");
@@ -54,14 +59,31 @@ impl<'g, 'a> Writer<'g, 'a> {
         if !declarations.is_empty() && !self.lines.is_empty() {
             out.push('\n');
         }
+        // A parameter only used in debug-build lines is still unused otherwise.
+        let release: Vec<&String> = release_lines(&self.lines);
         for parameter in &self.parameters {
-            if !self.lines.iter().any(|line| mentions(line, parameter)) {
+            if !release.iter().any(|line| mentions(line, parameter)) {
                 out.push_str(&format!("    (void) {parameter};\n"));
             }
         }
         for line in &self.lines {
             out.push_str(line);
             out.push('\n');
+        }
+        // A variable a release build only writes to, such as a value built
+        // just to be checked in debug builds, is marked as used.
+        for declaration in &declarations {
+            let name = declaration
+                .trim_end_matches(';')
+                .rsplit(' ')
+                .next()
+                .unwrap_or_default();
+            if release
+                .iter()
+                .all(|line| !mentions(line, name) || is_write_to(line, name))
+            {
+                out.push_str(&format!("    (void) {name};\n"));
+            }
         }
         out.push_str("}\n\n");
         out
@@ -106,4 +128,34 @@ fn tidy_condition(text: &str) -> String {
         }
     }
     text.to_string()
+}
+
+/// The lines a build without `DN_DEBUG` compiles.
+fn release_lines(lines: &[String]) -> Vec<&String> {
+    let mut in_debug = false;
+    let mut release = Vec::new();
+    for line in lines {
+        match line.trim() {
+            "#ifdef DN_DEBUG" => in_debug = true,
+            "#endif" if in_debug => in_debug = false,
+            _ if !in_debug => release.push(line),
+            _ => {}
+        }
+    }
+    release
+}
+
+/// Whether `line` only writes to `name`: `name = ...` or `name.field = ...`.
+fn is_write_to(line: &str, name: &str) -> bool {
+    let line = line.trim_start();
+    let Some(rest) = line.strip_prefix(name) else {
+        return false;
+    };
+    let target_end = rest.find(" = ").unwrap_or(usize::MAX);
+    let path = &rest[..target_end.min(rest.len())];
+    target_end != usize::MAX
+        && path
+            .chars()
+            .all(|c| c == '.' || c == '_' || c.is_ascii_alphanumeric())
+        && !rest[target_end + 3..].contains(name)
 }

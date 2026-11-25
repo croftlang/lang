@@ -4,6 +4,7 @@
 use dn_analysis::Type;
 
 use super::super::types::define::struct_definition;
+use super::rules::CheckPlace;
 use crate::function::{OwnFields, Returns, Writer};
 use crate::names::c_name;
 use crate::Generator;
@@ -83,14 +84,35 @@ impl<'a> Generator<'a> {
                     .zip(parameters.iter().map(|(_, ty)| ty.clone()))
                     .collect();
                 writer.bind_parameters(&renamed);
-                let signature = self.signature(
-                    &format!("{name}_{}", operation.name.name),
-                    &[],
-                    &renamed,
-                    Some(&result),
-                );
+                let function = format!("{name}_{}", operation.name.name);
+                let signature = self.signature(&function, &[], &renamed, Some(&result));
+                let label = format!("{}.{}", adapter.name, operation.name.name);
+                let place = CheckPlace {
+                    context: &port.context,
+                    aggregate: None,
+                    label: &label,
+                };
+                let rules = expected
+                    .parameters
+                    .iter()
+                    .flatten()
+                    .map(|p| p.rules.as_slice());
+                let checked: Vec<(String, Type, &[dn_syntax::ast::Rule])> = renamed
+                    .iter()
+                    .zip(rules)
+                    .map(|((n, ty), rules)| (n.clone(), ty.clone(), rules))
+                    .collect();
+                if let Some(call) = self.argument_check(&function, &place, &checked) {
+                    writer.debug_call(&call);
+                }
                 if let Some(body) = &operation.body {
                     let value = writer.value(body, &result);
+                    if let Some(check) =
+                        self.result_check(&function, &place, &result, &expected.return_rules)
+                    {
+                        let passed = writer.pass(value.clone(), &result);
+                        writer.debug_call(&format!("{check}({passed});"));
+                    }
                     writer.line(format!("*out = {value};"));
                 }
                 out.push_str(&writer.finish(&signature));

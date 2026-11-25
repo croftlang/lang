@@ -49,6 +49,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let temp = self.temp(&ty);
                 self.line(format!("{temp} = {base};"));
                 self.set_fields(&temp, &ty, fields);
+                self.check_fields(&temp, &ty);
                 temp
             }
             ExprKind::Unary(UnaryOp::Not, operand) => {

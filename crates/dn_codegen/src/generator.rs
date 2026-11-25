@@ -23,6 +23,10 @@ pub struct Generator<'a> {
     pub(crate) used_types: RefCell<(Vec<Type>, HashSet<Type>)>,
     /// Types that need an equality function.
     pub(crate) equalities: RefCell<(Vec<Type>, HashSet<Type>)>,
+    /// Debug-build rule checks: each one's prototype and definition.
+    pub(crate) checks: RefCell<Vec<(String, String)>>,
+    /// Types whose field-rule check has been generated.
+    pub(crate) checked_types: RefCell<HashSet<Resolved>>,
     /// Native C functions called by adapters, with their prototypes.
     pub(crate) natives: RefCell<Vec<(String, String)>>,
 }
@@ -70,6 +74,8 @@ impl<'a> Generator<'a> {
             sizes,
             used_types: RefCell::default(),
             equalities: RefCell::default(),
+            checks: RefCell::default(),
+            checked_types: RefCell::default(),
             natives: RefCell::default(),
         })
     }

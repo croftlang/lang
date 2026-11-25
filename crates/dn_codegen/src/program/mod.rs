@@ -9,6 +9,7 @@ mod events;
 mod functions;
 mod main;
 mod repository;
+mod rules;
 mod signature;
 
 use crate::{GeneratedFile, Generator};
@@ -29,6 +30,7 @@ impl<'a> Generator<'a> {
         let error_names = self.error_names(&mut prototypes);
         let event_definition = self.event_definition();
         let equalities = self.equality_functions(&mut prototypes);
+        let (check_prototypes, checks) = self.check_functions();
         let types = self.type_definitions();
         let natives = self.native_prototypes();
 
@@ -38,11 +40,11 @@ impl<'a> Generator<'a> {
         );
         let header = format!(
             "{banner}#ifndef DN_PROGRAM_H\n#define DN_PROGRAM_H\n\n#include \"dn.h\"\n\n{types}{event_definition}{defines}\
-             void dn_init(void);\n{}\n\n/* Native functions the adapters call. */\n{natives}\n#endif\n",
+             void dn_init(void);\n{}\n\n{check_prototypes}/* Native functions the adapters call. */\n{natives}\n#endif\n",
             prototypes.join("\n")
         );
         let source = format!(
-            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{equalities}{functions}{commands}{events}{adapters}{repositories}{error_names}{main}"
+            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{checks}{equalities}{functions}{commands}{events}{adapters}{repositories}{error_names}{main}"
         );
         let runtime_header = RUNTIME_HEADER.replace(
             "#ifndef DN_STRING_CAPACITY\n#define DN_STRING_CAPACITY 32\n#endif",
