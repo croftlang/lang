@@ -18,13 +18,11 @@ designed to compile to portable C, so you can ship cross-platform.
 ## Usage
 
 ```croft
-context {
+context Greeter {
   publish { greet }
 
-  fn greet(): String where Length(0, 11) {
-    calls Console
-  } = {
-    console.print("Hello, World")
+  fn greet(): String where Length(0, 11) = {
+    "Hello, World"
   }
 }
 
@@ -34,8 +32,12 @@ domain Application {
   }
 
   use { greet } from Greeter
+
+  calls Console
 } = {
-  greet() // Hello, World
+  let output = greet() 
+
+  console.print(output) // Hello, World
 }
 
 // crof.toml
