@@ -3,33 +3,33 @@
 version = 4
 
 [[package]]
-name = "dn_analysis"
+name = "b_analysis"
 version = "0.1.0"
 dependencies = [
- "dn_syntax",
+ "b_syntax",
  "serde",
  "toml",
 ]
 
 [[package]]
-name = "dn_cli"
+name = "b_cli"
 version = "0.1.0"
 dependencies = [
- "dn_analysis",
- "dn_codegen",
- "dn_syntax",
+ "b_analysis",
+ "b_codegen",
+ "b_syntax",
 ]
 
 [[package]]
-name = "dn_codegen"
+name = "b_codegen"
 version = "0.1.0"
 dependencies = [
- "dn_analysis",
- "dn_syntax",
+ "b_analysis",
+ "b_syntax",
 ]
 
 [[package]]
-name = "dn_syntax"
+name = "b_syntax"
 version = "0.1.0"
 
 [[package]]
