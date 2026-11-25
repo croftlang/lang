@@ -95,7 +95,9 @@ builds, which stop with a message.
 ### Contract
 What a piece of code needs and what it promises, written before its body:
 its preconditions and, for services, `calls` in the braces between the
-signature and `=`; the `where` rules on its parameters and result; and, for
+signature and `=`; the `where` rules on its parameters and result, which
+a parameter can have after its type or in the braces (`damage where
+Range(1, 20)`); and, for
 an aggregate, its invariants. The braces are left out when there is nothing
 to say. Debug builds check every `where` rule as the program runs, and
 stop with a message naming the rule that broke. A contract states domain

@@ -13,7 +13,10 @@ context Clinic {
 
     fn half(number: Int): Int where Even = number / 2
 
-    fn count(numbers: List<Int> where each Even): Int = numbers.length
+    // Its rule is in the contract, which checks the same as writing it inline.
+    fn count(numbers: List<Int>): Int {
+        numbers where each Even
+    } = numbers.length
 
     service Start(): Unit {
         calls Arguments

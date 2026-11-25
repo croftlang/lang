@@ -161,3 +161,32 @@ fn explains_that_ports_are_listed_with_calls() {
         "the ports a body calls are listed with `calls`: `calls Screen, Keyboard`"
     );
 }
+
+#[test]
+fn adds_rules_written_in_a_contract_to_their_parameter() {
+    let file = parse_ok(
+        "context Dungeon {\n fn attack(damage: Int where Range(1, 20), target: EnemyId): Int {\n damage where Even\n target where Alive, Near\n damage > 2\n } = damage\n}",
+    );
+    let ContextItem::Function(attack) = &only_context(&file).items[0] else {
+        panic!("expected a function");
+    };
+    let parameters = attack.parameters.as_ref().expect("parameters");
+    let rules = |index: usize| -> Vec<String> {
+        parameters[index]
+            .rules
+            .iter()
+            .map(|rule| rule.constraint.name.text())
+            .collect()
+    };
+    assert_eq!(rules(0), ["Range", "Even"]);
+    assert_eq!(rules(1), ["Alive", "Near"]);
+    assert_eq!(attack.preconditions.len(), 1);
+}
+
+#[test]
+fn reports_rules_in_a_contract_for_a_name_that_is_not_a_parameter() {
+    assert_eq!(
+        parse_error("context Dungeon {\n fn f(a: Int): Int {\n b where Even\n } = a\n}"),
+        "`b` is not a parameter, so it can't have rules here"
+    );
+}

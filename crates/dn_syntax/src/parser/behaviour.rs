@@ -1,7 +1,7 @@
 //! Functions, services, translations, commands, policies and constraints.
 
 use super::{ParseResult, Parser};
-use crate::ast::{ConstraintDecl, Expr, FunctionDecl, FunctionKind, Path, PolicyDecl};
+use crate::ast::{ConstraintDecl, FunctionDecl, FunctionKind, PolicyDecl};
 use crate::keyword::Keyword;
 use crate::token::TokenKind;
 
@@ -18,7 +18,7 @@ impl Parser {
             _ => unreachable!("only called on a function keyword"),
         };
         let name = self.expect_identifier()?;
-        let parameters = if self.check(&TokenKind::LeftParen) {
+        let mut parameters = if self.check(&TokenKind::LeftParen) {
             Some(self.parse_parameters()?)
         } else {
             None
@@ -28,7 +28,7 @@ impl Parser {
             return_type = Some(self.parse_type()?);
             return_rules = self.parse_rules()?;
         }
-        let (preconditions, calls) = self.parse_contract()?;
+        let (preconditions, calls) = self.parse_contract(parameters.as_mut())?;
         let body = if self.eat(&TokenKind::Equal) {
             Some(self.parse_expression()?)
         } else {
@@ -45,29 +45,6 @@ impl Parser {
             calls,
             body,
         })
-    }
-
-    /// The braces between a signature and its body: preconditions, one per
-    /// line, and the ports a service `calls`. Left out when empty.
-    fn parse_contract(&mut self) -> ParseResult<(Vec<Expr>, Vec<Path>)> {
-        let (mut preconditions, mut calls) = (Vec::new(), Vec::new());
-        if !self.eat(&TokenKind::LeftBrace) {
-            return Ok((preconditions, calls));
-        }
-        while !self.eat(&TokenKind::RightBrace) {
-            self.reject_uses()?;
-            if self.eat_keyword(Keyword::Calls) {
-                loop {
-                    calls.push(self.parse_path()?);
-                    if !self.eat(&TokenKind::Comma) {
-                        break;
-                    }
-                }
-            } else {
-                preconditions.push(self.parse_expression()?);
-            }
-        }
-        Ok((preconditions, calls))
     }
 
     /// `policy DropLootOnDefeat when Room.EnemyDefeated { ... }`
@@ -100,16 +77,5 @@ impl Parser {
             parameters,
             body,
         })
-    }
-
-    /// The ports a body calls were once listed with `uses`, which reads too
-    /// much like `use`, so the old word gets an error that names the new one.
-    pub(super) fn reject_uses(&mut self) -> ParseResult<()> {
-        if self.check_word("uses") {
-            let message =
-                "the ports a body calls are listed with `calls`: `calls Screen, Keyboard`";
-            return Err(crate::span::Diagnostic::new(message, self.span()));
-        }
-        Ok(())
     }
 }

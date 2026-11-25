@@ -5,6 +5,7 @@ mod arguments;
 mod behaviour;
 mod block;
 mod boundary;
+mod contract;
 mod data;
 mod domain;
 mod expression;
