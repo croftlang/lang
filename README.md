@@ -172,7 +172,13 @@ cc -std=c89 *.c -o dungeon
   events from a failed command, or from a change that was never saved, are dropped.
 - **Repositories** keep their aggregates in memory for now. Saving through
   the storage port comes later.
-- **Contracts** are checked at run time when built with `-DDN_DEBUG`.
+- **Contracts.** Preconditions with an error, and invariants, are always
+  checked. Built with `-DDN_DEBUG`, a program also checks plain preconditions
+  and every `where` rule: on arguments when a function, command or adapter
+  operation starts, on results before they are given back, and on fields
+  whenever a value is built or a command ends. A broken rule stops the
+  program with a message such as `heal: amount must satisfy Range(1, 50)`.
+  Release builds skip these checks.
 
 ## Layout
 

@@ -97,7 +97,9 @@ What a piece of code needs and what it promises, written before its body:
 its preconditions and, for services, `uses` in the braces between the
 signature and `=`; the `where` rules on its parameters and result; and, for
 an aggregate, its invariants. The braces are left out when there is nothing
-to say. A contract states domain rules once, where they apply, names
+to say. Debug builds check every `where` rule as the program runs, and
+stop with a message naming the rule that broke. A contract states domain
+rules once, where they apply, names
 failures in the ubiquitous language, keeps bodies simple, and tells the
 compiler how much memory data needs.
 
