@@ -412,7 +412,7 @@ fn writes_string_literals_straight_into_results() {
     let body = &c[start..start + c[start..].find("\n}\n").expect("its end")];
 
     assert!(
-        body.contains("croft_string_set(&(*out), \"circle\");"),
+        body.contains("croft_string_set(\"circle\", CROFT_OUT((*out)));"),
         "{body}"
     );
 

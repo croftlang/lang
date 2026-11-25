@@ -36,21 +36,13 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
     }
 
-    /// A view of `c`, a `croft_string` or a view already.
+    /// A view of `c`: any string, or a view already.
     pub fn view_of(&self, c: &str) -> String {
         if self.views.contains(c) {
             return c.to_string();
         }
 
-        match c
-            .strip_prefix("(*")
-            .and_then(|inner| inner.strip_suffix(')'))
-        {
-            Some(pointer) if !pointer.contains(['(', ')', '.', ' ']) => {
-                format!("croft_string_view_of({pointer})")
-            }
-            _ => format!("croft_string_view_of(&{c})"),
-        }
+        format!("CROFT_VIEW({c})")
     }
 
     /// `c` as a `croft_string` of its own: a borrowed parameter is copied
@@ -61,7 +53,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         let temp = self.temp(&Type::String);
-        self.line(format!("croft_string_from_view({c}, &{temp});"));
+        self.line(format!("croft_string_copy({c}, CROFT_OUT({temp}));"));
 
         temp
     }
@@ -72,7 +64,10 @@ impl<'g, 'a> Writer<'g, 'a> {
     pub fn value_into(&mut self, target: &str, value: &Expr, ty: &Type) -> String {
         match &value.kind {
             ExprKind::String(text) if *ty == Type::String => {
-                self.line(format!("croft_string_set(&{target}, {});", c_string(text)));
+                self.line(format!(
+                    "croft_string_set({}, CROFT_OUT({target}));",
+                    c_string(text)
+                ));
             }
             ExprKind::Match(subject, arms) if *ty != Type::Unit => {
                 self.match_into(subject, arms, ty, target);

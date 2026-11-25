@@ -42,7 +42,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let temp = self.temp(&Type::String);
 
                 self.line(format!(
-                    "croft_decimal_to_string({number}, {places}, &{temp});"
+                    "croft_decimal_to_string({number}, {places}, CROFT_OUT({temp}));"
                 ));
 
                 temp
@@ -58,7 +58,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             Type::Int if name == "to_string" => {
                 let number = self.value(receiver, &Type::Int);
                 let temp = self.temp(&Type::String);
-                self.line(format!("croft_int_to_string({number}, &{temp});"));
+                self.line(format!("croft_int_to_string({number}, CROFT_OUT({temp}));"));
                 temp
             }
             Type::List(item) => {
@@ -119,7 +119,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         ));
 
         self.line(format!(
-            "croft_argument({index}, &{list}.items[{list}.length]);"
+            "croft_argument({index}, CROFT_OUT({list}.items[{list}.length]));"
         ));
 
         self.line(format!("{list}.length++;"));

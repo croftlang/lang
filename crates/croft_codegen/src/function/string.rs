@@ -40,7 +40,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             "to_upper" | "to_lower" | "trim" => {
                 let temp = self.temp(ty);
-                self.line(format!("croft_string_{name}({text}, &{temp});"));
+                self.line(format!("croft_string_{name}({text}, CROFT_OUT({temp}));"));
                 temp
             }
             "slice" => {
@@ -49,7 +49,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let temp = self.temp(ty);
 
                 self.line(format!(
-                    "croft_string_slice({text}, {start}, {end}, &{temp});"
+                    "croft_string_slice({text}, {start}, {end}, CROFT_OUT({temp}));"
                 ));
 
                 temp
@@ -92,7 +92,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             "{found} = croft_string_find({text}, {separator}, {start});"
         ));
 
-        self.line(format!("croft_string_slice({text}, {start}, {found} < 0 ? {text}.length : {found}, &{parts}.items[{parts}.length]);"));
+        self.line(format!("croft_string_slice({text}, {start}, {found} < 0 ? {text}.length : {found}, CROFT_OUT({parts}.items[{parts}.length]));"));
         self.line(format!("{parts}.length++;"));
 
         let capacity = self.gen.sizes.list_capacity(&Type::String);

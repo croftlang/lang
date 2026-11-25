@@ -128,7 +128,9 @@ impl<'g, 'a> Writer<'g, 'a> {
         match op {
             BinaryOp::Add => {
                 let temp = self.temp(ty);
-                self.line(format!("croft_string_join({left}, {right}, &{temp});"));
+                self.line(format!(
+                    "croft_string_join({left}, {right}, CROFT_OUT({temp}));"
+                ));
                 temp
             }
             BinaryOp::NotEqual => format!("(!croft_string_equal({left}, {right}))"),

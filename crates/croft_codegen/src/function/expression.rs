@@ -39,7 +39,10 @@ impl<'g, 'a> Writer<'g, 'a> {
             ExprKind::Bool(flag) => (if *flag { "1" } else { "0" }).to_string(),
             ExprKind::String(text) => {
                 let temp = self.temp(&Type::String);
-                self.line(format!("croft_string_set(&{temp}, {});", c_string(text)));
+                self.line(format!(
+                    "croft_string_set({}, CROFT_OUT({temp}));",
+                    c_string(text)
+                ));
                 temp
             }
             ExprKind::Name(name) => self.name(value, name, &ty),

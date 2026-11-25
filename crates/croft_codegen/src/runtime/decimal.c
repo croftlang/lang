@@ -58,7 +58,7 @@ croft_int croft_decimal_divide(croft_int a, croft_int b, croft_int scale)
                      (a < 0) != (b < 0));
 }
 
-void croft_decimal_to_string(croft_int value, croft_int places, croft_string *out)
+void croft_decimal_to_string(croft_int value, croft_int places, char *out, croft_u16 *length, croft_u16 capacity)
 {
     unsigned long scale = 1;
     unsigned long remaining;
@@ -67,23 +67,23 @@ void croft_decimal_to_string(croft_int value, croft_int places, croft_string *ou
         scale *= 10;
     }
     remaining = magnitude(value);
-    croft_int_to_string((croft_int) (remaining / scale), out);
-    if (value < 0 && out->length < CROFT_STRING_CAPACITY - 1) {
-        for (place = out->length; place > 0; place--) {
-            out->text[place] = out->text[place - 1];
+    croft_int_to_string((croft_int) (remaining / scale), out, length, capacity);
+    if (value < 0 && *length < capacity - 1) {
+        for (place = *length; place > 0; place--) {
+            out[place] = out[place - 1];
         }
-        out->text[0] = '-';
-        out->length++;
+        out[0] = '-';
+        (*length)++;
     }
-    if (out->length < CROFT_STRING_CAPACITY) {
-        out->text[out->length] = '.';
-        out->length++;
+    if (*length < capacity) {
+        out[*length] = '.';
+        (*length)++;
     }
     remaining %= scale;
-    while (scale > 1 && out->length < CROFT_STRING_CAPACITY) {
+    while (scale > 1 && *length < capacity) {
         scale /= 10;
-        out->text[out->length] = (char) ('0' + remaining / scale);
-        out->length++;
+        out[*length] = (char) ('0' + remaining / scale);
+        (*length)++;
         remaining %= scale;
     }
 }

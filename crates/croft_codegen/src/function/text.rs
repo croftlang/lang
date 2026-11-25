@@ -12,7 +12,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         let temp = self.temp(&Type::String);
 
         self.line(format!(
-            "croft_text_load({place}.text, {place}.length, &{temp});"
+            "croft_string_copy(CROFT_VIEW({place}), CROFT_OUT({temp}));"
         ));
 
         temp
@@ -21,8 +21,10 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// Writes `value`, a full string, into the field at `place`. Text that
     /// doesn't fit is cut short, and stops a debug build.
     pub fn store_text(&mut self, place: &str, value: &str, capacity: i64, label: &str) {
+        let value = self.view_of(value);
+
         self.open(format!(
-            "if (!croft_text_store(&{value}, {place}.text, &{place}.length, {capacity}))"
+            "if (!croft_string_copy({value}, CROFT_OUT({place})))"
         ));
 
         self.line(format!(

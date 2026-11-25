@@ -159,13 +159,13 @@ impl<'a> Generator<'a> {
                     }
                     let place = format!("value->{field}");
 
-                    if let Some(capacity) = self.text_capacity(named, &field) {
+                    if self.text_capacity(named, &field).is_some() {
                         write.push_str(&format!(
-                            "    if (!croft_bytes_put_text(out, {place}.text, {place}.length)) {{\n        return 0;\n    }}\n"
+                            "    if (!croft_bytes_put_string(out, CROFT_VIEW({place}))) {{\n        return 0;\n    }}\n"
                         ));
 
                         read.push_str(&format!(
-                            "    if (!croft_bytes_take_text(in, at, {place}.text, &{place}.length, {capacity})) {{\n        return 0;\n    }}\n"
+                            "    if (!croft_bytes_take_string(in, at, CROFT_OUT({place}))) {{\n        return 0;\n    }}\n"
                         ));
 
                         continue;
@@ -200,7 +200,11 @@ impl<'a> Generator<'a> {
         };
 
         let (write, read) = match ty {
-            Type::String | Type::Bytes => (
+            Type::String => (
+                format!("croft_bytes_put_string(out, CROFT_VIEW({place}))"),
+                format!("croft_bytes_take_string(in, at, CROFT_OUT({place}))"),
+            ),
+            Type::Bytes => (
                 format!("croft_bytes_put_{name}(out, &{place})"),
                 format!("croft_bytes_take_{name}(in, at, &{place})"),
             ),
