@@ -3,6 +3,7 @@
 use super::{ParseResult, Parser};
 use crate::ast::{AdapterDecl, FunctionDecl, FunctionKind, PortDecl, RepositoryDecl};
 use crate::keyword::Keyword;
+use crate::span::Diagnostic;
 use crate::token::TokenKind;
 
 impl Parser {
@@ -23,7 +24,7 @@ impl Parser {
         })
     }
 
-    /// `adapter SpectrumScreen for Screen { ... }`. Which targets use it is
+    /// `adapter SpectrumScreen for Screen = { ... }`. Which targets use it is
     /// chosen in `dn.toml`.
     pub(super) fn parse_adapter(&mut self) -> ParseResult<AdapterDecl> {
         let doc = self.doc();
@@ -31,6 +32,11 @@ impl Parser {
         let name = self.expect_identifier()?;
         self.expect_word("for")?;
         let port = self.parse_path()?;
+        if self.check(&TokenKind::LeftBrace) {
+            let message = "an adapter's body comes after `=`: `adapter Name for Port = { ... }`";
+            return Err(Diagnostic::new(message, self.span()));
+        }
+        self.expect(&TokenKind::Equal)?;
         self.expect(&TokenKind::LeftBrace)?;
         let (mut fields, mut operations) = (Vec::new(), Vec::new());
         while !self.eat(&TokenKind::RightBrace) {

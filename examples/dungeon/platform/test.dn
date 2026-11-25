@@ -1,13 +1,13 @@
 // Adapters written in dn, for running the game in tests.
 context Platform
 
-adapter NullScreen for Screen {
+adapter NullScreen for Screen = {
     fn clear() = Unit
     fn draw_sprite(sprite, at) = Unit
     fn draw_text(text, at) = Unit
 }
 
-adapter ScriptedKeyboard for Keyboard {
+adapter ScriptedKeyboard for Keyboard = {
     // Two steps right, one down, then four attacks: enough to defeat the
     // nearest enemy, which has 20 hit points.
     keys: List<Key> where Length(0, 32) = [Right, Right, Down, Fire, Fire, Fire, Fire]
@@ -22,7 +22,7 @@ adapter ScriptedKeyboard for Keyboard {
     }
 }
 
-adapter MemoryStorage for Storage {
+adapter MemoryStorage for Storage = {
     files: List<Int> where Length(0, 256) = []
 
     fn load(name) = Ok(files)

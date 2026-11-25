@@ -5,8 +5,8 @@ use crate::manifest::Manifest;
 const GAME: &str = "context Game {\n\
     port Screen {\n fn clear(): Unit\n}\n\
     port Clock {\n fn tick(): Unit\n}\n\
-    adapter TestScreen for Screen {\n fn clear() = Unit\n}\n\
-    adapter TestClock for Clock {\n fn tick() = Unit\n}\n\
+    adapter TestScreen for Screen = {\n fn clear() = Unit\n}\n\
+    adapter TestClock for Clock = {\n fn tick() = Unit\n}\n\
     service Main(): Unit {\n uses Screen\n} = Unit\n\
     service Turn(count: Int): Unit = Unit\n}";
 

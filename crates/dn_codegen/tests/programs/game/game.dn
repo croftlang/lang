@@ -35,7 +35,7 @@ port Storage {
     fn load(name: String): Result<Int, StorageError>
 }
 
-adapter NoStorage for Storage {
+adapter NoStorage for Storage = {
     fn load(name) = Err(StorageError)
 }
 

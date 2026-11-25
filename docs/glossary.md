@@ -212,7 +212,7 @@ such as the ZX Spectrum, give an empty list.
 
 ### Adapter
 Implements a port, usually in a `Platform` context: `adapter NullScreen for
-Screen { ... }`. Must provide every operation the port declares. Which
+Screen = { ... }`. Must provide every operation the port declares. Which
 targets use it is chosen in `dn.toml`, so one adapter can serve several.
 
 ### Starting value
