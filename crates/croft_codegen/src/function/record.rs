@@ -22,11 +22,13 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         let temp = self.temp(ty);
+
         if let Type::Named(named) = ty {
             for byte in 0..self.gen.flag_bytes(named) {
                 self.line(format!("{temp}.croft_flags[{byte}] = 0;"));
             }
         }
+
         self.set_fields(&temp, ty, fields);
         self.check_fields(&temp, ty);
 

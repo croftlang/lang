@@ -41,6 +41,7 @@ impl<'a> Generator<'a> {
                         None => self.serialized_size(&ty),
                     })
                     .sum();
+
                 fields + self.flag_bytes(named) as i64
             }
             _ => 0,

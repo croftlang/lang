@@ -73,6 +73,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             if *ty == Type::String {
                 self.views.insert(c.clone());
             }
+
             let value = if self.gen.is_scalar(ty) || *ty == Type::String {
                 c
             } else {

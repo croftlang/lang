@@ -104,18 +104,22 @@ impl<'a> Generator<'a> {
     /// entity or aggregate with at least two of them.
     fn flag_fields(&self, owner: &Resolved) -> Vec<String> {
         use SymbolKind::{Aggregate, Entity, Value};
+
         if !matches!(owner.kind, Value | Entity | Aggregate)
             || self.model.is_error(&Type::Named(owner.clone()))
         {
             return Vec::new();
         }
+
         let flags: Vec<String> = (self.model.fields(owner).into_iter())
             .filter(|(_, ty, _)| *ty == Type::Bool)
             .map(|(name, _, _)| name)
             .collect();
+
         if flags.len() < 2 {
             return Vec::new();
         }
+
         flags
     }
 }

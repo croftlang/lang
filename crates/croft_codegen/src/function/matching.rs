@@ -13,8 +13,10 @@ impl<'g, 'a> Writer<'g, 'a> {
             self.arms(subject, arms, ty, None);
             return "0".to_string();
         }
+
         let result = self.temp(ty);
         self.arms(subject, arms, ty, Some(&result));
+
         result
     }
 
@@ -26,6 +28,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     fn arms(&mut self, subject: &Expr, arms: &[MatchArm], ty: &Type, result: Option<&str>) {
         let subject_type = self.type_of(subject, None);
         let (subject, _) = self.eval(subject, None);
+
         for (index, arm) in arms.iter().enumerate() {
             let (test, bindings) = self.arm_test(&subject, &subject_type, &arm.pattern);
 

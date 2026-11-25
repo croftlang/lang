@@ -143,9 +143,11 @@ impl<'a> Generator<'a> {
 
                 for byte in 0..self.flag_bytes(named) {
                     let place = format!("value->croft_flags[{byte}]");
+
                     write.push_str(&format!(
                         "    if (!croft_bytes_put_byte(out, {place})) {{\n        return 0;\n    }}\n"
                     ));
+
                     read.push_str(&format!(
                         "    if (!croft_bytes_take_byte(in, at, &{place})) {{\n        return 0;\n    }}\n"
                     ));

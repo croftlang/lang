@@ -150,6 +150,7 @@ impl Sizes {
                 if longest > self.string_capacity.max(DEFAULT_STRING_CAPACITY) {
                     self.string_capacity_from = Some(label);
                 }
+
                 self.string_capacity = self.string_capacity.max(longest);
             }
             "Bytes" => self.bytes_capacity = self.bytes_capacity.max(longest),

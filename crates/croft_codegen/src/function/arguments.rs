@@ -63,6 +63,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         if *ty == Type::String {
             return self.view_of(&c);
         }
+
         if self.gen.is_scalar(ty) {
             return c;
         }

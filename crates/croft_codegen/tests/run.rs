@@ -407,14 +407,18 @@ fn writes_string_literals_straight_into_results() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/borrowed_strings");
     let output = generate(&source, "test", "borrowed_strings_c");
     let c = fs::read_to_string(output.join("program.c")).expect("program.c");
+
     let start = c.find("void Words_name_of(").expect("name_of");
     let body = &c[start..start + c[start..].find("\n}\n").expect("its end")];
+
     assert!(
         body.contains("croft_string_set(&(*out), \"circle\");"),
         "{body}"
     );
+
     assert!(!body.contains("croft_string t"), "{body}");
     assert!(c.contains("croft_string_view_from(\"square\", 6)"));
+
     fs::remove_dir_all(output).ok();
 }
 
@@ -422,11 +426,14 @@ fn writes_string_literals_straight_into_results() {
 #[test]
 fn packs_bool_fields_into_bits() {
     run_program("flags");
+
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/flags");
     let output = generate(&source, "test", "flags_c");
     let header = fs::read_to_string(output.join("program.h")).expect("program.h");
+
     assert!(header.contains("croft_u8 croft_flags[2];"), "{header}");
     assert!(!header.contains("croft_bool has_key;"), "{header}");
+
     fs::remove_dir_all(output).ok();
 }
 
@@ -437,6 +444,7 @@ fn reports_sizes_for_a_target() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/repository_operations");
     let program = support::check_program(&source);
     let report = croft_codegen::size_report(&program, "test").expect("a report");
+
     assert!(report.contains("Shop.Shelf  (saved:"), "{report}");
     assert!(report.contains("Largest stack frames"), "{report}");
     assert!(report.contains("  Till.cash\n"), "{report}");

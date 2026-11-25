@@ -103,13 +103,16 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     pub fn property(&mut self, inner: &Expr, field: &str) -> String {
         let inner_type = self.type_of(inner, None);
+
         if inner_type == Type::String && matches!(field, "length" | "is_empty") {
             let text = self.view(inner);
+
             return match field {
                 "length" => format!("((croft_int) {text}.length)"),
                 _ => format!("({text}.length == 0)"),
             };
         }
+
         let (c, _) = self.eval(inner, None);
 
         match (&inner_type, field) {

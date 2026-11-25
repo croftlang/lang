@@ -49,12 +49,14 @@ pub fn check_program(folder: &Path) -> croft_analysis::Program {
         fs::read_to_string(folder.join(croft_analysis::MANIFEST_FILE)).expect("a croft.toml");
     let manifest =
         croft_analysis::Manifest::parse(&toml, SourceId(999)).expect("a valid croft.toml");
+
     croft_analysis::check(files, Some(manifest)).unwrap_or_else(|errors| panic!("{errors:#?}"))
 }
 
 /// Writes the C for one program and target into a fresh folder.
 pub fn generate(folder: &Path, target: &str, name: &str) -> PathBuf {
     let program = check_program(folder);
+
     let output = std::env::temp_dir().join(format!(
         "croft_codegen_{name}_{target}_{}",
         std::process::id()

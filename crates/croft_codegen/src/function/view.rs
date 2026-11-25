@@ -24,11 +24,13 @@ impl<'g, 'a> Writer<'g, 'a> {
                 Some((c, _)) if self.views.contains(&c) => c,
                 _ => {
                     let c = self.value(value, &Type::String);
+
                     self.view_of(&c)
                 }
             },
             _ => {
                 let c = self.value(value, &Type::String);
+
                 self.view_of(&c)
             }
         }
@@ -39,6 +41,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         if self.views.contains(c) {
             return c.to_string();
         }
+
         match c
             .strip_prefix("(*")
             .and_then(|inner| inner.strip_suffix(')'))
@@ -56,8 +59,10 @@ impl<'g, 'a> Writer<'g, 'a> {
         if !self.views.contains(&c) {
             return c;
         }
+
         let temp = self.temp(&Type::String);
         self.line(format!("croft_string_from_view({c}, &{temp});"));
+
         temp
     }
 
@@ -77,6 +82,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.line(format!("{target} = {c};"));
             }
         }
+
         target.to_string()
     }
 }

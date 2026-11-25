@@ -36,6 +36,7 @@ pub fn size(arguments: &[String]) -> Result<(), String> {
     let (_, program) = load_and_check(&path)?;
     let target = choose_target(&program, target, &path)?;
     print!("{}", croft_codegen::size_report(&program, &target)?);
+
     Ok(())
 }
 
@@ -122,20 +123,24 @@ fn choose_target(
 ) -> Result<String, String> {
     let Some(manifest) = &program.manifest else {
         let folder = folder.display();
+
         return Err(format!(
             "`{folder}` has no croft.toml, which says what to run and on which targets"
         ));
     };
+
     let Some(target) = target else {
         let targets: Vec<&str> = manifest
             .targets
             .iter()
             .map(|t| t.name.name.as_str())
             .collect();
+
         return Err(format!(
             "choose a target with `--target`; croft.toml has: {}",
             targets.join(", ")
         ));
     };
+
     Ok(target)
 }

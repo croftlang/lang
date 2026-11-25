@@ -25,9 +25,11 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         let left_type = self.type_of(left, None);
+
         if left_type == Type::String && matches!(op, Equal | NotEqual | Add) {
             return self.string_operator(op, left, right, ty);
         }
+
         let (left, _) = self.eval(left, None);
         let right = self.value(right, &left_type);
 
@@ -122,6 +124,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     fn string_operator(&mut self, op: BinaryOp, left: &Expr, right: &Expr, ty: &Type) -> String {
         let left = self.view(left);
         let right = self.view(right);
+
         match op {
             BinaryOp::Add => {
                 let temp = self.temp(ty);

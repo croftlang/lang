@@ -103,6 +103,7 @@ impl<'a> Generator<'a> {
                         .collect();
 
                     let flags = self.flag_bytes(named);
+
                     if flags > 0 {
                         fields.push(format!("    croft_u8 croft_flags[{flags}];\n"));
                     }

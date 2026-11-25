@@ -24,6 +24,7 @@ pub fn c_size(c_type: &str) -> Option<i64> {
             2 + capacity
         }
     };
+
     Some(size)
 }
 
@@ -31,6 +32,7 @@ impl<'a> Generator<'a> {
     /// The bytes a value of `ty` takes in memory.
     pub fn memory_size(&self, ty: &Type) -> i64 {
         let ty = self.canonical(ty);
+
         match &ty {
             Type::Int | Type::Decimal(_) => 4,
             Type::Float => 8,
@@ -55,6 +57,7 @@ impl<'a> Generator<'a> {
                     })
                     .max()
                     .unwrap_or(0);
+
                 2 + fields.max(1)
             }
             Type::Named(named) => match named.kind {
@@ -62,6 +65,7 @@ impl<'a> Generator<'a> {
                     let scope = &self.program.contexts[&named.context];
                     let identity = scope.identities.iter().find(|i| i.name.name == named.name);
                     let constraints = identity.map_or(&[][..], |i| &i.constraints[..]);
+
                     c_size(int_width(
                         self.program,
                         &self.model,
@@ -81,6 +85,7 @@ impl<'a> Generator<'a> {
                         })
                         .max()
                         .unwrap_or(0);
+
                     1 + largest.max(1)
                 }
                 _ => {
@@ -88,6 +93,7 @@ impl<'a> Generator<'a> {
                         .filter(|(name, _, _)| self.flag_bit(named, name).is_none())
                         .map(|(_, ty, c)| c_size(&c).unwrap_or_else(|| self.memory_size(&ty)))
                         .sum();
+
                     (fields + self.flag_bytes(named) as i64).max(1)
                 }
             },
@@ -100,7 +106,9 @@ impl<'a> Generator<'a> {
         if let Some(size) = c_size(c_type) {
             return Some(size);
         }
+
         let used = self.used_types.borrow().0.clone();
+
         used.iter()
             .find(|ty| self.c_type(ty) == c_type)
             .map(|ty| self.memory_size(ty))

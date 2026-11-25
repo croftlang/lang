@@ -18,10 +18,12 @@ impl<'g, 'a> Writer<'g, 'a> {
         let borrowed = self.raw_variable("text", "croft_string_view");
         self.line(format!("{borrowed} = {text};"));
         let text = borrowed;
+
         let part = |writer: &mut Self, index: usize| match arguments.get(index) {
             Some(argument) => writer.view(&argument.value),
             None => "croft_string_view_from(\"\", 0)".to_string(),
         };
+
         let number = |writer: &mut Self, index: usize| match arguments.get(index) {
             Some(argument) => writer.value(&argument.value, &Type::Int),
             None => "0".to_string(),
