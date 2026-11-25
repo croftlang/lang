@@ -129,7 +129,8 @@ context.
 
 ### Function
 A pure calculation that doesn't belong to one value or aggregate:
-`fn distance(start: Position, end: Position): Int = ...`.
+`fn distance(start: Position, end: Position): Int = ...`. With no return
+type, a function, service or port operation gives back `Unit`.
 
 ### Service
 The outer layer, where the program meets the world. Lists the ports it uses,
@@ -217,6 +218,12 @@ The built-in port that gives a program its command-line arguments. A
 service lists it in `calls`, then reads `arguments.all()` for a
 `List<String>`. Every target supplies it; targets without a command line,
 such as the ZX Spectrum, give an empty list.
+
+### Console
+The built-in port that prints a line: `console.print("hello")` in a
+service or domain that lists it in `calls`. Every target supplies it, so
+`dn.toml` names no adapter for it. A program's own port called `Console`
+replaces it.
 
 ### Adapter
 Implements a port, usually in a `Platform` context: `adapter NullScreen for
