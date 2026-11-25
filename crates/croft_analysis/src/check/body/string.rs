@@ -13,6 +13,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         span: croft_syntax::Span,
     ) -> Option<Type> {
         let s = Type::String;
+
         match name {
             "contains" | "starts_with" | "ends_with" => {
                 self.fixed(name, arguments, &[s], Type::Bool, span)

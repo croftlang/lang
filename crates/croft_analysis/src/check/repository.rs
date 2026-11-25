@@ -24,17 +24,20 @@ impl<'a> Checker<'a> {
     /// The aggregate a repository stores.
     pub(super) fn repository_aggregate(&self, repository: &Resolved) -> Option<Resolved> {
         let scope = self.scope_of(repository);
+
         let decl = scope
             .context
             .repositories
             .iter()
             .find(|r| r.name.name == repository.name)?;
+
         self.resolve(&scope, &decl.aggregate)
     }
 
     /// The repository that stores an aggregate, if its context has one.
     pub(super) fn repository_for(&self, aggregate: &Resolved) -> Option<Resolved> {
         let context = &self.program.contexts[&aggregate.context];
+
         context
             .repositories
             .iter()
@@ -59,16 +62,21 @@ impl<'a> Checker<'a> {
         let [(_, parameter, _)] = operation.parameters.as_slice() else {
             return None;
         };
+
         let Type::Result(value, error) = &operation.result else {
             return None;
         };
+
         let aggregate_type = Type::Named(aggregate.clone());
+
         if *parameter == aggregate_type {
             return (**value == Type::Unit).then_some(StorageShape::Save);
         }
+
         if *parameter != self.identity_of(aggregate) {
             return None;
         }
+
         match &**value {
             Type::Unit => Some(StorageShape::Remove),
             Type::Option(item) if **item == aggregate_type => Some(StorageShape::FindOption),
@@ -93,11 +101,13 @@ impl<'a> Checker<'a> {
     ) -> Option<(Operation<'a>, Operation<'a>)> {
         let aggregate = self.repository_aggregate(repository)?;
         let operations = self.operations_of(repository);
+
         let with_shape = |shape| {
             (operations.iter())
                 .find(|op| self.storage_shape(&aggregate, op) == Some(shape))
                 .cloned()
         };
+
         Some((
             with_shape(StorageShape::Find)?,
             with_shape(StorageShape::Save)?,

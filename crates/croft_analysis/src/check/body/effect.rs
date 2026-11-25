@@ -14,7 +14,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             self.error("only a command can raise an event", span);
             return Type::Unit;
         };
+
         let name = format!("{}.{}", aggregate.name.name, event.text());
+
         let Some(found) = self
             .checker
             .lookup(&self.scope.context.name.name, &name)
@@ -24,9 +26,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 format!("`{}` has no event `{}`", aggregate.name.name, event.text()),
                 event.span(),
             );
+
             return Type::Unit;
         };
+
         let declared = self.checker.fields_of(&found).unwrap_or(&[]);
+
         for field in declared {
             if !fields
                 .iter()
@@ -38,7 +43,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 );
             }
         }
+
         self.field_values(&Type::Named(found), fields);
+
         Type::Unit
     }
 
@@ -59,9 +66,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 span,
             );
         }
+
         for argument in arguments {
             self.expr(&argument.value, None);
         }
+
         expected.cloned().unwrap_or(Type::Unknown)
     }
 }

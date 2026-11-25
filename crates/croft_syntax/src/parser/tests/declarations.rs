@@ -14,9 +14,11 @@ fn reads_an_aggregate_header_as_the_rest_of_the_file() {
     let source = "context Dungeon\naggregate Room\n\nid: RoomId\nerror NotFound\n\
                   command Reset = {\n    set lives = 3\n}";
     let file = parse_ok(source);
+
     let [ContextItem::Aggregate(room)] = &only_context(&file).items[..] else {
         panic!("expected one aggregate");
     };
+
     assert_eq!(room.name.name, "Room");
     assert_eq!(room.errors.len(), 1);
     assert_eq!(room.commands[0].kind, FunctionKind::Command);
@@ -35,15 +37,19 @@ fn reads_rules_on_fields_and_parameters() {
                   fn heal(amount: Int where Range(1, 50), times: Int): Int\n}";
     let file = parse_ok(source);
     let items = &only_context(&file).items;
+
     let ContextItem::Value(room) = &items[0] else {
         panic!("expected a value")
     };
+
     let constraints = &room.fields[0].constraints;
     assert_eq!(constraints.len(), 2);
     assert!(constraints[1].each);
+
     let ContextItem::Function(heal) = &items[1] else {
         panic!("expected a function")
     };
+
     let parameters = heal.parameters.as_ref().unwrap();
     assert_eq!(parameters.len(), 2);
     assert_eq!(parameters[0].constraints.len(), 1);
@@ -54,9 +60,11 @@ fn reads_a_contract_with_preconditions_and_uses() {
     let source = "context Dungeon {\n    service Play(id: RoomId): Unit {\n        calls Keyboard, Screen\n        \
                   id > 0 or NotFound\n    } = Unit\n}";
     let file = parse_ok(source);
+
     let ContextItem::Function(play) = &only_context(&file).items[0] else {
         panic!("expected a service")
     };
+
     assert_eq!(play.calls.len(), 2);
     assert_eq!(play.preconditions.len(), 1);
 }
@@ -66,9 +74,11 @@ fn reads_enums_with_data_and_includes() {
     let source = "context Dungeon {\n    enum GameError {\n        include Room.Error\n        \
                   Coins(count: Int where Range(1, 99))\n        Flask\n    }\n}";
     let file = parse_ok(source);
+
     let ContextItem::Enum(error) = &only_context(&file).items[0] else {
         panic!("expected an enum")
     };
+
     assert_eq!(error.includes[0].text(), "Room.Error");
     assert_eq!(error.variants.len(), 2);
     assert_eq!(error.variants[0].fields[0].constraints.len(), 1);
@@ -77,9 +87,11 @@ fn reads_enums_with_data_and_includes() {
 #[test]
 fn reads_an_adapter_without_a_target() {
     let file = parse_ok("context Platform {\n    adapter NullScreen for Screen = {\n        fn clear() = Unit\n    }\n}");
+
     let ContextItem::Adapter(adapter) = &only_context(&file).items[0] else {
         panic!("expected an adapter")
     };
+
     assert_eq!(adapter.port.text(), "Screen");
     assert_eq!(adapter.operations.len(), 1);
 }
@@ -87,9 +99,11 @@ fn reads_an_adapter_without_a_target() {
 #[test]
 fn keeps_doc_comments() {
     let file = parse_ok("context Dungeon {\n    // Moves the player.\n    fn walk(): Unit\n}");
+
     let ContextItem::Function(walk) = &only_context(&file).items[0] else {
         panic!("expected a function")
     };
+
     assert_eq!(walk.doc, vec!["Moves the player.".to_string()]);
 }
 
@@ -97,9 +111,11 @@ fn keeps_doc_comments() {
 fn reads_a_domain() {
     let source = "domain Game {\n    contexts { Dungeon, Scoring }\n    use { PlayTurn } from Dungeon\n    calls Keyboard\n} = {\n    PlayTurn()?\n}";
     let file = parse_ok(source);
+
     let [domain] = &file.domains[..] else {
         panic!("expected one domain")
     };
+
     assert_eq!(domain.name.name, "Game");
     assert_eq!(domain.contexts.len(), 2);
     assert_eq!(domain.uses[0].from.text(), "Dungeon");
@@ -113,11 +129,13 @@ fn reads_a_context_map() {
     let domain = &file.domains[0];
     let names: Vec<&str> = domain.contexts.iter().map(|c| c.name.as_str()).collect();
     assert_eq!(names, ["Dungeon", "Scoring", "Reports", "Settings"]);
+
     let arrows: Vec<(&str, &str)> = domain
         .relations
         .iter()
         .map(|(a, b)| (a.name.as_str(), b.name.as_str()))
         .collect();
+
     assert_eq!(arrows, [("Dungeon", "Scoring"), ("Scoring", "Reports")]);
 }
 
@@ -125,11 +143,14 @@ fn reads_a_context_map() {
 fn reads_the_starting_value_of_an_adapter_field() {
     let source = "context Platform {\n    adapter ScriptedKeyboard for Keyboard = {\n        keys: List<Key> where Length(0, 32) = [Up, Fire]\n    }\n}";
     let file = parse_ok(source);
+
     let ContextItem::Adapter(adapter) = &only_context(&file).items[0] else {
         panic!("expected an adapter")
     };
+
     let field = &adapter.fields[0];
     assert_eq!(field.constraints.len(), 1);
+
     assert!(
         matches!(field.value.as_ref().map(|v| &v.kind), Some(crate::ast::ExprKind::List(items)) if items.len() == 2)
     );
@@ -154,9 +175,11 @@ fn explains_that_an_identity_type_belongs_in_the_context() {
 #[test]
 fn reads_what_an_identity_is_for() {
     let file = parse_ok("context Shop {\n identity LineId for Cart.Line: Int\n}");
+
     let ContextItem::Identity(identity) = &only_context(&file).items[0] else {
         panic!("expected an identity")
     };
+
     assert_eq!(identity.owner.text(), "Cart.Line");
 }
 
@@ -231,10 +254,13 @@ fn adds_rules_written_in_a_contract_to_their_parameter() {
     let file = parse_ok(
         "context Dungeon {\n fn attack(damage: Int where Range(1, 20), target: EnemyId): Int {\n damage where Even\n target where Alive, Near\n damage > 2\n } = damage\n}",
     );
+
     let ContextItem::Function(attack) = &only_context(&file).items[0] else {
         panic!("expected a function");
     };
+
     let parameters = attack.parameters.as_ref().expect("parameters");
+
     let constraints = |index: usize| -> Vec<String> {
         parameters[index]
             .constraints
@@ -242,6 +268,7 @@ fn adds_rules_written_in_a_contract_to_their_parameter() {
             .map(|constraint| constraint.name.text())
             .collect()
     };
+
     assert_eq!(constraints(0), ["Range", "Even"]);
     assert_eq!(constraints(1), ["Alive", "Near"]);
     assert_eq!(attack.preconditions.len(), 1);
@@ -268,15 +295,20 @@ fn reads_a_repository_with_and_without_operations() {
     let source = "context Shop {\n    repository Tills for Till\n    repository Shelves for Shelf {\n        \
                   fn find(id: ShelfId): Result<Option<Shelf>, StorageError>\n        \
                   fn empty(): Result<List<Shelf>, StorageError>\n    }\n}";
+
     let file = parse_ok(source);
     let items = &only_context(&file).items;
+
     let ContextItem::Repository(tills) = &items[0] else {
         panic!("expected a repository")
     };
+
     assert!(tills.operations.is_none());
+
     let ContextItem::Repository(shelves) = &items[1] else {
         panic!("expected a repository")
     };
+
     let operations = shelves.operations.as_ref().unwrap();
     assert_eq!(operations.len(), 2);
     assert_eq!(operations[1].name.name, "empty");

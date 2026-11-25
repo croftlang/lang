@@ -27,11 +27,13 @@ pub struct Model<'a> {
 impl<'a> Model<'a> {
     pub fn new(program: &'a Program) -> Model<'a> {
         let mut errors = Vec::new();
+
         let tables: HashMap<_, _> = program
             .contexts
             .iter()
             .map(|(name, context)| (name.clone(), build_table(context, &mut errors)))
             .collect();
+
         Model {
             checker: Checker {
                 program,
@@ -49,6 +51,7 @@ impl<'a> Model<'a> {
         let context = &self.checker.program.contexts[context];
         let aggregate =
             aggregate.and_then(|name| context.aggregates.iter().find(|a| a.name.name == name));
+
         Scope {
             context,
             aggregate: aggregate.map(|a| a.name.name.as_str()),
@@ -71,6 +74,7 @@ impl<'a> Model<'a> {
     pub fn fields(&self, named: &Resolved) -> Vec<(String, Type, &'a Field)> {
         let scope = self.checker.scope_of(named);
         let fields = self.checker.fields_of(named).unwrap_or(&[]);
+
         fields
             .iter()
             .map(|f| {

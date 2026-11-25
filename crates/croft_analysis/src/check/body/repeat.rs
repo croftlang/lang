@@ -18,17 +18,21 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 "only services and adapters can loop; use a list method such as `map` here";
             self.error(message, span);
         }
+
         let ExprKind::Block(statements) = &block.kind else {
             return Type::Unit;
         };
+
         self.nested(|body| {
             if let Some(counter) = counter {
                 body.check_counter(counter);
             }
+
             body.loops += 1;
             body.block(statements, None);
             body.loops -= 1;
         });
+
         Type::Unit
     }
 
@@ -38,15 +42,18 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             .constraints
             .iter()
             .any(|constraint| !constraint.each && constraint.name.text() == "Range");
+
         if !has_range {
             let message = "a counted loop needs a `Range` constraint, such as `where Range(0, 9)`";
             self.error(message, counter.name.span);
         }
+
         for constraint in &counter.constraints {
             for argument in &constraint.arguments {
                 self.expect(argument, &Type::Int);
             }
         }
+
         self.bind(
             &counter.name.name,
             Type::Int,
@@ -59,6 +66,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         if self.loops == 0 {
             self.error("`break` can only be used inside a loop", span);
         }
+
         Type::Unit
     }
 }

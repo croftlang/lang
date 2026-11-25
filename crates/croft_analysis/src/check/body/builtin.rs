@@ -18,13 +18,17 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     ) -> Option<Type> {
         let context = self.scope.context;
         self.checker.check_standard(context, name, span);
+
         let ty = match name {
             "max" | "min" => {
                 let first = self.one_argument(name, arguments, 0, 2, span, None);
+
                 if !first.is_number() {
                     self.error(format!("`{name}` needs numbers, found `{first}`"), span);
                 }
+
                 self.one_argument(name, arguments, 1, 2, span, Some(&first));
+
                 first
             }
             "abs" => self.one_argument(name, arguments, 0, 1, span, Some(&Type::Int)),
@@ -33,6 +37,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     Some(Type::Option(item)) => Some((**item).clone()),
                     _ => None,
                 };
+
                 Type::option(self.one_argument(name, arguments, 0, 1, span, item.as_ref()))
             }
             "Ok" | "Err" => {
@@ -40,6 +45,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     Some(Type::Result(value, error)) => ((**value).clone(), (**error).clone()),
                     _ => (Type::Unknown, Type::Unknown),
                 };
+
                 if name == "Ok" {
                     Type::result(
                         self.one_argument(name, arguments, 0, 1, span, Some(&value)),
@@ -56,24 +62,29 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 for index in 0..3 {
                     self.one_argument(name, arguments, index, 3, span, Some(&Type::Int));
                 }
+
                 Type::Bool
             }
             "Length" => {
                 let items =
                     self.one_argument(name, arguments, 0, arguments.len().clamp(2, 3), span, None);
+
                 if !matches!(items, Type::String | Type::List(_) | Type::Unknown) {
                     self.error(
                         format!("`Length` needs a string or list, found `{items}`"),
                         span,
                     );
                 }
+
                 for index in 1..arguments.len().clamp(2, 3) {
                     self.one_argument(name, arguments, index, 3, span, Some(&Type::Int));
                 }
+
                 Type::Bool
             }
             _ => return None,
         };
+
         Some(ty)
     }
 
@@ -96,9 +107,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 span,
             );
         }
+
         let Some(argument) = arguments.get(index) else {
             return expected.cloned().unwrap_or(Type::Unknown);
         };
+
         match expected {
             Some(expected) => self.expect(&argument.value, expected),
             None => self.expr(&argument.value, None),

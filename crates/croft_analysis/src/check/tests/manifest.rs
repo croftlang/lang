@@ -15,6 +15,7 @@ fn check_with(toml: &str) -> Vec<String> {
     let manifest =
         Manifest::parse(toml, SourceId(1)).unwrap_or_else(|error| panic!("{}", error.message));
     let file = parse(GAME, SourceId(0)).expect("valid syntax");
+
     match crate::check(vec![file], Some(manifest)) {
         Ok(_) => Vec::new(),
         Err(errors) => errors
@@ -39,6 +40,7 @@ fn accepts_a_target_that_fills_every_port() {
 #[test]
 fn reports_a_port_without_an_adapter() {
     let file = toml("[target.test]\nmain = \"Main\"\n");
+
     assert_eq!(
         check_with(&file),
         vec!["4: target `test` has no adapter for port `Screen`"]
@@ -49,6 +51,7 @@ fn reports_a_port_without_an_adapter() {
 fn reports_an_adapter_for_the_wrong_port() {
     let file =
         toml("[target.test]\nmain = \"Main\"\n\n[target.test.adapters]\nScreen = \"TestClock\"\n");
+
     assert_eq!(
         check_with(&file),
         vec!["8: adapter `TestClock` is for port `Clock`, not `Screen`"]
@@ -59,15 +62,19 @@ fn reports_an_adapter_for_the_wrong_port() {
 fn checks_what_each_target_runs() {
     let adapters = "\n[target.test.adapters]\nScreen = \"TestScreen\"\n";
     let file = toml(&format!("[target.test]\nmain = \"Turn\"\n{adapters}"));
+
     assert_eq!(
         check_with(&file),
         vec!["5: the main service `Turn` must take no parameters"]
     );
+
     let file = toml(&format!("[target.test]\nmain = \"Start\"\n{adapters}"));
+
     assert_eq!(
         check_with(&file),
         vec!["5: cannot find a service named `Start`"]
     );
+
     let file = toml("[target.test.adapters]\nScreen = \"TestScreen\"\n");
     assert_eq!(check_with(&file), vec!["4: target `test` has nothing to run: declare a `domain`, or name a service with `main`"]);
 }
@@ -77,6 +84,7 @@ fn reports_unknown_keys_in_the_file() {
     let error =
         Manifest::parse("[package]\nname = \"game\"\nmain = \"Main\"\n", SourceId(1)).unwrap_err();
     assert_eq!(error.span.line, 3);
+
     assert!(
         error.message.contains("unknown field `main`"),
         "{}",
@@ -98,8 +106,10 @@ fn check_source(source: &str, adapters: &str) -> Vec<String> {
     let text = toml(&format!(
         "[target.test]\nmain = \"Main\"\n\n[target.test.adapters]\n{adapters}"
     ));
+
     let manifest = Manifest::parse(&text, SourceId(1)).unwrap_or_else(|e| panic!("{}", e.message));
     let file = parse(source, SourceId(0)).expect("valid syntax");
+
     match crate::check(vec![file], Some(manifest)) {
         Ok(_) => Vec::new(),
         Err(errors) => errors
@@ -112,22 +122,27 @@ fn check_source(source: &str, adapters: &str) -> Vec<String> {
 #[test]
 fn keeps_repositories_in_memory_or_in_files() {
     assert_eq!(check_shop(""), Vec::<String>::new());
+
     assert_eq!(
         check_shop("Shelves = \"MemoryStorage\"\n"),
         Vec::<String>::new()
     );
+
     assert_eq!(
         check_shop("Files = \"StdioFiles\"\nShelves = \"FileStorage\"\n"),
         Vec::<String>::new()
     );
+
     assert_eq!(
         check_shop("Shelves = \"FileStorage\"\n"),
         vec!["8: `FileStorage` saves through `Files`, so target `test` needs an adapter for `Files`, such as `Files = \"StdioFiles\"`"]
     );
+
     assert_eq!(
         check_shop("Shelves = \"StdioFiles\"\nFiles = \"StdioFiles\"\n"),
         vec!["8: `StdioFiles` is not an adapter for `Storage` or for `Shelves`, so it can't keep its aggregates"]
     );
+
     assert_eq!(
         check_shop("Shelves = \"Cloud\"\n"),
         vec!["8: cannot find an adapter named `Cloud`"]
@@ -146,16 +161,21 @@ fn keeps_in_storage_only_finds_saves_and_removes() {
              service Main(): Result<Unit, StorageError> {{\n calls Shelves\n}} = Ok(Unit)\n}}"
         )
     };
+
     let kept = "fn find(id: ShelfId): Result<Shelf, Lookup>\n\
                 fn find_kept(id: ShelfId): Result<Option<Shelf>, StorageError>\n\
                 fn save(shelf: Shelf): Result<Unit, StorageError>\n\
                 fn remove(id: ShelfId): Result<Unit, StorageError>";
+
     assert_eq!(check_source(&shop(kept), ""), Vec::<String>::new());
+
     let empty = "fn empty(): Result<List<Shelf>, StorageError>";
+
     assert_eq!(
         check_source(&shop(empty), "Shelves = \"MemoryStorage\"\n"),
         vec!["8: `Storage` can't provide `Shelves.empty`, so target `test` needs an adapter written for `Shelves`"]
     );
+
     assert_eq!(
         check_source(&shop(empty), ""),
         vec!["4: `Storage` can't provide `Shelves.empty`, so target `test` needs an adapter written for `Shelves`"]

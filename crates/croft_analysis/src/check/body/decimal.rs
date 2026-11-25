@@ -12,11 +12,14 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let Some(Type::Decimal(places)) = expected else {
             return Type::Float;
         };
+
         let written = text.split_once('.').map_or(0, |(_, after)| after.len());
+
         if written > *places as usize {
             let message = format!("`{text}` has more than {places} decimal places");
             self.error(message, span);
         }
+
         Type::Decimal(*places)
     }
 
@@ -32,10 +35,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         right: &Expr,
     ) -> Option<Type> {
         let right_expected = matches!(left_type, Type::Decimal(_)).then_some(left_type);
+
         if right_expected.is_none() && *left_type != Type::Int {
             return None;
         }
+
         let right_type = self.expr(right, right_expected);
+
         let decimal = match (left_type, &right_type) {
             (Type::Decimal(a), Type::Decimal(b)) if a == b => *a,
             (Type::Decimal(places), Type::Int) => *places,
@@ -47,13 +53,17 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 return Some(left_type.clone());
             }
         };
+
         let joined = Type::Decimal(decimal);
+
         if op == BinaryOp::Remainder {
             self.error("a `Decimal` has no remainder", left.span);
         }
+
         if op == BinaryOp::Divide && *left_type == Type::Int {
             self.error("only a `Decimal` can be divided by a `Decimal`", left.span);
         }
+
         Some(joined)
     }
 
@@ -63,6 +73,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             let message = format!("expected `Int`, found `{right_type}`");
             self.error(message, right.span);
         }
+
         Some(Type::Int)
     }
 }

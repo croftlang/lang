@@ -12,9 +12,11 @@ impl Parser {
     /// An `issue` target is read without `?`, so the `?` applies to the issue.
     pub(super) fn parse_postfix(&mut self, allow_try: bool) -> ParseResult<Expr> {
         let mut value = self.parse_primary()?;
+
         loop {
             let span = value.span;
             let same_line = !self.peek().newline_before;
+
             let kind = match self.peek().kind {
                 TokenKind::Dot => {
                     self.advance();
@@ -39,6 +41,7 @@ impl Parser {
                 }
                 _ => return Ok(value),
             };
+
             value = self.make_expr(kind, span);
         }
     }
@@ -47,10 +50,12 @@ impl Parser {
 /// The path a record literal names, when it ends in a type name: `Room.Enemy`.
 fn record_path(value: &Expr) -> Option<Path> {
     let path = expr_to_path(value)?;
+
     let starts_upper = path
         .last()
         .name
         .starts_with(|c: char| c.is_ascii_uppercase());
+
     starts_upper.then_some(path)
 }
 
@@ -61,6 +66,7 @@ pub(super) fn expr_to_path(value: &Expr) -> Option<Path> {
                 name: name.clone(),
                 span: value.span,
             };
+
             Some(Path {
                 segments: vec![segment],
             })

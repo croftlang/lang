@@ -31,6 +31,7 @@ impl Parser {
     /// A declaration at the top of a file that belongs inside a context or an aggregate.
     pub(super) fn misplaced_in_file(&self) -> Option<Diagnostic> {
         let keyword = self.peeked_keyword()?;
+
         let message = if CONTEXT_ONLY.contains(&keyword) || keyword == Keyword::Error {
             format!(
                 "`{}` is declared inside a context: `context Name {{ ... }}`",
@@ -39,6 +40,7 @@ impl Parser {
         } else {
             aggregate_only(keyword)?.to_string()
         };
+
         Some(Diagnostic::new(message, self.span()))
     }
 
@@ -52,9 +54,11 @@ impl Parser {
     /// followed by `:` is a mistaken field name, which `parse_field` reports.
     pub(super) fn misplaced_in_aggregate(&self) -> Option<Diagnostic> {
         let keyword = self.peeked_keyword()?;
+
         if !CONTEXT_ONLY.contains(&keyword) || self.peek_nth(1).kind == TokenKind::Colon {
             return None;
         }
+
         let message = match keyword {
             // Explained by `identity_in_fields`, which entities and values share.
             Keyword::Identity => return None,
@@ -67,6 +71,7 @@ impl Parser {
                 keyword.as_str()
             ),
         };
+
         Some(Diagnostic::new(message, self.span()))
     }
 
@@ -78,7 +83,9 @@ impl Parser {
         if !self.check_keyword(Keyword::Identity) {
             return None;
         }
+
         let owner = owner.unwrap_or("Name");
+
         let message = match &self.peek_nth(1).kind {
             TokenKind::Identifier(name) if name.starts_with(char::is_uppercase) => format!(
                 "an identity type is declared in the context, beside the aggregate: \
@@ -90,6 +97,7 @@ impl Parser {
                  type in the context with what it identifies: `identity {owner}Id for {owner}: Int`"
             ),
         };
+
         Some(Diagnostic::new(message, self.span()))
     }
 

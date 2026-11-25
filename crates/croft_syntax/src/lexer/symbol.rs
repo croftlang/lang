@@ -7,9 +7,11 @@ use crate::token::TokenKind;
 impl Lexer<'_> {
     fn advance_if(&mut self, expected: char) -> bool {
         let matches = self.peek() == Some(expected);
+
         if matches {
             self.advance();
         }
+
         matches
     }
 
@@ -61,6 +63,7 @@ impl Lexer<'_> {
                 ))
             }
         };
+
         Ok(kind)
     }
 }

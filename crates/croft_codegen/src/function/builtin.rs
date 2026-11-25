@@ -11,13 +11,17 @@ impl<'g, 'a> Writer<'g, 'a> {
             Some(argument) => writer.value(&argument.value, want),
             None => "0".to_string(),
         };
+
         match name {
             "max" | "min" | "abs" => {
                 let first = value(self, 0, ty);
+
                 if name == "abs" {
                     return format!("CROFT_ABS({first})");
                 }
+
                 let second = value(self, 1, ty);
+
                 format!("CROFT_{}({first}, {second})", name.to_uppercase())
             }
             "Some" | "Ok" | "Err" => {
@@ -27,10 +31,12 @@ impl<'g, 'a> Writer<'g, 'a> {
                     Type::Result(_, error) => ("ok", "error", "0", (**error).clone()),
                     _ => return "0".to_string(),
                 };
+
                 let inner = value(self, 0, &inner);
                 let temp = self.temp(ty);
                 self.line(format!("{temp}.{flag} = {on};"));
                 self.line(format!("{temp}.{field} = {inner};"));
+
                 temp
             }
             "Range" => {
@@ -43,13 +49,16 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let items_type = arguments
                     .first()
                     .map_or(Type::Unknown, |a| self.type_of(&a.value, None));
+
                 let items = value(self, 0, &items_type);
                 let low = value(self, 1, &Type::Int);
+
                 let high = if arguments.len() > 2 {
                     value(self, 2, &Type::Int)
                 } else {
                     low.clone()
                 };
+
                 format!(
                     "((croft_int) {items}.length >= {low} && (croft_int) {items}.length <= {high})"
                 )

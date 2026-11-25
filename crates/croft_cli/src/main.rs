@@ -28,11 +28,14 @@ Usage:
 
 fn main() -> ExitCode {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
+
     let Some(command) = arguments.first() else {
         print!("{USAGE}");
         return ExitCode::FAILURE;
     };
+
     let rest = &arguments[1..];
+
     let result = match command.as_str() {
         "check" => parse_path(rest).and_then(|(path, flags)| {
             reject_flags(&flags)?;
@@ -55,6 +58,7 @@ fn main() -> ExitCode {
         }
         other => Err(format!("unknown command `{other}`\n\n{USAGE}")),
     };
+
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) if message.is_empty() => ExitCode::FAILURE,
@@ -69,6 +73,7 @@ fn main() -> ExitCode {
 fn parse_path(arguments: &[String]) -> Result<(PathBuf, Vec<String>), String> {
     let mut path = None;
     let mut flags = Vec::new();
+
     for argument in arguments {
         if argument.starts_with("--") {
             flags.push(argument.clone());
@@ -78,6 +83,7 @@ fn parse_path(arguments: &[String]) -> Result<(PathBuf, Vec<String>), String> {
             return Err(format!("unexpected argument `{argument}`"));
         }
     }
+
     Ok((path.unwrap_or_else(|| PathBuf::from(".")), flags))
 }
 
@@ -90,6 +96,7 @@ fn reject_flags(flags: &[String]) -> Result<(), String> {
 
 pub(crate) fn load_and_check(path: &Path) -> Result<(Project, croft_analysis::Program), String> {
     let project = Project::load(path)?;
+
     match project.check() {
         Ok(program) => Ok((project, program)),
         Err(diagnostics) => {
@@ -101,21 +108,26 @@ pub(crate) fn load_and_check(path: &Path) -> Result<(Project, croft_analysis::Pr
 
 fn check(path: &Path) -> Result<(), String> {
     let (project, program) = load_and_check(path)?;
+
     let contexts = program
         .contexts
         .values()
         .filter(|c| !c.is_domain && !c.is_standard)
         .count();
+
     let files = project.files.len();
+
     let domain = program
         .domains
         .first()
         .map_or(String::new(), |d| format!("domain {} with ", d.name.name));
+
     println!(
         "Checked {files} file{}: {domain}{contexts} context{}, no errors",
         plural(files),
         plural(contexts)
     );
+
     Ok(())
 }
 

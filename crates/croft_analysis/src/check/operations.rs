@@ -23,7 +23,9 @@ impl<'a> Checker<'a> {
         if port.kind == SymbolKind::Repository {
             return self.repository_operations(port);
         }
+
         let scope = self.scope_of(port);
+
         let Some(decl) = scope
             .context
             .ports
@@ -32,6 +34,7 @@ impl<'a> Checker<'a> {
         else {
             return Vec::new();
         };
+
         self.declared_operations(scope, &decl.operations)
     }
 
@@ -63,17 +66,22 @@ impl<'a> Checker<'a> {
     fn repository_operations(&self, repository: &Resolved) -> Vec<Operation<'a>> {
         let scope = self.scope_of(repository);
         let decl = (scope.context.repositories.iter()).find(|r| r.name.name == repository.name);
+
         if let Some(operations) = decl.and_then(|r| r.operations.as_ref()) {
             return self.declared_operations(scope, operations);
         }
+
         let Some(aggregate) = self.repository_aggregate(repository) else {
             return Vec::new();
         };
+
         let errors = self
             .lookup(&aggregate.context, &format!("{}.Error", aggregate.name))
             .map_or(Type::Unknown, Type::Named);
+
         let storage = self.storage_error();
         let aggregate_type = Type::Named(aggregate.clone());
+
         vec![
             Operation {
                 name: "find".to_string(),

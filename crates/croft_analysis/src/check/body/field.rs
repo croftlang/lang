@@ -20,10 +20,14 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             if let Some(ty) = self.type_path(Some(value.id), &path, expected) {
                 return ty;
             }
+
             return Type::Unknown;
         }
+
         let ty = self.expr(inner, None);
+
         self.note(Some(value.id), Meaning::Property);
+
         self.property(&ty, field)
     }
 

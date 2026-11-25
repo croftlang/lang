@@ -11,6 +11,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     /// `text.length`, `enemies.is_empty`, `room.player`, `event.source`.
     pub(super) fn property(&mut self, ty: &Type, field: &Identifier) -> Type {
         let name = field.name.as_str();
+
         let found = match (ty, name) {
             (Type::Unknown, _) => Some(Type::Unknown),
             (Type::String | Type::Bytes | Type::List(_), "length") => Some(Type::Int),
@@ -29,12 +30,15 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             (Type::Named(named), _) => self.checker.field_type(named, name),
             _ => None,
         };
+
         let Some(found) = found else {
             self.error(format!("`{ty}` has no field `{name}`"), field.span);
             return Type::Unknown;
         };
+
         let defined = self.field_span(ty, name);
         self.note_member(field, ty, &found, MemberKind::Field, defined);
+
         found
     }
 }

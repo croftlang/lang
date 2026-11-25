@@ -8,6 +8,7 @@ use crate::token::TokenKind;
 impl<'a> Lexer<'a> {
     pub(crate) fn read_string(&mut self, start: Span) -> Result<TokenKind, Diagnostic> {
         let mut value = String::new();
+
         while let Some(c) = self.advance() {
             match c {
                 '"' => return Ok(TokenKind::String(value)),
@@ -24,6 +25,7 @@ impl<'a> Lexer<'a> {
                 c => value.push(c),
             }
         }
+
         Err(Diagnostic::new("unterminated string", start))
     }
 
@@ -37,24 +39,30 @@ impl<'a> Lexer<'a> {
             ('0', Some('b')) => Some((2, "binary", "0b")),
             _ => None,
         };
+
         if let Some((radix, name, prefix)) = radix {
             self.advance();
+
             let digits = self.read_digits(|c| c.is_digit(radix));
+
             return i64::from_str_radix(&digits, radix)
                 .map(TokenKind::Int)
                 .map_err(|_| {
                     Diagnostic::new(format!("invalid {name} number `{prefix}{digits}`"), start)
                 });
         }
+
         let mut text = first.to_string() + &self.read_digits(|c| c.is_ascii_digit());
         let is_float =
             self.peek() == Some('.') && self.peek_second().is_some_and(|c| c.is_ascii_digit());
+
         if is_float {
             self.advance();
             text.push('.');
             text += &self.read_digits(|c| c.is_ascii_digit());
             return Ok(TokenKind::Float(text));
         }
+
         text.parse()
             .map(TokenKind::Int)
             .map_err(|_| Diagnostic::new(format!("number `{text}` is too large"), start))
@@ -63,6 +71,7 @@ impl<'a> Lexer<'a> {
     /// Reads digits accepted by `is_digit`, skipping `_` separators.
     fn read_digits(&mut self, is_digit: impl Fn(char) -> bool) -> String {
         let mut digits = String::new();
+
         while let Some(c) = self.peek() {
             if c == '_' {
                 self.advance();
@@ -73,15 +82,18 @@ impl<'a> Lexer<'a> {
                 break;
             }
         }
+
         digits
     }
 
     pub(crate) fn read_word(&mut self, first: char) -> TokenKind {
         let mut word = first.to_string();
+
         while let Some(c) = self.peek().filter(|c| c.is_alphanumeric() || *c == '_') {
             word.push(c);
             self.advance();
         }
+
         match Keyword::from_word(&word) {
             Some(keyword) => TokenKind::Keyword(keyword),
             None => TokenKind::Identifier(word),

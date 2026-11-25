@@ -9,12 +9,14 @@ impl<'a> Checker<'a> {
     /// A context can only publish names it declares itself.
     pub(super) fn check_publish(&mut self, context: &Context) {
         let name = &context.name.name;
+
         for path in &context.publish {
             if self.lookup(name, &path.text()).is_none() {
                 let message = format!(
                     "cannot publish `{}`: context `{name}` does not declare it",
                     path.text()
                 );
+
                 self.error(message, path.span());
             }
         }
@@ -26,6 +28,7 @@ impl<'a> Checker<'a> {
         for use_decl in &context.uses {
             let from = use_decl.from.text();
             let span = use_decl.from.span();
+
             if let Some(provided) = standard_names(&from) {
                 for path in &use_decl.names {
                     if !provided.contains(&path.text().as_str()) {
@@ -33,22 +36,28 @@ impl<'a> Checker<'a> {
                         self.error(message, path.span());
                     }
                 }
+
                 continue;
             }
+
             if from == context.name.name {
                 self.error(format!("context `{from}` cannot import from itself"), span);
                 continue;
             }
+
             if !self.program.contexts.contains_key(&from) {
                 self.error(format!("cannot find a context named `{from}`"), span);
                 continue;
             }
+
             for path in &use_decl.names {
                 let text = path.text();
                 let found = self.lookup(&from, &text);
+
                 match found {
                     Some(target) if self.is_published(&from, &text) => {
                         let last = path.last();
+
                         self.references.get_mut().push(crate::facts::Reference {
                             span: last.span,
                             name: last.name.clone(),
@@ -71,13 +80,16 @@ impl<'a> Checker<'a> {
         let Some(standard) = standard_context_of(name) else {
             return true;
         };
+
         let imported = context.uses.iter().any(|use_decl| {
             use_decl.from.text() == standard && use_decl.names.iter().any(|n| n.text() == name)
         });
+
         if !imported {
             let message = format!("`{name}` needs `use {{ {name} }} from {standard}`");
             self.error(message, span);
         }
+
         imported
     }
 }

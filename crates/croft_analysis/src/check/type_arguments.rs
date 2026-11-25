@@ -17,11 +17,13 @@ impl<'a> Checker<'a> {
             arguments: Vec::new(),
             number: None,
         };
+
         let generic = |name: &str, arguments: Vec<TypeExpr>| TypeExpr {
             path: path_of(name),
             arguments,
             number: None,
         };
+
         Some(match ty {
             Type::Int => simple("Int"),
             Type::Float => simple("Float"),
@@ -67,12 +69,15 @@ impl<'a> Checker<'a> {
         bound: &mut HashMap<String, Type>,
     ) {
         let name = written.path.text();
+
         if parameters.iter().any(|p| p.name == name) && written.arguments.is_empty() {
             if !found.is_unknown() {
                 bound.entry(name).or_insert_with(|| found.clone());
             }
+
             return;
         }
+
         let inner: Vec<Type> = match (name.as_str(), found) {
             ("List", Type::List(item)) | ("Option", Type::Option(item)) => vec![(**item).clone()],
             ("Map", Type::Map(key, value)) | ("Result", Type::Result(key, value)) => {
@@ -81,6 +86,7 @@ impl<'a> Checker<'a> {
             (_, Type::Named(instance)) => self.instance_arguments(scope, written, instance),
             _ => return,
         };
+
         for (written, found) in written.arguments.iter().zip(&inner) {
             self.match_type(scope, written, found, parameters, bound);
         }
@@ -98,14 +104,18 @@ impl<'a> Checker<'a> {
         let Some(template) = self.resolve(scope, &written.path) else {
             return Vec::new();
         };
+
         let Some(declaration) = self.generic_value(&template) else {
             return Vec::new();
         };
+
         if !self.is_instance_of(&Type::Named(instance.clone()), &template) {
             return Vec::new();
         }
+
         let mut bound = HashMap::new();
         let template_scope = self.scope_of(&template);
+
         for field in &declaration.fields {
             if let Some(found) = self.field_type(instance, &field.name.name) {
                 self.match_type(
@@ -117,6 +127,7 @@ impl<'a> Checker<'a> {
                 );
             }
         }
+
         (declaration.type_parameters.iter())
             .map(|p| bound.get(&p.name).cloned().unwrap_or(Type::Unknown))
             .collect()

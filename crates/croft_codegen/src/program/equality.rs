@@ -9,14 +9,18 @@ impl<'a> Generator<'a> {
     /// The name of the function that compares two values of `ty`, generated later.
     pub fn equality_for(&self, ty: &Type) -> String {
         let ty = self.canonical(ty);
+
         let name = format!(
             "croft_equal_{}",
             self.c_type(&ty).trim_start_matches("croft_")
         );
+
         let mut equalities = self.equalities.borrow_mut();
+
         if equalities.1.insert(ty.clone()) {
             equalities.0.push(ty);
         }
+
         name
     }
 
@@ -24,17 +28,22 @@ impl<'a> Generator<'a> {
     pub fn equality_functions(&self, prototypes: &mut Vec<String>) -> String {
         let mut out = String::new();
         let mut index = 0;
+
         loop {
             let next = self.equalities.borrow().0.get(index).cloned();
             let Some(ty) = next else { break };
+
             index += 1;
+
             let name = self.equality_for(&ty);
             let c_type = self.c_type(&ty);
             let signature = format!("croft_bool {name}(const {c_type} *a, const {c_type} *b)");
             prototypes.push(format!("{signature};"));
+
             let body = self.equality_body(&ty);
             out.push_str(&format!("{signature}\n{{\n{body}}}\n\n"));
         }
+
         out
     }
 
@@ -42,6 +51,7 @@ impl<'a> Generator<'a> {
         match ty {
             Type::List(item) => {
                 let same = self.compare("a->items[index]", "b->items[index]", item);
+
                 format!(
                     "    croft_u16 index;\n\n    if (a->length != b->length) {{\n        return 0;\n    }}\n    \
                      for (index = 0; index < a->length; index++) {{\n        if (!{same}) {{\n            return 0;\n        }}\n    }}\n    return 1;\n"
@@ -51,6 +61,7 @@ impl<'a> Generator<'a> {
             Type::Map(key, value) => {
                 let same_key = self.compare("a->keys[index]", "b->keys[other]", key);
                 let same_value = self.compare("a->values[index]", "b->values[other]", value);
+
                 format!(
                     "    croft_u16 index;\n    croft_u16 other;\n\n    if (a->length != b->length) {{\n        return 0;\n    }}\n    \
                      for (index = 0; index < a->length; index++) {{\n        \
@@ -66,6 +77,7 @@ impl<'a> Generator<'a> {
             Type::Named(named) if named.kind == SymbolKind::Enum => {
                 let mut tests =
                     String::from("    if (a->tag != b->tag) {\n        return 0;\n    }\n");
+
                 for variant in self.model.variants(named) {
                     for (field, field_type) in &variant.fields {
                         let same = self.compare(
@@ -73,13 +85,17 @@ impl<'a> Generator<'a> {
                             &format!("b->as.{}.{field}", variant.name),
                             field_type,
                         );
+
                         let tag = format!("{}_{}", crate::names::c_name(named), variant.name);
+
                         tests.push_str(&format!(
                             "    if (a->tag == {tag} && !{same}) {{\n        return 0;\n    }}\n"
                         ));
                     }
                 }
+
                 tests.push_str("    return 1;\n");
+
                 tests
             }
             Type::Named(named) => {
@@ -91,11 +107,13 @@ impl<'a> Generator<'a> {
                         None => self.compare(&format!("a->{field}"), &format!("b->{field}"), &field_type),
                     })
                     .collect();
+
                 let all = if fields.is_empty() {
                     "1".to_string()
                 } else {
                     fields.join("\n        && ")
                 };
+
                 format!("    return {all};\n")
             }
             _ => "    return 1;\n".to_string(),
@@ -106,12 +124,15 @@ impl<'a> Generator<'a> {
         if self.is_scalar(ty) {
             return format!("({a} == {b})");
         }
+
         if *ty == Type::String {
             return format!("croft_string_equal(&{a}, &{b})");
         }
+
         if *ty == Type::Bytes {
             return format!("croft_bytes_equal(&{a}, &{b})");
         }
+
         format!("{}(&{a}, &{b})", self.equality_for(ty))
     }
 }

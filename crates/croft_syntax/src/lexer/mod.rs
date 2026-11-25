@@ -23,6 +23,7 @@ pub(crate) struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     fn new(source: &'a str, source_id: SourceId) -> Self {
         let chars = source.chars().peekable();
+
         Self {
             chars,
             source_id,
@@ -51,22 +52,26 @@ impl<'a> Lexer<'a> {
 
     pub(crate) fn advance(&mut self) -> Option<char> {
         let next = self.chars.next()?;
+
         if next == '\n' {
             self.line += 1;
             self.column = 1;
         } else {
             self.column += 1;
         }
+
         Some(next)
     }
 
     fn tokenize_all(mut self) -> Result<Vec<Token>, Diagnostic> {
         let mut tokens = Vec::new();
+
         loop {
             let start_line = self.line;
             let doc = self.skip_whitespace_and_comments();
             let newline_before = self.line > start_line || tokens.is_empty();
             let span = self.current_span();
+
             let Some(current) = self.advance() else {
                 tokens.push(Token {
                     kind: TokenKind::EndOfFile,
@@ -74,9 +79,12 @@ impl<'a> Lexer<'a> {
                     newline_before,
                     doc,
                 });
+
                 return Ok(tokens);
             };
+
             let kind = self.read_token(current, span)?;
+
             tokens.push(Token {
                 kind,
                 span,

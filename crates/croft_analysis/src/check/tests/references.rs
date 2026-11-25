@@ -18,9 +18,11 @@ fn target_at(analysis: &Analysis, line: u32, column: u32) -> Option<(String, Sym
         line,
         column,
     };
+
     let facts = &analysis.program.facts;
     let reference = facts.references.iter().find(|r| r.span == span)?;
     let target = &reference.target;
+
     Some((format!("{}.{}", target.context, target.name), target.kind))
 }
 
@@ -42,15 +44,18 @@ context Dungeon {
 #[test]
 fn notes_types_and_their_paths() {
     let analysis = analyze_source(ROOM);
+
     assert!(
         analysis.diagnostics.is_empty(),
         "{:?}",
         analysis.diagnostics
     );
+
     // `RoomId` in `id: RoomId`.
     let (name, kind) = target_at(&analysis, 4, 13).expect("RoomId is noted");
     assert_eq!(name, "Dungeon.RoomId");
     assert_eq!(kind, SymbolKind::Identity);
+
     // `Room` in `Room.Error` names the aggregate.
     let (name, _) = target_at(&analysis, 12, 17).expect("Room is noted");
     assert_eq!(name, "Dungeon.Room");
@@ -70,11 +75,13 @@ fn notes_where_locals_are_bound_and_used() {
     let locals = &analysis.program.facts.locals;
     let uses: Vec<_> = locals.iter().filter(|l| l.name == "more").collect();
     assert_eq!(uses.len(), 2, "bound once and used once: {uses:?}");
+
     let bound = Span {
         source: SourceId(0),
         line: 8,
         column: 17,
     };
+
     assert!(uses.iter().all(|l| l.defined == Some(bound)));
     assert_eq!(uses[0].ty.to_string(), "Int");
 }
@@ -84,6 +91,7 @@ fn keeps_what_it_learned_when_there_are_errors() {
     let analysis = analyze_source(
         "context Dungeon {\n    value Position { x: Missing }\n    value Size { w: Int }\n}",
     );
+
     assert_eq!(analysis.diagnostics.len(), 1);
     assert!(analysis.symbols["Dungeon"].get("Size").is_some());
 }
@@ -106,18 +114,23 @@ context Dungeon {
         screen.draw(at)
     }
 }";
+
     let analysis = analyze_source(source);
+
     assert!(
         analysis.diagnostics.is_empty(),
         "{:?}",
         analysis.diagnostics
     );
+
     let members = &analysis.program.facts.members;
+
     let at = |line: u32, column: u32| {
         (members.iter())
             .find(|m| (m.span.line, m.span.column) == (line, column))
             .unwrap_or_else(|| panic!("a member at {line}:{column} in {members:?}"))
     };
+
     // `x:` in the record, and `.x` after `at`, are the field on line 3.
     for column in [51, 57] {
         let member = at(9, column);
@@ -125,6 +138,7 @@ context Dungeon {
         assert_eq!(member.defined.map(|s| s.line), Some(3));
         assert_eq!(member.ty, crate::types::Type::Int);
     }
+
     // `draw` in `screen.draw(at)` is the operation on line 7.
     let draw = at(13, 16);
     assert_eq!(draw.kind, crate::facts::MemberKind::Operation);

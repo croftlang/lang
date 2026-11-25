@@ -19,13 +19,16 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             Some(Type::Map(key, value)) => (Some((**key).clone()), Some((**value).clone())),
             _ => (None, None),
         };
+
         for (entry_key, entry_value) in entries {
             key = Some(self.typed_entry(entry_key, key.take()));
             value = Some(self.typed_entry(entry_value, value.take()));
         }
+
         if entries.is_empty() && key.is_none() {
             self.error("an empty map needs its type from where it goes, such as `let stock: Map<String, Int> = [:]`", span);
         }
+
         Type::map(key.unwrap_or(Type::Unknown), value.unwrap_or(Type::Unknown))
     }
 
@@ -52,6 +55,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     ) -> Option<Type> {
         let map = Type::map(key.clone(), value.clone());
         let key = key.clone();
+
         match name {
             "get" => self.fixed(name, arguments, &[key], Type::option(value.clone()), span),
             "set" => self.fixed(name, arguments, &[key, value.clone()], map, span),

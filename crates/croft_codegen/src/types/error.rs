@@ -22,13 +22,16 @@ impl<'a> Generator<'a> {
                         .into_iter()
                         .map(|(name, ty, _)| (name, ty))
                         .collect();
+
                     (error, fields)
                 })
                 .collect();
+
         for enum_decl in self.model.all(SymbolKind::Enum) {
             if !self.model.is_error(&Type::Named(enum_decl.clone())) {
                 continue;
             }
+
             for variant in self
                 .model
                 .variants(&enum_decl)
@@ -38,6 +41,7 @@ impl<'a> Generator<'a> {
                 errors.push((self.own_error(&enum_decl, &variant), variant.fields));
             }
         }
+
         errors
     }
 
@@ -53,25 +57,32 @@ impl<'a> Generator<'a> {
     pub fn error_definition(&self) -> String {
         let mut out = String::new();
         let mut cases = String::new();
+
         for (index, (error, fields)) in self.errors().iter().enumerate() {
             out.push_str(&format!("#define {} {}\n", error_code(error), index + 1));
+
             if fields.is_empty() {
                 continue;
             }
+
             let fields: String = fields
                 .iter()
                 .map(|(f, ty)| format!("            {} {f};\n", self.c_type(ty)))
                 .collect();
+
             cases.push_str(&format!(
                 "        struct {{\n{fields}        }} {};\n",
                 c_name(error)
             ));
         }
+
         let body = format!(
             "    croft_u16 code;\n    union {{\n{cases}        croft_u8 none;\n    }} fields;\n"
         );
+
         out.push('\n');
         out.push_str(&struct_definition("croft_error", &body));
+
         out
     }
 }

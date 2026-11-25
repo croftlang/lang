@@ -15,6 +15,7 @@ impl<'a> Checker<'a> {
                 .get(index)
                 .map_or(Type::Unknown, |argument| self.lower_type(scope, argument))
         };
+
         match ty.path.text().as_str() {
             "Int" => Type::Int,
             "Float" => Type::Float,
@@ -42,11 +43,13 @@ impl<'a> Checker<'a> {
     /// aggregate if it belongs to one.
     pub(super) fn scope_of(&self, named: &Resolved) -> Scope<'a> {
         let context = &self.program.contexts[&named.context];
+
         let aggregate = match named.name.split_once('.') {
             Some((aggregate, _)) => Some(aggregate),
             None if named.kind == SymbolKind::Aggregate => Some(named.name.as_str()),
             None => None,
         };
+
         let aggregate = aggregate.and_then(|name| {
             context
                 .aggregates
@@ -54,12 +57,14 @@ impl<'a> Checker<'a> {
                 .find(|a| a.name.name == name)
                 .map(|a| a.name.name.as_str())
         });
+
         Scope { context, aggregate }
     }
 
     /// The fields of a value, entity, aggregate, error or event.
     pub(super) fn fields_of(&self, named: &Resolved) -> Option<&'a [Field]> {
         let context = &self.program.contexts[&named.context];
+
         let (aggregate, member) = match named.name.split_once('.') {
             Some((aggregate, member)) => (
                 context.aggregates.iter().find(|a| a.name.name == aggregate),
@@ -67,6 +72,7 @@ impl<'a> Checker<'a> {
             ),
             None => (None, named.name.as_str()),
         };
+
         let fields = match (named.kind, aggregate) {
             (SymbolKind::Value, None) => {
                 &context
@@ -100,6 +106,7 @@ impl<'a> Checker<'a> {
             }
             _ => return None,
         };
+
         Some(fields)
     }
 

@@ -20,6 +20,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             _ => {}
         }
+
         self.line("return;");
     }
 
@@ -36,15 +37,19 @@ impl<'g, 'a> Writer<'g, 'a> {
     pub fn or_else(&mut self, inner: &Expr, error: &Expr, _ty: &Type) -> String {
         let inner_type = self.type_of(inner, None);
         let (value, _) = self.eval(inner, None);
+
         let (failed, success) = match inner_type {
             Type::Result(..) => (format!("!{value}.ok"), format!("{value}.value")),
             Type::Option(_) => (format!("!{value}.some"), format!("{value}.value")),
             _ => (format!("!{value}"), "0".to_string()),
         };
+
         self.open(format!("if ({failed})"));
+
         let error = self.value(error, &Type::Errors(Vec::new()));
         self.fail(&error);
         self.close();
+
         success
     }
 }

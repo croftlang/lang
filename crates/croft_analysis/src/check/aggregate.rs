@@ -11,19 +11,24 @@ impl<'a> Checker<'a> {
             context,
             aggregate: Some(&aggregate.name.name),
         };
+
         self.check_fields(&scope, &aggregate.fields);
         self.check_aggregate_identity(&scope, aggregate);
+
         for entity in &aggregate.entities {
             self.check_value(&scope, entity);
             let identity = context.identity_for(&aggregate.name.name, Some(&entity.name.name));
             self.check_identity_field("entity", &entity.name, &entity.fields, identity);
         }
+
         for invariant in &aggregate.invariants {
             self.check_invariant(&scope, invariant);
         }
+
         for record in aggregate.errors.iter().chain(&aggregate.events) {
             self.check_fields(&scope, &record.fields);
         }
+
         for command in &aggregate.commands {
             self.check_function(&scope, command);
         }
@@ -44,16 +49,20 @@ impl<'a> Checker<'a> {
         identity: Option<&IdentityDecl>,
     ) {
         let owner = &name.name;
+
         let Some(identity) = identity else {
             let message = format!(
                 "{kind} `{owner}` has no identity; declare one in the context: \
                  `identity {owner}Id for {owner}: Int`"
             );
+
             self.error(message, name.span);
             return;
         };
+
         let id = &identity.name.name;
         let holding: Vec<_> = fields.iter().filter(|field| field.is_identity).collect();
+
         match holding[..] {
             [_] => {}
             [] => {
@@ -66,6 +75,7 @@ impl<'a> Checker<'a> {
                         "{kind} `{owner}` already has a field of its identity `{id}`; \
                          it holds only one"
                     );
+
                     self.error(message, field.name.span);
                 }
             }

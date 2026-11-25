@@ -15,20 +15,26 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         expected: Option<&Type>,
     ) -> Type {
         let subject_type = self.expr(subject, None);
+
         let Some(variants) = self.match_variants(&subject_type) else {
             self.error(format!("cannot match on `{subject_type}`"), subject.span);
             return Type::Unknown;
         };
+
         let mut result = expected.cloned();
         let mut handled: Vec<String> = Vec::new();
         let mut has_wildcard = false;
+
         for (index, arm) in arms.iter().enumerate() {
             let name = arm.pattern.path.last().name.clone();
+
             self.note_pattern(&subject_type, &arm.pattern);
+
             if name == WILDCARD {
                 self.check_wildcard(arm, index + 1 == arms.len(), &variants, &handled);
                 has_wildcard = true;
             }
+
             let bindings = match variants.iter().find(|(variant, _)| *variant == name) {
                 _ if name == WILDCARD => Vec::new(),
                 Some((_, fields)) => self.pattern_bindings(&arm.pattern, fields),
@@ -37,39 +43,48 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                         format!("`{subject_type}` has no variant `{name}`"),
                         arm.pattern.path.span(),
                     );
+
                     vec![Type::Unknown; arm.pattern.bindings.len()]
                 }
             };
+
             if handled.contains(&name) && !has_wildcard {
                 self.error(
                     format!("`{name}` is handled more than once"),
                     arm.pattern.path.span(),
                 );
             }
+
             handled.push(name);
+
             let found = self.nested(|body| {
                 for (binding, ty) in arm.pattern.bindings.iter().zip(bindings) {
                     body.bind(&binding.name, ty, false, Some(binding.span));
                 }
+
                 match &result {
                     Some(expected) => body.expect(&arm.value, expected),
                     None => body.expr(&arm.value, None),
                 }
             });
+
             if result.as_ref().is_none_or(Type::is_unknown) {
                 result = Some(found);
             }
         }
+
         let missing: Vec<&str> = (variants.iter())
             .map(|(name, _)| name.as_str())
             .filter(|name| !handled.iter().any(|h| h == name))
             .collect();
+
         if !missing.is_empty() && !subject_type.is_unknown() && !has_wildcard {
             self.error(
                 format!("this match does not handle {}", quote_all(&missing)),
                 subject.span,
             );
         }
+
         result.unwrap_or(Type::Unknown)
     }
 
@@ -83,21 +98,25 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         handled: &[String],
     ) {
         let span = arm.pattern.path.span();
+
         if !is_last {
             self.error(
                 "`_` handles everything left, so it must be the last arm",
                 span,
             );
         }
+
         if !arm.pattern.bindings.is_empty() {
             self.error(
                 "`_` stands for several variants, so it can't name their fields",
                 span,
             );
         }
+
         let left = variants
             .iter()
             .any(|(variant, _)| !handled.contains(variant));
+
         if !left && !variants.is_empty() {
             self.error(
                 "every variant is already handled, so `_` is never reached",
@@ -112,16 +131,20 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let Type::Named(named) = subject else {
             return;
         };
+
         let written = pattern.path.last();
         let variants = self.checker.variants_of(named);
+
         let Some(variant) = variants.into_iter().find(|v| v.name == written.name) else {
             return;
         };
+
         let reference = crate::facts::Reference {
             span: written.span,
             name: written.name.clone(),
             target: variant.error.unwrap_or(variant.declared_in),
         };
+
         self.checker.references.get_mut().push(reference);
     }
 
@@ -149,8 +172,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                         .iter()
                         .map(|f| self.checker.lower_type(&variant.scope, &f.ty))
                         .collect();
+
                     (variant.name, fields)
                 });
+
                 Some(variants.collect())
             }
             _ => None,
@@ -160,16 +185,21 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     /// A pattern binds every field of its variant, or none of them.
     pub(super) fn pattern_bindings(&mut self, pattern: &Pattern, fields: &[Type]) -> Vec<Type> {
         let count = pattern.bindings.len();
+
         if count != 0 && count != fields.len() {
             let name = pattern.path.text();
+
             let message = format!(
                 "`{name}` has {} fields, but the pattern names {count}",
                 fields.len()
             );
+
             self.error(message, pattern.path.span());
         }
+
         let mut types = fields.to_vec();
         types.resize(count, Type::Unknown);
+
         types
     }
 }

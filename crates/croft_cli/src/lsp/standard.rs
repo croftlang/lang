@@ -24,23 +24,32 @@ fn file_name(context: &str) -> String {
 /// the folder they are in, or `None` when it cannot be written.
 fn written() -> Option<&'static Path> {
     static WRITTEN: OnceLock<Option<PathBuf>> = OnceLock::new();
+
     let folder = WRITTEN.get_or_init(|| {
         let folder = folder();
         std::fs::create_dir_all(&folder).ok()?;
+
         for (context, text) in STANDARD_SOURCES {
             let path = folder.join(file_name(context));
+
             if std::fs::read_to_string(&path).is_ok_and(|old| old == text) {
                 continue;
             }
+
             // A read-only file from an earlier run is replaced, not written over.
             let _ = std::fs::remove_file(&path);
+
             std::fs::write(&path, text).ok()?;
+
             let mut permissions = std::fs::metadata(&path).ok()?.permissions();
             permissions.set_readonly(true);
+
             let _ = std::fs::set_permissions(&path, permissions);
         }
+
         Some(folder)
     });
+
     folder.as_deref()
 }
 
@@ -49,6 +58,7 @@ pub fn path_of(id: SourceId) -> Option<PathBuf> {
     let (context, _) = STANDARD_SOURCES
         .iter()
         .find(|(context, _)| standard_source_id(context) == id)?;
+
     Some(written()?.join(file_name(context)))
 }
 
@@ -57,9 +67,12 @@ pub fn source_at(path: &Path) -> Option<(SourceId, &'static str)> {
     if path.parent()? != folder() {
         return None;
     }
+
     let name = path.file_name()?.to_str()?;
+
     let (context, text) = STANDARD_SOURCES
         .iter()
         .find(|(context, _)| file_name(context) == name)?;
+
     Some((standard_source_id(context), text))
 }

@@ -11,6 +11,7 @@ impl<'a> Checker<'a> {
     pub(super) fn check_function(&mut self, scope: &Scope, function: &FunctionDecl) {
         let name = &function.name;
         let span = name.span;
+
         match &function.parameters {
             Some(parameters) => self.check_parameters(scope, parameters, false),
             None if function.kind != FunctionKind::Command => {
@@ -21,6 +22,7 @@ impl<'a> Checker<'a> {
             }
             None => {}
         }
+
         match (&function.return_type, function.kind) {
             (Some(_), FunctionKind::Command) => {
                 let message = "a command gives back its aggregate, so it has no return type";
@@ -32,11 +34,14 @@ impl<'a> Checker<'a> {
             }
             (None, _) => {}
         }
+
         if matches!(function.kind, FunctionKind::Service | FunctionKind::Domain) {
             let kinds = [SymbolKind::Port, SymbolKind::Repository];
+
             for port in &function.calls {
                 let is_builtin =
                     is_builtin_port(&port.text()) && self.resolve(scope, port).is_none();
+
                 if !is_builtin {
                     self.expect_kind(scope, port, &kinds, "a port or repository");
                 }
@@ -44,6 +49,7 @@ impl<'a> Checker<'a> {
         } else if let Some(port) = function.calls.first() {
             self.error("only a service can call ports", port.span());
         }
+
         if function.body.is_none() {
             self.error(format!("`{}` needs a body after `=`", name.name), span);
         }
@@ -60,8 +66,10 @@ impl<'a> Checker<'a> {
                 "constraint `{}` needs the value it checks as its first parameter",
                 constraint.name.name
             );
+
             self.error(message, constraint.name.span);
         }
+
         self.check_parameters(scope, &constraint.parameters, true);
     }
 }

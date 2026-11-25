@@ -32,15 +32,20 @@ impl<'a> Generator<'a> {
         {
             return None;
         }
+
         let name = format!("croft_check_{function}");
+
         let typed: Vec<(String, Type)> = parameters
             .iter()
             .map(|(n, t, _)| (n.clone(), t.clone()))
             .collect();
+
         let mut writer = self.check_writer(place);
         writer.bind_parameters(&typed);
+
         for (parameter, ty, constraints) in parameters {
             let (value, _) = writer.lookup(parameter).expect("a bound parameter");
+
             for constraint in constraints.iter() {
                 writer.check_constraint(
                     &value,
@@ -50,8 +55,11 @@ impl<'a> Generator<'a> {
                 );
             }
         }
+
         self.add_check(writer, &self.signature(&name, &[], &typed, None));
+
         let arguments: Vec<String> = typed.iter().map(|(n, _)| format!("p_{n}")).collect();
+
         Some(format!("{name}({});", arguments.join(", ")))
     }
 
@@ -66,11 +74,14 @@ impl<'a> Generator<'a> {
         if constraints.is_empty() || matches!(ty, Type::Result(..)) {
             return None;
         }
+
         let name = format!("croft_check_result_{function}");
         let mut writer = self.check_writer(place);
         let parameters = [("result".to_string(), ty.clone())];
         writer.bind_parameters(&parameters);
+
         let (value, _) = writer.lookup("result").expect("a bound parameter");
+
         for constraint in constraints {
             writer.check_constraint(
                 &value,
@@ -79,7 +90,9 @@ impl<'a> Generator<'a> {
                 &format!("{}: the result", place.label),
             );
         }
+
         self.add_check(writer, &self.signature(&name, &[], &parameters, None));
+
         Some(name)
     }
 
@@ -87,32 +100,41 @@ impl<'a> Generator<'a> {
     /// any field has constraints. Generated once for each type.
     pub fn field_check(&self, named: &Resolved) -> Option<String> {
         let fields = self.model.fields(named);
+
         if fields
             .iter()
             .all(|(_, _, field)| field.constraints.is_empty())
         {
             return None;
         }
+
         let name = format!("croft_check_{}", c_name(named));
+
         if !self.checked_types.borrow_mut().insert(named.clone()) {
             return Some(name);
         }
+
         let aggregate = named.name.split('.').next().filter(|_| {
             named.name.contains('.') || named.kind == croft_analysis::symbols::SymbolKind::Aggregate
         });
+
         let place = CheckPlace {
             context: &named.context,
             aggregate,
             label: &named.name,
         };
+
         let mut writer = self.check_writer(&place);
         let ty = Type::Named(named.clone());
         writer.bind_parameters(&[("value".to_string(), ty.clone())]);
+
         for (field, field_type, decl) in &fields {
             let mut place = format!("p_value->{field}");
+
             if !decl.constraints.is_empty() && self.text_capacity(named, field).is_some() {
                 place = writer.load_text(&place);
             }
+
             for constraint in &decl.constraints {
                 writer.check_constraint(
                     &place,
@@ -122,10 +144,12 @@ impl<'a> Generator<'a> {
                 );
             }
         }
+
         self.add_check(
             writer,
             &self.signature(&name, &[], &[("value".to_string(), ty)], None),
         );
+
         Some(name)
     }
 
@@ -144,11 +168,14 @@ impl<'a> Generator<'a> {
     /// Every check function, for debug builds only.
     pub fn check_functions(&self) -> (String, String) {
         let checks = self.checks.borrow();
+
         if checks.is_empty() {
             return (String::new(), String::new());
         }
+
         let prototypes: Vec<&str> = checks.iter().map(|(p, _)| p.as_str()).collect();
         let definitions: String = checks.iter().map(|(_, d)| d.as_str()).collect();
+
         (
             format!("#ifdef CROFT_DEBUG\n{}\n#endif\n\n", prototypes.join("\n")),
             format!("#ifdef CROFT_DEBUG\n{definitions}#endif\n\n"),
@@ -167,6 +194,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// Checks a value just built against its type's field constraints, in debug builds.
     pub fn check_fields(&mut self, value: &str, ty: &Type) {
         let Type::Named(named) = ty else { return };
+
         if let Some(check) = self.gen.field_check(named) {
             self.debug_call(&format!("{check}(&{value});"));
         }

@@ -20,6 +20,7 @@ fn check_files(sources: &[&str]) -> Result<Program, Vec<String>> {
         .enumerate()
         .map(|(index, source)| parse(source, SourceId(index as u32)).expect("valid syntax"))
         .collect();
+
     super::check(files, None)
         .map_err(|errors| errors.into_iter().map(|error| error.message).collect())
 }
@@ -44,6 +45,7 @@ fn dungeon(extra: &str) -> String {
     } else {
         "aggregate Room { id: RoomId }"
     };
+
     format!(
         "context Dungeon {{\n\
          identity RoomId for Room: Int where Range(1, 20)\n\

@@ -36,6 +36,7 @@ mod source_file_tests {
         for name in ["cargo.croft", "desktop.cro", "DESKTOP.CRO", "Cargo.Croft"] {
             assert!(is_source_file(Path::new(name)), "{name}");
         }
+
         for name in ["cargo.b", "croft.toml", "cargo.crofts", "croft"] {
             assert!(!is_source_file(Path::new(name)), "{name}");
         }

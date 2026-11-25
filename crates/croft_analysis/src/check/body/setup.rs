@@ -25,6 +25,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 Some(found) => Type::Port(found),
                 None => Type::Port(builtin_port(&path.last().name)),
             };
+
             self.bind(&to_snake_case(&path.last().name), handle, false, None);
         }
     }
@@ -45,11 +46,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     /// A body must give back its declared type; a plain value counts as `Ok`.
     pub(super) fn expect_body(&mut self, value: &Expr) {
         let result = self.result.clone();
+
         if result.is_unknown() {
             self.expr(value, None);
         } else if let Type::Result(inner, _) = &result {
             let inner = (**inner).clone();
             let found = self.expr(value, Some(&result));
+
             if !self.accepts(&result, &found, value) && !self.accepts(&inner, &found, value) {
                 self.error(format!("expected `{result}`, found `{found}`"), value.span);
             }

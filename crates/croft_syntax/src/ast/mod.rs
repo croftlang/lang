@@ -52,12 +52,14 @@ impl TypeExpr {
     /// The type as written, with one space after each comma: `Map<String, Int>`.
     pub fn text(&self) -> String {
         let mut text = self.path.text();
+
         if let Some(number) = self.number {
             text.push_str(&format!("<{number}>"));
         } else if !self.arguments.is_empty() {
             let arguments: Vec<String> = self.arguments.iter().map(TypeExpr::text).collect();
             text.push_str(&format!("<{}>", arguments.join(", ")));
         }
+
         text
     }
 }

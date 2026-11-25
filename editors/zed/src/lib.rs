@@ -18,6 +18,7 @@ impl zed::Extension for CroftExtension {
             "`croft` is not on your PATH. Install it with `cargo install --path crates/croft_cli`."
                 .to_string()
         })?;
+
         Ok(zed::Command {
             command,
             args: vec!["lsp".to_string()],

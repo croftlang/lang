@@ -11,12 +11,15 @@ use crate::types::Type;
 /// The built-in fields and methods of a type.
 pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
     use MemberKind::{Field, Operation};
+
     let fields = |names: &[&'static str]| names.iter().map(|n| (*n, Field)).collect::<Vec<_>>();
     let methods =
         |names: &[&'static str]| names.iter().map(|n| (*n, Operation)).collect::<Vec<_>>();
+
     let mut members = match ty {
         Type::String => {
             let mut members = fields(&["length", "is_empty"]);
+
             members.extend(methods(&[
                 "contains",
                 "starts_with",
@@ -29,6 +32,7 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
                 "to_int",
                 "to_bytes",
             ]));
+
             members
         }
         Type::Bytes => {
@@ -38,13 +42,16 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
         }
         Type::List(item) => {
             let mut members = fields(&["length", "is_empty", "first", "last"]);
+
             members.extend(methods(&[
                 "contains", "get", "add", "drop", "take", "filter", "all", "any", "count", "find",
                 "sum", "min_by", "max_by", "map",
             ]));
+
             if item.named(&[SymbolKind::Entity]).is_some() {
                 members.extend(methods(&["remove", "replace"]));
             }
+
             members
         }
         Type::Map(..) => {
@@ -67,6 +74,8 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
         Type::Named(named) if named.kind == SymbolKind::Event => fields(&["source"]),
         _ => Vec::new(),
     };
+
     members.dedup();
+
     members
 }

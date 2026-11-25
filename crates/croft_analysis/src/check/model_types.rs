@@ -7,6 +7,7 @@ use crate::types::{Resolved, Type};
 impl<'a> Model<'a> {
     pub fn variants(&self, named: &Resolved) -> Vec<VariantInfo> {
         let variants = self.checker.variants_of(named);
+
         variants
             .into_iter()
             .map(|variant| VariantInfo {
@@ -59,7 +60,9 @@ impl<'a> super::Checker<'a> {
                     })
             })
             .collect();
+
         found.sort_by(|a, b| (&a.context, &a.name).cmp(&(&b.context, &b.name)));
+
         found
     }
 }

@@ -10,18 +10,25 @@ impl Parser {
     /// A value or an entity: fields and invariants in braces.
     pub(super) fn parse_value(&mut self, keyword: Keyword) -> ParseResult<ValueDecl> {
         let doc = self.doc();
+
         self.expect_keyword(keyword)?;
+
         let name = self.expect_identifier()?;
+
         let type_parameters = if keyword == Keyword::Value {
             self.parse_type_parameters()?
         } else {
             Vec::new()
         };
+
         if keyword == Keyword::Value && self.check(&TokenKind::Colon) {
             return self.parse_single_value(doc, name);
         }
+
         self.expect(&TokenKind::LeftBrace)?;
+
         let (mut fields, mut invariants) = (Vec::new(), Vec::new());
+
         while !self.eat(&TokenKind::RightBrace) {
             if self.check_keyword(Keyword::Invariant) {
                 invariants.push(self.parse_invariant()?);
@@ -30,6 +37,7 @@ impl Parser {
                 self.eat(&TokenKind::Comma);
             }
         }
+
         Ok(ValueDecl {
             doc,
             name,
@@ -44,8 +52,10 @@ impl Parser {
     /// the type and constraints written after the name.
     fn parse_single_value(&mut self, doc: Vec<String>, name: Identifier) -> ParseResult<ValueDecl> {
         self.expect(&TokenKind::Colon)?;
+
         let ty = self.parse_type()?;
         let constraints = self.parse_constraints()?;
+
         let field = Field {
             doc: Vec::new(),
             name: Identifier {
@@ -57,6 +67,7 @@ impl Parser {
             is_identity: false,
             value: None,
         };
+
         Ok(ValueDecl {
             doc,
             name,
@@ -69,26 +80,35 @@ impl Parser {
 
     pub(super) fn parse_enum(&mut self) -> ParseResult<EnumDecl> {
         let doc = self.doc();
+
         self.expect_keyword(Keyword::Enum)?;
+
         let name = self.expect_identifier()?;
+
         self.expect(&TokenKind::LeftBrace)?;
+
         let (mut includes, mut variants) = (Vec::new(), Vec::new());
+
         while !self.eat(&TokenKind::RightBrace) {
             if self.check_word("include") {
                 self.advance();
                 includes.push(self.parse_path()?);
                 continue;
             }
+
             let doc = self.doc();
             let name = self.expect_identifier()?;
+
             let fields = if self.check(&TokenKind::LeftParen) {
                 self.parse_variant_fields()?
             } else {
                 Vec::new()
             };
+
             variants.push(RecordDecl { doc, name, fields });
             self.eat(&TokenKind::Comma);
         }
+
         Ok(EnumDecl {
             doc,
             name,
@@ -99,12 +119,19 @@ impl Parser {
 
     pub(super) fn parse_const(&mut self) -> ParseResult<ConstDecl> {
         let doc = self.doc();
+
         self.expect_keyword(Keyword::Const)?;
+
         let name = self.expect_identifier()?;
+
         self.expect(&TokenKind::Colon)?;
+
         let ty = self.parse_type()?;
+
         self.expect(&TokenKind::Equal)?;
+
         let value = self.parse_expression()?;
+
         Ok(ConstDecl {
             doc,
             name,
@@ -115,21 +142,30 @@ impl Parser {
 
     pub(super) fn parse_identity(&mut self) -> ParseResult<IdentityDecl> {
         let doc = self.doc();
+
         self.expect_keyword(Keyword::Identity)?;
+
         let name = self.expect_identifier()?;
+
         if !self.check_word("for") {
             let message = format!(
                 "an identity names the aggregate or entity it identifies: \
                  `identity {} for Name: Int`",
                 name.name
             );
+
             return Err(Diagnostic::new(message, self.span()));
         }
+
         self.advance();
+
         let owner = self.parse_path()?;
+
         self.expect(&TokenKind::Colon)?;
+
         let ty = self.parse_type()?;
         let constraints = self.parse_constraints()?;
+
         Ok(IdentityDecl {
             doc,
             name,

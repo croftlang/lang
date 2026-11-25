@@ -17,6 +17,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             Some(argument) => writer.value(&argument.value, want),
             None => "0".to_string(),
         };
+
         match name {
             "contains" => {
                 let part = argument(self, 0, &Type::String);
@@ -35,16 +36,20 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let start = argument(self, 0, &Type::Int);
                 let end = argument(self, 1, &Type::Int);
                 let temp = self.temp(ty);
+
                 self.line(format!(
                     "croft_string_slice(&{text}, {start}, {end}, &{temp});"
                 ));
+
                 temp
             }
             "to_int" => {
                 let temp = self.temp(ty);
+
                 self.line(format!(
                     "{temp}.some = croft_string_to_int(&{text}, &{temp}.value);"
                 ));
+
                 temp
             }
             "to_bytes" => {
@@ -65,22 +70,29 @@ impl<'g, 'a> Writer<'g, 'a> {
         let parts = self.temp(ty);
         let start = self.variable("start", &Type::Int);
         let found = self.variable("found", &Type::Int);
+
         self.line(format!("{parts}.length = 0;"));
         self.line(format!("{start} = 0;"));
         self.open("for (;;)");
+
         self.line(format!(
             "{found} = croft_string_find(&{text}, &{separator}, {start});"
         ));
+
         self.line(format!("croft_string_slice(&{text}, {start}, {found} < 0 ? {text}.length : {found}, &{parts}.items[{parts}.length]);"));
         self.line(format!("{parts}.length++;"));
+
         let capacity = self.gen.sizes.list_capacity(&Type::String);
+
         self.open(format!(
             "if ({found} < 0 || {separator}.length == 0 || {parts}.length >= {capacity})"
         ));
+
         self.line("break;");
         self.close();
         self.line(format!("{start} = {found} + {separator}.length;"));
         self.close();
+
         parts
     }
 }

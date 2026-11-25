@@ -31,62 +31,79 @@ pub fn instance_file(request: &Request, files: &[File], source: SourceId) -> Opt
             }
             _ => None,
         })?;
+
     let parameters = match &item {
         ContextItem::Value(value) => &value.type_parameters,
         ContextItem::Function(function) => &function.type_parameters,
         _ => return None,
     };
+
     let bound: HashMap<String, TypeExpr> = (parameters.iter())
         .map(|p| p.name.clone())
         .zip(request.arguments.iter().cloned())
         .collect();
+
     let substitute = |ty: &mut TypeExpr| write_in(ty, &bound);
     let name = request.name();
+
     let item = match item {
         ContextItem::Value(mut value) => {
             value.type_parameters.clear();
             value.name.name = name;
+
             let mut next = 0;
+
             for field in &mut value.fields {
                 substitute(&mut field.ty);
+
                 for constraint in &mut field.constraints {
                     for argument in &mut constraint.arguments {
                         renumber(argument, source, &mut next, &substitute);
                     }
                 }
             }
+
             ContextItem::Value(value)
         }
         ContextItem::Function(mut function) => {
             function.type_parameters.clear();
             function.name.name = name;
+
             let mut next = 0;
+
             for parameter in function.parameters.iter_mut().flatten() {
                 parameter.types.iter_mut().for_each(substitute);
+
                 for constraint in &mut parameter.constraints {
                     for argument in &mut constraint.arguments {
                         renumber(argument, source, &mut next, &substitute);
                     }
                 }
             }
+
             if let Some(ty) = &mut function.return_type {
                 substitute(ty);
             }
+
             for constraint in &mut function.return_constraints {
                 for argument in &mut constraint.arguments {
                     renumber(argument, source, &mut next, &substitute);
                 }
             }
+
             if let Some(body) = &mut function.body {
                 renumber(body, source, &mut next, &substitute);
             }
+
             for precondition in &mut function.preconditions {
                 renumber(precondition, source, &mut next, &substitute);
             }
+
             ContextItem::Function(function)
         }
         _ => return None,
     };
+
     Some(File {
         contexts: vec![ContextDecl {
             name: Identifier {
@@ -111,6 +128,7 @@ fn write_in(ty: &mut TypeExpr, bound: &HashMap<String, TypeExpr>) {
             return;
         }
     }
+
     for argument in &mut ty.arguments {
         write_in(argument, bound);
     }

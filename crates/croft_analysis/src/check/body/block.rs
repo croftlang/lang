@@ -10,14 +10,17 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     pub(super) fn block(&mut self, statements: &[Statement], expected: Option<&Type>) -> Type {
         self.nested(|body| {
             let mut result = Type::Unit;
+
             for (index, statement) in statements.iter().enumerate() {
                 let is_last = index + 1 == statements.len();
+
                 result = match statement {
                     Statement::Let(name, ty, value) => body.check_let(name, ty.as_ref(), value),
                     Statement::Set(name, value) => body.check_set(name, value),
                     Statement::Expr(value) => body.check_line(value, is_last, expected),
                 };
             }
+
             result
         })
     }
@@ -34,19 +37,24 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 name.span,
             );
         }
+
         let ty = match written {
             Some(written) => {
                 let wanted = self.lower_written(written);
                 let found = self.expect(value, &wanted);
+
                 if found != wanted {
                     self.checker.facts.wanted.insert(value.id, wanted.clone());
                 }
+
                 wanted
             }
             None => self.expr(value, None),
         };
+
         let settable = matches!(self.kind, BodyKind::Service);
         self.bind(&name.name, ty, settable, Some(name.span));
+
         Type::Unit
     }
 
@@ -56,9 +64,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let target = match self.kind {
             BodyKind::Command(_) | BodyKind::Adapter(_) => {
                 let found = self.own_field(&name.name, name.span, true);
+
                 if let Some(ty) = &found {
                     self.note_own_field(&name.name, name.span, ty);
                 }
+
                 found
             }
             BodyKind::Service => match self.local(&name.name) {
@@ -71,6 +81,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 return Type::Unit;
             }
         };
+
         match target {
             Some(ty) => {
                 self.expect(value, &ty);
@@ -80,9 +91,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     format!("`set` cannot change `{}` here", name.name),
                     name.span,
                 );
+
                 self.expr(value, None);
             }
         }
+
         Type::Unit
     }
 
@@ -97,12 +110,15 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             self.check_guard(condition, block);
             return Type::Unit;
         }
+
         let ty = self.expr(value, if is_last { expected } else { None });
         let is_policy = matches!(self.kind, BodyKind::Policy);
+
         if matches!(ty, Type::Result(..)) && !is_last && !is_policy {
             let message = "this `Result` is not handled: add `?`, or `or` and an error";
             self.error(message, value.span);
         }
+
         ty
     }
 
@@ -110,19 +126,24 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     /// only takes steps runs them and the body carries on.
     pub(super) fn check_guard(&mut self, condition: &Expr, block: &Expr) {
         self.expect(condition, &Type::Bool);
+
         let ExprKind::Block(statements) = &block.kind else {
             return;
         };
+
         let result = self.result.clone();
         let expected = (!result.is_unknown()).then_some(&result);
         let found = self.block(statements, expected);
+
         if found == Type::Unit || result.is_unknown() {
             return;
         }
+
         let inner = match &result {
             Type::Result(inner, _) => (**inner).clone(),
             other => other.clone(),
         };
+
         if !self.checker.accepts(&result, &found) && !self.checker.accepts(&inner, &found) {
             let message =
                 format!("this guard gives back `{found}`, but the body gives back `{result}`");

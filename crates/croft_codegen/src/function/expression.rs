@@ -19,6 +19,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// the checker could not know it, as with `None`.
     pub fn type_of(&self, value: &Expr, want: Option<&Type>) -> Type {
         let ty = self.gen.facts.type_of(value.id).clone();
+
         match want {
             Some(want) if has_unknown(&ty) => want.clone(),
             _ => ty,
@@ -28,6 +29,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// The value of an expression as a C expression, and its type.
     pub fn eval(&mut self, value: &Expr, want: Option<&Type>) -> (String, Type) {
         let ty = self.type_of(value, want);
+
         let c = match &value.kind {
             ExprKind::Int(number) => format!("{number}L"),
             ExprKind::Float(text) => match ty {
@@ -83,6 +85,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             ExprKind::Lambda(..) => "0".to_string(),
         };
+
         (c, ty)
     }
 
@@ -92,15 +95,18 @@ impl<'g, 'a> Writer<'g, 'a> {
         if let (Type::Decimal(places), Type::Int) = (to, from) {
             return format!("({c} * {}L)", scale(*places));
         }
+
         if let Some(inner) = self.gen.model.single_value_inner(to) {
             if inner != *to && self.gen.c_type(from) != self.gen.c_type(to) {
                 let value = self.convert(c, from, &inner);
                 return self.wrap_single_value(value, to);
             }
         }
+
         if self.gen.c_type(from) == self.gen.c_type(to) {
             return c;
         }
+
         match (to, from) {
             (Type::Result(value, _), from) if !matches!(from, Type::Result(..)) => {
                 let inner = self.convert(c, from, value);
@@ -117,12 +123,15 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// in debug builds: `Score(120)`, or `120` where a `Score` is expected.
     pub fn wrap_single_value(&mut self, value: String, ty: &Type) -> String {
         let temp = self.temp(ty);
+
         let owner = match ty {
             Type::Named(owner) => Some(owner.clone()),
             _ => None,
         };
+
         self.write_field(owner.as_ref(), &temp, "value", &value);
         self.check_fields(&temp, ty);
+
         temp
     }
 
@@ -131,13 +140,17 @@ impl<'g, 'a> Writer<'g, 'a> {
         if self.gen.is_scalar(ty) {
             return format!("({left} == {right})");
         }
+
         if *ty == Type::String {
             return format!("croft_string_equal(&{left}, &{right})");
         }
+
         if *ty == Type::Bytes {
             return format!("croft_bytes_equal(&{left}, &{right})");
         }
+
         let name = self.gen.equality_for(ty);
+
         format!("{name}(&{left}, &{right})")
     }
 }

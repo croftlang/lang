@@ -39,19 +39,23 @@ pub fn parse(text: &str, source: SourceId) -> Result<Manifest, Diagnostic> {
         let span = span_at(text, error.span().map_or(0, |range| range.start), source);
         Diagnostic::new(error.message().trim().to_string(), span)
     })?;
+
     let name = |value: &Spanned<String>| {
         // A string's span starts at its opening quote; point at the text inside.
         let offset = value.span().start;
+
         let inside = if text[offset..].starts_with('"') {
             offset + 1
         } else {
             offset
         };
+
         Identifier {
             name: value.get_ref().clone(),
             span: span_at(text, inside, source),
         }
     };
+
     let targets = raw.target.iter().map(|(target_name, target)| TargetConfig {
         name: name(target_name),
         main: target.main.as_ref().map(name),
@@ -62,6 +66,7 @@ pub fn parse(text: &str, source: SourceId) -> Result<Manifest, Diagnostic> {
             .map(|(port, adapter)| (name(port), name(adapter)))
             .collect(),
     });
+
     Ok(Manifest {
         name: name(&raw.package.name),
         version: raw.package.version,

@@ -15,13 +15,16 @@ impl<'g, 'a> Writer<'g, 'a> {
         ty: &Type,
     ) -> String {
         let temp = self.temp(ty);
+
         match name {
             "map" => {
                 let Type::Option(mapped) = ty else {
                     return temp;
                 };
+
                 self.line(format!("{temp}.some = {option}.some;"));
                 self.open(format!("if ({option}.some)"));
+
                 let value = self.lambda(arguments, format!("{option}.value"), item, mapped);
                 self.line(format!("{temp}.value = {value};"));
                 self.close();
@@ -30,11 +33,13 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let fallback = arguments
                     .first()
                     .map_or("0".to_string(), |a| self.value(&a.value, ty));
+
                 self.line(format!(
                     "{temp} = {option}.some ? {option}.value : {fallback};"
                 ));
             }
         }
+
         temp
     }
 }

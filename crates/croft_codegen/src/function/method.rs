@@ -17,6 +17,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         ty: &Type,
     ) -> String {
         let receiver_type = self.type_of(receiver, None);
+
         match &receiver_type {
             Type::Port(port) => self.port_call(port, name, arguments, ty),
             Type::Repository(repository) => {
@@ -39,13 +40,16 @@ impl<'g, 'a> Writer<'g, 'a> {
             Type::Decimal(places) if name == "to_string" => {
                 let number = self.value(receiver, &Type::Decimal(*places));
                 let temp = self.temp(&Type::String);
+
                 self.line(format!(
                     "croft_decimal_to_string({number}, {places}, &{temp});"
                 ));
+
                 temp
             }
             Type::Decimal(places) if name == "round" => {
                 let number = self.value(receiver, &Type::Decimal(*places));
+
                 format!(
                     "croft_divide_even({number}, {}L)",
                     crate::types::constant::scale(*places)
@@ -80,11 +84,14 @@ impl<'g, 'a> Writer<'g, 'a> {
         if port.context.is_empty() {
             return self.builtin_port_call(&port.name, arguments, ty);
         }
+
         let Some(adapter) = self.gen.bindings.get(port).cloned() else {
             return "0".to_string();
         };
+
         let parameters = self.gen.operation_parameters(port, name);
         let passed = self.pass_all(arguments, &parameters);
+
         self.call_into(&format!("{}_{name}", c_name(&adapter)), passed, ty)
     }
 
@@ -94,6 +101,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             let passed = self.pass_all(arguments, &[("text".to_string(), Type::String)]);
             return self.call_into("croft_console_print", passed, ty);
         }
+
         self.all_arguments(ty)
     }
 
@@ -101,16 +109,22 @@ impl<'g, 'a> Writer<'g, 'a> {
     fn all_arguments(&mut self, ty: &Type) -> String {
         let list = self.temp(ty);
         let index = self.variable("index", &Type::Int);
+
         self.line(format!("{list}.length = 0;"));
+
         let capacity = self.gen.sizes.list_capacity(&Type::String);
+
         self.open(format!(
             "for ({index} = 0; {index} < croft_argument_count() && {index} < {capacity}; {index}++)"
         ));
+
         self.line(format!(
             "croft_argument({index}, &{list}.items[{list}.length]);"
         ));
+
         self.line(format!("{list}.length++;"));
         self.close();
+
         list
     }
 
@@ -126,12 +140,17 @@ impl<'g, 'a> Writer<'g, 'a> {
         else {
             return "0".to_string();
         };
+
         self.push_scope();
+
         if let Some(parameter) = parameters.first() {
             self.bind(&parameter.name, item, item_type.clone());
         }
+
         let value = self.value(body, result);
+
         self.pop_scope();
+
         value
     }
 }

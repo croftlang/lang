@@ -13,13 +13,17 @@ impl<'a> Generator<'a> {
     pub fn constants(&self) -> (String, String, String) {
         let (mut defines, mut globals) = (String::new(), String::new());
         let mut writer = Writer::new(self, "", Returns::Nothing);
+
         for found in self.model.all(SymbolKind::Const) {
             let context = &self.program.contexts[&found.context];
+
             let Some(constant) = context.consts.iter().find(|c| c.name.name == found.name) else {
                 continue;
             };
+
             let ty = self.model.lower_type(&found.context, None, &constant.ty);
             let name = c_name(&found);
+
             if self.is_scalar(&ty) {
                 if let Some(value) =
                     evaluate(self.program, &self.model, &found.context, &constant.value)
@@ -28,15 +32,20 @@ impl<'a> Generator<'a> {
                     continue;
                 }
             }
+
             globals.push_str(&format!("{} {name};\n", self.c_type(&ty)));
             writer.context = found.context.clone();
+
             let value = writer.value(&constant.value, &ty);
             writer.line(format!("{name} = {value};"));
         }
+
         self.adapter_starting_values(&mut writer);
+
         if !defines.is_empty() {
             defines.push('\n');
         }
+
         (defines, globals, writer.finish("void croft_init(void)"))
     }
 
@@ -45,8 +54,10 @@ impl<'a> Generator<'a> {
         let mut adapters: Vec<_> = self.bindings.values().collect();
         adapters.sort_by_key(|adapter| c_name(adapter));
         adapters.dedup();
+
         for adapter in adapters {
             let context = &self.program.contexts[&adapter.context];
+
             let Some(decl) = context
                 .adapters
                 .iter()
@@ -54,11 +65,14 @@ impl<'a> Generator<'a> {
             else {
                 continue;
             };
+
             writer.context = adapter.context.clone();
+
             for field in &decl.fields {
                 let Some(value) = &field.value else { continue };
                 let ty = self.model.lower_type(&adapter.context, None, &field.ty);
                 let value = writer.value(value, &ty);
+
                 writer.line(format!(
                     "{}_state.{} = {value};",
                     c_name(adapter),

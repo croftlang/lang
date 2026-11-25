@@ -10,9 +10,11 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// The field at `place` as a full string.
     pub fn load_text(&mut self, place: &str) -> String {
         let temp = self.temp(&Type::String);
+
         self.line(format!(
             "croft_text_load({place}.text, {place}.length, &{temp});"
         ));
+
         temp
     }
 
@@ -22,9 +24,11 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.open(format!(
             "if (!croft_text_store(&{value}, {place}.text, &{place}.length, {capacity}))"
         ));
+
         self.line(format!(
             "CROFT_CHECK(0, \"{label} is longer than {capacity} characters\");"
         ));
+
         self.close();
     }
 
@@ -43,6 +47,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// Reads field `field` of `owner` at `place`.
     pub fn read_field(&mut self, owner: Option<&Resolved>, place: &str, field: &str) -> String {
         let place = format!("{place}.{field}");
+
         match owner.and_then(|owner| self.gen.text_capacity(owner, field)) {
             Some(_) => self.load_text(&place),
             None => place,

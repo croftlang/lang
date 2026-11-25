@@ -22,6 +22,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let ExprKind::Field(receiver, method) = &callee.kind else {
                     return "0".to_string();
                 };
+
                 self.method(receiver, &method.name, arguments, ty)
             }
             Some(Meaning::Builtin(name)) => self.builtin(&name, arguments, ty),
@@ -40,20 +41,27 @@ impl<'g, 'a> Writer<'g, 'a> {
                 .model
                 .single_value_inner(ty)
                 .unwrap_or(Type::Unknown);
+
             let value = arguments.first().map(|argument| &argument.value);
             let value = value.map_or("0".to_string(), |value| self.value(value, &inner));
             return self.wrap_single_value(value, ty);
         }
+
         let parameters = self.gen.parameters_of(found);
         let passed = self.pass_all(arguments, &parameters);
+
         if found.kind != SymbolKind::Service {
             return self.call_into(&c_name(found), passed, ty);
         }
+
         // The events the service raises, and kept, are handled once it ends.
         let mark = self.raw_variable("mark", "croft_u16");
         self.line(format!("{mark} = croft_events_mark();"));
+
         let result = self.call_into(&c_name(found), passed, ty);
+
         self.line(format!("croft_events_dispatch_from({mark});"));
+
         result
     }
 
@@ -67,23 +75,29 @@ impl<'g, 'a> Writer<'g, 'a> {
     ) -> String {
         let mut passed = Vec::new();
         let mut parameters = Vec::new();
+
         for argument in arguments {
             let ty = self.type_of(&argument.value, None);
             let (c, _) = self.eval(&argument.value, None);
             let c_type = self.gen.c_type(&ty);
+
             parameters.push(if self.gen.is_scalar(&ty) {
                 c_type
             } else {
                 format!("const {c_type} *")
             });
+
             passed.push(self.pass(c, &ty));
         }
+
         let result = want.cloned().unwrap_or(Type::Unit);
         parameters.push(format!("{} *", self.gen.c_type(&result)));
+
         self.gen.natives.borrow_mut().push((
             function.to_string(),
             format!("void {function}({});", parameters.join(", ")),
         ));
+
         self.call_into(function, passed, &result)
     }
 }

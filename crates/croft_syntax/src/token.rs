@@ -87,6 +87,7 @@ impl TokenKind {
             TokenKind::ShiftRight => ">>",
             TokenKind::Question => "?",
         };
+
         format!("`{symbol}`")
     }
 }

@@ -31,40 +31,51 @@ impl<'a> Generator<'a> {
     /// croft.toml binds: written for the repository itself, or for `Storage`.
     pub fn repositories(&self, prototypes: &mut Vec<String>) -> String {
         let mut out = String::new();
+
         for repository in self.model.all(SymbolKind::Repository) {
             let Some(aggregate) = self.model.repository_aggregate(&repository) else {
                 continue;
             };
+
             let Some(storage) = self.storages.get(&repository) else {
                 continue;
             };
+
             let handwritten = self.is_repository_adapter(&repository, storage);
+
             for operation in self.model.operations_of(&repository) {
                 let parameters: Vec<(String, Type)> = (operation.parameters.iter())
                     .map(|(name, ty, _)| (name.clone(), ty.clone()))
                     .collect();
+
                 let function = format!("{}_{}", c_name(&repository), operation.name);
                 let signature =
                     self.signature(&function, &[], &parameters, Some(&operation.result));
                 prototypes.push(format!("{signature};"));
+
                 let shape = self.model.storage_shape(&repository, &operation.name);
+
                 let body = if handwritten {
                     self.forwarded(&aggregate, storage, &operation.name, &parameters, shape)
                 } else {
                     let Some(shape) = shape else {
                         continue;
                     };
+
                     let stored = Stored {
                         repository: &repository,
                         aggregate: &aggregate,
                         storage,
                         parameter: &parameters[0],
                     };
+
                     self.stored(&stored, shape)
                 };
+
                 out.push_str(&format!("{signature}\n{{\n{body}}}\n\n"));
             }
         }
+
         out
     }
 
@@ -91,19 +102,24 @@ impl<'a> Generator<'a> {
             .iter()
             .map(|(name, _)| format!("p_{name}"))
             .collect();
+
         passed.push("out".to_string());
+
         let call = format!(
             "    {}_{operation}({});\n",
             c_name(adapter),
             passed.join(", ")
         );
+
         if shape != Some(StorageShape::Save) {
             return call;
         }
+
         let field = self.identity_field(aggregate);
         let saved = format!("{}.{field}", self.parameter_value(&parameters[0]));
         let kind = aggregate_kind(aggregate);
         let key = self.event_key(aggregate, &saved);
+
         format!("{call}    if (out->ok) {{\n        croft_events_keep({kind}, {key});\n    }}\n")
     }
 
@@ -116,6 +132,7 @@ impl<'a> Generator<'a> {
             storage,
             parameter,
         } = *stored;
+
         let aggregate_type = Type::Named(aggregate.clone());
         let serializer = self.serializer_for(&aggregate_type);
         let hash = layout_hash(&self.layout(&aggregate_type));
@@ -123,17 +140,22 @@ impl<'a> Generator<'a> {
         let prefix = c_string(&self.key_prefix(repository, aggregate));
         let storage = c_name(storage);
         let value = self.parameter_value(parameter);
+
         let loaded = self.c_type(&Type::result(
             Type::option(Type::Bytes),
             Type::Errors(Vec::new()),
         ));
+
         let written = self.c_type(&Type::result(Type::Unit, Type::Errors(Vec::new())));
+
         let error = |name: &str| {
             self.model
                 .lookup("Std.Storage", name)
                 .map_or("0".to_string(), |error| error_code(&error))
         };
+
         let (full, damaged) = (error("StorageFull"), error("StorageDamaged"));
+
         match shape {
             StorageShape::Find | StorageShape::FindOption => {
                 let (missing, into, found) = if shape == StorageShape::Find {
@@ -141,6 +163,7 @@ impl<'a> Generator<'a> {
                         .model
                         .lookup(&aggregate.context, &format!("{}.NotFound", aggregate.name))
                         .map_or("0".to_string(), |error| error_code(&error));
+
                     (
                         format!("out->error.code = {not_found};\n        return;"),
                         "out->value",
@@ -153,6 +176,7 @@ impl<'a> Generator<'a> {
                         "\n    out->value.some = 1;",
                     )
                 };
+
                 format!(
                     "    croft_string key;\n    {loaded} kept;\n    croft_u16 at = 0;\n    croft_int layout = 0;\n\n    \
                      croft_clear(out, sizeof *out);\n    croft_storage_key({prefix}, (croft_int) {value}, &key);\n    {storage}_load(&key, &kept);\n    \
@@ -166,6 +190,7 @@ impl<'a> Generator<'a> {
             StorageShape::Save => {
                 let kind = aggregate_kind(aggregate);
                 let key = self.event_key(aggregate, &format!("{value}.{field}"));
+
                 format!(
                     "    croft_string key;\n    croft_bytes data;\n    {written} kept;\n\n    \
                      croft_clear(out, sizeof *out);\n    data.length = 0;\n    \
@@ -198,16 +223,20 @@ impl<'a> Generator<'a> {
         let Type::Named(identity) = self.model.identity_of(aggregate) else {
             return 5;
         };
+
         let context = &self.program.contexts[&identity.context];
+
         let declared = context
             .identities
             .iter()
             .find(|i| i.name.name == identity.name);
+
         let range = declared.and_then(|decl| {
             let range = decl.constraints.iter().find(|c| c.name.text() == "Range")?;
             let high = range.arguments.last()?;
             crate::types::constant::evaluate(self.program, &self.model, &identity.context, high)
         });
+
         range.map_or(5, |high| high.unsigned_abs().to_string().len())
     }
 }

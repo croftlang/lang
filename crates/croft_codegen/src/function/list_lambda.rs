@@ -17,12 +17,15 @@ impl<'g, 'a> Writer<'g, 'a> {
         (temp, index): (&str, &str),
     ) {
         let current = format!("{list}.items[{index}]");
+
         let result = match (name, ty) {
             ("map", Type::List(mapped)) => (**mapped).clone(),
             ("sum" | "min_by" | "max_by", _) => Type::Int,
             _ => Type::Bool,
         };
+
         let best = self.variable("best", &Type::Int);
+
         match name {
             "all" => self.line(format!("{temp} = 1;")),
             "any" => self.line(format!("{temp} = 0;")),
@@ -34,10 +37,13 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             _ => self.line(format!("{temp}.length = 0;")),
         }
+
         self.open(format!(
             "for ({index} = 0; {index} < (croft_int) {list}.length; {index}++)"
         ));
+
         let value = self.lambda(arguments, current.clone(), item, &result);
+
         match name {
             "all" => self.line(format!("if (!{value}) {temp} = 0;")),
             "any" => self.line(format!("if ({value}) {temp} = 1;")),
@@ -59,6 +65,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.close();
             }
         }
+
         self.close();
     }
 }
