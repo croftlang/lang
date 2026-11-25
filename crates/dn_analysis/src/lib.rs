@@ -5,6 +5,7 @@ pub mod facts;
 pub mod manifest;
 pub mod naming;
 pub mod program;
+pub mod standard;
 pub mod symbols;
 pub mod types;
 

@@ -86,7 +86,7 @@ impl Parser {
         self.expect_keyword(Keyword::Use)?;
         let names = self.parse_path_list()?;
         self.expect_word("from")?;
-        let from = self.expect_identifier()?;
+        let from = self.parse_path()?;
         Ok(UseDecl { names, from })
     }
 }

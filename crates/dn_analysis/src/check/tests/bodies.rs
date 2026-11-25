@@ -4,6 +4,8 @@ use super::{assert_error, errors};
 fn game(extra: &str) -> String {
     format!(
         "context Game {{\n\
+         use {{ trim, starts_with }} from Std.Text\n\
+         use {{ Decimal, max, min, abs }} from Std.Numbers\n\
          identity RoomId: Int where Range(1, 20)\n\
          identity EnemyId: Int where Range(0, 9)\n\
          enum Direction {{ North, South }}\n\
@@ -154,4 +156,22 @@ fn checks_decimals() {
         &game("fn f(counts: List<Int>): List<Decimal<2>> = counts"),
         "expected `List<Decimal<2>>`, found `List<Int>`",
     );
+}
+
+#[test]
+fn checks_imports_from_standard_contexts() {
+    assert_error(
+        "context Shop {\n fn f(name: String): String = name.to_upper()\n}",
+        "`to_upper` needs `use { to_upper } from Std.Text`",
+    );
+    assert_error(
+        "context Shop {\n fn f(a: Int): Int = abs(a)\n}",
+        "`abs` needs `use { abs } from Std.Numbers`",
+    );
+    assert_error(
+        "context Shop {\n use { shout } from Std.Text\n}",
+        "`Std.Text` does not provide `shout`",
+    );
+    let source = "context Shop {\n use { to_upper } from Std.Text\n fn f(names: List<String>): Bool = names.contains(\"A\") && names.length > 0\n fn g(name: String): String = name.to_upper()\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
 }

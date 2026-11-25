@@ -49,7 +49,7 @@ impl<'a> Checker<'a> {
         }
         for use_decl in &scope.context.uses {
             if use_decl.names.iter().any(|name| name.text() == text) {
-                return self.lookup(&use_decl.from.name, &text);
+                return self.lookup(&use_decl.from.text(), &text);
             }
         }
         let (first, rest) = path.segments.split_first()?;

@@ -16,6 +16,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         span: Span,
         expected: Option<&Type>,
     ) -> Option<Type> {
+        let context = self.scope.context;
+        self.checker.check_standard(context, name, span);
         let ty = match name {
             "max" | "min" => {
                 let first = self.one_argument(name, arguments, 0, 2, span, None);

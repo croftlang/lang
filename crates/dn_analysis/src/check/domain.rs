@@ -50,13 +50,14 @@ impl<'a> Checker<'a> {
             self.error(message, domain.name.span);
         }
         for use_decl in &domain.uses {
-            if self.is_context(&use_decl.from.name) && !listed.contains(use_decl.from.name.as_str())
+            if self.is_context(&use_decl.from.text())
+                && !listed.contains(use_decl.from.text().as_str())
             {
                 let message = format!(
                     "domain `{}` can only use contexts it lists in `contexts`",
                     domain.name.name
                 );
-                self.error(message, use_decl.from.span);
+                self.error(message, use_decl.from.span());
             }
         }
         self.check_relations(domain);
@@ -98,14 +99,15 @@ impl<'a> Checker<'a> {
             })
             .collect();
         for (context, use_decl) in uses {
-            let from = use_decl.from.name.as_str();
+            let from = use_decl.from.text();
+            let from = from.as_str();
             let allowed = upstream
                 .get(context.as_str())
                 .is_some_and(|set| set.contains(from));
             if self.is_context(from) && !allowed {
                 let message =
                     format!("`{context}` uses `{from}`, so `contexts` needs `{from} -> {context}`");
-                self.error(message, use_decl.from.span);
+                self.error(message, use_decl.from.span());
             }
         }
     }

@@ -28,7 +28,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             Type::Repository(repository) => {
                 return self.repository_operation(repository, method, arguments)
             }
-            Type::String => self.string_method(name, arguments, span),
+            Type::String => {
+                let context = self.scope.context;
+                self.checker.check_standard(context, name, span);
+                self.string_method(name, arguments, span)
+            }
             Type::Int | Type::Float | Type::Decimal(_) if name == "to_string" => {
                 self.fixed(name, arguments, &[], Type::String, span)
             }

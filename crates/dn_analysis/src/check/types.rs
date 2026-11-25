@@ -37,6 +37,7 @@ impl<'a> Checker<'a> {
         let span = ty.path.span();
         let found = ty.arguments.len();
         if name == "Decimal" {
+            self.check_standard(scope.context, &name, span);
             self.check_places(ty);
         } else if ty.number.is_some() {
             self.error(format!("`{name}` takes no number"), span);

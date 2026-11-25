@@ -103,7 +103,7 @@ fn reads_a_domain() {
     };
     assert_eq!(domain.name.name, "Game");
     assert_eq!(domain.contexts.len(), 2);
-    assert_eq!(domain.uses[0].from.name, "Dungeon");
+    assert_eq!(domain.uses[0].from.text(), "Dungeon");
     assert_eq!(domain.calls[0].text(), "Keyboard");
 }
 

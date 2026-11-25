@@ -1,6 +1,9 @@
 // Values, enums, lists, strings and matching, checked at run time.
 context Checks
 
+use { starts_with, to_upper, to_int, split } from Std.Text
+use { Decimal, abs, max, min } from Std.Numbers
+
 error WrongAnswer
 
 enum Shape {

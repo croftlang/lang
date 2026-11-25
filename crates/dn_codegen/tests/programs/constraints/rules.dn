@@ -1,6 +1,8 @@
 // Breaks one constraint, chosen by the command-line argument, so the test can see
 // each kind of check stop a debug build.
 context Clinic {
+    use { Decimal } from Std.Numbers
+
     constraint Even(number: Int) = number % 2 == 0
 
     value Dose {

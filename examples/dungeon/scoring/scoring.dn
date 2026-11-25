@@ -3,6 +3,7 @@ context Scoring {
     publish { SetUpScoring }
 
     use { Room.EnemyDefeated, Storage, StorageError } from Dungeon
+    use { min } from Std.Numbers
 
     identity ScoreboardId: Int where Range(1, 4)
 

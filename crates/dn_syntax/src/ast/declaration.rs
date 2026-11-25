@@ -31,7 +31,8 @@ pub enum ContextItem {
 #[derive(Debug, Clone, PartialEq)]
 pub struct UseDecl {
     pub names: Vec<Path>,
-    pub from: Identifier,
+    /// A context, or a standard context such as `Std.Text`.
+    pub from: Path,
 }
 
 /// A value or an entity: named fields with optional invariants.
