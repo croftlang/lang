@@ -86,13 +86,20 @@ A named way that working with an aggregate can fail, optionally with fields:
 messages shown to the player are not.
 
 ### Precondition
-A condition in a command or function's contract braces that must hold for it
-to run, naming the error it fails with:
-`enemies.contains(enemy_id) or EnemyMissing { enemy_id }`.
+A condition in a contract that must hold for the code to run. With an error,
+`in_stock > 0 or OutOfStock { item }`, it is a failure the domain expects:
+always checked, and handled by the caller like any other failure. Without
+one, `!numbers.is_empty`, it is a mistake by the caller: checked in debug
+builds, which stop with a message.
 
 ### Contract
-The block between a signature and `=`: its preconditions, and for services a
-`uses` line. Left out when there is nothing to say.
+What a piece of code needs and what it promises, written before its body:
+its preconditions and, for services, `uses` in the braces between the
+signature and `=`; the `where` rules on its parameters and result; and, for
+an aggregate, its invariants. The braces are left out when there is nothing
+to say. A contract states domain rules once, where they apply, names
+failures in the ubiquitous language, keeps bodies simple, and tells the
+compiler how much memory data needs.
 
 ## Behaviour
 
