@@ -25,7 +25,17 @@ impl<'g, 'a> Writer<'g, 'a> {
                         continue;
                     }
 
+                    let declared = self.declarations.len();
                     let c = self.value(value, &ty);
+                    // A temporary made just now for this value becomes the
+                    // name itself, rather than being copied into another.
+                    let fresh = self.declarations[declared..]
+                        .iter()
+                        .any(|line| line.ends_with(&format!(" {c};")));
+                    if fresh {
+                        self.bind(&name.name, c, ty);
+                        continue;
+                    }
                     let variable = self.variable(&format!("v_{}", name.name), &ty);
                     self.line(format!("{variable} = {c};"));
                     self.bind(&name.name, variable, ty);
