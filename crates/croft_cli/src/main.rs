@@ -4,6 +4,7 @@ mod compile;
 mod diagnostics;
 mod lsp;
 mod project;
+mod run;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -18,6 +19,8 @@ Usage:
     croft check [path]      Check the source files in a folder (default: .)
     croft compile [path] --target <name>
                         Check, then write C for one target to target/croft/<name>
+    croft run [path] --target <name> [-- arguments]
+                        Compile, build the C with $CC (default: cc), and run it
     croft lsp               Run the language server, for editors
     croft help              Show this message
     croft version           Show the version
@@ -36,6 +39,11 @@ fn main() -> ExitCode {
             check(&path)
         }),
         "compile" => compile::compile(rest),
+        "run" => match run::run(rest) {
+            Ok(0) => Ok(()),
+            Ok(code) => return ExitCode::from(u8::try_from(code).unwrap_or(1)),
+            Err(message) => Err(message),
+        },
         "lsp" => lsp::run(),
         "help" | "--help" | "-h" => {
             print!("{USAGE}");

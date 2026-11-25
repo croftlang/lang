@@ -5,7 +5,30 @@ use std::path::{Path, PathBuf};
 
 use crate::load_and_check;
 
+/// What `croft compile` wrote for one target.
+pub struct Output {
+    /// The package name from `croft.toml`.
+    pub name: String,
+    pub target: String,
+    /// `target/croft/<target>` in the project folder.
+    pub folder: PathBuf,
+    /// The C files that make up the program, by file name inside `folder`.
+    pub sources: Vec<String>,
+}
+
 pub fn compile(arguments: &[String]) -> Result<(), String> {
+    let (path, target) = parse_arguments(arguments)?;
+    let output = write_c(&path, target)?;
+    println!(
+        "Wrote C for target `{}` to {}",
+        output.target,
+        output.folder.display()
+    );
+    Ok(())
+}
+
+/// Reads `[path] --target <name>` from the arguments.
+pub fn parse_arguments(arguments: &[String]) -> Result<(PathBuf, Option<String>), String> {
     let mut path = None;
     let mut target = None;
     let mut rest = arguments.iter();
@@ -25,8 +48,12 @@ pub fn compile(arguments: &[String]) -> Result<(), String> {
             return Err(format!("unexpected argument `{argument}`"));
         }
     }
-    let path = path.unwrap_or_else(|| PathBuf::from("."));
-    let (project, program) = load_and_check(&path)?;
+    Ok((path.unwrap_or_else(|| PathBuf::from(".")), target))
+}
+
+/// Checks the project at `path`, then writes its C for `target` to `target/croft/<target>`.
+pub fn write_c(path: &Path, target: Option<String>) -> Result<Output, String> {
+    let (project, program) = load_and_check(path)?;
     let Some(manifest) = &program.manifest else {
         let folder = project.folder.display();
         return Err(format!(
@@ -48,17 +75,29 @@ pub fn compile(arguments: &[String]) -> Result<(), String> {
     let folder = project.folder.join("target").join("croft").join(&target);
     fs::create_dir_all(&folder)
         .map_err(|error| format!("cannot create `{}`: {error}", folder.display()))?;
+    let mut sources = Vec::new();
     for file in &files {
         write(&folder.join(&file.name), &file.contents)?;
+        if file.name.ends_with(".c") {
+            sources.push(file.name.clone());
+        }
     }
     for native in manifest.target(&target).map_or(&[][..], |t| &t.native[..]) {
         let source = project.folder.join(&native.name);
         let name = Path::new(&native.name).file_name().unwrap_or_default();
         fs::copy(&source, folder.join(name))
             .map_err(|error| format!("cannot copy native file `{}`: {error}", source.display()))?;
+        let name = name.to_string_lossy().into_owned();
+        if name.ends_with(".c") {
+            sources.push(name);
+        }
     }
-    println!("Wrote C for target `{target}` to {}", folder.display());
-    Ok(())
+    Ok(Output {
+        name: manifest.name.name.clone(),
+        target,
+        folder,
+        sources,
+    })
 }
 
 fn write(path: &Path, contents: &str) -> Result<(), String> {
