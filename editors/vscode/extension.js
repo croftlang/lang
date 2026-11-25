@@ -1,4 +1,4 @@
-// Starts `b lsp` for .b files, for errors as you type, hover and go to definition.
+// Starts `croft lsp` for .croft and .cro files, for errors as you type, hover and go to definition.
 
 const vscode = require("vscode");
 const { LanguageClient } = require("vscode-languageclient/node");
@@ -6,17 +6,17 @@ const { LanguageClient } = require("vscode-languageclient/node");
 let client;
 
 function activate(context) {
-  const command = vscode.workspace.getConfiguration("b").get("server.path") || "b";
+  const command = vscode.workspace.getConfiguration("croft").get("server.path") || "croft";
   client = new LanguageClient(
-    "b",
-    "b",
+    "croft",
+    "Croft",
     { command, args: ["lsp"] },
-    { documentSelector: [{ scheme: "file", language: "b" }] },
+    { documentSelector: [{ scheme: "file", language: "croft" }] },
   );
   client.start().catch((error) => {
     vscode.window.showErrorMessage(
-      `Could not start the b language server with \`${command} lsp\`: ${error.message}. ` +
-        "Install b with `cargo install --path crates/b_cli`, or set `b.server.path`.",
+      `Could not start the Croft language server with \`${command} lsp\`: ${error.message}. ` +
+        "Install Croft with `cargo install --path crates/croft_cli`, or set `croft.server.path`.",
     );
   });
   context.subscriptions.push({ dispose: () => client && client.stop() });

@@ -1,12 +1,12 @@
-//! Starts `b lsp`, the language server in the `b` command, for `.b` files.
+//! Starts `croft lsp`, the language server in the `croft` command, for `.croft` and `.cro` files.
 
 use zed_extension_api::{self as zed, LanguageServerId, Result};
 
-struct BExtension;
+struct CroftExtension;
 
-impl zed::Extension for BExtension {
+impl zed::Extension for CroftExtension {
     fn new() -> Self {
-        BExtension
+        CroftExtension
     }
 
     fn language_server_command(
@@ -14,8 +14,8 @@ impl zed::Extension for BExtension {
         _language_server_id: &LanguageServerId,
         worktree: &zed::Worktree,
     ) -> Result<zed::Command> {
-        let command = worktree.which("b").ok_or_else(|| {
-            "`b` is not on your PATH. Install it with `cargo install --path crates/b_cli`."
+        let command = worktree.which("croft").ok_or_else(|| {
+            "`croft` is not on your PATH. Install it with `cargo install --path crates/croft_cli`."
                 .to_string()
         })?;
         Ok(zed::Command {
@@ -26,4 +26,4 @@ impl zed::Extension for BExtension {
     }
 }
 
-zed::register_extension!(BExtension);
+zed::register_extension!(CroftExtension);

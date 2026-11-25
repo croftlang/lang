@@ -1,0 +1,11 @@
+[package]
+name = "croft_analysis"
+description = "Name resolution and type checking for the Croft language"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+croft_syntax = { path = "../croft_syntax" }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"

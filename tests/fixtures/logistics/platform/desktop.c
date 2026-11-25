@@ -19,17 +19,17 @@ void clock_today(Shipping_Day *out)
     if (days > LAST_DAY) {
         days = LAST_DAY;
     }
-    out->value = (b_u16) days;
+    out->value = (croft_u16) days;
 }
 
-static void copy_text(char *into, b_u16 *length, const char *text, unsigned int capacity)
+static void copy_text(char *into, croft_u16 *length, const char *text, unsigned int capacity)
 {
     unsigned int size = (unsigned int) strlen(text);
     if (size > capacity) {
         size = capacity;
     }
     memcpy(into, text, size);
-    *length = (b_u16) size;
+    *length = (croft_u16) size;
 }
 
 static int handling_type(const char *word, Shipping_HandlingType *out)
@@ -52,7 +52,7 @@ static int handling_type(const char *word, Shipping_HandlingType *out)
    `3 1 unload USLBG V100`: the report's number, the cargo's tracking id,
    what was done, where, and for loading and unloading, the voyage. Lines
    that can't be read are skipped. */
-void terminal_next_report(b_option_Shipping_HandlingReport *out)
+void terminal_next_report(croft_option_Shipping_HandlingReport *out)
 {
     char line[128];
     char kind[16];
@@ -63,7 +63,7 @@ void terminal_next_report(b_option_Shipping_HandlingReport *out)
     int read;
     Shipping_HandlingActivity *activity = &out->value.activity;
 
-    b_clear(out, sizeof *out);
+    croft_clear(out, sizeof *out);
     while (fgets(line, sizeof line, stdin) != NULL) {
         voyage[0] = '\0';
         read = sscanf(line, "%u %u %15s %15s %15s", &number, &tracking_id, kind, location, voyage);

@@ -3,21 +3,27 @@
 version = 4
 
 [[package]]
-name = "b_analysis"
+name = "bitflags"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
+
+[[package]]
+name = "croft_analysis"
 version = "0.1.0"
 dependencies = [
- "b_syntax",
+ "croft_syntax",
  "serde",
  "toml",
 ]
 
 [[package]]
-name = "b_cli"
+name = "croft_cli"
 version = "0.1.0"
 dependencies = [
- "b_analysis",
- "b_codegen",
- "b_syntax",
+ "croft_analysis",
+ "croft_codegen",
+ "croft_syntax",
  "crossbeam-channel",
  "lsp-server",
  "lsp-types",
@@ -26,22 +32,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "b_codegen"
+name = "croft_codegen"
 version = "0.1.0"
 dependencies = [
- "b_analysis",
- "b_syntax",
+ "croft_analysis",
+ "croft_syntax",
 ]
 
 [[package]]
-name = "b_syntax"
+name = "croft_syntax"
 version = "0.1.0"
-
-[[package]]
-name = "bitflags"
-version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "crossbeam-channel"

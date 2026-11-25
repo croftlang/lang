@@ -1,0 +1,104 @@
+/* The Croft runtime. Every generated program includes this header.
+   Written in C89 so it builds with cc65, z88dk and old Atari ST compilers. */
+#ifndef CROFT_H
+#define CROFT_H
+
+typedef long croft_int;
+typedef unsigned char croft_bool;
+typedef unsigned char croft_unit;
+typedef unsigned char croft_u8;
+typedef signed char croft_i8;
+typedef unsigned short croft_u16;
+typedef short croft_i16;
+typedef long croft_i32;
+
+#ifndef CROFT_STRING_CAPACITY
+#define CROFT_STRING_CAPACITY 32
+#endif
+
+typedef struct {
+    croft_u16 length;
+    char text[CROFT_STRING_CAPACITY];
+} croft_string;
+
+#ifndef CROFT_BYTES_CAPACITY
+#define CROFT_BYTES_CAPACITY 64
+#endif
+
+typedef struct {
+    croft_u16 length;
+    unsigned char items[CROFT_BYTES_CAPACITY];
+} croft_bytes;
+
+#define CROFT_MAX(a, b) ((a) > (b) ? (a) : (b))
+#define CROFT_MIN(a, b) ((a) < (b) ? (a) : (b))
+#define CROFT_ABS(a) ((a) < 0 ? -(a) : (a))
+/* Through unsigned long, since C leaves shifting a negative number left undefined. */
+#define CROFT_SHIFT_LEFT(value, amount) ((croft_int) ((unsigned long) (value) << (amount)))
+/* C89 leaves shifting a negative number right up to the compiler, so the
+   sign is kept by hand: ~ makes it positive, and ~ again after the shift. */
+#define CROFT_SHIFT_RIGHT(value, amount) \
+    ((croft_int) ((value) < 0 ? ~(~(value) >> (amount)) : (value) >> (amount)))
+
+/* Stops the program when a contract is broken. */
+void croft_fail(const char *message);
+
+#ifdef CROFT_DEBUG
+#define CROFT_CHECK(condition, message) if (!(condition)) croft_fail(message)
+#else
+/* Not worked out, but still a use of what it names, for the compiler. */
+#define CROFT_CHECK(condition, message) (void) sizeof(condition)
+#endif
+
+/* Sets every byte of a value to zero, so unused parts are never read unset. */
+void croft_clear(void *value, unsigned int size);
+
+void croft_string_set(croft_string *out, const char *text);
+croft_bool croft_string_equal(const croft_string *a, const croft_string *b);
+void croft_string_join(const croft_string *a, const croft_string *b, croft_string *out);
+croft_int croft_string_find(const croft_string *text, const croft_string *part, croft_int from);
+croft_bool croft_string_starts_with(const croft_string *text, const croft_string *part);
+croft_bool croft_string_ends_with(const croft_string *text, const croft_string *part);
+void croft_string_to_upper(const croft_string *text, croft_string *out);
+void croft_string_to_lower(const croft_string *text, croft_string *out);
+void croft_string_trim(const croft_string *text, croft_string *out);
+void croft_string_slice(const croft_string *text, croft_int start, croft_int end, croft_string *out);
+void croft_int_to_string(croft_int value, croft_string *out);
+
+croft_int croft_divide_even(croft_int numerator, croft_int denominator);
+croft_int croft_decimal_multiply(croft_int a, croft_int b, croft_int scale);
+croft_int croft_decimal_divide(croft_int a, croft_int b, croft_int scale);
+void croft_decimal_to_string(croft_int value, croft_int places, croft_string *out);
+
+croft_bool croft_bytes_equal(const croft_bytes *a, const croft_bytes *b);
+croft_bool croft_bytes_get(const croft_bytes *bytes, croft_int index, croft_int *out);
+void croft_bytes_add(const croft_bytes *bytes, croft_int byte, croft_bytes *out);
+void croft_bytes_slice(const croft_bytes *bytes, croft_int start, croft_int end, croft_bytes *out);
+void croft_bytes_to_text(const croft_bytes *bytes, croft_string *out);
+void croft_string_to_bytes(const croft_string *text, croft_bytes *out);
+croft_bool croft_bytes_put_int(croft_bytes *out, croft_int value);
+croft_bool croft_bytes_take_int(const croft_bytes *in, croft_u16 *at, croft_int *out);
+croft_bool croft_bytes_put_length(croft_bytes *out, croft_u16 length);
+croft_bool croft_bytes_take_length(const croft_bytes *in, croft_u16 *at, croft_u16 *out);
+croft_bool croft_bytes_put_string(croft_bytes *out, const croft_string *text);
+croft_bool croft_bytes_take_string(const croft_bytes *in, croft_u16 *at, croft_string *out);
+croft_bool croft_bytes_put_bytes(croft_bytes *out, const croft_bytes *bytes);
+croft_bool croft_bytes_take_bytes(const croft_bytes *in, croft_u16 *at, croft_bytes *out);
+void croft_storage_key(const char *prefix, croft_int identity, croft_string *out);
+
+void croft_text_load(const char *text, croft_u16 length, croft_string *out);
+croft_bool croft_text_store(const croft_string *in, char *text, croft_u16 *length, croft_u16 capacity);
+croft_bool croft_text_equal(const char *a, croft_u16 a_length, const char *b, croft_u16 b_length);
+croft_bool croft_bytes_put_text(croft_bytes *out, const char *text, croft_u16 length);
+croft_bool croft_bytes_take_text(const croft_bytes *in, croft_u16 *at, char *text, croft_u16 *length,
+                           croft_u16 capacity);
+croft_bool croft_string_to_int(const croft_string *text, croft_int *out);
+
+void croft_arguments_set(int count, char **values);
+croft_int croft_argument_count(void);
+void croft_argument(croft_int index, croft_string *out);
+
+/* The built-in Console port: prints a line. */
+void croft_console_print(const croft_string *text, croft_unit *out);
+
+#endif
