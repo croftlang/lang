@@ -1,5 +1,5 @@
-//! Calls: functions, translations, services, constraints, enum variants and
-//! built-in functions. Method calls are in `method`.
+//! Calls: functions, translations, services, constraints, factories, enum
+//! variants and built-in functions. Method calls are in `method`.
 
 use croft_syntax::ast::{Argument, Expr, ExprId, ExprKind};
 use croft_syntax::Span;
@@ -87,6 +87,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 self.error("only a service can run another service", span);
                 Type::Unknown
             }
+            SymbolKind::Factory => self.call_factory(&found, arguments, span),
             SymbolKind::Value => match self.checker.single_value_inner(&Type::Named(found.clone()))
             {
                 Some(inner) => {
@@ -118,6 +119,61 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 Type::Unknown
             }
         }
+    }
+
+    /// `Cargo.Book(origin: ...)`: makes a new aggregate, or fails with one of
+    /// its errors. Only its own context makes its aggregates.
+    fn call_factory(&mut self, found: &Resolved, arguments: &[Argument], span: Span) -> Type {
+        if !matches!(
+            self.kind,
+            BodyKind::Service | BodyKind::Policy | BodyKind::Function
+        ) {
+            self.error(
+                format!(
+                    "only services, policies and functions can make an aggregate with `{}`",
+                    found.name
+                ),
+                span,
+            );
+        }
+
+        if found.context != self.scope.context.name.name {
+            let message = format!(
+                "`{}` makes an aggregate of `{}`, so only `{}` can call it",
+                found.name, found.context, found.context
+            );
+
+            self.error(message, span);
+        }
+
+        let Some((aggregate, factory)) = found.name.split_once('.') else {
+            return Type::Unknown;
+        };
+
+        let scope = self.checker.scope_of(found);
+
+        let declared = (scope.context.aggregates.iter())
+            .find(|a| a.name.name == aggregate)
+            .and_then(|a| a.factories.iter().find(|f| f.name.name == factory));
+
+        let parameters: Vec<(String, Type)> = (declared.iter())
+            .flat_map(|f| f.parameters.iter().flatten())
+            .map(|p| (p.name.name.clone(), self.checker.parameter_type(&scope, p)))
+            .collect();
+
+        self.check_arguments(arguments, &parameters, factory, span, true);
+
+        let made = self
+            .checker
+            .lookup(&found.context, aggregate)
+            .map_or(Type::Unknown, Type::Named);
+
+        let errors = self
+            .checker
+            .lookup(&found.context, &format!("{aggregate}.Error"))
+            .map_or(Type::Unknown, Type::Named);
+
+        Type::result(made, errors)
     }
 
     /// A call to a function, translation, service or constraint declared in Croft.

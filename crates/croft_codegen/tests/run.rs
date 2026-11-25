@@ -144,6 +144,13 @@ fn runs_commands_events_policies_and_repositories() {
     run_program("game");
 }
 
+/// A factory holds a new board to its invariant, and its event reaches the
+/// policy only when the board is saved.
+#[test]
+fn makes_aggregates_through_factories() {
+    run_program("factories");
+}
+
 /// Each broken constraint stops a debug build with a message naming it, and a
 /// release build doesn't check.
 #[test]

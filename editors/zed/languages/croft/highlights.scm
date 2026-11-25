@@ -88,6 +88,7 @@
   "error"
   "event"
   "command"
+  "factory"
   "policy"
   "when"
   "fn"

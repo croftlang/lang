@@ -2,7 +2,7 @@
 
 use croft_syntax::ast::{Expr, FieldValue, Path};
 
-use super::BodyChecker;
+use super::{BodyChecker, BodyKind};
 use crate::symbols::SymbolKind;
 use std::collections::HashMap;
 
@@ -107,15 +107,85 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
         }
 
+        if found.kind == SymbolKind::Aggregate && !self.makes(&found) {
+            self.error(self.made_by_factories(&found), path.span());
+        }
+
         let ty = Type::Named(found);
         self.field_values(&ty, fields);
 
         ty
     }
 
+    /// Whether this body may build `aggregate` whole: one of its own
+    /// factories, or an adapter that keeps it for its repository.
+    fn makes(&self, aggregate: &Resolved) -> bool {
+        match self.kind {
+            BodyKind::Factory(decl) => {
+                decl.name.name == aggregate.name
+                    && self.scope.context.name.name == aggregate.context
+            }
+            BodyKind::Adapter(adapter) => {
+                let kept = self
+                    .checker
+                    .find_path(&self.scope, &adapter.port)
+                    .filter(|port| port.kind == SymbolKind::Repository)
+                    .and_then(|repository| self.checker.repository_aggregate(&repository));
+
+                kept.as_ref() == Some(aggregate)
+            }
+            _ => false,
+        }
+    }
+
+    /// Where a new aggregate comes from instead: its factories, by name.
+    fn made_by_factories(&self, aggregate: &Resolved) -> String {
+        let scope = self.checker.scope_of(aggregate);
+
+        let factories: Vec<String> = (scope.context.aggregates.iter())
+            .filter(|a| a.name.name == aggregate.name)
+            .flat_map(|a| &a.factories)
+            .map(|f| format!("`{}.{}`", aggregate.name, f.name.name))
+            .collect();
+
+        let name = &aggregate.name;
+
+        match factories[..] {
+            [] => format!(
+                "a new `{name}` is made by a factory; declare one in the aggregate: \
+                 `factory Open(...) = {name} {{ ... }}`"
+            ),
+            [ref only] => format!("a new `{name}` is made by its factory: {only}"),
+            _ => format!(
+                "a new `{name}` is made by one of its factories: {}",
+                factories.join(", ")
+            ),
+        }
+    }
+
     /// `start with { x: 11 }`: a copy with some fields replaced.
+    /// An aggregate is only copied this way inside its own commands and
+    /// factories; elsewhere it changes by issuing a command.
     pub(super) fn with(&mut self, base: &Expr, fields: &[FieldValue]) -> Type {
         let ty = self.expr(base, None);
+
+        if let Type::Named(found) = &ty {
+            let own_command = matches!(
+                self.kind,
+                BodyKind::Command(decl)
+                    if decl.name.name == found.name && self.scope.context.name.name == found.context
+            );
+
+            if found.kind == SymbolKind::Aggregate && !own_command && !self.makes(found) {
+                let message = format!(
+                    "a `{}` changes by issuing one of its commands, not with `with`",
+                    found.name
+                );
+
+                self.error(message, base.span);
+            }
+        }
+
         self.field_values(&ty, fields);
         ty
     }

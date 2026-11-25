@@ -15,6 +15,8 @@ aggregate Board {
 
     event Scored { total: Int }
 
+    factory Open(id: BoardId) = Board { id, points: 0, bonus: 0 }
+
     command Score(amount: Int) {
         amount <= 100 or TooMany
     } = {
@@ -65,7 +67,7 @@ service Tamper(board: Board): Result<Unit, GameError> = {
 service Start(): Result<Unit, GameError> {
     calls Boards
 } = {
-    let spare = Board { id: 2, points: 0, bonus: 0 }
+    let spare = Board.Open(id: 2)?
     let scored = issue Score(amount: 10) on spare?
     check(scored.points == 10 && spare.points == 0)?
     let failed = match issue Score(amount: 500) on spare {
@@ -73,7 +75,7 @@ service Start(): Result<Unit, GameError> {
         Err(error) -> true
     }
     check(failed)?
-    Play(Board { id: 1, points: 0, bonus: 0 })?
+    Play(Board.Open(id: 1)?)?
     let saved = boards.find(1)?
     check(saved.points == 12)?
     check(saved.bonus == 2)?

@@ -155,7 +155,8 @@ fn fields_and_operations_after_a_dot() {
 fn an_aggregate_is_shown_with_what_it_holds() {
     let (session, path) = checked("shipping/booking.croft", None);
     let state = session.project_for(&path).expect("checked");
-    let hover = hover_at(state, &path, "cargos.save(Cargo {", "Cargo");
+    let line = "let cargo = Cargo.Book(tracking_id: SAMPLE_CARGO, route: route)?";
+    let hover = hover_at(state, &path, line, "Cargo");
 
     assert!(
         hover.starts_with("```croft\naggregate Cargo {\n"),
@@ -171,6 +172,14 @@ fn an_aggregate_is_shown_with_what_it_holds() {
     );
 
     assert!(!hover.contains("set itinerary"), "{hover}");
+
+    // Factories come before commands, also without their bodies.
+    assert!(
+        hover.contains("\n    factory Book(tracking_id: TrackingId, route: RouteSpecification)\n"),
+        "{hover}"
+    );
+
+    assert!(!hover.contains("misdirected: false"), "{hover}");
 }
 
 #[test]

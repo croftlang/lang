@@ -3,6 +3,7 @@ mod boundary;
 mod declarations;
 mod domain;
 mod effects;
+mod factories;
 mod files;
 mod functions;
 mod manifest;

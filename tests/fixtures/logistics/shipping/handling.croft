@@ -14,8 +14,14 @@ aggregate HandlingEvent {
 
     // Registering is the only thing that happens to a handling event; after
     // that, it never changes.
-    command Register = {
+    factory Register(
+        id: HandlingEventId,
+        tracking_id: TrackingId,
+        activity: HandlingActivity,
+        completed_on: Day
+    ) = {
         emit Registered { tracking_id, activity }
+        HandlingEvent { id, tracking_id, activity, completed_on }
     }
 }
 

@@ -1,4 +1,5 @@
-//! Aggregates: their root fields, entities, invariants, errors, events and commands.
+//! Aggregates: their root fields, entities, invariants, errors, events,
+//! commands and factories.
 
 use croft_syntax::ast::{AggregateDecl, Field, Identifier, IdentityDecl};
 
@@ -29,8 +30,8 @@ impl<'a> Checker<'a> {
             self.check_fields(&scope, &record.fields);
         }
 
-        for command in &aggregate.commands {
-            self.check_function(&scope, command);
+        for function in aggregate.commands.iter().chain(&aggregate.factories) {
+            self.check_function(&scope, function);
         }
     }
 

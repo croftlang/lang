@@ -61,6 +61,10 @@ pub struct Writer<'g, 'a> {
     pub aggregate: Option<String>,
     pub own: Option<OwnFields>,
     pub returns: Returns,
+    /// Writing a factory, whose events learn their source once the body ends.
+    pub factory: bool,
+    /// The events a factory raised, to be given their source.
+    pub emitted: Vec<croft_analysis::types::Resolved>,
     declarations: Vec<String>,
     lines: Vec<String>,
     depth: usize,
@@ -78,6 +82,8 @@ impl<'g, 'a> Writer<'g, 'a> {
             aggregate: None,
             own: None,
             returns,
+            factory: false,
+            emitted: Vec::new(),
             declarations: Vec::new(),
             lines: Vec::new(),
             depth: 1,

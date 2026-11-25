@@ -10,6 +10,8 @@ context Shop {
         stock: Int where Range(0, 255)
 
         error NotFound
+
+        factory Stock(id: ShelfId, stock: Int) = Shelf { id, stock }
     }
 
     repository Shelves for Shelf
@@ -35,6 +37,8 @@ context Shop {
         cash: Int
 
         error NotFound
+
+        factory Open(id: TillId, cash: Int) = Till { id, cash }
     }
 
     repository Tills for Till
@@ -79,11 +83,11 @@ context Shop {
     service Check(): Result<Unit, Failure> {
         calls Shelves, Tills
     } = {
-        tills.save(Till { id: 2, cash: -40 })?
+        tills.save(Till.Open(id: 2, cash: -40)?)?
         let till = tills.find(2)?
         check(till.cash == -40)?
-        shelves.save(Shelf { id: 4, stock: 10 })?
-        shelves.save(Shelf { id: 4, stock: 12 })?
+        shelves.save(Shelf.Stock(id: 4, stock: 10)?)?
+        shelves.save(Shelf.Stock(id: 4, stock: 12)?)?
         let found = shelves.find(4)?
         check(found.stock == 12)?
         let missing = match shelves.find(5) {

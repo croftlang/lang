@@ -18,6 +18,8 @@ aggregate Truck {
     id: TruckId
     loaded: Int
 
+    factory Park(id: TruckId) = Truck { id, loaded: 0 }
+
     // A command's parameter sizes the list too.
     command Load(crates: List<Crate> where Length(0, 6)) = {
         set loaded = crates.length
@@ -40,7 +42,7 @@ service Start(): Result<Unit, WrongAnswer> = {
     check(timetable().length == 5)?
     check(timetable().sum(stop -> stop.code) == 15)?
     let crates = [Crate { weight: 1 }, Crate { weight: 2 }, Crate { weight: 3 }, Crate { weight: 4 }]
-    let truck = Truck { id: 1, loaded: 0 }
+    let truck = Truck.Park(id: 1)?
     let loaded = match issue Load(crates: crates) on truck {
         Ok(changed) -> changed.loaded
         Err(error) -> 0

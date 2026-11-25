@@ -7,7 +7,7 @@ use super::{Checker, Scope};
 use crate::symbols::SymbolKind;
 
 impl<'a> Checker<'a> {
-    /// Checks a function, service, translation or command.
+    /// Checks a function, service, translation, command or factory.
     pub(super) fn check_function(&mut self, scope: &Scope, function: &FunctionDecl) {
         let name = &function.name;
         let span = name.span;
@@ -26,6 +26,11 @@ impl<'a> Checker<'a> {
         match (&function.return_type, function.kind) {
             (Some(_), FunctionKind::Command) => {
                 let message = "a command gives back its aggregate, so it has no return type";
+                self.error(message, span);
+            }
+            (Some(_), FunctionKind::Factory) => {
+                let message =
+                    "a factory gives back the aggregate it makes, so it has no return type";
                 self.error(message, span);
             }
             (Some(ty), _) => {

@@ -20,6 +20,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             self.error("only services, policies and functions can issue commands; a command changes one aggregate", span);
         }
 
+        if matches!(self.kind, BodyKind::Factory(_)) {
+            self.error(
+                "a factory cannot issue commands; it only makes its own aggregate",
+                span,
+            );
+        }
+
         let (aggregate, by_identity) = match self.loaded_aggregate(&issue.target) {
             Some(aggregate) => (Some(aggregate), true),
             None => match self.expr(&issue.target, None) {

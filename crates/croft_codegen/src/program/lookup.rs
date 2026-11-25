@@ -8,9 +8,24 @@ use croft_analysis::Type;
 use crate::Generator;
 
 impl<'a> Generator<'a> {
-    /// Parameters of a function, translation, service or constraint declared in Croft.
+    /// Parameters of a function, translation, service, constraint or factory
+    /// declared in Croft.
     pub fn parameters_of(&self, found: &Resolved) -> Vec<(String, Type)> {
         let context = &self.program.contexts[&found.context];
+
+        if found.kind == SymbolKind::Factory {
+            let Some((aggregate, factory)) = found.name.split_once('.') else {
+                return Vec::new();
+            };
+
+            let aggregate = Resolved {
+                context: found.context.clone(),
+                name: aggregate.to_string(),
+                kind: SymbolKind::Aggregate,
+            };
+
+            return self.factory_parameters(&aggregate, factory);
+        }
 
         let parameters = if found.kind == SymbolKind::Constraint {
             context
@@ -48,6 +63,20 @@ impl<'a> Generator<'a> {
 
         let command = decl.and_then(|a| a.commands.iter().find(|c| c.name.name == command));
         let parameters = command.and_then(|c| c.parameters.as_deref()).unwrap_or(&[]);
+
+        self.lower_parameters(&aggregate.context, Some(&aggregate.name), parameters)
+    }
+
+    pub fn factory_parameters(&self, aggregate: &Resolved, factory: &str) -> Vec<(String, Type)> {
+        let context = &self.program.contexts[&aggregate.context];
+
+        let decl = context
+            .aggregates
+            .iter()
+            .find(|a| a.name.name == aggregate.name);
+
+        let factory = decl.and_then(|a| a.factories.iter().find(|f| f.name.name == factory));
+        let parameters = factory.and_then(|f| f.parameters.as_deref()).unwrap_or(&[]);
 
         self.lower_parameters(&aggregate.context, Some(&aggregate.name), parameters)
     }

@@ -11,7 +11,7 @@
 
 Croft is a domain language, declarative structure, imperative behaviour. The
 domain model is the program: you write it with domain-driven design's building
-blocks (contexts, values, entities, aggregates, commands, events, ports and
+blocks (contexts, values, entities, aggregates, factories, commands, events, ports and
 adapters) and the compiler checks the constraints you attach to them. Croft is
 designed to compile to portable C, so you can ship cross-platform.
 

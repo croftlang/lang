@@ -48,6 +48,8 @@ pub(super) enum BodyKind<'a> {
     Constant,
     /// A command changes its aggregate's fields with `set` and raises its events.
     Command(&'a AggregateDecl),
+    /// A factory makes a new aggregate from its parameters and can raise its events.
+    Factory(&'a AggregateDecl),
     /// A service uses ports, loads and saves aggregates and can loop.
     Service,
     Policy,

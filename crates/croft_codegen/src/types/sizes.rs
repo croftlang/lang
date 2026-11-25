@@ -83,7 +83,10 @@ impl Sizes {
 
             let commands = context.aggregates.iter().flat_map(|a| {
                 let scope = Some(a.name.name.as_str());
-                a.commands.iter().map(move |c| (c, scope))
+                a.commands
+                    .iter()
+                    .chain(&a.factories)
+                    .map(move |c| (c, scope))
             });
 
             // A `where` on a parameter or on the result sizes the list as

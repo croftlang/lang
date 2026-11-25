@@ -8,10 +8,11 @@ use crate::symbols::SymbolKind;
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
-    /// `emit EnemyDamaged { ... }`, in a command, for one of its aggregate's events.
+    /// `emit EnemyDamaged { ... }`, in a command or factory, for one of its
+    /// aggregate's events.
     pub(super) fn emit(&mut self, event: &Path, fields: &[FieldValue], span: Span) -> Type {
-        let BodyKind::Command(aggregate) = self.kind else {
-            self.error("only a command can raise an event", span);
+        let (BodyKind::Command(aggregate) | BodyKind::Factory(aggregate)) = self.kind else {
+            self.error("only a command or factory can raise an event", span);
             return Type::Unit;
         };
 

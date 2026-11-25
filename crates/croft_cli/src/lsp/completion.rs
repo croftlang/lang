@@ -487,7 +487,7 @@ fn completion_kind(kind: SymbolKind) -> CompletionItemKind {
         Aggregate | Adapter => CompletionItemKind::CLASS,
         Enum | ErrorSet => CompletionItemKind::ENUM,
         Event => CompletionItemKind::EVENT,
-        Command | Function | Service | Translation | Policy | Constraint => {
+        Command | Factory | Function | Service | Translation | Policy | Constraint => {
             CompletionItemKind::FUNCTION
         }
         Const => CompletionItemKind::CONSTANT,

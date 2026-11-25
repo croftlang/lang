@@ -33,6 +33,20 @@ context Shop {
         }
 
         error NotFound
+
+        // The garden shelf, with a little of everything a shelf can hold.
+        factory Garden(id: ShelfId) = Shelf {
+            id,
+            name: "Garden",
+            price: -3.75,
+            label: Label.Sale(percent: 20),
+            best: Some(3),
+            sizes: ["small": 2, "large": 9],
+            items: [
+                Shelf.Item { id: 3, count: 200, open: true },
+                Shelf.Item { id: 7, count: 0, open: false }
+            ]
+        }
     }
 
     repository Shelves for Shelf
@@ -75,18 +89,7 @@ context Shop {
     service Check(): Result<Unit, Failure> {
         calls Shelves, Files, Console
     } = {
-        let shelf = Shelf {
-            id: 12,
-            name: "Garden",
-            price: -3.75,
-            label: Label.Sale(percent: 20),
-            best: Some(3),
-            sizes: ["small": 2, "large": 9],
-            items: [
-                Shelf.Item { id: 3, count: 200, open: true },
-                Shelf.Item { id: 7, count: 0, open: false }
-            ]
-        }
+        let shelf = Shelf.Garden(id: 12)?
         shelves.save(shelf)?
         check(files.exists("shelve12.dat"))?
         let found = shelves.find(12)?

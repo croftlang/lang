@@ -118,6 +118,7 @@ fn aggregate_only(keyword: Keyword) -> Option<&'static str> {
         }
         Keyword::Event => "an event belongs inside the aggregate that emits it",
         Keyword::Command => "a command belongs inside the aggregate it changes",
+        Keyword::Factory => "a factory belongs inside the aggregate it makes",
         Keyword::Invariant => "an invariant belongs inside the aggregate it protects",
         _ => return None,
     })

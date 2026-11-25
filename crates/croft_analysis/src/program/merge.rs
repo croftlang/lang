@@ -70,6 +70,7 @@ impl Context {
         aggregate.errors.extend(part.errors);
         aggregate.events.extend(part.events);
         aggregate.commands.extend(part.commands);
+        aggregate.factories.extend(part.factories);
     }
 
     /// The domain as a context of its own: it imports what it uses, and its

@@ -1,6 +1,6 @@
 # Commands
 
-The only way to change an aggregate. A command is declared inside it, can have a contract and has a body. It raises events with emit; the compiler works out which ones from the body. `set` describes the new state. Nothing changes unless the whole command succeeds.
+The only way to change an aggregate; a new one is made by a [factory](13-factories.md). A command is declared inside it, can have a contract and has a body. It raises events with emit; the compiler works out which ones from the body. `set` describes the new state. Nothing changes unless the whole command succeeds.
 
 ```croft
 // Damages one enemy, and defeats it at zero hit points.

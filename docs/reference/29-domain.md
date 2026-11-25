@@ -28,17 +28,11 @@ domain Game {
 }
 
 // in context Dungeon, published for the domain
-service SetUpRooms(): Result<Unit, StorageError> {
+service SetUpRooms(): Result<Unit, GameError> {
     calls Rooms
-} = rooms.save(first_room())
-
-fn first_room(): Room = Room {
-    id: FIRST_ROOM
-    player: Room.Player { id: 1, position: Position { x: 16, y: 16 }, lives: 3 }
-    enemies: [
-        Room.Enemy { id: 0, position: Position { x: 64, y: 64 }, hit_points: 20 }
-    ]
-    treasure: []
-    exit: Position { x: 232, y: 168 }
+} = {
+    let player = Room.Player { id: 1, position: Position { x: 16, y: 16 }, lives: 3 }
+    let room = Room.Open(id: FIRST_ROOM, player: player, exit: Position { x: 232, y: 168 })?
+    rooms.save(room)?
 }
 ```

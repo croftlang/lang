@@ -72,7 +72,7 @@ fn checks_where_each_effect_is_allowed() {
 
     assert_error(
         &game("fn f(): Unit = emit Healed { lives: 1 }"),
-        "only a command can raise an event",
+        "only a command or factory can raise an event",
     );
 
     assert_error(

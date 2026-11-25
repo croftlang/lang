@@ -73,7 +73,7 @@
           }
         },
         {
-          "match": "\\b(command|service|policy|constraint|fn)\\s+([A-Za-z_]\\w*)",
+          "match": "\\b(command|factory|service|policy|constraint|fn)\\s+([A-Za-z_]\\w*)",
           "captures": {
             "1": { "name": "storage.type.croft" },
             "2": { "name": "entity.name.function.croft" }
@@ -147,7 +147,7 @@
       "patterns": [
         {
           "name": "storage.type.croft",
-          "match": "\\b(context|domain|value|entity|aggregate|enum|const|constraint|invariant|command|policy|fn|service|port|adapter|repository|translation)\\b"
+          "match": "\\b(context|domain|value|entity|aggregate|enum|const|constraint|invariant|command|factory|policy|fn|service|port|adapter|repository|translation)\\b"
         },
         { "name": "storage.modifier.identity.croft", "match": "\\bidentity\\b" },
         { "name": "keyword.control.import.croft", "match": "\\b(use|publish)\\b" },

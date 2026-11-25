@@ -454,7 +454,8 @@ fn declaration_text(text: &str, line: u32, kind: SymbolKind, is_variant: bool) -
 }
 
 /// An aggregate with what it holds, from every file it is written in: its
-/// fields, entities, errors and events, and its commands' signatures.
+/// fields, entities, errors and events, and its factories' and commands'
+/// signatures.
 fn aggregate_outline(state: &ProjectState, target: &Resolved) -> Option<String> {
     let context = state.analysis.program.contexts.get(&target.context)?;
     let aggregate = (context.aggregates.iter()).find(|a| a.name.name == target.name)?;
@@ -474,7 +475,7 @@ fn aggregate_outline(state: &ProjectState, target: &Resolved) -> Option<String> 
         lines.extend(line_at(name).map(|line| format!("    {line}")));
     }
 
-    for command in &aggregate.commands {
+    for command in aggregate.factories.iter().chain(&aggregate.commands) {
         let Some(text) = state.text(command.name.span.source) else {
             continue;
         };
@@ -520,7 +521,7 @@ fn signature(line: &str, kind: SymbolKind) -> String {
 
     let has_body = matches!(
         kind,
-        Command | Function | Service | Translation | Constraint | Policy | Adapter
+        Command | Factory | Function | Service | Translation | Constraint | Policy | Adapter
     );
 
     if has_body {
