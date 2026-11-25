@@ -22,6 +22,7 @@ mod repeat;
 mod rule;
 mod scope;
 mod string;
+mod unused;
 mod usage;
 
 use std::collections::{HashMap, HashSet};

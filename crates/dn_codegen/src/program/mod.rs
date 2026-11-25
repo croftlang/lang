@@ -7,6 +7,7 @@ mod constant;
 mod equality;
 mod events;
 mod functions;
+mod lookup;
 mod main;
 mod repository;
 mod rules;
