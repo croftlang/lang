@@ -1,4 +1,5 @@
-//! `match`: every variant handled once, with bindings for its fields.
+//! `match`: every variant handled once, with bindings for its fields, or
+//! the rest handled together by a last arm of `_`.
 
 use dn_syntax::ast::{Expr, MatchArm, Pattern};
 
@@ -20,9 +21,15 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         };
         let mut result = expected.cloned();
         let mut handled: Vec<String> = Vec::new();
-        for arm in arms {
+        let mut has_wildcard = false;
+        for (index, arm) in arms.iter().enumerate() {
             let name = arm.pattern.path.last().name.clone();
+            if name == WILDCARD {
+                self.check_wildcard(arm, index + 1 == arms.len(), &variants, &handled);
+                has_wildcard = true;
+            }
             let bindings = match variants.iter().find(|(variant, _)| *variant == name) {
+                _ if name == WILDCARD => Vec::new(),
                 Some((_, fields)) => self.pattern_bindings(&arm.pattern, fields),
                 None => {
                     self.error(
@@ -32,7 +39,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     vec![Type::Unknown; arm.pattern.bindings.len()]
                 }
             };
-            if handled.contains(&name) {
+            if handled.contains(&name) && !has_wildcard {
                 self.error(
                     format!("`{name}` is handled more than once"),
                     arm.pattern.path.span(),
@@ -56,13 +63,46 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             .map(|(name, _)| name.as_str())
             .filter(|name| !handled.iter().any(|h| h == name))
             .collect();
-        if !missing.is_empty() && !subject_type.is_unknown() {
+        if !missing.is_empty() && !subject_type.is_unknown() && !has_wildcard {
             self.error(
                 format!("this match does not handle {}", quote_all(&missing)),
                 subject.span,
             );
         }
         result.unwrap_or(Type::Unknown)
+    }
+
+    /// `_` handles every variant no arm above it does, so it comes last,
+    /// binds nothing, and has at least one variant left to handle.
+    fn check_wildcard(
+        &mut self,
+        arm: &MatchArm,
+        is_last: bool,
+        variants: &[(String, Vec<Type>)],
+        handled: &[String],
+    ) {
+        let span = arm.pattern.path.span();
+        if !is_last {
+            self.error(
+                "`_` handles everything left, so it must be the last arm",
+                span,
+            );
+        }
+        if !arm.pattern.bindings.is_empty() {
+            self.error(
+                "`_` stands for several variants, so it can't name their fields",
+                span,
+            );
+        }
+        let left = variants
+            .iter()
+            .any(|(variant, _)| !handled.contains(variant));
+        if !left && !variants.is_empty() {
+            self.error(
+                "every variant is already handled, so `_` is never reached",
+                span,
+            );
+        }
     }
 
     /// The variants of the type being matched, each with its fields' types.
@@ -113,6 +153,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         types
     }
 }
+
+/// The pattern that matches every variant not handled above it.
+const WILDCARD: &str = "_";
 
 fn quote_all(names: &[&str]) -> String {
     let quoted: Vec<String> = names.iter().map(|name| format!("`{name}`")).collect();

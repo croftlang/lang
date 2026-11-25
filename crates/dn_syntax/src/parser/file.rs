@@ -4,22 +4,23 @@
 //! `context Dungeon`, which claims the rest of the file.
 
 use super::{ParseResult, Parser};
-use crate::ast::{ContextDecl, ContextItem, File, TopItem, UseDecl};
+use crate::ast::{ContextDecl, ContextItem, File, UseDecl};
 use crate::keyword::Keyword;
+use crate::span::Diagnostic;
 use crate::token::TokenKind;
 
 impl Parser {
     pub(super) fn parse_file(&mut self) -> ParseResult<File> {
         let mut file = File::default();
         while !self.check(&TokenKind::EndOfFile) {
-            let item = if self.check_keyword(Keyword::Application) {
-                TopItem::Application(self.parse_application()?)
-            } else if self.check_keyword(Keyword::Context) {
-                TopItem::Context(self.parse_context()?)
-            } else {
-                return Err(self.unexpected("`context` or `application`"));
-            };
-            file.items.push(item);
+            if self.check_keyword(Keyword::Domain) {
+                file.domains.push(self.parse_domain()?);
+                continue;
+            }
+            if !self.check_keyword(Keyword::Context) {
+                return Err(self.unexpected("`context` or `domain`"));
+            }
+            file.contexts.push(self.parse_context()?);
         }
         Ok(file)
     }
@@ -70,17 +71,22 @@ impl Parser {
             Keyword::Port => ContextItem::Port(self.parse_port()?),
             Keyword::Adapter => ContextItem::Adapter(self.parse_adapter()?),
             Keyword::Repository => ContextItem::Repository(self.parse_repository()?),
+            Keyword::Entity => {
+                let message = "an entity belongs inside an aggregate; a thing with identity \
+                               on its own is an `aggregate` with no entities";
+                return Err(Diagnostic::new(message, self.span()));
+            }
             _ => return Err(self.unexpected("a declaration")),
         };
         Ok(item)
     }
 
     /// `use { EnemyId, Room.EnemyDefeated } from Dungeon`
-    fn parse_use(&mut self) -> ParseResult<UseDecl> {
+    pub(super) fn parse_use(&mut self) -> ParseResult<UseDecl> {
         self.expect_keyword(Keyword::Use)?;
         let names = self.parse_path_list()?;
         self.expect_word("from")?;
-        let from = self.expect_identifier()?;
+        let from = self.parse_path()?;
         Ok(UseDecl { names, from })
     }
 }

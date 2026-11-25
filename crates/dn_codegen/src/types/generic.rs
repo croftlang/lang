@@ -1,4 +1,4 @@
-//! Lists, options and results: one C struct for each item type used.
+//! Lists, maps, options and results: one C struct for each item type used.
 
 use dn_analysis::Type;
 
@@ -14,6 +14,14 @@ impl<'a> Generator<'a> {
                 format!(
                     "    dn_u16 length;\n    {} items[{capacity}];\n",
                     self.c_type(item)
+                )
+            }
+            Type::Map(key, value) => {
+                let capacity = self.sizes.map_capacity(ty);
+                format!(
+                    "    dn_u16 length;\n    {} keys[{capacity}];\n    {} values[{capacity}];\n",
+                    self.c_type(key),
+                    self.c_type(value)
                 )
             }
             Type::Option(item) => format!("    dn_bool some;\n    {} value;\n", self.c_type(item)),

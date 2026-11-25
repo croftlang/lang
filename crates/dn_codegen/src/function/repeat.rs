@@ -14,12 +14,11 @@ impl<'g, 'a> Writer<'g, 'a> {
         match counter {
             Some(counter) => {
                 let range = counter
-                    .rules
+                    .constraints
                     .iter()
-                    .find(|r| r.constraint.name.text() == "Range");
+                    .find(|r| r.name.text() == "Range");
                 let bounds: Vec<String> = range.map_or(Vec::new(), |r| {
-                    r.constraint
-                        .arguments
+                    r.arguments
                         .iter()
                         .map(|a| self.value(a, &Type::Int))
                         .collect()

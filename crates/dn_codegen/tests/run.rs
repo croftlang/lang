@@ -2,109 +2,284 @@
 //! in strict C89 mode, and runs it. Each program's start service fails, and
 //! so exits with 1, if any of its checks gives the wrong answer.
 
+mod support;
+
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::path::Path;
 
-use dn_syntax::{parse, SourceId};
-
-/// Every warning is an error, and nothing past C89 is allowed.
-const FLAGS: [&str; 7] = [
-    "-std=c89",
-    "-pedantic",
-    "-Wall",
-    "-Wextra",
-    "-Werror",
-    "-Wdeclaration-after-statement",
-    "-O2",
-];
-
-fn dn_files(folder: &Path) -> Vec<PathBuf> {
-    let mut found = Vec::new();
-    for entry in fs::read_dir(folder).expect("a program folder") {
-        let path = entry.expect("a folder entry").path();
-        if path.is_dir() {
-            found.extend(dn_files(&path));
-        } else if path.extension().is_some_and(|e| e == "dn") {
-            found.push(path);
-        }
-    }
-    found.sort();
-    found
-}
-
-/// Writes the C for one program and target into a fresh folder.
-fn generate(folder: &Path, target: &str, name: &str) -> PathBuf {
-    let files = dn_files(folder)
-        .iter()
-        .enumerate()
-        .map(|(index, path)| {
-            parse(&fs::read_to_string(path).unwrap(), SourceId(index as u32)).expect("valid syntax")
-        })
-        .collect();
-    let program = dn_analysis::check(files).unwrap_or_else(|errors| panic!("{errors:#?}"));
-    let output =
-        std::env::temp_dir().join(format!("dn_codegen_{name}_{target}_{}", std::process::id()));
-    fs::create_dir_all(&output).unwrap();
-    for file in dn_codegen::generate(&program, target).expect("generated C") {
-        fs::write(output.join(&file.name), file.contents).unwrap();
-    }
-    output
-}
-
-fn has_c_compiler() -> bool {
-    Command::new("cc")
-        .arg("--version")
-        .output()
-        .is_ok_and(|o| o.status.success())
-}
-
-fn compile(folder: &Path, extra: &[&str]) -> std::process::Output {
-    Command::new("cc")
-        .args(FLAGS)
-        .args(extra)
-        .current_dir(folder)
-        .output()
-        .expect("the C compiler runs")
-}
-
-fn run_program(name: &str) {
-    if !has_c_compiler() {
-        eprintln!("skipping {name}: no C compiler named `cc`");
-        return;
-    }
-    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/programs")
-        .join(name);
-    let output = generate(&source, "test", name);
-    let built = compile(
-        &output,
-        &["-DDN_DEBUG", "dn_runtime.c", "program.c", "-o", "program"],
-    );
-    assert!(
-        built.status.success(),
-        "{}",
-        String::from_utf8_lossy(&built.stderr)
-    );
-    let ran = Command::new(output.join("program"))
-        .output()
-        .expect("the program runs");
-    assert!(
-        ran.status.success(),
-        "a check failed: {}",
-        String::from_utf8_lossy(&ran.stdout)
-    );
-    fs::remove_dir_all(output).ok();
-}
+use support::{compile, generate, has_c_compiler, run_program, run_program_at};
 
 #[test]
 fn runs_values_enums_lists_and_strings() {
     run_program("values");
 }
 
+/// A domain calling one function, printing through the built-in `Console`.
+#[test]
+fn prints_through_the_console() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/hello");
+    let output = generate(&source, "test", "hello");
+    let built = compile(&output, &["dn_runtime.c", "program.c", "-o", "program"]);
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("program"))
+        .output()
+        .expect("it runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "5\n");
+    fs::remove_dir_all(output).ok();
+}
+
+/// Std.Files through StdioFiles: the file is written, read back and removed,
+/// and reading it again stops the program with `NotFound`.
+#[test]
+fn reads_and_writes_files() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/files");
+    let output = generate(&source, "test", "files");
+    let built = compile(
+        &output,
+        &["dn_runtime.c", "dn_files.c", "program.c", "-o", "program"],
+    );
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("program"))
+        .current_dir(&output)
+        .output()
+        .expect("it runs");
+    assert_eq!(ran.status.code(), Some(1));
+    assert_eq!(
+        String::from_utf8_lossy(&ran.stdout),
+        "first line, then more\nStd.Files.NotFound\n"
+    );
+    assert!(!output.join("notes.txt").exists());
+    fs::remove_dir_all(output).ok();
+}
+
+/// A shelf saved through FileStorage comes back the same, a missing one is
+/// `NotFound`, and a damaged file is `StorageDamaged`.
+#[test]
+fn saves_and_finds_aggregates_in_files() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/storage");
+    let output = generate(&source, "test", "storage");
+    let built = compile(
+        &output,
+        &[
+            "-DDN_DEBUG",
+            "dn_runtime.c",
+            "dn_files.c",
+            "program.c",
+            "-o",
+            "program",
+        ],
+    );
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("program"))
+        .current_dir(&output)
+        .output()
+        .expect("it runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "ok\n");
+    assert!(ran.status.success());
+    fs::remove_dir_all(output).ok();
+}
+
+#[test]
+fn keeps_aggregates_through_adapters_of_the_programs_own() {
+    run_program("repository_adapter");
+}
+
+#[test]
+fn makes_an_instance_of_each_generic_for_each_type() {
+    run_program("generics");
+}
+
 #[test]
 fn runs_commands_events_policies_and_repositories() {
     run_program("game");
+}
+
+/// Each broken constraint stops a debug build with a message naming it, and a
+/// release build doesn't check.
+#[test]
+fn checks_rules_in_debug_builds() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/constraints");
+    let output = generate(&source, "test", "constraints");
+    let debug = compile(
+        &output,
+        &["-DDN_DEBUG", "dn_runtime.c", "program.c", "-o", "debug"],
+    );
+    assert!(
+        debug.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debug.stderr)
+    );
+    let release = compile(&output, &["dn_runtime.c", "program.c", "-o", "release"]);
+    assert!(
+        release.status.success(),
+        "{}",
+        String::from_utf8_lossy(&release.stderr)
+    );
+    let run = |program: &str, argument: &str| {
+        let ran = std::process::Command::new(output.join(program))
+            .arg(argument)
+            .output()
+            .expect("it runs");
+        (
+            ran.status.code(),
+            String::from_utf8_lossy(&ran.stdout).trim().to_string(),
+        )
+    };
+    assert_eq!(run("debug", "none"), (Some(0), String::new()));
+    assert_eq!(
+        run("debug", "argument"),
+        (
+            Some(1),
+            "heal: amount must satisfy Range(1, 50)".to_string()
+        )
+    );
+    assert_eq!(
+        run("debug", "result"),
+        (Some(1), "half: the result must satisfy Even".to_string())
+    );
+    assert_eq!(
+        run("debug", "field"),
+        (
+            Some(1),
+            "Dose: amount must satisfy Range(1, 50)".to_string()
+        )
+    );
+    assert_eq!(
+        run("debug", "each"),
+        (Some(1), "count: numbers must satisfy each Even".to_string())
+    );
+    assert_eq!(
+        run("debug", "score"),
+        (
+            Some(1),
+            "Score: value must satisfy Range(0, 999)".to_string()
+        )
+    );
+    assert_eq!(
+        run("debug", "pay"),
+        (
+            Some(1),
+            "pay: amount must satisfy Range(0.01, 99.99)".to_string()
+        )
+    );
+    assert_eq!(
+        run("debug", "shift"),
+        (Some(1), "shift by less than 0 or more than 31".to_string())
+    );
+    assert_eq!(
+        run("debug", "name"),
+        (
+            Some(1),
+            "Patient: name is longer than 8 characters".to_string()
+        )
+    );
+    assert_eq!(
+        run("debug", "join"),
+        (
+            Some(1),
+            "joined text is longer than a string can hold".to_string()
+        )
+    );
+    assert_eq!(run("release", "argument"), (Some(0), String::new()));
+    assert_eq!(run("release", "name"), (Some(0), String::new()));
+    fs::remove_dir_all(output).ok();
+}
+
+#[test]
+fn stops_with_the_error_when_the_domain_fails() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/failing");
+    let output = generate(&source, "test", "failing");
+    let built = compile(&output, &["dn_runtime.c", "program.c", "-o", "program"]);
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("program"))
+        .output()
+        .expect("the program runs");
+    assert_eq!(ran.status.code(), Some(1));
+    assert_eq!(String::from_utf8_lossy(&ran.stdout).trim(), "Shop.Closed");
+    fs::remove_dir_all(output).ok();
+}
+
+#[test]
+fn runs_the_dungeon_example_until_it_quits() {
+    run_program_at(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/dungeon"),
+        "dungeon_run",
+    );
+}
+
+/// The scripted keys move the player, then defeat the nearest enemy, whose
+/// `EnemyDefeated` event makes Dungeon drop treasure and Scoring add points.
+#[test]
+fn plays_the_dungeon_as_scripted() {
+    if !has_c_compiler() {
+        return;
+    }
+    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/dungeon");
+    let output = generate(&example, "test", "dungeon_outcome");
+    let harness = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/harness/dungeon_outcome.c");
+    fs::copy(harness, output.join("outcome.c")).unwrap();
+    let renamed = compile(&output, &["-c", "-Dmain=dn_program_main", "program.c"]);
+    assert!(
+        renamed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&renamed.stderr)
+    );
+    let built = compile(
+        &output,
+        &[
+            "-I.",
+            "outcome.c",
+            "program.o",
+            "dn_runtime.c",
+            "-o",
+            "outcome",
+        ],
+    );
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("outcome"))
+        .output()
+        .expect("the harness runs");
+    let printed = String::from_utf8_lossy(&ran.stdout);
+    assert_eq!(
+        printed,
+        "status 0\nplayer 32,24\nenemies 1 treasure 1\npoints 100\n"
+    );
+    fs::remove_dir_all(output).ok();
 }
 
 #[test]
@@ -115,6 +290,13 @@ fn compiles_the_dungeon_example_for_every_target() {
     let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/dungeon");
     for target in ["test", "spectrum_48k"] {
         let output = generate(&example, target, "dungeon");
+        if target == "spectrum_48k" {
+            fs::copy(
+                example.join("platform/spectrum.c"),
+                output.join("spectrum.c"),
+            )
+            .unwrap();
+        }
         let built = compile(&output, &["-c", "dn_runtime.c", "program.c"]);
         assert!(
             built.status.success(),

@@ -1,6 +1,6 @@
-//! `where` rules and the constraints they apply.
+//! `where` clauses and the constraints they apply.
 
-use dn_syntax::ast::{ConstraintUse, Rule, TypeExpr};
+use dn_syntax::ast::{ConstraintUse, TypeExpr};
 
 use super::{Checker, Scope};
 use crate::symbols::SymbolKind;
@@ -9,16 +9,18 @@ use crate::symbols::SymbolKind;
 const BUILTIN_CONSTRAINTS: [(&str, &[usize]); 2] = [("Range", &[2]), ("Length", &[1, 2])];
 
 impl<'a> Checker<'a> {
-    pub(super) fn check_rules(&mut self, scope: &Scope, rules: &[Rule], ty: Option<&TypeExpr>) {
+    pub(super) fn check_constraints(
+        &mut self,
+        scope: &Scope,
+        constraints: &[ConstraintUse],
+        ty: Option<&TypeExpr>,
+    ) {
         let is_list = ty.is_some_and(|ty| ty.path.text() == "List");
-        for rule in rules {
-            if rule.each && !is_list {
-                self.error(
-                    "`each` can only be used on a list",
-                    rule.constraint.name.span(),
-                );
+        for constraint in constraints {
+            if constraint.each && !is_list {
+                self.error("`each` can only be used on a list", constraint.name.span());
             }
-            self.check_constraint_use(scope, &rule.constraint);
+            self.check_constraint_use(scope, constraint);
         }
     }
 

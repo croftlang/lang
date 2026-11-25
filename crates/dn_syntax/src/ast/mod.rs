@@ -44,18 +44,29 @@ impl Path {
 pub struct TypeExpr {
     pub path: Path,
     pub arguments: Vec<TypeExpr>,
+    /// A number in place of type arguments, such as the places in `Decimal<2>`.
+    pub number: Option<i64>,
 }
 
-/// One constraint after `where`, applied to the value or, with `each`, to every item.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Rule {
-    pub each: bool,
-    pub constraint: ConstraintUse,
+impl TypeExpr {
+    /// The type as written, with one space after each comma: `Map<String, Int>`.
+    pub fn text(&self) -> String {
+        let mut text = self.path.text();
+        if let Some(number) = self.number {
+            text.push_str(&format!("<{number}>"));
+        } else if !self.arguments.is_empty() {
+            let arguments: Vec<String> = self.arguments.iter().map(TypeExpr::text).collect();
+            text.push_str(&format!("<{}>", arguments.join(", ")));
+        }
+        text
+    }
 }
 
-/// A constraint applied to a value: `Range(0, 100)`. The value is its first argument.
+/// A constraint applied to a value after `where`: `Range(0, 100)`, or with
+/// `each`, applied to every item of a list. The value is its first argument.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConstraintUse {
+    pub each: bool,
     pub name: Path,
     pub arguments: Vec<Expr>,
 }
@@ -65,8 +76,10 @@ pub struct Field {
     pub doc: Vec<String>,
     pub name: Identifier,
     pub ty: TypeExpr,
-    pub rules: Vec<Rule>,
+    pub constraints: Vec<ConstraintUse>,
     pub is_identity: bool,
+    /// The starting value of an adapter's field: `keys: List<Key> = []`.
+    pub value: Option<Expr>,
 }
 
 /// A parameter. Adapter operations leave out the type, which comes from the port.
@@ -75,17 +88,13 @@ pub struct Field {
 pub struct Parameter {
     pub name: Identifier,
     pub types: Vec<TypeExpr>,
-    pub rules: Vec<Rule>,
+    pub constraints: Vec<ConstraintUse>,
 }
 
-/// Everything read from one source file.
+/// Everything read from one source file: the contexts, or parts of
+/// contexts, it declares.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct File {
-    pub items: Vec<TopItem>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum TopItem {
-    Context(ContextDecl),
-    Application(ApplicationDecl),
+    pub contexts: Vec<ContextDecl>,
+    pub domains: Vec<DomainDecl>,
 }

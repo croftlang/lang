@@ -6,6 +6,7 @@ use dn_syntax::ast::{Expr, ExprKind, UnaryOp};
 
 use super::Writer;
 use crate::names::c_string;
+use crate::types::constant::{scale, scaled};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// The value of `value`, as a C expression of the C type for `want`.
@@ -29,7 +30,10 @@ impl<'g, 'a> Writer<'g, 'a> {
         let ty = self.type_of(value, want);
         let c = match &value.kind {
             ExprKind::Int(number) => format!("{number}L"),
-            ExprKind::Float(number) => format!("{number:?}"),
+            ExprKind::Float(text) => match ty {
+                Type::Decimal(places) => format!("{}L", scaled(text, places)),
+                _ => text.clone(),
+            },
             ExprKind::Bool(flag) => (if *flag { "1" } else { "0" }).to_string(),
             ExprKind::String(text) => {
                 let temp = self.temp(&Type::String);
@@ -42,18 +46,24 @@ impl<'g, 'a> Writer<'g, 'a> {
                 _ => self.name(value, &field.name, &ty),
             },
             ExprKind::Call(callee, arguments) => self.call(value, callee, arguments, &ty),
+            ExprKind::List(items) => self.list_literal(items, &ty),
+            ExprKind::Map(entries) => self.map_literal(entries, &ty),
             ExprKind::Record(_, fields) => self.record(&ty, fields),
             ExprKind::With(base, fields) => {
                 let base = self.value(base, &ty);
                 let temp = self.temp(&ty);
                 self.line(format!("{temp} = {base};"));
                 self.set_fields(&temp, &ty, fields);
+                self.check_fields(&temp, &ty);
                 temp
             }
             ExprKind::Unary(UnaryOp::Not, operand) => {
                 format!("(!{})", self.value(operand, &Type::Bool))
             }
             ExprKind::Unary(UnaryOp::Negate, operand) => format!("(-{})", self.value(operand, &ty)),
+            ExprKind::Unary(UnaryOp::BitNot, operand) => {
+                format!("(~{})", self.value(operand, &Type::Int))
+            }
             ExprKind::Binary(op, left, right) => self.binary(*op, left, right, &ty),
             ExprKind::OrElse(inner, error) => self.or_else(inner, error, &ty),
             ExprKind::Try(inner) => self.try_value(inner),
@@ -79,6 +89,15 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// Converts a value to another type with the same meaning: a plain value
     /// into a successful `Result`. Every error is already `dn_error`.
     pub fn convert(&mut self, c: String, from: &Type, to: &Type) -> String {
+        if let (Type::Decimal(places), Type::Int) = (to, from) {
+            return format!("({c} * {}L)", scale(*places));
+        }
+        if let Some(inner) = self.gen.model.single_value_inner(to) {
+            if inner != *to && self.gen.c_type(from) != self.gen.c_type(to) {
+                let value = self.convert(c, from, &inner);
+                return self.wrap_single_value(value, to);
+            }
+        }
         if self.gen.c_type(from) == self.gen.c_type(to) {
             return c;
         }
@@ -94,6 +113,19 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
     }
 
+    /// A single-value type around `value`, checked against its constraints
+    /// in debug builds: `Score(120)`, or `120` where a `Score` is expected.
+    pub fn wrap_single_value(&mut self, value: String, ty: &Type) -> String {
+        let temp = self.temp(ty);
+        let owner = match ty {
+            Type::Named(owner) => Some(owner.clone()),
+            _ => None,
+        };
+        self.write_field(owner.as_ref(), &temp, "value", &value);
+        self.check_fields(&temp, ty);
+        temp
+    }
+
     /// A C expression that is true when two values of `ty` are equal.
     pub fn equal(&mut self, left: &str, right: &str, ty: &Type) -> String {
         if self.gen.is_scalar(ty) {
@@ -101,6 +133,9 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
         if *ty == Type::String {
             return format!("dn_string_equal(&{left}, &{right})");
+        }
+        if *ty == Type::Bytes {
+            return format!("dn_bytes_equal(&{left}, &{right})");
         }
         let name = self.gen.equality_for(ty);
         format!("{name}(&{left}, &{right})")
@@ -111,6 +146,7 @@ fn has_unknown(ty: &Type) -> bool {
     match ty {
         Type::Unknown => true,
         Type::List(item) | Type::Option(item) => has_unknown(item),
+        Type::Map(key, value) => has_unknown(key) || has_unknown(value),
         Type::Result(value, error) => has_unknown(value) || has_unknown(error),
         _ => false,
     }

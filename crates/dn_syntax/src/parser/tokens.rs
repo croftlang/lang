@@ -85,6 +85,20 @@ impl Parser {
         Ok(Identifier { name, span })
     }
 
+    /// A field's name after `.` or in a record, where a keyword is a name
+    /// too: `score.value`, `Score { value: 3 }`.
+    pub(super) fn expect_field_name(&mut self) -> ParseResult<Identifier> {
+        if let TokenKind::Keyword(keyword) = self.peek().kind {
+            let span = self.span();
+            self.advance();
+            return Ok(Identifier {
+                name: keyword.as_str().to_string(),
+                span,
+            });
+        }
+        self.expect_identifier()
+    }
+
     pub(super) fn is_identifier(&self) -> bool {
         matches!(
             self.peek().kind,
@@ -100,5 +114,11 @@ impl Parser {
     pub(super) fn unexpected(&self, expected: &str) -> Diagnostic {
         let found = self.peek().kind.describe();
         Diagnostic::new(format!("expected {expected}, found {found}"), self.span())
+    }
+
+    /// Turns the `>>` ahead into `>`, as if its first `>` had been read.
+    pub(super) fn split_shift_right(&mut self) {
+        let index = self.position.min(self.tokens.len() - 1);
+        self.tokens[index].kind = TokenKind::Greater;
     }
 }

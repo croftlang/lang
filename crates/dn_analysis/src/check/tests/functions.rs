@@ -2,7 +2,7 @@ use super::{assert_error, dungeon};
 
 #[test]
 fn checks_function_shapes() {
-    assert_error(&dungeon("fn width() = 3"), "`width` needs a return type");
+    assert_error(&dungeon("fn width() = 3"), "expected `Unit`, found `Int`");
     assert_error(
         &dungeon("fn width(): Int"),
         "`width` needs a body after `=`",

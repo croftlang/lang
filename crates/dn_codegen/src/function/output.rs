@@ -1,5 +1,6 @@
 //! Writing lines with indentation, and the finished function.
 
+use super::unused::{is_write_to, mentions, release_lines, tidy_condition};
 use super::Writer;
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -13,6 +14,11 @@ impl<'g, 'a> Writer<'g, 'a> {
     pub fn open(&mut self, header: impl AsRef<str>) {
         self.line(format!("{} {{", header.as_ref()));
         self.depth += 1;
+    }
+
+    /// A preprocessor line, such as `#ifdef DN_DEBUG`, at the start of the line.
+    pub fn directive(&mut self, text: &str) {
+        self.lines.push(text.to_string());
     }
 
     pub fn close(&mut self) {
@@ -54,8 +60,10 @@ impl<'g, 'a> Writer<'g, 'a> {
         if !declarations.is_empty() && !self.lines.is_empty() {
             out.push('\n');
         }
+        // A parameter only used in debug-build lines is still unused otherwise.
+        let release: Vec<&String> = release_lines(&self.lines);
         for parameter in &self.parameters {
-            if !self.lines.iter().any(|line| mentions(line, parameter)) {
+            if !release.iter().any(|line| mentions(line, parameter)) {
                 out.push_str(&format!("    (void) {parameter};\n"));
             }
         }
@@ -63,47 +71,22 @@ impl<'g, 'a> Writer<'g, 'a> {
             out.push_str(line);
             out.push('\n');
         }
+        // A variable a release build only writes to, such as a value built
+        // just to be checked in debug builds, is marked as used.
+        for declaration in &declarations {
+            let name = declaration
+                .trim_end_matches(';')
+                .rsplit(' ')
+                .next()
+                .unwrap_or_default();
+            if release
+                .iter()
+                .all(|line| !mentions(line, name) || is_write_to(line, name))
+            {
+                out.push_str(&format!("    (void) {name};\n"));
+            }
+        }
         out.push_str("}\n\n");
         out
     }
-}
-/// Whether `line` uses the C name `name`, not just as part of a longer name.
-pub(super) fn mentions(line: &str, name: &str) -> bool {
-    let is_name = |c: char| c.is_ascii_alphanumeric() || c == '_';
-    line.match_indices(name).any(|(start, _)| {
-        let before = line[..start].chars().next_back();
-        let after = line[start + name.len()..].chars().next();
-        !before.is_some_and(is_name) && !after.is_some_and(is_name)
-    })
-}
-
-/// Turns `if ((a == b))` into `if (a == b)`, which compilers prefer.
-fn tidy_condition(text: &str) -> String {
-    let Some(start) = text.find("if ((") else {
-        return text.to_string();
-    };
-    let inner = start + 4;
-    let mut depth = 0;
-    for (offset, c) in text[inner..].char_indices() {
-        match c {
-            '(' => depth += 1,
-            ')' => {
-                depth -= 1;
-                if depth == 0 {
-                    let close = inner + offset;
-                    if text[close + 1..].starts_with(')') {
-                        return format!(
-                            "{}{}{}",
-                            &text[..inner],
-                            &text[inner + 1..close],
-                            &text[close + 1..]
-                        );
-                    }
-                    return text.to_string();
-                }
-            }
-            _ => {}
-        }
-    }
-    text.to_string()
 }

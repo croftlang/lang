@@ -3,7 +3,9 @@
 use dn_analysis::symbols::SymbolKind;
 use dn_analysis::types::Resolved;
 use dn_analysis::Type;
-use dn_syntax::ast::{Expr, ExprKind};
+use dn_syntax::ast::{ConstraintUse, Expr, ExprKind};
+
+use super::constraints::CheckPlace;
 
 use crate::function::{Returns, Writer};
 use crate::names::c_name;
@@ -28,7 +30,9 @@ impl<'a> Generator<'a> {
 
     fn function(&self, found: &Resolved, prototypes: &mut Vec<String>) -> String {
         let context = &self.program.contexts[&found.context];
-        let (result, preconditions, body) = if found.kind == SymbolKind::Constraint {
+        let (result, preconditions, body, constraints, return_constraints) = if found.kind
+            == SymbolKind::Constraint
+        {
             let Some(decl) = context
                 .constraints
                 .iter()
@@ -36,24 +40,57 @@ impl<'a> Generator<'a> {
             else {
                 return String::new();
             };
-            (Type::Bool, &[][..], Some(&decl.body))
+            (Type::Bool, &[][..], Some(&decl.body), Vec::new(), &[][..])
         } else {
             let Some(decl) = context.functions.iter().find(|f| f.name.name == found.name) else {
                 return String::new();
             };
-            let result = decl.return_type.as_ref().map_or(Type::Unit, |ty| {
-                self.model.lower_type(&found.context, None, ty)
-            });
-            (result, decl.preconditions.as_slice(), decl.body.as_ref())
+            // A generic template is compiled only as its instances.
+            if !decl.type_parameters.is_empty() {
+                return String::new();
+            }
+            let result = self.function_result(&found.context, decl);
+            let constraints = decl
+                .parameters
+                .iter()
+                .flatten()
+                .map(|p| p.constraints.as_slice())
+                .collect();
+            (
+                result,
+                decl.preconditions.as_slice(),
+                decl.body.as_ref(),
+                constraints,
+                decl.return_constraints.as_slice(),
+            )
         };
         let parameters = self.parameters_of(found);
         let signature = self.signature(&c_name(found), &[], &parameters, Some(&result));
         prototypes.push(format!("{signature};"));
         let mut writer = Writer::new(self, &found.context, Returns::Value(result.clone()));
         writer.bind_parameters(&parameters);
+        let place = CheckPlace {
+            context: &found.context,
+            aggregate: None,
+            label: &found.name,
+        };
+        let checked: Vec<(String, Type, &[ConstraintUse])> = parameters
+            .iter()
+            .zip(constraints)
+            .map(|((name, ty), constraints)| (name.clone(), ty.clone(), constraints))
+            .collect();
+        if let Some(call) = self.argument_check(&c_name(found), &place, &checked) {
+            writer.debug_call(&call);
+        }
         writer.preconditions(preconditions, &found.name);
         if let Some(body) = body {
             let value = writer.value(body, &result);
+            if let Some(check) =
+                self.result_check(&c_name(found), &place, &result, return_constraints)
+            {
+                let passed = writer.pass(value.clone(), &result);
+                writer.debug_call(&format!("{check}({passed});"));
+            }
             writer.line(format!("*out = {value};"));
         }
         writer.finish(&signature)

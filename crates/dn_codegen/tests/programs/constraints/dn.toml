@@ -1,0 +1,5 @@
+[package]
+name = "constraints"
+
+[target.test]
+main = "Start"

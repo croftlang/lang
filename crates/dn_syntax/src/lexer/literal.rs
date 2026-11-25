@@ -32,12 +32,19 @@ impl<'a> Lexer<'a> {
         first: char,
         start: Span,
     ) -> Result<TokenKind, Diagnostic> {
-        if first == '0' && self.peek() == Some('x') {
+        let radix = match (first, self.peek()) {
+            ('0', Some('x')) => Some((16, "hex", "0x")),
+            ('0', Some('b')) => Some((2, "binary", "0b")),
+            _ => None,
+        };
+        if let Some((radix, name, prefix)) = radix {
             self.advance();
-            let digits = self.read_digits(|c| c.is_ascii_hexdigit());
-            return i64::from_str_radix(&digits, 16)
+            let digits = self.read_digits(|c| c.is_digit(radix));
+            return i64::from_str_radix(&digits, radix)
                 .map(TokenKind::Int)
-                .map_err(|_| Diagnostic::new(format!("invalid hex number `0x{digits}`"), start));
+                .map_err(|_| {
+                    Diagnostic::new(format!("invalid {name} number `{prefix}{digits}`"), start)
+                });
         }
         let mut text = first.to_string() + &self.read_digits(|c| c.is_ascii_digit());
         let is_float =
@@ -46,10 +53,7 @@ impl<'a> Lexer<'a> {
             self.advance();
             text.push('.');
             text += &self.read_digits(|c| c.is_ascii_digit());
-            return text
-                .parse()
-                .map(TokenKind::Float)
-                .map_err(|_| Diagnostic::new(format!("invalid number `{text}`"), start));
+            return Ok(TokenKind::Float(text));
         }
         text.parse()
             .map(TokenKind::Int)

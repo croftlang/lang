@@ -35,15 +35,15 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     /// A counter counts through the values a `Range` allows.
     pub(super) fn check_counter(&mut self, counter: &LoopCounter) {
         let has_range = counter
-            .rules
+            .constraints
             .iter()
-            .any(|rule| !rule.each && rule.constraint.name.text() == "Range");
+            .any(|constraint| !constraint.each && constraint.name.text() == "Range");
         if !has_range {
-            let message = "a counted loop needs a `Range` rule, such as `where Range(0, 9)`";
+            let message = "a counted loop needs a `Range` constraint, such as `where Range(0, 9)`";
             self.error(message, counter.name.span);
         }
-        for rule in &counter.rules {
-            for argument in &rule.constraint.arguments {
+        for constraint in &counter.constraints {
+            for argument in &constraint.arguments {
                 self.expect(argument, &Type::Int);
             }
         }

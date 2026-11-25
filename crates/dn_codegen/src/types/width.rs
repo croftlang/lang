@@ -1,17 +1,22 @@
-//! How many bytes a whole number needs, from its `Range` rule.
+//! How many bytes a whole number needs, from its `Range` constraint.
 
 use dn_analysis::{Model, Program};
-use dn_syntax::ast::Rule;
+use dn_syntax::ast::ConstraintUse;
 
 use super::constant::evaluate;
 
 /// The smallest C integer type that holds every value a `Range` allows.
-pub fn int_width(program: &Program, model: &Model, context: &str, rules: &[Rule]) -> &'static str {
-    let range = rules
+pub fn int_width(
+    program: &Program,
+    model: &Model,
+    context: &str,
+    constraints: &[ConstraintUse],
+) -> &'static str {
+    let range = constraints
         .iter()
-        .filter(|r| !r.each && r.constraint.name.text() == "Range")
-        .find_map(|rule| {
-            let [low, high] = rule.constraint.arguments.as_slice() else {
+        .filter(|r| !r.each && r.name.text() == "Range")
+        .find_map(|constraint| {
+            let [low, high] = constraint.arguments.as_slice() else {
                 return None;
             };
             Some((

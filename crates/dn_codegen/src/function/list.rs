@@ -102,4 +102,30 @@ impl<'g, 'a> Writer<'g, 'a> {
         let (name, ty, _) = fields.into_iter().find(|(_, _, field)| field.is_identity)?;
         Some((name, ty))
     }
+
+    /// `[a, b, c]`: a list of exactly these items.
+    pub fn list_literal(&mut self, items: &[dn_syntax::ast::Expr], ty: &Type) -> String {
+        if *ty == Type::Bytes {
+            return self.bytes_literal(items);
+        }
+        let Type::List(item) = ty else {
+            return "0".to_string();
+        };
+        let values: Vec<String> = items.iter().map(|value| self.value(value, item)).collect();
+        let list = self.temp(ty);
+        let capacity = self.gen.sizes.list_capacity(item);
+        self.line(format!(
+            "{list}.length = {};",
+            values.len().min(capacity as usize)
+        ));
+        if values.len() as i64 > capacity {
+            self.line(format!(
+                "DN_CHECK(0, \"a list has more than {capacity} items\");"
+            ));
+        }
+        for (index, value) in values.iter().take(capacity as usize).enumerate() {
+            self.line(format!("{list}.items[{index}] = {value};"));
+        }
+        list
+    }
 }

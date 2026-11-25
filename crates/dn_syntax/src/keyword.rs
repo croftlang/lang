@@ -5,6 +5,7 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Keyword {
     Context,
+    Domain,
     Publish,
     Use,
     Value,
@@ -25,7 +26,6 @@ pub enum Keyword {
     Adapter,
     Repository,
     Translation,
-    Application,
     Let,
     Set,
     Loop,
@@ -37,7 +37,7 @@ pub enum Keyword {
     With,
     Where,
     Each,
-    Uses,
+    Calls,
     Native,
     Or,
     True,
@@ -46,6 +46,7 @@ pub enum Keyword {
 
 const KEYWORDS: [(&str, Keyword); 38] = [
     ("context", Keyword::Context),
+    ("domain", Keyword::Domain),
     ("publish", Keyword::Publish),
     ("use", Keyword::Use),
     ("value", Keyword::Value),
@@ -66,7 +67,6 @@ const KEYWORDS: [(&str, Keyword); 38] = [
     ("adapter", Keyword::Adapter),
     ("repository", Keyword::Repository),
     ("translation", Keyword::Translation),
-    ("application", Keyword::Application),
     ("let", Keyword::Let),
     ("loop", Keyword::Loop),
     ("break", Keyword::Break),
@@ -78,7 +78,7 @@ const KEYWORDS: [(&str, Keyword); 38] = [
     ("with", Keyword::With),
     ("where", Keyword::Where),
     ("each", Keyword::Each),
-    ("uses", Keyword::Uses),
+    ("calls", Keyword::Calls),
     ("native", Keyword::Native),
     ("or", Keyword::Or),
     ("true", Keyword::True),

@@ -54,7 +54,7 @@ pub fn build_table(context: &Context, errors: &mut Vec<Diagnostic>) -> SymbolTab
     );
     for function in &context.functions {
         let kind = match function.kind {
-            FunctionKind::Service => SymbolKind::Service,
+            FunctionKind::Service | FunctionKind::Domain => SymbolKind::Service,
             FunctionKind::Translation => SymbolKind::Translation,
             _ => SymbolKind::Function,
         };

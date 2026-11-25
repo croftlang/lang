@@ -1,6 +1,8 @@
 // Calculations and reactions that belong to no single room.
 context Dungeon
 
+use { abs, max, min } from Std.Numbers
+
 // Manhattan distance between two positions.
 fn distance(start: Position, end: Position): Int where Range(0, SCREEN_WIDTH + SCREEN_HEIGHT) =
     abs(start.x - end.x) + abs(start.y - end.y)
@@ -28,6 +30,7 @@ fn direction_for(key: Key): Option<Direction> = match key {
     Left -> Some(West)
     Right -> Some(East)
     Fire -> None
+    Quit -> None
 }
 
 policy DropLootOnDefeat when Room.EnemyDefeated {

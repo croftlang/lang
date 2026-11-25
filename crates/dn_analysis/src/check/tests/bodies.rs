@@ -4,6 +4,8 @@ use super::{assert_error, errors};
 fn game(extra: &str) -> String {
     format!(
         "context Game {{\n\
+         use {{ trim, starts_with }} from Std.Text\n\
+         use {{ Decimal, max, min, abs }} from Std.Numbers\n\
          identity RoomId: Int where Range(1, 20)\n\
          identity EnemyId: Int where Range(0, 9)\n\
          enum Direction {{ North, South }}\n\
@@ -103,5 +105,164 @@ fn checks_string_methods() {
     assert_error(
         &game("fn f(name: String): Int = name.shout()"),
         "`String` has no method `shout`",
+    );
+}
+
+#[test]
+fn checks_bit_operators() {
+    let source = game("fn f(bits: Int): Bool = bits & 0b100 != 0 && ~bits >> 1 > 0");
+    assert_eq!(errors(&source), Vec::<String>::new());
+    assert_error(
+        &game("fn f(on: Bool): Int = on & 1"),
+        "expected `Int`, found `Bool`",
+    );
+    assert_error(
+        &game("fn f(bits: Int): Int = bits << 32"),
+        "cannot shift by 32, only by 0 to 31",
+    );
+}
+
+#[test]
+fn checks_decimals() {
+    let source = game(
+        "fn f(price: Decimal<2>, count: Int): Decimal<2> = {\n let tax: Decimal<2> = 0.2\n price * count + price * tax - 1\n}",
+    );
+    assert_eq!(errors(&source), Vec::<String>::new());
+    assert_error(
+        &game("fn f(): Decimal<2> = 2.505"),
+        "`2.505` has more than 2 decimal places",
+    );
+    assert_error(
+        &game("fn f(price: Decimal): Int = 0"),
+        "`Decimal` needs its decimal places, as in `Decimal<2>`",
+    );
+    assert_error(
+        &game("fn f(price: Decimal<9>): Int = 0"),
+        "`Decimal` has 1 to 6 decimal places, found 9",
+    );
+    assert_error(
+        &game("fn f(a: Decimal<2>, b: Decimal<3>): Decimal<2> = a + b"),
+        "expected `Decimal<2>`, found `Decimal<3>`",
+    );
+    assert_error(
+        &game("fn f(a: Decimal<2>): Decimal<2> = a % 2"),
+        "a `Decimal` has no remainder",
+    );
+    assert_error(
+        &game("fn f(a: Decimal<2>): Decimal<2> = 1 / a"),
+        "only a `Decimal` can be divided by a `Decimal`",
+    );
+    assert_error(
+        &game("fn f(counts: List<Int>): List<Decimal<2>> = counts"),
+        "expected `List<Decimal<2>>`, found `List<Int>`",
+    );
+}
+
+#[test]
+fn checks_imports_from_standard_contexts() {
+    assert_error(
+        "context Shop {\n fn f(name: String): String = name.to_upper()\n}",
+        "`to_upper` needs `use { to_upper } from Std.Text`",
+    );
+    assert_error(
+        "context Shop {\n fn f(a: Int): Int = abs(a)\n}",
+        "`abs` needs `use { abs } from Std.Numbers`",
+    );
+    assert_error(
+        "context Shop {\n use { shout } from Std.Text\n}",
+        "`Std.Text` does not provide `shout`",
+    );
+    let source = "context Shop {\n use { to_upper } from Std.Text\n fn f(names: List<String>): Bool = names.contains(\"A\") && names.length > 0\n fn g(name: String): String = name.to_upper()\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+}
+
+#[test]
+fn checks_bytes() {
+    let source = "context Shop {\n use { to_text } from Std.Text\n fn f(): Option<Int> = {\n let data: Bytes = [1, 2, 0xFF]\n data.add(3).get(0)\n }\n fn g(data: Bytes where Length(0, 512)): String = data.to_text()\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+    assert_error(
+        "context Shop {\n fn f(): Bytes = [1, 256]\n}",
+        "a byte is from 0 to 255, found 256",
+    );
+    assert_error(
+        "context Shop {\n fn f(data: Bytes): String = data.to_text()\n}",
+        "`to_text` needs `use { to_text } from Std.Text`",
+    );
+}
+
+#[test]
+fn handles_the_rest_of_a_match_with_a_wildcard() {
+    let source = game("fn f(d: Direction): Int = match d {\n North -> 1\n _ -> 0\n}");
+    assert_eq!(errors(&source), Vec::<String>::new());
+    assert_error(
+        &game("fn f(d: Direction): Int = match d {\n _ -> 0\n North -> 1\n}"),
+        "`_` handles everything left, so it must be the last arm",
+    );
+    assert_error(
+        &game("fn f(d: Direction): Int = match d {\n North -> 1\n South -> 2\n _ -> 0\n}"),
+        "every variant is already handled, so `_` is never reached",
+    );
+    assert_error(
+        &game("fn f(d: Option<Int>): Int = match d {\n Some(n) -> n\n _(x) -> 0\n}"),
+        "`_` stands for several variants, so it can't name their fields",
+    );
+}
+
+#[test]
+fn checks_single_value_types() {
+    let source = "context Shop {\n value Score: Int where Range(0, 999)\n fn f(score: Score): Score = Score(score.value + 1)\n fn g(): Score = 7\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+    assert_error(
+        "context Shop {\n value Score: Int\n fn f(n: Int): Score = n\n}",
+        "expected `Score`, found `Int`",
+    );
+    assert_error(
+        "context Shop {\n value Score: Int\n fn f(score: Score): Score = score + 1\n}",
+        "cannot do arithmetic on `Score`",
+    );
+    assert_error(
+        "context Shop {\n value Point { x: Int }\n fn f(): Point = Point(3)\n}",
+        "`Point` is made with its fields: `Point { ... }`",
+    );
+}
+
+#[test]
+fn checks_maps() {
+    let source = "context Shop {\n use { Map } from Std.Collections\n fn f(stock: Map<String, Int> where Length(0, 8)): Option<Int> = stock.set(\"key\", 1).get(\"key\")\n fn g(): Map<Int, Bool> = [:]\n fn h(): Int = [\"a\": 1].keys.length\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+    assert_error(
+        "context Shop {\n fn f(stock: Map<String, Int>): Int = 0\n}",
+        "`Map` needs `use { Map } from Std.Collections`",
+    );
+    assert_error(
+        "context Shop {\n use { Map } from Std.Collections\n fn f(): Map<String, Int> = [\"a\": true]\n}",
+        "expected `Int`, found `Bool`",
+    );
+    assert_error(
+        "context Shop {\n use { Map } from Std.Collections\n fn f(): Int = [:].length\n}",
+        "an empty map needs its type from where it goes, such as `let stock: Map<String, Int> = [:]`",
+    );
+}
+
+#[test]
+fn checks_generics_through_their_instances() {
+    let source = "context Shop {\n value Pair<A, B> { first: A  second: B }\n fn swap<A, B>(pair: Pair<A, B>): Pair<B, A> = Pair { first: pair.second, second: pair.first }\n fn f(): Pair<String, Int> = swap(Pair { first: 1, second: \"a\" })\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+    assert_error(
+        "context Shop {\n value Pair<A, B> { first: A  second: B }\n fn f(pair: Pair<Int>): Int = 0\n}",
+        "`Pair` takes 2 type arguments, for `Pair<A, B>`, found 1",
+    );
+    assert_error(
+        "context Shop {\n fn first<Item>(items: List<Item>): Option<Item> = items.first\n}",
+        "a type parameter is a single capital letter, such as `T`, not `Item`",
+    );
+    assert_error(
+        "context Shop {\n fn none<T>(): Option<T> = None\n fn f(): Int = {\n let x = none()\n 0\n }\n}",
+        "cannot work out `T` for `none` from what it is given",
+    );
+    // A template's body is checked as each instance, so a mistake shows when it is used.
+    assert_error(
+        "context Shop {\n fn twice<T>(x: T): T = x + x\n fn f(): Bool = twice(true)\n}",
+        "cannot do arithmetic on `Bool`",
     );
 }

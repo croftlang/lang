@@ -2,14 +2,16 @@
 context Dungeon
 
 publish {
+    SetUpRooms,
+    PlayTurn,
+    FIRST_ROOM,
+    GAME_TITLE,
     RoomId,
     EnemyId,
     Position,
     Key,
     Screen,
     Keyboard,
-    Storage,
-    StorageError,
     Room.EnemyDefeated
 }
 
@@ -28,7 +30,7 @@ identity SpriteId: Int where Range(0, 63)
 
 enum Direction { North, East, South, West }
 
-enum Key { Up, Down, Left, Right, Fire }
+enum Key { Up, Down, Left, Right, Fire, Quit }
 
 enum TreasureKind {
     Coins(count: Int where Range(1, 99))
@@ -50,8 +52,3 @@ value Treasure {
 constraint Alive(enemy: Room.Enemy) = enemy.hit_points > 0
 
 constraint ExitClear(room: Room) = room.enemies.all(e -> e.position != room.exit)
-
-// Storage could not load or save; usually a missing or damaged disk file.
-error StorageError {
-    name: String where Length(1, 12)
-}

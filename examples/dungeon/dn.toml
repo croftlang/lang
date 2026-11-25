@@ -1,0 +1,20 @@
+# The Dungeon project: the adapter that fills each port on each machine.
+# The program runs `domain Game`, in game.dn.
+
+[package]
+name = "dungeon"
+version = "0.1.0"
+
+[target.spectrum_48k]
+native = ["platform/spectrum.c"]
+
+[target.spectrum_48k.adapters]
+Screen = "SpectrumScreen"
+Keyboard = "SpectrumKeyboard"
+Files = "DivmmcFiles"
+Rooms = "FileStorage"
+Scoreboards = "FileStorage"
+
+[target.test.adapters]
+Screen = "NullScreen"
+Keyboard = "ScriptedKeyboard"

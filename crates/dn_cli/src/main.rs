@@ -90,12 +90,20 @@ pub(crate) fn load_and_check(path: &Path) -> Result<(Project, dn_analysis::Progr
 
 fn check(path: &Path) -> Result<(), String> {
     let (project, program) = load_and_check(path)?;
-    let contexts = program.contexts.len();
+    let contexts = program
+        .contexts
+        .values()
+        .filter(|c| !c.is_domain && !c.is_standard)
+        .count();
+    let files = project.files.len();
+    let domain = program
+        .domains
+        .first()
+        .map_or(String::new(), |d| format!("domain {} with ", d.name.name));
     println!(
-        "Checked {} file{} in {contexts} context{}: no errors",
-        project.files.len(),
-        plural(project.files.len()),
-        plural(contexts),
+        "Checked {files} file{}: {domain}{contexts} context{}, no errors",
+        plural(files),
+        plural(contexts)
     );
     Ok(())
 }

@@ -39,11 +39,19 @@ pub enum Meaning {
 pub struct Facts {
     pub types: HashMap<ExprId, Type>,
     pub meanings: HashMap<ExprId, Meaning>,
+    /// The type a value was written to have, where that differs from its own,
+    /// as with the `Int` in `let price: Decimal<2> = 3`.
+    pub wanted: HashMap<ExprId, Type>,
 }
 
 impl Facts {
     pub fn type_of(&self, id: ExprId) -> &Type {
         self.types.get(&id).unwrap_or(&Type::Unknown)
+    }
+
+    /// The type a value is kept as: what it was written to have, or its own.
+    pub fn kept_as(&self, id: ExprId) -> &Type {
+        self.wanted.get(&id).unwrap_or_else(|| self.type_of(id))
     }
 
     pub fn meaning(&self, id: ExprId) -> Option<&Meaning> {

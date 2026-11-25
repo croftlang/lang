@@ -78,7 +78,7 @@ impl<'a> Checker<'a> {
             );
             self.error(message, identity.ty.path.span());
         }
-        self.check_rules(scope, &identity.rules, Some(&identity.ty));
+        self.check_constraints(scope, &identity.constraints, Some(&identity.ty));
     }
 }
 

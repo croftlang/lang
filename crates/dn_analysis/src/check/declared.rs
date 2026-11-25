@@ -4,7 +4,7 @@ use dn_syntax::ast::{Field, TypeExpr};
 
 use super::{Checker, Resolved, Scope};
 use crate::symbols::SymbolKind;
-use crate::types::Type;
+use crate::types::{Type, MAX_PLACES};
 
 impl<'a> Checker<'a> {
     /// The type a written type stands for. Names that don't resolve were
@@ -18,13 +18,20 @@ impl<'a> Checker<'a> {
         match ty.path.text().as_str() {
             "Int" => Type::Int,
             "Float" => Type::Float,
+            "Decimal" => Type::Decimal(ty.number.unwrap_or(0).clamp(0, MAX_PLACES) as u32),
             "Bool" => Type::Bool,
             "String" => Type::String,
+            "Bytes" => Type::Bytes,
             "Unit" => Type::Unit,
             "List" => Type::list(argument(0)),
+            "Map" => Type::map(argument(0), argument(1)),
             "Option" => Type::option(argument(0)),
             "Result" => Type::result(argument(0), argument(1)),
             _ => match self.resolve(scope, &ty.path) {
+                Some(found) if self.generic_value(&found).is_some() => {
+                    let instance = self.instance(scope, &found, ty.arguments.clone());
+                    instance.map_or(Type::Unknown, Type::Named)
+                }
                 Some(found) if found.kind.is_type() => Type::Named(found),
                 _ => Type::Unknown,
             },

@@ -34,12 +34,26 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     fn call_declared(&mut self, found: &Resolved, arguments: &[Argument], ty: &Type) -> String {
+        if found.kind == SymbolKind::Value {
+            let inner = self
+                .gen
+                .model
+                .single_value_inner(ty)
+                .unwrap_or(Type::Unknown);
+            let value = arguments.first().map(|argument| &argument.value);
+            let value = value.map_or("0".to_string(), |value| self.value(value, &inner));
+            return self.wrap_single_value(value, ty);
+        }
         let parameters = self.gen.parameters_of(found);
         let passed = self.pass_all(arguments, &parameters);
-        let result = self.call_into(&c_name(found), passed, ty);
-        if found.kind == SymbolKind::Service {
-            self.line("dn_events_dispatch();");
+        if found.kind != SymbolKind::Service {
+            return self.call_into(&c_name(found), passed, ty);
         }
+        // The events the service raises, and kept, are handled once it ends.
+        let mark = self.raw_variable("mark", "dn_u16");
+        self.line(format!("{mark} = dn_events_mark();"));
+        let result = self.call_into(&c_name(found), passed, ty);
+        self.line(format!("dn_events_dispatch_from({mark});"));
         result
     }
 

@@ -17,9 +17,9 @@ impl Parser {
             if !self.check_keyword(Keyword::Where) {
                 return Err(self.unexpected("`where` and the values to count through"));
             }
-            let rules = self.parse_rules()?;
+            let constraints = self.parse_constraints()?;
             self.expect(&TokenKind::RightParen)?;
-            counter = Some(LoopCounter { name, rules });
+            counter = Some(LoopCounter { name, constraints });
         }
         let body = self.parse_block()?;
         Ok(self.make_expr(ExprKind::Loop(counter, Box::new(body)), span))

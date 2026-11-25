@@ -1,18 +1,19 @@
 //! Turns tokens into a syntax tree.
 
 mod aggregate;
-mod application;
 mod arguments;
 mod behaviour;
 mod block;
 mod boundary;
+mod constraints;
+mod contract;
 mod data;
+mod domain;
 mod expression;
 mod file;
 mod postfix;
 mod primary;
 mod repeat;
-mod rules;
 #[cfg(test)]
 mod tests;
 mod tokens;

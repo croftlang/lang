@@ -1,6 +1,6 @@
 use super::{
     AdapterDecl, ConstraintUse, Expr, Field, FunctionDecl, Identifier, Parameter, Path, PolicyDecl,
-    PortDecl, RepositoryDecl, Rule, TypeExpr,
+    PortDecl, RepositoryDecl, TypeExpr,
 };
 
 /// A context, or the part of one written in a single file.
@@ -31,7 +31,8 @@ pub enum ContextItem {
 #[derive(Debug, Clone, PartialEq)]
 pub struct UseDecl {
     pub names: Vec<Path>,
-    pub from: Identifier,
+    /// A context, or a standard context such as `Std.Text`.
+    pub from: Path,
 }
 
 /// A value or an entity: named fields with optional invariants.
@@ -39,8 +40,13 @@ pub struct UseDecl {
 pub struct ValueDecl {
     pub doc: Vec<String>,
     pub name: Identifier,
+    /// `A` and `B` in `value Pair<A, B> { first: A  second: B }`.
+    pub type_parameters: Vec<Identifier>,
     pub fields: Vec<Field>,
     pub invariants: Vec<Invariant>,
+    /// Written `value Score: Int where Range(0, 999_999)`: a type of its own
+    /// around one value, held in a single field called `value`.
+    pub single: bool,
 }
 
 /// An aggregate, or the part of one written in a single file.
@@ -94,7 +100,7 @@ pub struct IdentityDecl {
     pub doc: Vec<String>,
     pub name: Identifier,
     pub ty: TypeExpr,
-    pub rules: Vec<Rule>,
+    pub constraints: Vec<ConstraintUse>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -102,5 +108,23 @@ pub struct ConstraintDecl {
     pub doc: Vec<String>,
     pub name: Identifier,
     pub parameters: Vec<Parameter>,
+    pub body: Expr,
+}
+
+/// `domain Game { ... } = { ... }`: the whole program. It lists the contexts
+/// the domain is divided into, uses what they publish, and its body runs first.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DomainDecl {
+    pub doc: Vec<String>,
+    pub name: Identifier,
+    /// Every context named in `contexts`, once for each time it is written.
+    pub contexts: Vec<Identifier>,
+    /// The context map: `Dungeon -> Scoring` means Scoring is downstream of
+    /// Dungeon, so Scoring may use what Dungeon publishes.
+    pub relations: Vec<(Identifier, Identifier)>,
+    /// What it imports from contexts with `use { ... } from`.
+    pub uses: Vec<UseDecl>,
+    /// The ports the body calls, as a service lists them.
+    pub calls: Vec<Path>,
     pub body: Expr,
 }

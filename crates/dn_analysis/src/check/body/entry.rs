@@ -24,9 +24,14 @@ impl<'a> Checker<'a> {
             body.bind_parameters(&constraint.parameters);
             body.expect(&constraint.body, &Type::Bool);
         }
-        for function in &context.functions {
+        // A generic template is checked as each of its instances.
+        for function in context
+            .functions
+            .iter()
+            .filter(|f| f.type_parameters.is_empty())
+        {
             let kind = match function.kind {
-                FunctionKind::Service => BodyKind::Service,
+                FunctionKind::Service | FunctionKind::Domain => BodyKind::Service,
                 _ => BodyKind::Function,
             };
             self.check_function_body(scope, kind, function);
@@ -68,12 +73,16 @@ impl<'a> Checker<'a> {
                 Type::result(Type::Unit, errors)
             }
             (_, Some(ty)) => self.lower_type(&scope, ty),
+            // A domain's body can pass up any error; the program then stops with it.
+            (_, None) if function.kind == FunctionKind::Domain => {
+                Type::result(Type::Unit, Type::Errors(Vec::new()))
+            }
             (_, None) => Type::Unit,
         };
         let mut body = BodyChecker::new(self, scope, kind, result.clone());
         body.bind_parameters(function.parameters.as_deref().unwrap_or(&[]));
-        if function.kind == FunctionKind::Service {
-            body.bind_uses(&function.uses);
+        if matches!(function.kind, FunctionKind::Service | FunctionKind::Domain) {
+            body.bind_calls(&function.calls);
         }
         for precondition in &function.preconditions {
             body.check_precondition(precondition);
@@ -83,7 +92,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    pub(super) fn parameter_type(&self, scope: &Scope, parameter: &Parameter) -> Type {
+    pub(crate) fn parameter_type(&self, scope: &Scope, parameter: &Parameter) -> Type {
         parameter
             .types
             .first()
@@ -93,11 +102,11 @@ impl<'a> Checker<'a> {
 
 impl<'c, 'a> BodyChecker<'c, 'a> {}
 
-/// The built-in port that gives a program its command-line arguments.
-pub(super) fn arguments_port() -> Resolved {
+/// A built-in port, such as `Arguments`. It belongs to no context.
+pub(super) fn builtin_port(name: &str) -> Resolved {
     Resolved {
         context: String::new(),
-        name: "Arguments".to_string(),
+        name: name.to_string(),
         kind: SymbolKind::Port,
     }
 }

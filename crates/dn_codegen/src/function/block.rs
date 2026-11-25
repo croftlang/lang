@@ -3,7 +3,7 @@
 use dn_analysis::Type;
 use dn_syntax::ast::{Expr, ExprKind, Statement};
 
-use super::{Returns, Writer};
+use super::{usage, Returns, Writer};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// Writes a block's statements and gives back its last line's value.
@@ -13,8 +13,13 @@ impl<'g, 'a> Writer<'g, 'a> {
         for (index, statement) in statements.iter().enumerate() {
             let is_last = index + 1 == statements.len();
             match statement {
-                Statement::Let(name, value) => {
-                    let ty = self.type_of(value, None);
+                Statement::Let(name, _, value) => {
+                    let ty = self.gen.facts.kept_as(value.id).clone();
+                    if !usage::statements_use(&statements[index + 1..], &name.name) {
+                        // Never read: work it out for its effects, with no variable.
+                        self.eval(value, None);
+                        continue;
+                    }
                     let c = self.value(value, &ty);
                     let variable = self.variable(&format!("v_{}", name.name), &ty);
                     self.line(format!("{variable} = {c};"));
@@ -23,7 +28,21 @@ impl<'g, 'a> Writer<'g, 'a> {
                 Statement::Set(name, value) => {
                     let (target, ty) = self.set_target(&name.name);
                     let c = self.value(value, &ty);
-                    self.line(format!("{target} = {c};"));
+                    let own = self
+                        .own
+                        .as_ref()
+                        .filter(|_| self.lookup(&name.name).is_none());
+                    match own.map(|own| {
+                        (
+                            own.prefix.trim_end_matches('.').to_string(),
+                            own.owner.clone(),
+                        )
+                    }) {
+                        Some((prefix, owner)) => {
+                            self.write_field(owner.as_ref(), &prefix, &name.name, &c)
+                        }
+                        None => self.line(format!("{target} = {c};")),
+                    }
                 }
                 Statement::Expr(value) => match &value.kind {
                     ExprKind::If(condition, block) => self.guard(condition, block),

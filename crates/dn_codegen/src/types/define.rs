@@ -20,7 +20,10 @@ impl<'a> Generator<'a> {
             self.define(&ty, &mut done, &mut out);
             index += 1;
         }
-        out
+        let texts: String = (self.texts.borrow().iter())
+            .map(|n| format!("typedef struct {{\n    dn_u16 length;\n    char text[{n}];\n}} dn_text_{n};\n\n"))
+            .collect();
+        texts + &out
     }
 
     fn define(&self, ty: &Type, done: &mut HashSet<Type>, out: &mut String) {
@@ -37,6 +40,7 @@ impl<'a> Generator<'a> {
     fn dependencies(&self, ty: &Type) -> Vec<Type> {
         match ty {
             Type::List(item) | Type::Option(item) => vec![(**item).clone()],
+            Type::Map(key, value) => vec![(**key).clone(), (**value).clone()],
             Type::Result(value, error) => vec![(**value).clone(), (**error).clone()],
             Type::Errors(_) => self
                 .errors()
@@ -66,15 +70,17 @@ impl<'a> Generator<'a> {
     fn definition(&self, ty: &Type) -> String {
         match ty {
             Type::Errors(_) => self.error_definition(),
-            Type::List(_) | Type::Option(_) | Type::Result(..) => self.generic_definition(ty),
+            Type::List(_) | Type::Map(..) | Type::Option(_) | Type::Result(..) => {
+                self.generic_definition(ty)
+            }
             Type::Named(named) => match named.kind {
                 SymbolKind::Identity => {
                     let scope = &self.program.contexts[&named.context];
                     let identity = scope.identities.iter().find(|i| i.name.name == named.name);
-                    let rules = identity.map_or(&[][..], |i| &i.rules[..]);
+                    let constraints = identity.map_or(&[][..], |i| &i.constraints[..]);
                     format!(
                         "typedef {} {};\n\n",
-                        int_width(self.program, &self.model, &named.context, rules),
+                        int_width(self.program, &self.model, &named.context, constraints),
                         c_name(named)
                     )
                 }

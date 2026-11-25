@@ -1,7 +1,7 @@
 //! Values, entities, aggregates, enums, identities, constants, errors and events.
 
 use super::{ParseResult, Parser};
-use crate::ast::{ConstDecl, EnumDecl, IdentityDecl, RecordDecl, ValueDecl};
+use crate::ast::{ConstDecl, EnumDecl, Field, Identifier, IdentityDecl, RecordDecl, ValueDecl};
 use crate::keyword::Keyword;
 use crate::token::TokenKind;
 
@@ -11,6 +11,14 @@ impl Parser {
         let doc = self.doc();
         self.expect_keyword(keyword)?;
         let name = self.expect_identifier()?;
+        let type_parameters = if keyword == Keyword::Value {
+            self.parse_type_parameters()?
+        } else {
+            Vec::new()
+        };
+        if keyword == Keyword::Value && self.check(&TokenKind::Colon) {
+            return self.parse_single_value(doc, name);
+        }
         self.expect(&TokenKind::LeftBrace)?;
         let (mut fields, mut invariants) = (Vec::new(), Vec::new());
         while !self.eat(&TokenKind::RightBrace) {
@@ -24,8 +32,37 @@ impl Parser {
         Ok(ValueDecl {
             doc,
             name,
+            type_parameters,
             fields,
             invariants,
+            single: false,
+        })
+    }
+
+    /// `value Score: Int where Range(0, 999_999)`: one field, `value`, with
+    /// the type and constraints written after the name.
+    fn parse_single_value(&mut self, doc: Vec<String>, name: Identifier) -> ParseResult<ValueDecl> {
+        self.expect(&TokenKind::Colon)?;
+        let ty = self.parse_type()?;
+        let constraints = self.parse_constraints()?;
+        let field = Field {
+            doc: Vec::new(),
+            name: Identifier {
+                name: "value".to_string(),
+                span: name.span,
+            },
+            ty,
+            constraints,
+            is_identity: false,
+            value: None,
+        };
+        Ok(ValueDecl {
+            doc,
+            name,
+            type_parameters: Vec::new(),
+            fields: vec![field],
+            invariants: Vec::new(),
+            single: true,
         })
     }
 
@@ -81,12 +118,12 @@ impl Parser {
         let name = self.expect_identifier()?;
         self.expect(&TokenKind::Colon)?;
         let ty = self.parse_type()?;
-        let rules = self.parse_rules()?;
+        let constraints = self.parse_constraints()?;
         Ok(IdentityDecl {
             doc,
             name,
             ty,
-            rules,
+            constraints,
         })
     }
 }

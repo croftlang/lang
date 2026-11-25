@@ -32,7 +32,7 @@ fn continues_a_chain_of_calls_across_lines() {
 #[test]
 fn reads_records_and_with() {
     let body = statements("let start = Position { x: 10, y: 20 }\nstart with { x: 11 }");
-    let Statement::Let(_, value) = &body[0] else {
+    let Statement::Let(_, _, value) = &body[0] else {
         panic!("expected let")
     };
     assert!(matches!(value.kind, ExprKind::Record(_, ref fields) if fields.len() == 2));
@@ -113,5 +113,60 @@ fn reads_a_counted_loop() {
         panic!("expected a counter")
     };
     assert_eq!(counter.name.name, "i");
-    assert_eq!(counter.rules.len(), 1);
+    assert_eq!(counter.constraints.len(), 1);
+}
+
+#[test]
+fn reads_list_literals() {
+    let body = statements("let empty = []\nlet three = [1, 2,\n    3]");
+    let Statement::Let(_, _, empty) = &body[0] else {
+        panic!("expected let")
+    };
+    assert!(matches!(empty.kind, ExprKind::List(ref items) if items.is_empty()));
+    let Statement::Let(_, _, three) = &body[1] else {
+        panic!("expected let")
+    };
+    assert!(matches!(three.kind, ExprKind::List(ref items) if items.len() == 3));
+}
+
+#[test]
+fn binds_bit_operators_tighter_than_comparisons() {
+    let body = function_body("fn f(bits: Int): Bool = bits & 4 != 0");
+    let ExprKind::Binary(BinaryOp::NotEqual, left, _) = body.kind else {
+        panic!("expected !=")
+    };
+    assert!(matches!(
+        left.kind,
+        ExprKind::Binary(BinaryOp::BitAnd, _, _)
+    ));
+    let body = function_body("fn f(a: Int): Int = a | 1 << 3 + 1");
+    let ExprKind::Binary(BinaryOp::BitOr, _, right) = body.kind else {
+        panic!("expected |")
+    };
+    let ExprKind::Binary(BinaryOp::ShiftLeft, _, shift) = right.kind else {
+        panic!("expected <<")
+    };
+    assert!(matches!(shift.kind, ExprKind::Binary(BinaryOp::Add, _, _)));
+}
+
+#[test]
+fn reads_nested_type_arguments_ending_in_two_brackets() {
+    let body = function_body("fn f(rows: List<List<Int>>): Int = ~rows.length >> 1");
+    assert!(matches!(
+        body.kind,
+        ExprKind::Binary(BinaryOp::ShiftRight, _, _)
+    ));
+}
+
+#[test]
+fn reads_map_literals() {
+    let body = function_body("fn f(): Int = [\"a\": 1, \"b\": 2]");
+    let ExprKind::Map(entries) = body.kind else {
+        panic!("expected a map")
+    };
+    assert_eq!(entries.len(), 2);
+    let body = function_body("fn f(): Int = [:]");
+    assert!(matches!(body.kind, ExprKind::Map(entries) if entries.is_empty()));
+    let body = function_body("fn f(): Int = []");
+    assert!(matches!(body.kind, ExprKind::List(items) if items.is_empty()));
 }

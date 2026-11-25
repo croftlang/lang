@@ -23,8 +23,24 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.line(format!("{temp}.some = 0;"));
                 temp
             }
-            _ => self.local_or_field(name),
+            _ => self.read_name(name),
         }
+    }
+
+    /// A local name's value, or an own field's, read as a full string when
+    /// it is kept in its own size.
+    pub fn read_name(&mut self, name: &str) -> String {
+        if self.lookup(name).is_some() {
+            return self.local_or_field(name);
+        }
+        let Some(own) = &self.own else {
+            return self.local_or_field(name);
+        };
+        let (prefix, owner) = (
+            own.prefix.trim_end_matches('.').to_string(),
+            own.owner.clone(),
+        );
+        self.read_field(owner.as_ref(), &prefix, name)
     }
 
     /// A local name, or else a field of the command's aggregate or the adapter.
@@ -78,8 +94,18 @@ impl<'g, 'a> Writer<'g, 'a> {
         let inner_type = self.type_of(inner, None);
         let (c, _) = self.eval(inner, None);
         match (&inner_type, field) {
-            (Type::String | Type::List(_), "length") => format!("((dn_int) {c}.length)"),
-            (Type::String | Type::List(_), "is_empty") => format!("({c}.length == 0)"),
+            (Type::String | Type::Bytes | Type::List(_), "length") => {
+                format!("((dn_int) {c}.length)")
+            }
+            (Type::String | Type::Bytes | Type::List(_), "is_empty") => {
+                format!("({c}.length == 0)")
+            }
+            (Type::Map(..), "length") => format!("((dn_int) {c}.length)"),
+            (Type::Map(..), "is_empty") => format!("({c}.length == 0)"),
+            (Type::Map(key, value), "keys" | "values") => {
+                let item = if field == "keys" { key } else { value };
+                self.map_list(&c, item, field)
+            }
             (Type::List(item), "first" | "last") => {
                 let temp = self.temp(&Type::option((**item).clone()));
                 let index = if field == "first" {
@@ -95,6 +121,10 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             (Type::Option(_), "is_some") => format!("{c}.some"),
             (Type::Option(_), "is_none") => format!("(!{c}.some)"),
+            (Type::Named(owner), _) => {
+                let owner = owner.clone();
+                self.read_field(Some(&owner), &c, field)
+            }
             _ => format!("{c}.{field}"),
         }
     }

@@ -1,0 +1,25 @@
+// Gets a page and posts to it through Std.Http and CurlHttp. The test
+// replaces SERVER with the address of a server it runs for the purpose.
+context Fetch {
+    publish { Talk }
+
+    use { Http, HttpError } from Std.Http
+    use { to_bytes, to_text } from Std.Text
+
+    service Talk(): Result<Unit, HttpError> {
+        calls Http, Console
+    } = {
+        let page = http.get("http://SERVER/hello")?
+        console.print(page.status.to_string())
+        console.print(page.body.to_text())
+        console.print(page.headers.get("content-length").unwrap_or("none"))
+        let echoed = http.post("http://SERVER/echo", "sent".to_bytes())?
+        console.print(echoed.body.to_text())
+        Unit
+    }
+}
+
+domain Program {
+    contexts { Fetch }
+    use { Talk } from Fetch
+} = Talk()?

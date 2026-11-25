@@ -1,13 +1,13 @@
 //! Functions, services, translations, commands, policies and constraints.
 
 use super::{ParseResult, Parser};
-use crate::ast::{ConstraintDecl, Expr, FunctionDecl, FunctionKind, Path, PolicyDecl};
+use crate::ast::{ConstraintDecl, FunctionDecl, FunctionKind, PolicyDecl};
 use crate::keyword::Keyword;
 use crate::token::TokenKind;
 
 impl Parser {
     /// Anything with a signature: a name, parameters, a return type with
-    /// rules, a contract in braces and a body after `=`. Only the name is required.
+    /// constraints, a contract in braces and a body after `=`. Only the name is required.
     pub(super) fn parse_function(&mut self) -> ParseResult<FunctionDecl> {
         let doc = self.doc();
         let kind = match self.advance().kind {
@@ -18,17 +18,18 @@ impl Parser {
             _ => unreachable!("only called on a function keyword"),
         };
         let name = self.expect_identifier()?;
-        let parameters = if self.check(&TokenKind::LeftParen) {
+        let type_parameters = self.parse_type_parameters()?;
+        let mut parameters = if self.check(&TokenKind::LeftParen) {
             Some(self.parse_parameters()?)
         } else {
             None
         };
-        let (mut return_type, mut return_rules) = (None, Vec::new());
+        let (mut return_type, mut return_constraints) = (None, Vec::new());
         if self.eat(&TokenKind::Colon) {
             return_type = Some(self.parse_type()?);
-            return_rules = self.parse_rules()?;
+            return_constraints = self.parse_constraints()?;
         }
-        let (preconditions, uses) = self.parse_contract()?;
+        let (preconditions, calls) = self.parse_contract(parameters.as_mut())?;
         let body = if self.eat(&TokenKind::Equal) {
             Some(self.parse_expression()?)
         } else {
@@ -38,35 +39,14 @@ impl Parser {
             doc,
             kind,
             name,
+            type_parameters,
             parameters,
             return_type,
-            return_rules,
+            return_constraints,
             preconditions,
-            uses,
+            calls,
             body,
         })
-    }
-
-    /// The braces between a signature and its body: preconditions, one per
-    /// line, and the ports a service `uses`. Left out when empty.
-    fn parse_contract(&mut self) -> ParseResult<(Vec<Expr>, Vec<Path>)> {
-        let (mut preconditions, mut uses) = (Vec::new(), Vec::new());
-        if !self.eat(&TokenKind::LeftBrace) {
-            return Ok((preconditions, uses));
-        }
-        while !self.eat(&TokenKind::RightBrace) {
-            if self.eat_keyword(Keyword::Uses) {
-                loop {
-                    uses.push(self.parse_path()?);
-                    if !self.eat(&TokenKind::Comma) {
-                        break;
-                    }
-                }
-            } else {
-                preconditions.push(self.parse_expression()?);
-            }
-        }
-        Ok((preconditions, uses))
     }
 
     /// `policy DropLootOnDefeat when Room.EnemyDefeated { ... }`

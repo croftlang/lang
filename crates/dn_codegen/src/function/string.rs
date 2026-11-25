@@ -47,6 +47,11 @@ impl<'g, 'a> Writer<'g, 'a> {
                 ));
                 temp
             }
+            "to_bytes" => {
+                let temp = self.temp(ty);
+                self.line(format!("dn_string_to_bytes(&{text}, &{temp});"));
+                temp
+            }
             "split" => {
                 let separator = argument(self, 0, &Type::String);
                 self.split(text, &separator, ty)

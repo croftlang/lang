@@ -1,5 +1,5 @@
 //! `match`, written as a chain of `if`s so a `break` inside an arm still
-//! ends the loop around it.
+//! ends the loop around it. A last arm of `_` is the final `else`.
 
 use dn_analysis::Type;
 use dn_syntax::ast::{Expr, MatchArm, Pattern};
@@ -49,6 +49,9 @@ impl<'g, 'a> Writer<'g, 'a> {
         pattern: &Pattern,
     ) -> (String, Vec<(String, Type)>) {
         let name = pattern.path.last().name.as_str();
+        if name == "_" {
+            return ("1".to_string(), Vec::new());
+        }
         match ty {
             Type::Option(item) if name == "Some" => (
                 format!("{subject}.some"),

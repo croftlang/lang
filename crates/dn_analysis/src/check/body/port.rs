@@ -13,16 +13,21 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         arguments: &[Argument],
     ) -> Type {
         if port.context.is_empty() {
-            if method.name == "all" {
-                return self
-                    .fixed("all", arguments, &[], Type::list(Type::String), method.span)
-                    .unwrap();
-            }
-            self.error(
-                format!("port `Arguments` has no operation `{}`", method.name),
-                method.span,
-            );
-            return Type::Unknown;
+            let operation = match (port.name.as_str(), method.name.as_str()) {
+                ("Arguments", "all") => Some((vec![], Type::list(Type::String))),
+                ("Console", "print") => Some((vec![("text", Type::String)], Type::Unit)),
+                _ => None,
+            };
+            let Some((parameters, result)) = operation else {
+                let message = format!("port `{}` has no operation `{}`", port.name, method.name);
+                self.error(message, method.span);
+                return Type::Unknown;
+            };
+            let parameters: Vec<(String, Type)> = (parameters.into_iter())
+                .map(|(name, ty)| (name.to_string(), ty))
+                .collect();
+            self.check_arguments(arguments, &parameters, &method.name, method.span, false);
+            return result;
         }
         let scope = self.checker.scope_of(port);
         let decl = scope
@@ -67,11 +72,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let found = match method.name.as_str() {
             "find" => {
                 let identity = self.checker.identity_of(&aggregate);
+                let errors = Type::Errors(vec![errors, self.checker.storage_error()]);
                 let found = Type::result(Type::Named(aggregate.clone()), errors);
                 self.fixed("find", arguments, &[identity], found, span)
             }
             "save" => {
-                let storage = self.checker.storage_error(repository);
+                let storage = self.checker.storage_error();
                 let found = Type::result(Type::Unit, storage);
                 self.fixed(
                     "save",

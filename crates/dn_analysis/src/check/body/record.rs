@@ -4,7 +4,9 @@ use dn_syntax::ast::{Expr, FieldValue, Path};
 
 use super::BodyChecker;
 use crate::symbols::SymbolKind;
-use crate::types::Type;
+use std::collections::HashMap;
+
+use crate::types::{Resolved, Type};
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
     /// Checks each field value against the field it names in `ty`.
@@ -46,8 +48,15 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
-    /// `Position { x: 10, y: 20 }`: every field, each once.
-    pub(super) fn record(&mut self, path: &Path, fields: &[FieldValue]) -> Type {
+    /// `Position { x: 10, y: 20 }`: every field, each once. A generic value,
+    /// `Pair { first: 1, second: "a" }`, is the instance its fields, or the
+    /// type expected, call for.
+    pub(super) fn record(
+        &mut self,
+        path: &Path,
+        fields: &[FieldValue],
+        expected: Option<&Type>,
+    ) -> Type {
         let kinds = [
             SymbolKind::Value,
             SymbolKind::Entity,
@@ -59,6 +68,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 .expect_kind(&self.scope, path, &kinds, "a value, entity or error")
         else {
             return Type::Unknown;
+        };
+        let found = match self.checker.generic_value(&found) {
+            Some(_) => match self.generic_record(&found, fields, expected) {
+                Some(instance) => instance,
+                None => return Type::Unknown,
+            },
+            None => found,
         };
         let declared = self.checker.fields_of(&found).unwrap_or(&[]);
         let names: Vec<String> = declared
@@ -83,5 +99,45 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let ty = self.expr(base, None);
         self.field_values(&ty, fields);
         ty
+    }
+
+    /// The instance a generic record makes: the one expected, or the one its
+    /// field values' types call for.
+    fn generic_record(
+        &mut self,
+        template: &Resolved,
+        fields: &[FieldValue],
+        expected: Option<&Type>,
+    ) -> Option<Resolved> {
+        if let Some(Type::Named(instance)) = expected {
+            if self
+                .checker
+                .is_instance_of(&Type::Named(instance.clone()), template)
+            {
+                return Some(instance.clone());
+            }
+        }
+        let declaration = self.checker.generic_value(template)?;
+        let mut bound = HashMap::new();
+        let template_scope = self.checker.scope_of(template);
+        for given in fields {
+            let Some(value) = &given.value else { continue };
+            let found = self.expr(value, None);
+            let field = declaration
+                .fields
+                .iter()
+                .find(|f| f.name.name == given.name.name);
+            if let Some(field) = field {
+                let parameters = &declaration.type_parameters;
+                self.checker
+                    .match_type(&template_scope, &field.ty, &found, parameters, &mut bound);
+            }
+        }
+        let span = fields
+            .first()
+            .map_or(dn_syntax::Span::default(), |f| f.name.span);
+        let arguments =
+            self.type_arguments(&declaration.type_parameters, &bound, &template.name, span)?;
+        self.checker.instance(&self.scope, template, arguments)
     }
 }
