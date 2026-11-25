@@ -5,11 +5,11 @@ use croft_analysis::types::Resolved;
 use croft_analysis::{Meaning, Type};
 use croft_syntax::ast::{Expr, ExprKind, FieldValue, Issue, Path};
 
-use super::Writer;
+use super::{Into, Writer};
 use crate::names::{aggregate_kind, c_name, event_kind};
 
 impl<'g, 'a> Writer<'g, 'a> {
-    pub fn issue(&mut self, value: &Expr, issue: &Issue, ty: &Type) -> String {
+    pub fn issue(&mut self, value: &Expr, issue: &Issue, ty: &Type, into: Into<'_>) -> String {
         let meaning = self.gen.facts.meaning(value.id).cloned();
 
         let (aggregate, by_identity) = match meaning {
@@ -26,7 +26,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             let target = self.value(&issue.target, &aggregate_type);
             let mut passed = vec![format!("&{target}")];
             passed.extend(self.pass_all(&issue.arguments, &parameters));
-            return self.call_into(&command, passed, ty);
+            return self.call_to(&command, passed, ty, into);
         }
 
         let ExprKind::Call(_, identity) = &issue.target.kind else {
@@ -52,7 +52,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         let changed_type = Type::result(aggregate_type, Type::Errors(Vec::new()));
         let found = self.temp(&changed_type);
         let changed = self.temp(&changed_type);
-        let result = self.temp(ty);
+        let result = self.place_for(ty, into);
 
         self.line(format!("{repository}_{find}({identity}, &{found});"));
         self.open(format!("if (!{found}.ok)"));

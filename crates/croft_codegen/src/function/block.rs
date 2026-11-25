@@ -8,6 +8,16 @@ use super::{usage, Returns, Writer};
 impl<'g, 'a> Writer<'g, 'a> {
     /// Writes a block's statements and gives back its last line's value.
     pub fn block(&mut self, statements: &[Statement], want: &Type) -> String {
+        self.block_to(statements, want, None)
+    }
+
+    /// Writes a block's statements, its last line's value straight into
+    /// `target`, a place of type `want`, and gives back `target`.
+    pub fn block_into(&mut self, statements: &[Statement], target: &str, want: &Type) -> String {
+        self.block_to(statements, want, Some(target))
+    }
+
+    fn block_to(&mut self, statements: &[Statement], want: &Type, into: Option<&str>) -> String {
         self.push_scope();
 
         let mut result = "0".to_string();
@@ -25,7 +35,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                         continue;
                     }
 
-                    let declared = self.declarations.len();
+                    let handed = self.temps_mark();
                     // A name `set` later needs room for whatever it is set to.
                     let set_later = usage::statements_set(&statements[index + 1..], &name.name);
 
@@ -44,9 +54,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                     // A temporary made just now for this value becomes the
                     // name itself, rather than being copied into another.
-                    let fresh = self.declarations[declared..]
-                        .iter()
-                        .any(|line| line.ends_with(&format!(" {c};")));
+                    let fresh = self.handed_since(handed, &c);
 
                     if fresh {
                         self.bind(&name.name, c, ty);
@@ -77,7 +85,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                     // Any string can be written into a field of its own size.
                     let c = match kept_in_own_size {
-                        Some(_) => self.eval(value, None).0,
+                        Some(_) => self.view(value),
                         None => self.value(value, &ty),
                     };
 
@@ -90,7 +98,12 @@ impl<'g, 'a> Writer<'g, 'a> {
                 }
                 Statement::Expr(value) => match &value.kind {
                     ExprKind::If(condition, block) => self.guard(condition, block),
-                    _ if is_last => result = self.bounded_value(value, want),
+                    _ if is_last => {
+                        result = match into {
+                            Some(target) => self.value_into(target, value, want),
+                            None => self.bounded_value(value, want),
+                        }
+                    }
                     _ => {
                         self.eval(value, None);
                     }
@@ -99,6 +112,16 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         self.pop_scope();
+
+        // A block that ends in a step, not a value, gives back `Unit`: as a
+        // successful result, when one is wanted.
+        if let Some(target) = into {
+            if result != target {
+                self.store(target, result, &Type::Unit, want);
+            }
+
+            return target.to_string();
+        }
 
         result
     }
@@ -131,13 +154,16 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         if self.is_steps(statements) {
             self.block(statements, &Type::Unit);
+        } else if let Returns::Value(result) = &self.returns {
+            // The value is written straight into the result, and once the
+            // function has returned, its temporaries can be used again.
+            let result = result.clone();
+            let mark = self.temps_mark();
+            self.block_into(statements, "(*out)", &result);
+            self.line("return;");
+            self.release_since(mark);
         } else {
-            let result = match &self.returns {
-                Returns::Value(ty) => ty.clone(),
-                _ => Type::Unit,
-            };
-
-            let value = self.block(statements, &result);
+            let value = self.block(statements, &Type::Unit);
             self.give_back(value);
         }
 

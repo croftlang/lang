@@ -2,11 +2,11 @@
 //! and a length, so a literal or a string parameter is read where it already
 //! is, never copied into a string of its own just to be looked at.
 
-use croft_analysis::Type;
-use croft_syntax::ast::{Expr, ExprKind};
+use croft_analysis::{Meaning, Type};
+use croft_syntax::ast::{BinaryOp, Expr, ExprKind};
 
 use super::Writer;
-use crate::names::c_string;
+use crate::names::{c_name, c_string};
 use crate::types::bounds::is_string;
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -46,7 +46,11 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// A view of `c`: any string, or a view already.
     pub fn view_of(&self, c: &str) -> String {
-        if self.views.contains(c) || matches!(self.bounded.get(c), Some(Type::Borrowed(_))) {
+        let is_view = self.views.contains(c)
+            || matches!(self.bounded.get(c), Some(Type::Borrowed(_)))
+            || c.starts_with("croft_string_view_from(");
+
+        if is_view {
             return c.to_string();
         }
 
@@ -74,6 +78,58 @@ impl<'g, 'a> Writer<'g, 'a> {
             ExprKind::String(_) if is_string(ty) => self.assign(target, value, ty),
             ExprKind::Match(subject, arms) if *ty != Type::Unit => {
                 self.match_into(subject, arms, ty, target);
+            }
+            ExprKind::Block(statements) => {
+                self.block_into(statements, target, ty);
+            }
+            // A call or command writes its result straight into the target
+            // when that has its C type.
+            ExprKind::Call(callee, arguments) => {
+                let made = self.type_of(value, Some(ty));
+                let c = self.call(value, callee, arguments, &made, Some((target, ty)));
+                let from = self.bounded_type(&c, &made);
+                self.store(target, c, &from, ty);
+            }
+            // Joined text goes straight into a target with room for all of it.
+            ExprKind::Binary(BinaryOp::Add, left, right) if is_string(ty) => {
+                let (left, left_type) = self.bounded_view(left);
+                let (right, right_type) = self.bounded_view(right);
+                let length = self.gen.bound(&left_type) + self.gen.bound(&right_type);
+                let joined = self.gen.text_type(length);
+
+                if self.gen.bound(&joined) <= self.gen.bound(ty) {
+                    self.line(format!(
+                        "croft_string_join({left}, {right}, CROFT_OUT({target}));"
+                    ));
+
+                    self.note_result(target, &joined);
+                } else {
+                    let temp = self.temp(&joined);
+
+                    self.line(format!(
+                        "croft_string_join({left}, {right}, CROFT_OUT({temp}));"
+                    ));
+
+                    self.store(target, temp, &joined, ty);
+                }
+            }
+            // A variant without fields is just its tag.
+            ExprKind::Name(_) | ExprKind::Field(..) => match self.gen.facts.meaning(value.id) {
+                Some(Meaning::Variant(owner, variant, None))
+                    if !self.gen.is_plain_enum(owner)
+                        && !self.gen.model.is_error(&Type::Named(owner.clone()))
+                        && self.gen.c_type(&Type::Named(owner.clone())) == self.gen.c_type(ty) =>
+                {
+                    self.line(format!("{target}.tag = {}_{variant};", c_name(owner)));
+                    self.note_result(target, ty);
+                }
+                _ => self.assign(target, value, ty),
+            },
+            ExprKind::Issue(issue) => {
+                let made = self.type_of(value, Some(ty));
+                let c = self.issue(value, issue, &made, Some((target, ty)));
+                let from = self.bounded_type(&c, &made);
+                self.store(target, c, &from, ty);
             }
             _ => self.assign(target, value, ty),
         }

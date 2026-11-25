@@ -38,6 +38,10 @@ use croft_analysis::Type;
 
 use crate::Generator;
 
+/// Where a value can be written straight to, rather than to a temporary of
+/// its own: a place and its type.
+pub type Into<'t> = Option<(&'t str, &'t Type)>;
+
 /// How a function gives back its value or a failure.
 pub enum Returns {
     /// `*out = value;` and failures as `out->ok = 0`.
@@ -85,6 +89,10 @@ pub struct Writer<'g, 'a> {
     /// Temporaries that keep what was first written to them until the
     /// function returns, so a string can be borrowed from one.
     pub(crate) stable: HashSet<String>,
+    /// Every temporary handed out, in order, with its C type.
+    handed: Vec<(String, String)>,
+    /// Temporaries nothing uses any more, by C type, to be handed out again.
+    free: Vec<(String, String)>,
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -107,6 +115,8 @@ impl<'g, 'a> Writer<'g, 'a> {
             bounded: HashMap::new(),
             returned: None,
             stable: HashSet::new(),
+            handed: Vec::new(),
+            free: Vec::new(),
         }
     }
 }

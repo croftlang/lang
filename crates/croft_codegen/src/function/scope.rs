@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use croft_analysis::Type;
 
-use super::{Returns, Writer};
+use super::{Into, Returns, Writer};
 use crate::types::bounds::has_bound;
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -103,14 +103,63 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// A temporary. Options and results start cleared, so a `None` or a
     /// failure never carries an unset value around.
     pub fn temp(&mut self, ty: &Type) -> String {
-        let temp = self.variable("t", ty);
+        let c_type = self.gen.c_type(ty);
+
+        let temp = match self.free.iter().position(|(free, _)| *free == c_type) {
+            Some(index) => {
+                let (_, name) = self.free.remove(index);
+                self.bounded.remove(&name);
+                self.typed(name, ty)
+            }
+            None => self.variable("t", ty),
+        };
+
         self.stable.insert(temp.clone());
+        self.handed.push((c_type, temp.clone()));
 
         if matches!(ty, Type::Option(_) | Type::Result(..)) {
             self.line(format!("croft_clear(&{temp}, sizeof {temp});"));
         }
 
         temp
+    }
+
+    /// Where a value of `ty` is made: straight in `into` when that place has
+    /// its C type, or else in a new temporary. Either starts cleared when it
+    /// is an option or a result.
+    pub fn place_for(&mut self, ty: &Type, into: Into<'_>) -> String {
+        match into {
+            Some((target, wanted)) if self.gen.c_type(wanted) == self.gen.c_type(ty) => {
+                if matches!(ty, Type::Option(_) | Type::Result(..)) {
+                    self.line(format!("croft_clear(&{target}, sizeof {target});"));
+                }
+
+                self.note_result(target, ty);
+                target.to_string()
+            }
+            _ => self.temp(ty),
+        }
+    }
+
+    /// Marks where the temporaries handed out from now on begin.
+    pub fn temps_mark(&self) -> usize {
+        self.handed.len()
+    }
+
+    /// Whether `c` is a temporary handed out since `mark`.
+    pub fn handed_since(&self, mark: usize, c: &str) -> bool {
+        self.handed[mark..].iter().any(|(_, name)| name == c)
+    }
+
+    /// Lets the temporaries handed out since `mark` be handed out again: the
+    /// code that used them, a branch that has returned or a `match` arm that
+    /// has written its value, is done with them.
+    pub fn release_since(&mut self, mark: usize) {
+        for (c_type, name) in &self.handed[mark..] {
+            if !self.free.iter().any(|(_, free)| free == name) {
+                self.free.push((c_type.clone(), name.clone()));
+            }
+        }
     }
 
     /// Makes a Croft name refer to a C expression in the innermost scope.

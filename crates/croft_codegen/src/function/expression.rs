@@ -72,7 +72,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 Some(Meaning::Property) => self.property(inner, &field.name),
                 _ => self.name(value, &field.name, &ty),
             },
-            ExprKind::Call(callee, arguments) => self.call(value, callee, arguments, &ty),
+            ExprKind::Call(callee, arguments) => self.call(value, callee, arguments, &ty, None),
             ExprKind::List(items) => self.list_literal(items, &ty),
             ExprKind::Map(entries) => self.map_literal(entries, &ty),
             ExprKind::Record(_, fields) => self.record(&ty, fields),
@@ -100,7 +100,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.guard(condition, block);
                 "0".to_string()
             }
-            ExprKind::Issue(issue) => self.issue(value, issue, &ty),
+            ExprKind::Issue(issue) => self.issue(value, issue, &ty, None),
             ExprKind::Emit(event, fields) => self.emit(event, fields),
             ExprKind::Native(function, arguments) => self.native(&function.name, arguments, want),
             ExprKind::Loop(counter, block) => self.repeat(counter.as_ref(), block),
@@ -184,11 +184,19 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         let (c, from) = self.eval(value, Some(ty));
+        self.store(target, c, &from, ty);
+    }
 
-        if unbounded(&from) == unbounded(ty) {
-            self.copy_into(target, &c, &from, ty);
+    /// Writes `c`, a value of type `from`, into `target`, a place of type `ty`.
+    pub fn store(&mut self, target: &str, c: String, from: &Type, ty: &Type) {
+        if c == target {
+            return;
+        }
+
+        if unbounded(from) == unbounded(ty) {
+            self.copy_into(target, &c, from, ty);
         } else {
-            let c = self.convert(c, &from, ty);
+            let c = self.convert(c, from, ty);
             self.note_result(target, ty);
             self.line(format!("{target} = {c};"));
         }

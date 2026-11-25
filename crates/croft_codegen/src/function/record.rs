@@ -4,7 +4,7 @@ use croft_analysis::types::Resolved;
 use croft_analysis::Type;
 use croft_syntax::ast::{Argument, FieldValue};
 
-use super::Writer;
+use super::{Into, Writer};
 use crate::names::{c_name, error_code};
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -69,7 +69,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
             let value = match &given.value {
                 // Any string can be written into a field of its own size.
-                Some(value) if kept_in_own_size.is_some() => self.eval(value, None).0,
+                Some(value) if kept_in_own_size.is_some() => self.view(value),
                 Some(value) if owner.is_none() || self.gen.is_scalar(&field_type) => {
                     self.value(value, &field_type)
                 }
@@ -97,6 +97,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         error: Option<&Resolved>,
         arguments: &[Argument],
         ty: &Type,
+        into: Into<'_>,
     ) -> String {
         let info = self
             .gen
@@ -124,7 +125,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
             (temp, prefix)
         } else {
-            let temp = self.temp(ty);
+            let temp = self.place_for(ty, into);
             self.line(format!("{temp}.tag = {}_{variant};", c_name(owner)));
 
             let prefix = format!("{temp}.as.{variant}");
@@ -137,7 +138,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
             // A string kept in its own size is checked, by name, to fit.
             if let Type::Text(capacity) = field_type {
-                let (c, _) = self.eval(value, None);
+                let c = self.view(value);
                 let label = format!("{}.{variant}: {name}", owner.name);
                 self.store_text(&place, &c, i64::from(*capacity), &label);
                 continue;

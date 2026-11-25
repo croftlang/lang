@@ -6,17 +6,19 @@ use croft_analysis::types::Resolved;
 use croft_analysis::{Meaning, Type};
 use croft_syntax::ast::{Argument, Expr, ExprKind};
 
-use super::Writer;
+use super::{Into, Writer};
 use crate::names::c_name;
 use crate::types::bounds::unbounded;
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// A call, giving back its value in `into` when it can be written there.
     pub fn call(
         &mut self,
         value: &Expr,
         callee: &Expr,
         arguments: &[Argument],
         ty: &Type,
+        into: Into<'_>,
     ) -> String {
         match self.gen.facts.meaning(value.id).cloned() {
             Some(Meaning::Method) => {
@@ -24,18 +26,24 @@ impl<'g, 'a> Writer<'g, 'a> {
                     return "0".to_string();
                 };
 
-                self.method(receiver, &method.name, arguments, ty)
+                self.method(receiver, &method.name, arguments, ty, into)
             }
-            Some(Meaning::Builtin(name)) => self.builtin(&name, arguments, ty),
+            Some(Meaning::Builtin(name)) => self.builtin(&name, arguments, ty, into),
             Some(Meaning::Variant(owner, variant, error)) => {
-                self.variant_call(&owner, &variant, error.as_ref(), arguments, ty)
+                self.variant_call(&owner, &variant, error.as_ref(), arguments, ty, into)
             }
-            Some(Meaning::Declared(found)) => self.call_declared(&found, arguments, ty),
+            Some(Meaning::Declared(found)) => self.call_declared(&found, arguments, ty, into),
             _ => "0".to_string(),
         }
     }
 
-    fn call_declared(&mut self, found: &Resolved, arguments: &[Argument], ty: &Type) -> String {
+    fn call_declared(
+        &mut self,
+        found: &Resolved,
+        arguments: &[Argument],
+        ty: &Type,
+        into: Into<'_>,
+    ) -> String {
         if found.kind == SymbolKind::Value {
             let inner = self
                 .gen
@@ -57,14 +65,14 @@ impl<'g, 'a> Writer<'g, 'a> {
                 None => ty.clone(),
             };
 
-            return self.call_into(&c_name(found), passed, &result);
+            return self.call_to(&c_name(found), passed, &result, into);
         }
 
         // The events the service raises, and kept, are handled once it ends.
         let mark = self.raw_variable("mark", "croft_u16");
         self.line(format!("{mark} = croft_events_mark();"));
 
-        let result = self.call_into(&c_name(found), passed, ty);
+        let result = self.call_to(&c_name(found), passed, ty, into);
 
         self.line(format!("croft_events_dispatch_from({mark});"));
 

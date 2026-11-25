@@ -47,6 +47,9 @@ impl<'g, 'a> Writer<'g, 'a> {
 
             self.push_scope();
 
+            // Only one arm runs, so the next can use this one's temporaries.
+            let mark = self.temps_mark();
+
             for (binding, (c, binding_type)) in arm.pattern.bindings.iter().zip(bindings) {
                 self.bind(&binding.name, c, binding_type);
             }
@@ -60,6 +63,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 }
             }
 
+            self.release_since(mark);
             self.pop_scope();
         }
 

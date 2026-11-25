@@ -1,0 +1,53 @@
+// Early returns and `match` arms write their value straight into the result,
+// and the next one reuses their temporaries. Every answer must still be right.
+context Orders
+
+error WrongAnswer
+
+enum Order {
+    Buy(item: String where Length(1, 8), count: Int)
+    Sell(item: String where Length(1, 8))
+    Wait
+}
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn read(word: String where Length(0, 8), count: Int): Option<Order> = {
+    if word == "wait" {
+        Some(Order.Wait)
+    }
+    if count > 0 {
+        Some(Order.Buy(item: word, count: count))
+    }
+    if count < 0 {
+        Some(Order.Sell(item: word))
+    }
+    None
+}
+
+fn describe(order: Option<Order>): String = match order {
+    Some(given) -> match given {
+        Buy(item, count) -> {
+            if count > 9 {
+                "lots of " + item
+            }
+            item + " x" + count.to_string()
+        }
+        Sell(item) -> "sell " + item
+        Wait -> "wait"
+    }
+    None -> "nothing"
+}
+
+service Check(): Result<Unit, WrongAnswer> = {
+    check(describe(read("lamp", 2)) == "lamp x2")?
+    check(describe(read("rope", 12)) == "lots of rope")?
+    check(describe(read("oil", -1)) == "sell oil")?
+    check(describe(read("wait", 5)) == "wait")?
+    check(describe(read("map", 0)) == "nothing")
+}
