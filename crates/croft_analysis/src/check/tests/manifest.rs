@@ -155,8 +155,8 @@ fn keeps_in_storage_only_finds_saves_and_removes() {
     let shop = |operations: &str| {
         format!(
             "context Shop {{\n\
-             identity ShelfId: Int where Range(1, 9)\n\
-             aggregate Shelf {{\n identity id: ShelfId\n error NotFound\n }}\n\
+             identity ShelfId for Shelf: Int where Range(1, 9)\n\
+             aggregate Shelf {{\n id: ShelfId\n error NotFound\n }}\n\
              enum Lookup {{\n include Shelf.NotFound\n include StorageError\n }}\n\
              repository Shelves for Shelf {{\n{operations}\n}}\n\
              service Main(): Result<Unit, StorageError> {{\n calls Shelves\n}} = Ok(Unit)\n}}"

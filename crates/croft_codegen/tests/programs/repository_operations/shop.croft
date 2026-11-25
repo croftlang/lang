@@ -2,10 +2,10 @@
 // save and remove Storage provides, and Tills, with a query of its own and
 // an adapter written for it.
 context Shop {
-    identity ShelfId: Int where Range(1, 99)
+    identity ShelfId for Shelf: Int where Range(1, 99)
 
     aggregate Shelf {
-        identity id: ShelfId
+        id: ShelfId
         stock: Int where Range(0, 255)
 
         error NotFound
@@ -29,10 +29,10 @@ context Shop {
         fn clear(id: ShelfId): Result<Unit, StorageError>
     }
 
-    identity TillId: Int where Range(1, 9)
+    identity TillId for Till: Int where Range(1, 9)
 
     aggregate Till {
-        identity id: TillId
+        id: TillId
         cash: Int
 
         factory Open(id: TillId, cash: Int) = Till { id, cash }

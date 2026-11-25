@@ -4,7 +4,7 @@ context Quest
 
 error WrongAnswer
 
-identity QuestId: Int where Range(1, 9)
+identity QuestId for Quest: Int where Range(1, 9)
 
 value Door {
     open: Bool
@@ -13,7 +13,7 @@ value Door {
 }
 
 aggregate Quest {
-    identity id: QuestId
+    id: QuestId
     has_key: Bool
     has_lamp: Bool
     door_open: Bool
@@ -27,6 +27,12 @@ aggregate Quest {
     score: Int where Range(0, 100)
 
     error NotFound
+
+    factory Begin(id: QuestId) = Quest {
+        id, has_key: false, has_lamp: true, door_open: false, lamp_lit: false,
+        met_keeper: true, read_note: false, fed_cat: false, rang_bell: false,
+        saw_ship: false, won: false, score: 0
+    }
 
     command Find(key: Bool) = {
         set has_key = key
@@ -55,16 +61,10 @@ enum Failure {
     include WrongAnswer
 }
 
-fn fresh(): Quest = Quest {
-    id: 1, has_key: false, has_lamp: true, door_open: false, lamp_lit: false,
-    met_keeper: true, read_note: false, fed_cat: false, rang_bell: false,
-    saw_ship: false, won: false, score: 0
-}
-
 service Check(): Result<Unit, Failure> {
     calls Quests
 } = {
-    let start = fresh()
+    let start = Quest.Begin(id: 1)?
     check(start.has_lamp && start.met_keeper && !start.has_key && !start.won)?
     let found = issue Find(key: true) on start?
     check(found.has_key && found.saw_ship && found.has_lamp && found.score == 10)?
