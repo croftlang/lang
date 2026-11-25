@@ -51,8 +51,9 @@ pub fn is_builtin_port(name: &str) -> bool {
 
 /// Standard contexts written in dn, each with the name it is imported by.
 /// They join the program only when something imports from them.
-pub const STANDARD_SOURCES: [(&str, &str); 2] = [
+pub const STANDARD_SOURCES: [(&str, &str); 3] = [
     ("Std.Files", include_str!("files.dn")),
+    ("Std.Http", include_str!("http.dn")),
     (STORAGE_CONTEXT, include_str!("storage.dn")),
 ];
 

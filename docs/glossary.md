@@ -215,6 +215,10 @@ imports from them. `Std.Files` has the `Files` port, with `read`, `write`,
 `append`, `exists` and `remove`, its errors `NotFound`, `NoRoom` and
 `Unreadable`, the enum `FileError` that includes them, and the `StdioFiles`
 adapter, which uses C's stdio: `Files = "StdioFiles"` in `dn.toml`.
+`Std.Http` has the `Http` port, with `get`, `post`, `put` and `delete`, each
+giving a `Response` (its `status` and `body`) or an `HttpError`:
+`Unreachable`, `TimedOut` or `TooLarge`. Its `CurlHttp` adapter uses libcurl,
+which also handles HTTPS, so a program that binds it is linked with `-lcurl`.
 
 ## The outside world
 

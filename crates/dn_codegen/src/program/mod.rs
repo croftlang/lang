@@ -21,6 +21,7 @@ use crate::{GeneratedFile, Generator};
 
 const RUNTIME_HEADER: &str = include_str!("../runtime/dn.h");
 const STDIO_FILES: &str = include_str!("../runtime/files.c");
+const CURL_HTTP: &str = include_str!("../runtime/http.c");
 const RUNTIME_SOURCE: &str = concat!(
     include_str!("../runtime/dn_runtime.c"),
     include_str!("../runtime/decimal.c"),
@@ -98,8 +99,8 @@ impl<'a> Generator<'a> {
         Ok(files)
     }
 
-    /// The C for standard adapters this target binds, such as `dn_files.c`
-    /// when `Files` is bound to `StdioFiles`.
+    /// The C for standard adapters this target binds: `dn_files.c` when
+    /// `Files` is bound to `StdioFiles`, and `dn_http.c` for `CurlHttp`.
     fn standard_natives(&self) -> Vec<GeneratedFile> {
         let binds = |context: &str, name: &str| {
             (self.bindings.values())
@@ -110,6 +111,12 @@ impl<'a> Generator<'a> {
             files.push(GeneratedFile {
                 name: "dn_files.c".to_string(),
                 contents: STDIO_FILES.to_string(),
+            });
+        }
+        if binds("Std.Http", "CurlHttp") {
+            files.push(GeneratedFile {
+                name: "dn_http.c".to_string(),
+                contents: CURL_HTTP.to_string(),
             });
         }
         files

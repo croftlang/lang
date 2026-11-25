@@ -80,7 +80,8 @@ dn compile . --target desktop    # check, then write C to target/dn/desktop/
 Every `.c` file in the output folder is part of the program, for example
 `cc -std=c89 target/dn/desktop/*.c -o game`. Besides `program.c` and
 `dn_runtime.c`, it holds your native files and the standard adapters the
-target uses, such as `dn_files.c` for `StdioFiles`.
+target uses, such as `dn_files.c` for `StdioFiles`, and `dn_http.c` for
+`CurlHttp`, which needs `-lcurl` when linking.
 
 Try it on the example, a small dungeon game split across twelve files:
 
