@@ -3,6 +3,7 @@
 use b_syntax::ast::Identifier;
 
 use super::BodyChecker;
+use crate::facts::MemberKind;
 use crate::symbols::SymbolKind;
 use crate::types::Type;
 
@@ -28,9 +29,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             (Type::Named(named), _) => self.checker.field_type(named, name),
             _ => None,
         };
-        found.unwrap_or_else(|| {
+        let Some(found) = found else {
             self.error(format!("`{ty}` has no field `{name}`"), field.span);
-            Type::Unknown
-        })
+            return Type::Unknown;
+        };
+        let defined = self.field_span(ty, name);
+        self.note_member(field, ty, &found, MemberKind::Field, defined);
+        found
     }
 }

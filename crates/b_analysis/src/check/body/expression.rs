@@ -2,10 +2,9 @@
 
 use b_syntax::ast::{BinaryOp, Expr, ExprKind, UnaryOp};
 
-use crate::types::MAX_SHIFT;
-
 use super::BodyChecker;
-use crate::types::Type;
+use crate::facts::Meaning;
+use crate::types::{Type, MAX_SHIFT};
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
     /// The type of an expression. `expected`, when known, lets bare enum
@@ -13,7 +12,39 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     pub(super) fn expr(&mut self, value: &Expr, expected: Option<&Type>) -> Type {
         let ty = self.expr_kind(value, expected);
         self.checker.facts.types.insert(value.id, ty.clone());
+        self.note_name_reference(value);
         ty
+    }
+
+    /// A name such as `NotFound` or `act` can be resolved through the type
+    /// it is expected to have rather than `resolve`, so its meaning is noted
+    /// here too, for editors. In a call, the callee's name is noted.
+    fn note_name_reference(&mut self, value: &Expr) {
+        let (name, span, id) = match &value.kind {
+            ExprKind::Name(name) => (name, value.span, value.id),
+            ExprKind::Call(callee, _) => match &callee.kind {
+                ExprKind::Name(name) => (name, callee.span, value.id),
+                _ => return,
+            },
+            _ => return,
+        };
+        let facts = &self.checker.facts;
+        let meaning = facts.meanings.get(&id).or_else(|| match &value.kind {
+            ExprKind::Call(callee, _) => facts.meanings.get(&callee.id),
+            _ => None,
+        });
+        let target = match meaning {
+            Some(Meaning::Const(found) | Meaning::Error(found) | Meaning::Declared(found)) => found,
+            Some(Meaning::Variant(_, _, Some(error))) => error,
+            Some(Meaning::Variant(enum_type, _, None)) => enum_type,
+            _ => return,
+        };
+        let reference = crate::facts::Reference {
+            span,
+            name: name.clone(),
+            target: target.clone(),
+        };
+        self.checker.references.get_mut().push(reference);
     }
 
     fn expr_kind(&mut self, value: &Expr, expected: Option<&Type>) -> Type {

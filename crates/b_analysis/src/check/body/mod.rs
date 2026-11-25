@@ -33,7 +33,7 @@ mod variant;
 
 use std::collections::HashMap;
 
-use b_syntax::ast::{AdapterDecl, AggregateDecl};
+use b_syntax::ast::{AdapterDecl, AggregateDecl, Identifier};
 use b_syntax::Span;
 
 use super::{Checker, Scope};
@@ -59,6 +59,8 @@ pub(super) enum BodyKind<'a> {
 pub(super) struct Local {
     pub(super) ty: Type,
     pub(super) settable: bool,
+    /// Where the name is bound, when it is written in the source.
+    pub(super) defined: Option<Span>,
 }
 
 pub(super) struct BodyChecker<'c, 'a> {
@@ -100,9 +102,60 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         self.checker.error(message, span);
     }
 
-    pub(super) fn bind(&mut self, name: &str, ty: Type, settable: bool) {
+    /// Brings a local name into scope. `defined` is where it is written, and
+    /// is noted for editors.
+    pub(super) fn bind(&mut self, name: &str, ty: Type, settable: bool, defined: Option<Span>) {
+        if let Some(span) = defined {
+            self.note_local(name, &ty, span, defined);
+        }
         let scope = self.locals.last_mut().expect("a local scope");
-        scope.insert(name.to_string(), Local { ty, settable });
+        let local = Local {
+            ty,
+            settable,
+            defined,
+        };
+        scope.insert(name.to_string(), local);
+    }
+
+    /// Notes where a local name is bound or used, for editors.
+    pub(super) fn note_local(&mut self, name: &str, ty: &Type, span: Span, defined: Option<Span>) {
+        self.checker.facts.locals.push(crate::facts::LocalName {
+            span,
+            name: name.to_string(),
+            ty: ty.clone(),
+            defined,
+        });
+    }
+
+    /// Records a field, operation or method used at `span`, for editors.
+    pub(super) fn note_member(
+        &mut self,
+        member: &Identifier,
+        receiver: &Type,
+        ty: &Type,
+        kind: crate::facts::MemberKind,
+        defined: Option<Span>,
+    ) {
+        if *receiver == Type::Unknown {
+            return;
+        }
+        self.checker.facts.members.push(crate::facts::Member {
+            span: member.span,
+            name: member.name.clone(),
+            receiver: receiver.clone(),
+            ty: ty.clone(),
+            kind,
+            defined,
+        });
+    }
+
+    /// Where a field of a named type is declared.
+    pub(super) fn field_span(&self, ty: &Type, field: &str) -> Option<Span> {
+        let Type::Named(named) = ty else {
+            return None;
+        };
+        let fields = self.checker.fields_of(named)?;
+        Some(fields.iter().find(|f| f.name.name == field)?.name.span)
     }
 
     pub(super) fn local(&self, name: &str) -> Option<&Local> {

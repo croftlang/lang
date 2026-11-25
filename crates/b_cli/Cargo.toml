@@ -13,3 +13,8 @@ path = "src/main.rs"
 b_syntax = { path = "../b_syntax" }
 b_analysis = { path = "../b_analysis" }
 b_codegen = { path = "../b_codegen" }
+crossbeam-channel = "0.5"
+lsp-server = "0.7"
+lsp-types = "0.97"
+serde = "1"
+serde_json = "1"

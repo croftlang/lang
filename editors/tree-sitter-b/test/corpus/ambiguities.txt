@@ -1,0 +1,175 @@
+================================================================================
+A name before `{` in an `if` condition ends the condition
+================================================================================
+
+context A
+fn f() = {
+    if pressed == Quit { break }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (function_declaration
+      (identifier)
+      (parameters)
+      (block
+        (if_expression
+          (binary_expression
+            (identifier)
+            (identifier))
+          (block
+            (break_expression)))))))
+
+================================================================================
+A record literal after `let`
+================================================================================
+
+context A
+fn f() = {
+    let p = Position { x: 0, y: 0 }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (function_declaration
+      (identifier)
+      (parameters)
+      (block
+        (let_statement
+          (identifier)
+          (record_expression
+            (identifier)
+            (field_values
+              (field_value
+                (field_identifier)
+                (integer))
+              (field_value
+                (field_identifier)
+                (integer)))))))))
+
+================================================================================
+A `?` after an issue target applies to the issue
+================================================================================
+
+context A
+fn f() = issue Move(direction: d) on room?
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (function_declaration
+      (identifier)
+      (parameters)
+      (try_expression
+        (issue_expression
+          (identifier)
+          (arguments
+            (named_argument
+              (identifier)
+              (identifier)))
+          (identifier))))))
+
+================================================================================
+Bit operators bind tighter than comparisons
+================================================================================
+
+context A
+const X: Bool = bits & FIRE != 0
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (const_declaration
+      (identifier)
+      (type
+        (type_identifier))
+      (binary_expression
+        (binary_expression
+          (identifier)
+          (identifier))
+        (integer)))))
+
+================================================================================
+A comma after a constraint can start the next parameter
+================================================================================
+
+context A
+command Attack(damage: Int where Range(1, 20), each_one: Int)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (function_declaration
+      (identifier)
+      (parameters
+        (parameter
+          (identifier)
+          (type
+            (type_identifier))
+          (where_clause
+            (constraint_use
+              (path
+                (identifier))
+              (arguments
+                (integer)
+                (integer)))))
+        (parameter
+          (identifier)
+          (type
+            (type_identifier)))))))
+
+================================================================================
+Keywords as names
+================================================================================
+
+context A
+fn message(error: GameError): String = match error {
+    NotFound -> score.value
+    _ -> Score { value: 3 }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (function_declaration
+      (identifier)
+      (parameters
+        (parameter
+          (identifier)
+          (type
+            (type_identifier))))
+      (type
+        (type_identifier))
+      (match_expression
+        (identifier)
+        (match_arm
+          (pattern
+            (path
+              (identifier)))
+          (field_expression
+            (identifier)
+            (field_identifier)))
+        (match_arm
+          (pattern
+            (path
+              (identifier)))
+          (record_expression
+            (identifier)
+            (field_values
+              (field_value
+                (field_identifier)
+                (integer)))))))))

@@ -35,9 +35,9 @@ impl<'a> Checker<'a> {
                 .parameters
                 .iter()
                 .flatten()
-                .map(|p| p.name.name.clone());
-            for (name, (_, ty)) in names.zip(parameters) {
-                body.bind(&name, ty, false);
+                .map(|p| (p.name.name.clone(), p.name.span));
+            for ((name, span), (_, ty)) in names.zip(parameters) {
+                body.bind(&name, ty, false, Some(span));
             }
             if let Some(value) = &operation.body {
                 body.expect_body(value);

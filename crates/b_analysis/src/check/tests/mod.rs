@@ -6,6 +6,7 @@ mod effects;
 mod files;
 mod functions;
 mod manifest;
+mod references;
 mod standard;
 
 use b_syntax::{parse, SourceId};

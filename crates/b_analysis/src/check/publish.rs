@@ -45,9 +45,20 @@ impl<'a> Checker<'a> {
             }
             for path in &use_decl.names {
                 let text = path.text();
-                if !self.is_published(&from, &text) || self.lookup(&from, &text).is_none() {
-                    let message = format!("context `{from}` does not publish `{text}`");
-                    self.error(message, path.span());
+                let found = self.lookup(&from, &text);
+                match found {
+                    Some(target) if self.is_published(&from, &text) => {
+                        let last = path.last();
+                        self.references.get_mut().push(crate::facts::Reference {
+                            span: last.span,
+                            name: last.name.clone(),
+                            target,
+                        });
+                    }
+                    _ => {
+                        let message = format!("context `{from}` does not publish `{text}`");
+                        self.error(message, path.span());
+                    }
                 }
             }
         }

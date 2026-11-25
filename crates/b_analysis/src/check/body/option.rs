@@ -61,7 +61,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         };
         self.nested(|checker| {
             for parameter in parameters {
-                checker.bind(&parameter.name, item.clone(), false);
+                checker.bind(&parameter.name, item.clone(), false, Some(parameter.span));
             }
             checker.expr(body, None)
         })

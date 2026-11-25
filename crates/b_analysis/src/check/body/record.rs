@@ -30,6 +30,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 self.error(format!("`{ty}` has no field `{}`", name.name), name.span);
                 continue;
             };
+            let defined = self.field_span(ty, &name.name);
+            let kind = crate::facts::MemberKind::Field;
+            self.note_member(name, ty, &field_type, kind, defined);
             match &given.value {
                 Some(value) => {
                     self.expect(value, &field_type);

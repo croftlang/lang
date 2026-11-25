@@ -1,0 +1,290 @@
+================================================================================
+Context and aggregate headers claim the rest of the file
+================================================================================
+
+context Dungeon
+aggregate Room
+
+identity id: RoomId
+enemies: List<Enemy> where Length(0, MAX_ENEMIES), each Alive
+invariant ExitClear or ExitBlocked
+error EnemyMissing { enemy_id: EnemyId }
+event EnemyDamaged { enemy_id: EnemyId  remaining: Int }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (aggregate_declaration
+      (type_identifier)
+      (field_declaration
+        (identifier)
+        (type
+          (type_identifier)))
+      (field_declaration
+        (identifier)
+        (type
+          (type_identifier)
+          (type_arguments
+            (type
+              (type_identifier))))
+        (where_clause
+          (constraint_use
+            (path
+              (identifier))
+            (arguments
+              (integer)
+              (identifier)))
+          (constraint_use
+            (path
+              (identifier)))))
+      (invariant
+        (constraint_use
+          (path
+            (identifier)))
+        (identifier))
+      (error_declaration
+        (type_identifier)
+        (field_list
+          (field_declaration
+            (identifier)
+            (type
+              (type_identifier)))))
+      (event_declaration
+        (type_identifier)
+        (field_list
+          (field_declaration
+            (identifier)
+            (type
+              (type_identifier)))
+          (field_declaration
+            (identifier)
+            (type
+              (type_identifier))))))))
+
+================================================================================
+Ports, adapters and repositories
+================================================================================
+
+context Platform
+
+use { Screen, Keyboard } from Dungeon
+
+port Keyboard {
+    fn pressed(): Option<Key>
+}
+
+adapter SpectrumScreen for Screen = {
+    fn draw_text(text, at) = native zx_print_at(at.y / 8, at.x / 8, text)
+}
+
+repository Rooms for Room
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (use_declaration
+      (path_list
+        (path
+          (identifier))
+        (path
+          (identifier)))
+      (path
+        (identifier)))
+    (port_declaration
+      (type_identifier)
+      (function_declaration
+        (identifier)
+        (parameters)
+        (type
+          (type_identifier)
+          (type_arguments
+            (type
+              (type_identifier))))))
+    (adapter_declaration
+      (type_identifier)
+      (path
+        (identifier))
+      (function_declaration
+        (identifier)
+        (parameters
+          (parameter
+            (identifier))
+          (parameter
+            (identifier)))
+        (native_call
+          (identifier)
+          (arguments
+            (binary_expression
+              (field_expression
+                (identifier)
+                (field_identifier))
+              (integer))
+            (binary_expression
+              (field_expression
+                (identifier)
+                (field_identifier))
+              (integer))
+            (identifier)))))
+    (repository_declaration
+      (type_identifier)
+      (path
+        (identifier)))))
+
+================================================================================
+A domain with a context map
+================================================================================
+
+domain Game {
+    contexts {
+        Dungeon -> Scoring
+        Shop
+    }
+    calls Screen, Keyboard
+} = {
+    SetUpRooms()?
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (domain_declaration
+    (type_identifier)
+    (context_map
+      (context_relation
+        (type_identifier)
+        (type_identifier))
+      (context_relation
+        (type_identifier)))
+    (calls_clause
+      (path
+        (identifier))
+      (path
+        (identifier)))
+    (block
+      (try_expression
+        (call_expression
+          (identifier)
+          (arguments))))))
+
+================================================================================
+Values, enums and loops
+================================================================================
+
+context A {
+    value Score: Int where Range(0, 999)
+    value Pair<A, B> { first: A, second: B }
+    enum Item {
+        include Room.Error
+        Coins(count: Int where Range(1, 99))
+        Nothing
+    }
+    const LIMIT: Int = 0x1F + 0b1010_0101 + 1_000
+    fn f(): List<List<Int>> = loop (let i where Range(0, 9)) {
+        set total = total + i
+    }
+    fn g() = ["a": 1.5, "b\n": 2.0]
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (declaration_list
+      (value_declaration
+        (type_identifier)
+        (type
+          (type_identifier))
+        (where_clause
+          (constraint_use
+            (path
+              (identifier))
+            (arguments
+              (integer)
+              (integer)))))
+      (value_declaration
+        (type_identifier)
+        (type_parameters
+          (type_identifier)
+          (type_identifier))
+        (record_body
+          (field_declaration
+            (identifier)
+            (type
+              (type_identifier)))
+          (field_declaration
+            (identifier)
+            (type
+              (type_identifier)))))
+      (enum_declaration
+        (type_identifier)
+        (enum_include
+          (path
+            (identifier)
+            (identifier)))
+        (enum_variant
+          (identifier)
+          (field_declaration
+            (identifier)
+            (type
+              (type_identifier))
+            (where_clause
+              (constraint_use
+                (path
+                  (identifier))
+                (arguments
+                  (integer)
+                  (integer))))))
+        (enum_variant
+          (identifier)))
+      (const_declaration
+        (identifier)
+        (type
+          (type_identifier))
+        (binary_expression
+          (binary_expression
+            (integer)
+            (integer))
+          (integer)))
+      (function_declaration
+        (identifier)
+        (parameters)
+        (type
+          (type_identifier)
+          (type_arguments
+            (type
+              (type_identifier)
+              (type_arguments
+                (type
+                  (type_identifier))))))
+        (loop_expression
+          (loop_counter
+            (identifier)
+            (where_clause
+              (constraint_use
+                (path
+                  (identifier))
+                (arguments
+                  (integer)
+                  (integer)))))
+          (block
+            (set_statement
+              (identifier)
+              (binary_expression
+                (identifier)
+                (identifier))))))
+      (function_declaration
+        (identifier)
+        (parameters)
+        (map_expression
+          (map_entry
+            (string)
+            (float))
+          (map_entry
+            (string
+              (escape_sequence))
+            (float)))))))

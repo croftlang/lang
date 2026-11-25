@@ -50,7 +50,7 @@ impl<'a> Checker<'a> {
                 .resolve(&scope, &policy.event)
                 .map_or(Type::Unknown, Type::Named);
             let mut body = BodyChecker::new(self, scope, BodyKind::Policy, Type::Unknown);
-            body.bind("event", event, false);
+            body.bind("event", event, false, None);
             body.expr(&policy.body, None);
         }
         for adapter in &context.adapters {

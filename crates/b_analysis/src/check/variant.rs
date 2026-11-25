@@ -13,6 +13,8 @@ pub(super) struct Variant<'a> {
     pub scope: Scope<'a>,
     /// The error this variant stands for, when it comes from an included error.
     pub error: Option<Resolved>,
+    /// The enum or error that declares it, for editors.
+    pub declared_in: Resolved,
 }
 
 impl<'a> Checker<'a> {
@@ -34,6 +36,7 @@ impl<'a> Checker<'a> {
                     fields: &variant.fields,
                     scope,
                     error: None,
+                    declared_in: named.clone(),
                 });
             }
             for include in &decl.includes {
@@ -55,6 +58,7 @@ impl<'a> Checker<'a> {
                     fields,
                     scope: self.scope_of(&error),
                     error: Some(error.clone()),
+                    declared_in: error.clone(),
                 });
             }
         }
