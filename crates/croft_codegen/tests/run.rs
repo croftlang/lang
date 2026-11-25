@@ -429,3 +429,16 @@ fn packs_bool_fields_into_bits() {
     assert!(!header.contains("croft_bool has_key;"), "{header}");
     fs::remove_dir_all(output).ok();
 }
+
+/// `croft size`: what each kept type takes, the largest frames, what sizes
+/// working strings, and whole numbers that a Range would shrink.
+#[test]
+fn reports_sizes_for_a_target() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/repository_operations");
+    let program = support::check_program(&source);
+    let report = croft_codegen::size_report(&program, "test").expect("a report");
+    assert!(report.contains("Shop.Shelf  (saved:"), "{report}");
+    assert!(report.contains("Largest stack frames"), "{report}");
+    assert!(report.contains("  Till.cash\n"), "{report}");
+    assert!(!report.contains("Shelf.stock"), "{report}");
+}
