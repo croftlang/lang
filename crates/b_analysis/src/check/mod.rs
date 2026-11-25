@@ -44,7 +44,7 @@ pub use model::{Model, VariantInfo};
 pub use operations::Operation;
 pub(crate) use resolve::{Resolved, Scope};
 
-pub use rounds::check;
+pub use rounds::{analyze, check, Analysis};
 
 pub(crate) struct Checker<'a> {
     program: &'a Program,
@@ -53,6 +53,9 @@ pub(crate) struct Checker<'a> {
     facts: Facts,
     /// Instances of generic templates this round needs but doesn't have yet.
     requests: RefCell<Vec<Request>>,
+    /// Names resolved so far, with where each was written. `resolve` takes
+    /// `&self`, so they are kept here until checking ends.
+    references: RefCell<Vec<crate::facts::Reference>>,
 }
 
 impl<'a> Checker<'a> {

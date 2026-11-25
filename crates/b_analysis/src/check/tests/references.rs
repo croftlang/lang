@@ -1,0 +1,89 @@
+//! What `analyze` keeps for editors: where each name points, and local names.
+
+use b_syntax::{parse, SourceId, Span};
+
+use crate::check::analyze;
+use crate::check::Analysis;
+use crate::symbols::SymbolKind;
+
+fn analyze_source(source: &str) -> Analysis {
+    let file = parse(source, SourceId(0)).expect("valid syntax");
+    analyze(vec![file], None)
+}
+
+/// The reference written at `line` and `column`, as `context.name`.
+fn target_at(analysis: &Analysis, line: u32, column: u32) -> Option<(String, SymbolKind)> {
+    let span = Span {
+        source: SourceId(0),
+        line,
+        column,
+    };
+    let facts = &analysis.program.facts;
+    let reference = facts.references.iter().find(|r| r.span == span)?;
+    let target = &reference.target;
+    Some((format!("{}.{}", target.context, target.name), target.kind))
+}
+
+const ROOM: &str = "\
+context Dungeon {
+    identity RoomId: Int where Range(1, 20)
+    aggregate Room {
+        identity id: RoomId
+        lives: Int
+        error NotFound
+        command Heal(amount: Int) = {
+            let more = lives + amount
+            set lives = more
+        }
+    }
+    fn first(): Room.Error = NotFound
+}";
+
+#[test]
+fn notes_types_and_their_paths() {
+    let analysis = analyze_source(ROOM);
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    // `RoomId` in `identity id: RoomId`.
+    let (name, kind) = target_at(&analysis, 4, 22).expect("RoomId is noted");
+    assert_eq!(name, "Dungeon.RoomId");
+    assert_eq!(kind, SymbolKind::Identity);
+    // `Room` in `Room.Error` names the aggregate.
+    let (name, _) = target_at(&analysis, 12, 17).expect("Room is noted");
+    assert_eq!(name, "Dungeon.Room");
+}
+
+#[test]
+fn notes_names_in_bodies() {
+    let analysis = analyze_source(ROOM);
+    // `NotFound` in the body of `first`.
+    let (name, _) = target_at(&analysis, 12, 30).expect("NotFound is noted");
+    assert_eq!(name, "Dungeon.Room.NotFound");
+}
+
+#[test]
+fn notes_where_locals_are_bound_and_used() {
+    let analysis = analyze_source(ROOM);
+    let locals = &analysis.program.facts.locals;
+    let uses: Vec<_> = locals.iter().filter(|l| l.name == "more").collect();
+    assert_eq!(uses.len(), 2, "bound once and used once: {uses:?}");
+    let bound = Span {
+        source: SourceId(0),
+        line: 8,
+        column: 17,
+    };
+    assert!(uses.iter().all(|l| l.defined == Some(bound)));
+    assert_eq!(uses[0].ty.to_string(), "Int");
+}
+
+#[test]
+fn keeps_what_it_learned_when_there_are_errors() {
+    let analysis = analyze_source(
+        "context Dungeon {\n    value Position { x: Missing }\n    value Size { w: Int }\n}",
+    );
+    assert_eq!(analysis.diagnostics.len(), 1);
+    assert!(analysis.symbols["Dungeon"].get("Size").is_some());
+}

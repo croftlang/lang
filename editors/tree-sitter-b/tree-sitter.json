@@ -1,0 +1,19 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "b",
+      "camelcase": "B",
+      "scope": "source.b",
+      "path": ".",
+      "file-types": ["b"],
+      "highlights": "queries/highlights.scm"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "b grammar for tree-sitter",
+    "links": { "repository": "https://github.com/briward/b" }
+  }
+}

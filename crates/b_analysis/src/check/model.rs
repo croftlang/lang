@@ -38,6 +38,7 @@ impl<'a> Model<'a> {
                 errors,
                 facts: Facts::default(),
                 requests: std::cell::RefCell::default(),
+                references: std::cell::RefCell::default(),
             },
         }
     }

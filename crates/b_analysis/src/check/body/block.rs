@@ -46,7 +46,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             None => self.expr(value, None),
         };
         let settable = matches!(self.kind, BodyKind::Service);
-        self.bind(&name.name, ty, settable);
+        self.bind(&name.name, ty, settable, Some(name.span));
         Type::Unit
     }
 

@@ -106,6 +106,16 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             );
             return;
         };
+        let reference = crate::facts::Reference {
+            span: command.span,
+            name: command.name.clone(),
+            target: Resolved {
+                context: aggregate.context.clone(),
+                name: format!("{}.{}", aggregate.name, command.name),
+                kind: crate::symbols::SymbolKind::Command,
+            },
+        };
+        self.checker.references.get_mut().push(reference);
         let parameters: Vec<(String, Type)> = (command_decl.parameters.iter().flatten())
             .map(|p| (p.name.name.clone(), self.checker.parameter_type(&scope, p)))
             .collect();

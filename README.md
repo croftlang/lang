@@ -92,6 +92,16 @@ b check examples/dungeon
 b compile examples/dungeon --target spectrum_48k
 ```
 
+## Editors
+
+`b lsp` runs a language server, which editors start for you. It shows
+errors as you type, a declaration's signature and doc comment on hover,
+and goes to where a name is declared.
+
+- VS Code: [editors/vscode](editors/vscode), with highlighting from a TextMate grammar.
+- Zed: [editors/zed](editors/zed), with highlighting from the Tree-sitter grammar in
+  [editors/tree-sitter-b](editors/tree-sitter-b).
+
 ## The project file
 
 `b.toml` sits beside the `.b` files and holds what is about the build
@@ -208,7 +218,7 @@ cc -std=c89 *.c -o dungeon
 | `b_syntax` | Lexer, parser and syntax tree |
 | `b_analysis` | Merging files, name resolution, declaration checks and type checking |
 | `b_codegen` | C89 generation for one target |
-| `b_cli` | The `b` command |
+| `b_cli` | The `b` command, and the language server, `b lsp` |
 
 ## Development
 

@@ -2,6 +2,7 @@
 
 mod compile;
 mod diagnostics;
+mod lsp;
 mod project;
 
 use std::path::{Path, PathBuf};
@@ -17,6 +18,7 @@ Usage:
     b check [path]      Check the .b files in a folder (default: .)
     b compile [path] --target <name>
                         Check, then write C for one target to target/b/<name>
+    b lsp               Run the language server, for editors
     b help              Show this message
     b version           Show the version
 ";
@@ -34,6 +36,7 @@ fn main() -> ExitCode {
             check(&path)
         }),
         "compile" => compile::compile(rest),
+        "lsp" => lsp::run(),
         "help" | "--help" | "-h" => {
             print!("{USAGE}");
             Ok(())

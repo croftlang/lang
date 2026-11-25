@@ -24,6 +24,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let mut has_wildcard = false;
         for (index, arm) in arms.iter().enumerate() {
             let name = arm.pattern.path.last().name.clone();
+            self.note_pattern(&subject_type, &arm.pattern);
             if name == WILDCARD {
                 self.check_wildcard(arm, index + 1 == arms.len(), &variants, &handled);
                 has_wildcard = true;
@@ -48,7 +49,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             handled.push(name);
             let found = self.nested(|body| {
                 for (binding, ty) in arm.pattern.bindings.iter().zip(bindings) {
-                    body.bind(&binding.name, ty, false);
+                    body.bind(&binding.name, ty, false, Some(binding.span));
                 }
                 match &result {
                     Some(expected) => body.expect(&arm.value, expected),
@@ -103,6 +104,25 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 span,
             );
         }
+    }
+
+    /// Notes what a pattern's variant refers to, for editors: the error it
+    /// stands for, or the enum that declares it.
+    fn note_pattern(&mut self, subject: &Type, pattern: &Pattern) {
+        let Type::Named(named) = subject else {
+            return;
+        };
+        let written = pattern.path.last();
+        let variants = self.checker.variants_of(named);
+        let Some(variant) = variants.into_iter().find(|v| v.name == written.name) else {
+            return;
+        };
+        let reference = crate::facts::Reference {
+            span: written.span,
+            name: written.name.clone(),
+            target: variant.error.unwrap_or(variant.declared_in),
+        };
+        self.checker.references.get_mut().push(reference);
     }
 
     /// The variants of the type being matched, each with its fields' types.

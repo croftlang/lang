@@ -13,7 +13,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     pub(super) fn bind_parameters(&mut self, parameters: &[Parameter]) {
         for parameter in parameters {
             let ty = self.checker.parameter_type(&self.scope, parameter);
-            self.bind(&parameter.name.name, ty, false);
+            self.bind(&parameter.name.name, ty, false, Some(parameter.name.span));
         }
     }
 
@@ -25,7 +25,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 Some(found) => Type::Port(found),
                 None => Type::Port(builtin_port(&path.last().name)),
             };
-            self.bind(&to_snake_case(&path.last().name), handle, false);
+            self.bind(&to_snake_case(&path.last().name), handle, false, None);
         }
     }
 

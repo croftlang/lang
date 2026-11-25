@@ -1,0 +1,12 @@
+name = "b"
+grammar = "b"
+path_suffixes = ["b"]
+line_comments = ["// "]
+tab_size = 4
+autoclose_before = ";:.,=}])"
+brackets = [
+    { start = "{", end = "}", close = true, newline = true },
+    { start = "(", end = ")", close = true, newline = true },
+    { start = "[", end = "]", close = true, newline = true },
+    { start = "\"", end = "\"", close = true, newline = false, not_in = ["string", "comment"] },
+]

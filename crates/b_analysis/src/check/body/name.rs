@@ -16,8 +16,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         expected: Option<&Type>,
     ) -> Type {
         if let Some(local) = self.local(name) {
-            let ty = local.ty.clone();
+            let (ty, defined) = (local.ty.clone(), local.defined);
             self.note(id, Meaning::Local);
+            self.note_local(name, &ty, span, defined);
             return ty;
         }
         if let Some(ty) = self.own_field(name, span, false) {

@@ -1,0 +1,202 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "b",
+  "scopeName": "source.b",
+  "fileTypes": ["b"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#declarations" },
+    { "include": "#contextual-words" },
+    { "include": "#members" },
+    { "include": "#fields" },
+    { "include": "#keywords" },
+    { "include": "#calls" },
+    { "include": "#names" },
+    { "include": "#operators" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comments": {
+      "comment": "Only `//` line comments. Comment lines directly above a declaration are its doc.",
+      "name": "comment.line.double-slash.b",
+      "begin": "//",
+      "beginCaptures": { "0": { "name": "punctuation.definition.comment.b" } },
+      "end": "$"
+    },
+    "strings": {
+      "comment": "The lexer knows three escapes: \\n, \\\" and \\\\. Any other is an error.",
+      "name": "string.quoted.double.b",
+      "begin": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.b" } },
+      "end": "\"",
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.b" } },
+      "patterns": [
+        { "name": "constant.character.escape.b", "match": "\\\\[n\"\\\\]" },
+        { "name": "invalid.illegal.unknown-escape.b", "match": "\\\\." }
+      ]
+    },
+    "numbers": {
+      "comment": "Digits may be split with `_` after the first one. Hex is 0x, binary 0b, both lowercase.",
+      "patterns": [
+        { "name": "constant.numeric.hex.b", "match": "\\b0x[0-9A-Fa-f_]+\\b" },
+        { "name": "constant.numeric.binary.b", "match": "\\b0b[01_]+\\b" },
+        { "name": "constant.numeric.decimal.b", "match": "\\b[0-9][0-9_]*\\.[0-9][0-9_]*\\b" },
+        { "name": "constant.numeric.integer.b", "match": "\\b[0-9][0-9_]*\\b" }
+      ]
+    },
+    "declarations": {
+      "comment": "A declaration word and the name it introduces. `event` and `error` are keywords only here; elsewhere they are names.",
+      "patterns": [
+        {
+          "match": "\\b(adapter|repository)\\s+([A-Z]\\w*)\\s+(for)\\b",
+          "captures": {
+            "1": { "name": "storage.type.b" },
+            "2": { "name": "entity.name.type.b" },
+            "3": { "name": "keyword.other.for.b" }
+          }
+        },
+        {
+          "match": "\\b(policy)\\s+([A-Z]\\w*)\\s+(when)\\b",
+          "captures": {
+            "1": { "name": "storage.type.b" },
+            "2": { "name": "entity.name.function.b" },
+            "3": { "name": "keyword.other.when.b" }
+          }
+        },
+        {
+          "match": "\\b(context|domain|value|entity|aggregate|enum|error|event|port|adapter|repository|translation)\\s+([A-Z]\\w*)",
+          "captures": {
+            "1": { "name": "storage.type.b" },
+            "2": { "name": "entity.name.type.b" }
+          }
+        },
+        {
+          "match": "\\b(command|service|policy|constraint|fn)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "storage.type.b" },
+            "2": { "name": "entity.name.function.b" }
+          }
+        },
+        {
+          "match": "\\b(const)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": { "name": "storage.type.b" },
+            "2": { "name": "variable.other.constant.b" }
+          }
+        }
+      ]
+    },
+    "contextual-words": {
+      "comment": "Words the lexer leaves as identifiers, special only in one place.",
+      "patterns": [
+        {
+          "comment": "use { Screen, Key } from Dungeon",
+          "match": "(\\})\\s*(from)\\b",
+          "captures": {
+            "1": { "name": "punctuation.section.braces.end.b" },
+            "2": { "name": "keyword.control.import.b" }
+          }
+        },
+        {
+          "comment": "issue Move(direction: direction) on room",
+          "begin": "\\b(issue)\\b",
+          "beginCaptures": { "1": { "name": "keyword.other.issue.b" } },
+          "end": "\\b(on)\\b",
+          "endCaptures": { "1": { "name": "keyword.other.on.b" } },
+          "patterns": [{ "include": "$self" }]
+        },
+        {
+          "comment": "include Room.Error, inside an enum",
+          "match": "^\\s*(include)\\b",
+          "captures": { "1": { "name": "keyword.other.include.b" } }
+        },
+        {
+          "comment": "contexts { Dungeon -> Scoring }, inside a domain",
+          "match": "\\b(contexts)(?=\\s*\\{)",
+          "captures": { "1": { "name": "keyword.other.contexts.b" } }
+        }
+      ]
+    },
+    "members": {
+      "comment": "After `.` any word is a field or method, keywords included: `score.value`.",
+      "patterns": [
+        {
+          "match": "(\\.)\\s*([a-z_]\\w*)(?=\\s*\\()",
+          "captures": {
+            "1": { "name": "punctuation.accessor.b" },
+            "2": { "name": "entity.name.function.member.b" }
+          }
+        },
+        {
+          "match": "(\\.)\\s*([a-z_]\\w*)",
+          "captures": {
+            "1": { "name": "punctuation.accessor.b" },
+            "2": { "name": "variable.other.property.b" }
+          }
+        }
+      ]
+    },
+    "fields": {
+      "comment": "A name before `:` is a field, parameter or named argument, keywords included: `Score { value: 3 }`.",
+      "match": "\\b([a-z_]\\w*)\\s*(?=:)",
+      "captures": { "1": { "name": "variable.other.property.b" } }
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "storage.type.b",
+          "match": "\\b(context|domain|value|entity|aggregate|enum|const|constraint|invariant|command|policy|fn|service|port|adapter|repository|translation)\\b"
+        },
+        { "name": "storage.modifier.identity.b", "match": "\\bidentity\\b" },
+        { "name": "keyword.control.import.b", "match": "\\b(use|publish)\\b" },
+        { "name": "keyword.control.b", "match": "\\b(if|match|loop|break|or)\\b" },
+        { "name": "keyword.other.b", "match": "\\b(let|set|emit|issue|with|where|each|calls|native)\\b" },
+        { "name": "constant.language.boolean.b", "match": "\\b(true|false)\\b" },
+        { "name": "variable.language.wildcard.b", "match": "\\b_\\b" }
+      ]
+    },
+    "calls": {
+      "comment": "A lowercase name before `(` is a function call. PascalCase calls (commands, constraints, variants) stay types.",
+      "match": "\\b([a-z_]\\w*)(?=\\s*\\()",
+      "captures": { "1": { "name": "entity.name.function.b" } }
+    },
+    "names": {
+      "patterns": [
+        {
+          "name": "support.type.builtin.b",
+          "match": "\\b(Int|Float|Decimal|Bool|String|Bytes|Unit|List|Map|Option|Result)\\b"
+        },
+        {
+          "comment": "SCREAMING_CASE, two letters or more: MAX_ENEMIES. A single capital is a type parameter.",
+          "name": "variable.other.constant.b",
+          "match": "\\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\\b|\\b[A-Z][A-Z0-9]+\\b"
+        },
+        { "name": "entity.name.type.b", "match": "\\b[A-Z]\\w*\\b" },
+        { "name": "variable.other.b", "match": "\\b[a-z_]\\w*\\b" }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        { "name": "keyword.operator.arrow.b", "match": "->" },
+        { "name": "keyword.operator.comparison.b", "match": "==|!=|<=|>=" },
+        { "name": "keyword.operator.bitwise.shift.b", "match": "<<|>>" },
+        { "name": "keyword.operator.logical.b", "match": "&&|\\|\\|" },
+        { "name": "keyword.operator.comparison.b", "match": "<|>" },
+        { "name": "keyword.operator.logical.b", "match": "!" },
+        { "name": "keyword.operator.bitwise.b", "match": "[&|^~]" },
+        { "name": "keyword.operator.arithmetic.b", "match": "[-+*/%]" },
+        { "name": "keyword.operator.assignment.b", "match": "=" },
+        { "name": "keyword.operator.propagate.b", "match": "\\?" }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.separator.comma.b", "match": "," },
+        { "name": "punctuation.separator.colon.b", "match": ":" },
+        { "name": "punctuation.accessor.b", "match": "\\." }
+      ]
+    }
+  }
+}

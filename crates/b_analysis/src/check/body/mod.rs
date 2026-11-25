@@ -59,6 +59,8 @@ pub(super) enum BodyKind<'a> {
 pub(super) struct Local {
     pub(super) ty: Type,
     pub(super) settable: bool,
+    /// Where the name is bound, when it is written in the source.
+    pub(super) defined: Option<Span>,
 }
 
 pub(super) struct BodyChecker<'c, 'a> {
@@ -100,9 +102,29 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         self.checker.error(message, span);
     }
 
-    pub(super) fn bind(&mut self, name: &str, ty: Type, settable: bool) {
+    /// Brings a local name into scope. `defined` is where it is written, and
+    /// is noted for editors.
+    pub(super) fn bind(&mut self, name: &str, ty: Type, settable: bool, defined: Option<Span>) {
+        if let Some(span) = defined {
+            self.note_local(name, &ty, span, defined);
+        }
         let scope = self.locals.last_mut().expect("a local scope");
-        scope.insert(name.to_string(), Local { ty, settable });
+        let local = Local {
+            ty,
+            settable,
+            defined,
+        };
+        scope.insert(name.to_string(), local);
+    }
+
+    /// Notes where a local name is bound or used, for editors.
+    pub(super) fn note_local(&mut self, name: &str, ty: &Type, span: Span, defined: Option<Span>) {
+        self.checker.facts.locals.push(crate::facts::LocalName {
+            span,
+            name: name.to_string(),
+            ty: ty.clone(),
+            defined,
+        });
     }
 
     pub(super) fn local(&self, name: &str) -> Option<&Local> {

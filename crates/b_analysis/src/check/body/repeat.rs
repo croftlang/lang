@@ -47,7 +47,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 self.expect(argument, &Type::Int);
             }
         }
-        self.bind(&counter.name.name, Type::Int, false);
+        self.bind(
+            &counter.name.name,
+            Type::Int,
+            false,
+            Some(counter.name.span),
+        );
     }
 
     pub(super) fn check_break(&mut self, span: Span) -> Type {

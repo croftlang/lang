@@ -7,6 +7,8 @@
 use crate::standard::STORAGE_CONTEXT;
 use b_syntax::ast::Path;
 
+use crate::facts::Reference;
+
 use super::Checker;
 use crate::program::Context;
 use crate::symbols::SymbolKind;
@@ -37,7 +39,34 @@ impl<'a> Checker<'a> {
         context.publish.iter().any(|path| path.text() == name)
     }
 
+    /// Finds what a path names, and notes it for editors. In `Room.Error`,
+    /// `Room` is noted too, as the aggregate.
     pub(super) fn resolve(&self, scope: &Scope, path: &Path) -> Option<Resolved> {
+        let found = self.find_path(scope, path)?;
+        let mut references = self.references.borrow_mut();
+        for end in 1..path.segments.len() {
+            let prefix = Path {
+                segments: path.segments[..end].to_vec(),
+            };
+            if let Some(target) = self.find_path(scope, &prefix) {
+                let segment = &path.segments[end - 1];
+                references.push(Reference {
+                    span: segment.span,
+                    name: segment.name.clone(),
+                    target,
+                });
+            }
+        }
+        let last = path.last();
+        references.push(Reference {
+            span: last.span,
+            name: last.name.clone(),
+            target: found.clone(),
+        });
+        Some(found)
+    }
+
+    fn find_path(&self, scope: &Scope, path: &Path) -> Option<Resolved> {
         let text = path.text();
         let local = scope.context.name.name.as_str();
         if let Some(aggregate) = scope.aggregate {

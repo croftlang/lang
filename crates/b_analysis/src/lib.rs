@@ -10,8 +10,8 @@ pub mod standard;
 pub mod symbols;
 pub mod types;
 
-pub use check::{check, Model, Operation, VariantInfo};
-pub use facts::{Facts, Meaning};
+pub use check::{analyze, check, Analysis, Model, Operation, VariantInfo};
+pub use facts::{Facts, LocalName, Meaning, Reference};
 pub use manifest::{Manifest, TargetConfig, MANIFEST_FILE};
 pub use program::{Context, Program};
 pub use types::{Type, MAX_PLACES, MAX_SHIFT};
