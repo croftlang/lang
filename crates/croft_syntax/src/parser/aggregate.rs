@@ -1,4 +1,5 @@
-//! Aggregates and what they declare: fields, entities, invariants, errors, events and commands.
+//! Aggregates and what they declare: fields, entities, invariants, errors,
+//! events, commands and factories.
 
 use super::{ParseResult, Parser};
 use crate::ast::{AggregateDecl, Invariant, RecordDecl};
@@ -35,6 +36,7 @@ impl Parser {
             errors: Vec::new(),
             events: Vec::new(),
             commands: Vec::new(),
+            factories: Vec::new(),
         };
 
         while !self.check(&end) {
@@ -69,6 +71,9 @@ impl Parser {
                 aggregate.events.push(self.parse_record(Keyword::Event)?)
             }
             TokenKind::Keyword(Keyword::Command) => aggregate.commands.push(self.parse_function()?),
+            TokenKind::Keyword(Keyword::Factory) => {
+                aggregate.factories.push(self.parse_function()?)
+            }
             TokenKind::EndOfFile => return Err(self.unexpected("`}`")),
             _ => aggregate.fields.push(self.parse_field()?),
         }

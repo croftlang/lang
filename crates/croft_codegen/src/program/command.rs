@@ -1,5 +1,6 @@
-//! Commands: each works on a copy of its aggregate and gives back the changed
-//! copy only if every precondition and invariant holds.
+//! Commands and factories. A command works on a copy of its aggregate and
+//! gives back the changed copy only if every precondition and invariant holds;
+//! a factory makes a new one, held to the same invariants.
 
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::Resolved;
@@ -8,7 +9,7 @@ use croft_syntax::ast::{AggregateDecl, FunctionDecl};
 
 use super::constraints::CheckPlace;
 use crate::function::{OwnFields, Returns, Writer};
-use crate::names::c_name;
+use crate::names::{c_name, event_kind};
 use crate::Generator;
 
 impl<'a> Generator<'a> {
@@ -25,6 +26,10 @@ impl<'a> Generator<'a> {
             else {
                 continue;
             };
+
+            for factory in &aggregate.factories {
+                out.push_str(&self.factory(&found, aggregate, factory, prototypes));
+            }
 
             for command in &aggregate.commands {
                 out.push_str(&self.command(&found, aggregate, command, prototypes));
@@ -105,8 +110,87 @@ impl<'a> Generator<'a> {
             writer.value(body, &Type::Unit);
         }
 
+        writer.invariants(found, aggregate, &own_copy);
+        writer.check_fields(&own_copy, &aggregate_type);
+        writer.line("out->ok = 1;");
+        writer.line(format!("out->value = {own_copy};"));
+
+        writer.finish(&signature)
+    }
+
+    /// `Cargo_Book(args..., out)`: runs the body, which makes the aggregate,
+    /// and gives it back only if every precondition and invariant holds.
+    fn factory(
+        &self,
+        found: &Resolved,
+        aggregate: &AggregateDecl,
+        factory: &FunctionDecl,
+        prototypes: &mut Vec<String>,
+    ) -> String {
+        let aggregate_type = Type::Named(found.clone());
+        let result = Type::result(aggregate_type.clone(), Type::Errors(Vec::new()));
+        let parameters = self.factory_parameters(found, &factory.name.name);
+        let name = format!("{}_{}", c_name(found), factory.name.name);
+        let signature = self.signature(&name, &[], &parameters, Some(&result));
+        prototypes.push(format!("{signature};"));
+
+        let mut writer = Writer::new(self, &found.context, Returns::Command);
+        writer.aggregate = Some(found.name.clone());
+        writer.factory = true;
+
+        let made = writer.raw_variable("self", &self.c_type(&aggregate_type));
+        let mark = writer.raw_variable("mark", "croft_u16");
+
+        writer.line(format!("{mark} = croft_events_mark();"));
+        writer.line(format!("(void) {mark};"));
+        writer.bind_parameters(&parameters);
+
+        let label = format!("{}.{}", found.name, factory.name.name);
+
+        let place = CheckPlace {
+            context: &found.context,
+            aggregate: Some(&found.name),
+            label: &label,
+        };
+
+        let constraints = factory
+            .parameters
+            .iter()
+            .flatten()
+            .map(|p| p.constraints.as_slice());
+
+        let checked: Vec<(String, Type, &[croft_syntax::ast::ConstraintUse])> = parameters
+            .iter()
+            .zip(constraints)
+            .map(|((name, ty), constraints)| (name.clone(), ty.clone(), constraints))
+            .collect();
+
+        if let Some(call) = self.argument_check(&name, &place, &checked) {
+            writer.debug_call(&call);
+        }
+
+        writer.preconditions(&factory.preconditions, &factory.name.name);
+
+        if let Some(body) = &factory.body {
+            let value = writer.value(body, &aggregate_type);
+            writer.line(format!("{made} = {value};"));
+        }
+
+        writer.invariants(found, aggregate, &made);
+        writer.check_fields(&made, &aggregate_type);
+        writer.claim_events(found, &mark, &made);
+        writer.line("out->ok = 1;");
+        writer.line(format!("out->value = {made};"));
+
+        writer.finish(&signature)
+    }
+}
+
+impl<'g, 'a> Writer<'g, 'a> {
+    /// Fails with an invariant's error when `value` breaks it.
+    fn invariants(&mut self, found: &Resolved, aggregate: &AggregateDecl, value: &str) {
         for invariant in &aggregate.invariants {
-            let constraint = self.model.resolve(
+            let constraint = self.gen.model.resolve(
                 &found.context,
                 Some(&found.name),
                 &invariant.constraint.name,
@@ -117,6 +201,7 @@ impl<'a> Generator<'a> {
             };
 
             let rest: Vec<(String, Type)> = self
+                .gen
                 .parameters_of(&constraint)
                 .into_iter()
                 .skip(1)
@@ -130,30 +215,52 @@ impl<'a> Generator<'a> {
                     })
                     .collect();
 
-            let mut passed = vec![format!("&{own_copy}")];
-            passed.extend(writer.pass_all(&arguments, &rest));
+            let mut passed = vec![format!("&{value}")];
+            passed.extend(self.pass_all(&arguments, &rest));
 
-            let holds = writer.call_into(&c_name(&constraint), passed, &Type::Bool);
-            writer.open(format!("if (!{holds})"));
+            let holds = self.call_into(&c_name(&constraint), passed, &Type::Bool);
+            self.open(format!("if (!{holds})"));
 
             let error = invariant
                 .error
                 .as_ref()
-                .map_or("0".to_string(), |error| writer.invariant_error(error));
+                .map_or("0".to_string(), |error| self.invariant_error(error));
 
-            writer.fail(&error);
-            writer.close();
+            self.fail(&error);
+            self.close();
+        }
+    }
+
+    /// Gives each event a factory raised its source and key, which only
+    /// exist once the body has made the aggregate.
+    fn claim_events(&mut self, owner: &Resolved, mark: &str, made: &str) {
+        let emitted = std::mem::take(&mut self.emitted);
+
+        if emitted.is_empty() {
+            return;
         }
 
-        writer.check_fields(&own_copy, &aggregate_type);
-        writer.line("out->ok = 1;");
-        writer.line(format!("out->value = {own_copy};"));
+        let identity = format!("{made}.{}", self.gen.identity_field(owner));
+        let key = self.gen.event_key(owner, &identity);
+        let index = self.raw_variable("index", "croft_u16");
 
-        writer.finish(&signature)
+        self.open(format!(
+            "for ({index} = {mark}; {index} < croft_events_mark(); {index}++)"
+        ));
+
+        self.line(format!("croft_events_at({index})->key = {key};"));
+
+        for event in emitted {
+            self.line(format!(
+                "if (croft_events_at({index})->kind == {}) croft_events_at({index})->as.{}.source = {identity};",
+                event_kind(&event),
+                c_name(&event)
+            ));
+        }
+
+        self.close();
     }
-}
 
-impl<'g, 'a> Writer<'g, 'a> {
     /// The error after an invariant's `or`. Invariants are not bodies, so the
     /// checker left no notes on it; the name is looked up here.
     fn invariant_error(&mut self, error: &croft_syntax::ast::Expr) -> String {

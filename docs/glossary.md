@@ -51,7 +51,8 @@ there.
 
 ### With
 Makes a changed copy of a value: `route with { destination: "NLRTM" }`. The original
-is untouched.
+is untouched. An aggregate is only copied this way inside its own commands and
+factories; elsewhere it changes by issuing a command.
 
 ### Field
 One named, typed part of a value, entity, aggregate or error:
@@ -75,8 +76,8 @@ Entities only exist inside the aggregate that owns them.
 
 ### Aggregate
 The consistency boundary around one or more entities and values. It owns its
-entities, invariants, errors, events and commands, and is only changed by its
-own commands.
+entities, invariants, errors, events, factories and commands. It is only made
+by its own factories and only changed by its own commands.
 
 ## Constraints and invariants
 
@@ -107,7 +108,7 @@ For constraints about being in that list, not about the item itself.
 
 ### Invariant
 A constraint on an aggregate as a whole, declared inside it and checked after
-every command: `invariant ClaimedAtDestination or ClaimedElsewhere`.
+every factory and command: `invariant ClaimedAtDestination or ClaimedElsewhere`.
 
 ### Error
 A named way that working with an aggregate can fail, optionally with fields:
@@ -135,6 +136,14 @@ failures in the ubiquitous language, keeps bodies simple, and tells the
 compiler how much memory data needs.
 
 ## Behaviour
+
+### Factory
+The only way to make a new aggregate. Declared inside it, with an optional
+contract and a body that gives back the aggregate:
+`factory Book(tracking_id: TrackingId, route: RouteSpecification) = Cargo { ... }`.
+Called from the aggregate's own context with named arguments,
+`Cargo.Book(tracking_id: SAMPLE_CARGO, route: route)?`, it gives back a `Result`
+with the aggregate's errors. The new aggregate must meet its invariants.
 
 ### Command
 The only way to change an aggregate. Declared inside it, with an optional

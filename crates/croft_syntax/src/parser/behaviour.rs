@@ -1,4 +1,4 @@
-//! Functions, services, translations, commands, policies and constraints.
+//! Functions, services, translations, commands, factories, policies and constraints.
 
 use super::{ParseResult, Parser};
 use crate::ast::{ConstraintDecl, FunctionDecl, FunctionKind, PolicyDecl};
@@ -16,6 +16,7 @@ impl Parser {
             TokenKind::Keyword(Keyword::Service) => FunctionKind::Service,
             TokenKind::Keyword(Keyword::Translation) => FunctionKind::Translation,
             TokenKind::Keyword(Keyword::Command) => FunctionKind::Command,
+            TokenKind::Keyword(Keyword::Factory) => FunctionKind::Factory,
             _ => unreachable!("only called on a function keyword"),
         };
 

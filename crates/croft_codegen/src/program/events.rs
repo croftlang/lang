@@ -49,6 +49,7 @@ impl<'a> Generator<'a> {
         );
 
         out.push_str("void croft_events_push(const croft_event *event);\n");
+        out.push_str("croft_event *croft_events_at(croft_u16 index);\n");
         out.push_str("void croft_events_keep(croft_u16 aggregate, croft_int key);\n");
         out.push_str("void croft_events_dispatch_from(croft_u16 mark);\n\n");
 

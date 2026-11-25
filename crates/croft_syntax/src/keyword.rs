@@ -19,6 +19,7 @@ pub enum Keyword {
     Error,
     Event,
     Command,
+    Factory,
     Policy,
     Fn,
     Service,
@@ -44,7 +45,7 @@ pub enum Keyword {
     False,
 }
 
-const KEYWORDS: [(&str, Keyword); 38] = [
+const KEYWORDS: [(&str, Keyword); 39] = [
     ("context", Keyword::Context),
     ("domain", Keyword::Domain),
     ("publish", Keyword::Publish),
@@ -60,6 +61,7 @@ const KEYWORDS: [(&str, Keyword); 38] = [
     ("error", Keyword::Error),
     ("event", Keyword::Event),
     ("command", Keyword::Command),
+    ("factory", Keyword::Factory),
     ("policy", Keyword::Policy),
     ("fn", Keyword::Fn),
     ("service", Keyword::Service),

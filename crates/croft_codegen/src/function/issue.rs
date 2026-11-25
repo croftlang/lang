@@ -122,14 +122,25 @@ impl<'g, 'a> Writer<'g, 'a> {
             kind: SymbolKind::Aggregate,
         };
 
-        let identity = self.gen.identity_field(&owner);
-        self.line(format!("{queued}.as.{name}.source = self.{identity};"));
         self.line(format!("{queued}.aggregate = {};", aggregate_kind(&owner)));
 
-        self.line(format!(
-            "{queued}.key = {};",
-            self.gen.event_key(&owner, &format!("self.{identity}"))
-        ));
+        // A factory's aggregate does not exist yet: its source and key are
+        // filled in once the body has made it.
+        if self.factory {
+            self.line(format!("{queued}.key = 0;"));
+
+            if !self.emitted.contains(&found) {
+                self.emitted.push(found.clone());
+            }
+        } else {
+            let identity = self.gen.identity_field(&owner);
+            self.line(format!("{queued}.as.{name}.source = self.{identity};"));
+
+            self.line(format!(
+                "{queued}.key = {};",
+                self.gen.event_key(&owner, &format!("self.{identity}"))
+            ));
+        }
 
         self.line(format!("croft_events_push(&{queued});"));
 

@@ -1,0 +1,8 @@
+[package]
+name = "factories"
+
+[target.test]
+main = "Start"
+
+[target.test.adapters]
+Boards = "MemoryStorage"

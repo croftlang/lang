@@ -60,6 +60,8 @@ pub struct AggregateDecl {
     pub errors: Vec<RecordDecl>,
     pub events: Vec<RecordDecl>,
     pub commands: Vec<FunctionDecl>,
+    /// The only ways to make a new one: `factory Book(...) = Cargo { ... }`.
+    pub factories: Vec<FunctionDecl>,
 }
 
 /// `invariant ExitClear or ExitBlocked`

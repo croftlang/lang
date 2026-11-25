@@ -132,6 +132,10 @@ impl<'a> Checker<'a> {
             for command in &aggregate.commands {
                 self.expect_case(&command.name, Case::Pascal, "command");
             }
+
+            for factory in &aggregate.factories {
+                self.expect_case(&factory.name, Case::Pascal, "factory");
+            }
         }
     }
 }

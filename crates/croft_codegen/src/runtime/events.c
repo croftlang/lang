@@ -25,6 +25,12 @@ void croft_events_push(const croft_event *event)
     }
 }
 
+/* A queued event, for a factory to fill in what only its finished aggregate knows. */
+croft_event *croft_events_at(croft_u16 index)
+{
+    return &croft_events[index];
+}
+
 void croft_events_keep(croft_u16 aggregate, croft_int key)
 {
     croft_u16 index;

@@ -23,3 +23,11 @@ event DestinationChanged { destination: UnLocode }
 event Handled { activity: HandlingActivity }
 event Misdirected { location: UnLocode }
 event Arrived { at: UnLocode }
+
+// A new booking starts unrouted, waiting at its origin to be received.
+factory Book(tracking_id: TrackingId, route: RouteSpecification) = Cargo {
+    tracking_id
+    route
+    itinerary: Itinerary { legs: [] }
+    delivery: Delivery { transport_status: NotReceived, last_location: None, current_voyage: None, misdirected: false }
+}

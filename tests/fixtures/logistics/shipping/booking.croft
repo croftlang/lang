@@ -10,14 +10,13 @@ enum ShippingError {
 
 // Books a cargo from Hong Kong to Helsinki, due in 30 days. It starts
 // unrouted, waiting in Hong Kong to be received.
-service SetUpBooking(): Result<Unit, StorageError> {
+service SetUpBooking(): Result<Unit, ShippingError> {
     calls Cargos
-} = cargos.save(Cargo {
-    tracking_id: SAMPLE_CARGO
-    route: RouteSpecification { origin: "CNHKG", destination: "FIHEL", arrival_deadline: 30 }
-    itinerary: Itinerary { legs: [] }
-    delivery: Delivery { transport_status: NotReceived, last_location: None, current_voyage: None, misdirected: false }
-})
+} = {
+    let route = RouteSpecification { origin: "CNHKG", destination: "FIHEL", arrival_deadline: 30 }
+    let cargo = Cargo.Book(tracking_id: SAMPLE_CARGO, route: route)?
+    cargos.save(cargo)?
+}
 
 // Asks Routing for a path that meets the route specification, and plans
 // the cargo's legs along it.
@@ -52,14 +51,13 @@ service RegisterHandlingEvent(report: HandlingReport): Result<Unit, ShippingErro
     calls Cargos, HandlingEvents, Clock
 } = {
     let cargo = cargos.find(report.tracking_id)?
-    let handling = HandlingEvent {
-        id: report.number
-        tracking_id: cargo.tracking_id
-        activity: report.activity
+    let handling = HandlingEvent.Register(
+        id: report.number,
+        tracking_id: cargo.tracking_id,
+        activity: report.activity,
         completed_on: clock.today()
-    }
-    let registered = issue Register on handling?
-    handling_events.save(registered)?
+    )?
+    handling_events.save(handling)?
 }
 
 // Prints where the cargo is, for a customer asking after it.

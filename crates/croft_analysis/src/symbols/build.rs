@@ -96,6 +96,9 @@ pub fn build_table(context: &Context, errors: &mut Vec<Diagnostic>) -> SymbolTab
         let commands = aggregate.commands.iter().map(|c| &c.name);
         table.add_all(commands, &prefix, SymbolKind::Command, errors);
 
+        let factories = aggregate.factories.iter().map(|f| &f.name);
+        table.add_all(factories, &prefix, SymbolKind::Factory, errors);
+
         let error_set = format!("{prefix}Error");
         table.add(error_set, SymbolKind::ErrorSet, aggregate.name.span, errors);
     }

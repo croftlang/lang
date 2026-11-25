@@ -8,13 +8,15 @@ pub enum FunctionKind {
     Service,
     Translation,
     Command,
+    /// Makes a new aggregate: `factory Book(...) = Cargo { ... }`.
+    Factory,
     Operation,
     /// The body of a `domain`, which runs first.
     Domain,
 }
 
-/// Anything with a signature: functions, services, translations, commands and
-/// port or adapter operations. Commands without parameters have none.
+/// Anything with a signature: functions, services, translations, commands,
+/// factories and port or adapter operations. Commands without parameters have none.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDecl {
     pub doc: Vec<String>,

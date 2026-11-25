@@ -50,6 +50,10 @@ impl<'a> Checker<'a> {
             for command in &aggregate.commands {
                 self.check_function_body(scope, BodyKind::Command(aggregate), command);
             }
+
+            for factory in &aggregate.factories {
+                self.check_function_body(scope, BodyKind::Factory(aggregate), factory);
+            }
         }
 
         for policy in &context.policies {
@@ -83,6 +87,19 @@ impl<'a> Checker<'a> {
 
                 Type::result(Type::Unit, errors)
             }
+            (BodyKind::Factory(aggregate), _) => {
+                let made = self
+                    .lookup(&scope.context.name.name, &aggregate.name.name)
+                    .map_or(Type::Unknown, Type::Named);
+
+                let errors = format!("{}.Error", aggregate.name.name);
+
+                let errors = self
+                    .lookup(&scope.context.name.name, &errors)
+                    .map_or(Type::Unknown, Type::Named);
+
+                Type::result(made, errors)
+            }
             (_, Some(ty)) => self.lower_type(&scope, ty),
             // A domain's body can pass up any error; the program then stops with it.
             (_, None) if function.kind == FunctionKind::Domain => {
@@ -102,8 +119,13 @@ impl<'a> Checker<'a> {
             body.check_precondition(precondition);
         }
 
-        if let Some(value) = &function.body {
-            body.expect_body(value);
+        match (&function.body, kind, &result) {
+            // A factory's body is the aggregate itself; `?` and `or` fail the factory.
+            (Some(value), BodyKind::Factory(_), Type::Result(made, _)) => {
+                body.expect(value, made);
+            }
+            (Some(value), _, _) => body.expect_body(value),
+            (None, _, _) => {}
         }
     }
 

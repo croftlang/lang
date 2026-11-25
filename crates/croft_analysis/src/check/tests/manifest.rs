@@ -94,9 +94,10 @@ fn reports_unknown_keys_in_the_file() {
 
 const SHOP: &str = "context Shop {\n\
     identity ShelfId for Shelf: Int where Range(1, 9)\n\
-    aggregate Shelf {\n id: ShelfId\n error NotFound\n }\n\
+    aggregate Shelf {\n id: ShelfId\n error NotFound\n factory Open(id: ShelfId) = Shelf { id }\n }\n\
+    enum ShopError {\n include Shelf.Error\n include StorageError\n }\n\
     repository Shelves for Shelf\n\
-    service Main(): Result<Unit, StorageError> {\n calls Shelves\n} = shelves.save(Shelf { id: 1 })\n}";
+    service Main(): Result<Unit, ShopError> {\n calls Shelves\n} = shelves.save(Shelf.Open(id: 1)?)\n}";
 
 fn check_shop(adapters: &str) -> Vec<String> {
     check_source(SHOP, adapters)

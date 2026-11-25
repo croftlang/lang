@@ -74,7 +74,7 @@ impl<'a> Checker<'a> {
         Some(found)
     }
 
-    fn find_path(&self, scope: &Scope, path: &Path) -> Option<Resolved> {
+    pub(super) fn find_path(&self, scope: &Scope, path: &Path) -> Option<Resolved> {
         let text = path.text();
         let local = scope.context.name.name.as_str();
 

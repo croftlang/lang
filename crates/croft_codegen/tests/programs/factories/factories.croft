@@ -1,0 +1,91 @@
+// Factories, checked at run time: a new board is held to its invariant
+// before it exists, and the event its factory raises reaches the policy
+// only once the board is saved.
+context Game
+
+error WrongAnswer
+
+identity BoardId for Board: Int where Range(1, 9)
+
+constraint WithinTarget(board: Board) = board.points <= board.target
+
+aggregate Board {
+    id: BoardId
+    points: Int
+    target: Int
+    welcomed: Bool
+
+    invariant WithinTarget or PastTarget
+
+    error NotFound
+    error PastTarget
+
+    event Opened { target: Int }
+
+    // A board can start with points already on it, but never past its target.
+    factory Open(id: BoardId, points: Int, target: Int) = {
+        emit Opened { target }
+        Board { id, points, target, welcomed: false }
+    }
+
+    command Welcome = {
+        set welcomed = true
+    }
+}
+
+repository Boards for Board
+
+policy WelcomeOnOpen when Board.Opened {
+    issue Welcome on Board(event.source)
+}
+
+enum GameError {
+    include Board.Error
+    include StorageError
+    include WrongAnswer
+}
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn is_past_target(error: Board.Error): Bool = match error {
+    PastTarget -> true
+    NotFound -> false
+}
+
+// Makes a board and saves it, so its Opened event is kept.
+service OpenAndSave(id: BoardId): Result<Unit, GameError> {
+    calls Boards
+} = {
+    let board = Board.Open(id: id, points: 2, target: 10)?
+    boards.save(board)?
+}
+
+// Makes a board but never saves it, so its Opened event is dropped.
+service OpenOnly(id: BoardId): Result<Unit, GameError> = {
+    let board = Board.Open(id: id, points: 0, target: 5)?
+    check(board.target == 5)?
+}
+
+service Start(): Result<Unit, GameError> {
+    calls Boards
+} = {
+    let refused = match Board.Open(id: 3, points: 20, target: 10) {
+        Ok(board) -> false
+        Err(error) -> is_past_target(error)
+    }
+    check(refused)?
+    OpenAndSave(1)?
+    let saved = boards.find(1)?
+    check(saved.points == 2 && saved.welcomed)?
+    OpenOnly(2)?
+    let missing = match boards.find(2) {
+        Ok(board) -> false
+        Err(error) -> true
+    }
+    check(missing)?
+}

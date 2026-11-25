@@ -10,6 +10,8 @@ context Shop {
 
         error NotFound
 
+        factory Stock(id: ShelfId, stock: Int) = Shelf { id, stock }
+
         command Restock = {
             set stock = stock + 5
         }
@@ -32,6 +34,8 @@ context Shop {
     aggregate Till {
         identity id: TillId
         cash: Int
+
+        factory Open(id: TillId, cash: Int) = Till { id, cash }
     }
 
     repository Tills for Till {
@@ -70,7 +74,7 @@ context Shop {
     } = {
         let nothing = shelves.find(4)?
         check(nothing.is_none)?
-        shelves.keep(Shelf { id: 4, stock: 10 })?
+        shelves.keep(Shelf.Stock(id: 4, stock: 10)?)?
         let kept = shelves.find(4)?
         check(kept.map(shelf -> shelf.stock).unwrap_or(0) == 10)?
         issue Restock on Shelf(4)?
@@ -82,8 +86,8 @@ context Shop {
             Err(error) -> true
         }
         check(missing)?
-        tills.save(Till { id: 1, cash: 20 })?
-        tills.save(Till { id: 2, cash: 80 })?
+        tills.save(Till.Open(id: 1, cash: 20)?)?
+        tills.save(Till.Open(id: 2, cash: 80)?)?
         let rich = tills.holding_over(50)?
         check(rich.length == 1)
     }

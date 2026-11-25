@@ -42,7 +42,7 @@ const PREC = {
 const KEYWORDS = [
   'context', 'domain', 'publish', 'use', 'value', 'entity', 'aggregate',
   'identity', 'enum', 'const', 'constraint', 'invariant', 'error', 'event',
-  'command', 'policy', 'fn', 'service', 'port', 'adapter', 'repository',
+  'command', 'factory', 'policy', 'fn', 'service', 'port', 'adapter', 'repository',
   'translation', 'let', 'set', 'loop', 'break', 'emit', 'issue', 'if',
   'match', 'with', 'where', 'each', 'calls', 'native', 'or', 'true', 'false',
 ];
@@ -250,7 +250,7 @@ module.exports = grammar({
 
     // Anything with a signature. Only the name is required.
     function_declaration: $ => prec.right(seq(
-      field('kind', choice('fn', 'service', 'translation', 'command')),
+      field('kind', choice('fn', 'service', 'translation', 'command', 'factory')),
       field('name', $._name),
       optional(field('type_parameters', $.type_parameters)),
       optional(field('parameters', $.parameters)),
