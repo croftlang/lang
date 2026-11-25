@@ -78,9 +78,8 @@ croft_bool croft_string_starts_with(croft_string_view text, croft_string_view pa
 croft_bool croft_string_ends_with(croft_string_view text, croft_string_view part);
 void croft_string_to_upper(croft_string_view text, char *out, croft_u16 *length, croft_u16 capacity);
 void croft_string_to_lower(croft_string_view text, char *out, croft_u16 *length, croft_u16 capacity);
-void croft_string_trim(croft_string_view text, char *out, croft_u16 *length, croft_u16 capacity);
-void croft_string_slice(croft_string_view text, croft_int start, croft_int end, char *out, croft_u16 *length,
-                        croft_u16 capacity);
+croft_string_view croft_string_trimmed(croft_string_view text);
+croft_string_view croft_string_part(croft_string_view text, croft_int start, croft_int end);
 void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u16 capacity);
 
 croft_int croft_divide_even(croft_int numerator, croft_int denominator);

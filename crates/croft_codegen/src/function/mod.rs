@@ -82,6 +82,9 @@ pub struct Writer<'g, 'a> {
     /// What the function was seen to give back: its result type, with the
     /// bounds of every value written to `out`.
     pub(crate) returned: Option<Type>,
+    /// Temporaries that keep what was first written to them until the
+    /// function returns, so a string can be borrowed from one.
+    pub(crate) stable: HashSet<String>,
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -103,6 +106,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             views: HashSet::new(),
             bounded: HashMap::new(),
             returned: None,
+            stable: HashSet::new(),
         }
     }
 }

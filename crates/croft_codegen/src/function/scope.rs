@@ -44,12 +44,36 @@ impl<'g, 'a> Writer<'g, 'a> {
             return;
         }
 
-        let given = self.gen.keep_bound(ty, result);
+        // What leaves the function is copied out of anything it borrows from.
+        let given = self.gen.owned_type(&self.gen.keep_bound(ty, result));
 
         self.returned = Some(match &self.returned {
             Some(earlier) => self.gen.wider(earlier, &given),
             None => given,
         });
+    }
+
+    /// Whether the string a view borrows stays put until the function
+    /// returns: a literal, a parameter, a part of one, or a temporary.
+    pub fn is_stable(&self, view: &str) -> bool {
+        if view.starts_with("croft_string_view_from(\"") || self.views.contains(view) {
+            return true;
+        }
+
+        if matches!(self.bounded.get(view), Some(Type::Borrowed(_))) {
+            return true;
+        }
+
+        let Some(inner) = view
+            .strip_prefix("CROFT_VIEW(")
+            .and_then(|v| v.strip_suffix(')'))
+        else {
+            return false;
+        };
+
+        let root = inner.split(['.', '[']).next().unwrap_or(inner);
+
+        self.stable.contains(root) || matches!(self.bounded.get(inner), Some(Type::Borrowed(_)))
     }
 
     /// The type of the value `c` holds: `ty` with the bounds of its strings,
@@ -80,6 +104,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// failure never carries an unset value around.
     pub fn temp(&mut self, ty: &Type) -> String {
         let temp = self.variable("t", ty);
+        self.stable.insert(temp.clone());
 
         if matches!(ty, Type::Option(_) | Type::Result(..)) {
             self.line(format!("croft_clear(&{temp}, sizeof {temp});"));

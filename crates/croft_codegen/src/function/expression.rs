@@ -12,6 +12,9 @@ use crate::types::constant::{scale, scaled};
 impl<'g, 'a> Writer<'g, 'a> {
     /// The value of `value`, as a C expression of the C type for `want`.
     pub fn value(&mut self, value: &Expr, want: &Type) -> String {
+        // A value made for a place of its own owns its strings.
+        let want = &self.gen.owned_type(want);
+
         // A literal, `[]` or `None` is written straight into the type wanted.
         if matches!(value.kind, ExprKind::String(_)) && is_string(want)
             || self.is_empty(value, want)

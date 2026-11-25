@@ -136,7 +136,8 @@ void croft_string_to_lower(croft_string_view text, char *out, croft_u16 *length,
     }
 }
 
-void croft_string_trim(croft_string_view text, char *out, croft_u16 *length, croft_u16 capacity)
+/* The text without the spaces at either end, still borrowed from text. */
+croft_string_view croft_string_trimmed(croft_string_view text)
 {
     croft_int start = 0;
     croft_int end = text.length;
@@ -146,12 +147,11 @@ void croft_string_trim(croft_string_view text, char *out, croft_u16 *length, cro
     while (end > start && text.text[end - 1] == ' ') {
         end--;
     }
-    croft_string_slice(text, start, end, out, length, capacity);
+    return croft_string_part(text, start, end);
 }
 
-/* Copied forwards, so out may be the string the text is borrowed from. */
-void croft_string_slice(croft_string_view text, croft_int start, croft_int end, char *out, croft_u16 *length,
-                        croft_u16 capacity)
+/* The characters from start up to end, still borrowed from text. */
+croft_string_view croft_string_part(croft_string_view text, croft_int start, croft_int end)
 {
     if (start < 0) {
         start = 0;
@@ -162,7 +162,7 @@ void croft_string_slice(croft_string_view text, croft_int start, croft_int end, 
     if (end < start) {
         end = start;
     }
-    croft_string_copy(croft_string_view_from(text.text + start, (croft_u16) (end - start)), out, length, capacity);
+    return croft_string_view_from(text.text + start, (croft_u16) (end - start));
 }
 
 void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u16 capacity)

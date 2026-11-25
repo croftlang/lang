@@ -81,6 +81,7 @@ impl<'a> Generator<'a> {
                 self.texts.borrow_mut().insert(i64::from(*length));
                 format!("croft_text_{length}")
             }
+            Type::Borrowed(_) => "croft_string_view".to_string(),
             Type::Bytes => "croft_bytes".to_string(),
             Type::Unit | Type::Unknown | Type::Port(_) | Type::Repository(_) => {
                 "croft_unit".to_string()

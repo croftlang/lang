@@ -458,9 +458,9 @@ fn keeps_strings_in_the_size_they_can_need() {
     run_program("bounded_strings");
 }
 
-/// `split` on a parameter with a `Length` makes a list of strings that
-/// size, not of the longest string anywhere, and a function's result is as
-/// long as what it gives back.
+/// `split` borrows each part from the string it splits, a function gives
+/// back a string as long as it can need, and a parameter's `Length` sizes
+/// what is made from it.
 #[test]
 fn sizes_strings_from_where_they_come_from() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/bounded_strings");
@@ -470,7 +470,9 @@ fn sizes_strings_from_where_they_come_from() {
     let start = c.find("void Words_words(").expect("words");
     let body = &c[start..start + c[start..].find("\n}\n").expect("its end")];
 
-    assert!(body.contains("croft_list_text_12 t"), "{body}");
+    // Each part is borrowed from the lowered line, and copied only to be given back.
+    assert!(body.contains("croft_list_string_view t"), "{body}");
+    assert!(body.contains("croft_list_text_12 *out"), "{body}");
     assert!(!body.contains("croft_string t"), "{body}");
 
     // Results are as long as what the body gives back, or their own `Length`.

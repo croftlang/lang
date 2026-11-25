@@ -46,7 +46,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// A view of `c`: any string, or a view already.
     pub fn view_of(&self, c: &str) -> String {
-        if self.views.contains(c) {
+        if self.views.contains(c) || matches!(self.bounded.get(c), Some(Type::Borrowed(_))) {
             return c.to_string();
         }
 

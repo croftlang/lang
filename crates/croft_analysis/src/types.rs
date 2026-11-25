@@ -31,6 +31,10 @@ pub enum Type {
     /// generation makes one, once it has worked out how long a string can
     /// be; the checker never does, so every rule about `String` sees it as one.
     Text(u16),
+    /// At most this many characters borrowed from a string that stays put
+    /// until the function returns, such as each part of a `split`. Only code
+    /// generation makes one.
+    Borrowed(u16),
     /// A sequence of bytes, each from 0 to 255: file contents, a save, a
     /// network message.
     Bytes,
@@ -96,7 +100,7 @@ impl fmt::Display for Type {
             Type::Float => write!(f, "Float"),
             Type::Decimal(places) => write!(f, "Decimal<{places}>"),
             Type::Bool => write!(f, "Bool"),
-            Type::String | Type::Text(_) => write!(f, "String"),
+            Type::String | Type::Text(_) | Type::Borrowed(_) => write!(f, "String"),
             Type::Bytes => write!(f, "Bytes"),
             Type::Unit => write!(f, "Unit"),
             Type::List(item) => write!(f, "List<{item}>"),
