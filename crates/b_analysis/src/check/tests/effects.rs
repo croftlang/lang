@@ -132,3 +132,18 @@ fn gives_back_unit_when_there_is_no_return_type() {
     );
     assert_eq!(errors(&source), Vec::<String>::new());
 }
+
+/// An aggregate with no errors never fails, so issuing its commands can be
+/// passed up through any error type, and its empty error set included.
+#[test]
+fn an_aggregate_with_no_errors_passes_up_anywhere() {
+    let source = "context Shipping {\n\
+         identity EventId: Int\n\
+         error NoRoute\n\
+         aggregate Handling {\n identity id: EventId\n event Registered {}\n command Register = {\n emit Registered {}\n }\n }\n\
+         enum ShippingError {\n include NoRoute\n }\n\
+         enum Everything {\n include Handling.Error\n include NoRoute\n }\n\
+         service Register(handling: Handling): Result<Handling, ShippingError> = {\n let registered = issue Register on handling?\n registered\n }\n\
+         }";
+    assert_eq!(errors(source), Vec::<String>::new());
+}

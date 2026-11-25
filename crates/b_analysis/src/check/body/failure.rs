@@ -45,8 +45,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     pub(super) fn check_failure(&mut self, error: &Expr) {
         let expected = self.error.clone();
         let found = self.expr(error, expected.as_ref());
-        let is_error = matches!(&found, Type::Named(n) if !self.checker.error_members(n).is_empty())
-            || found.is_unknown();
+        let is_error =
+            matches!(&found, Type::Named(n) if self.checker.is_error_type(n)) || found.is_unknown();
         if !is_error {
             self.error(
                 format!("expected an error after `or`, found `{found}`"),

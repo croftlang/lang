@@ -1,0 +1,25 @@
+// A cargo: what the customer booked, the route planned for it, and where
+// it has got to.
+context Shipping
+aggregate Cargo
+
+identity tracking_id: TrackingId
+route: RouteSpecification
+itinerary: Itinerary
+delivery: Delivery
+
+invariant ClaimedAtDestination or ClaimedElsewhere
+
+error NotFound
+
+// The customer has collected the cargo, so nothing more can happen to it.
+error AlreadyClaimed
+
+// The cargo was claimed somewhere other than its destination.
+error ClaimedElsewhere
+
+event Routed { itinerary: Itinerary }
+event DestinationChanged { destination: UnLocode }
+event Handled { activity: HandlingActivity }
+event Misdirected { location: UnLocode }
+event Arrived { at: UnLocode }

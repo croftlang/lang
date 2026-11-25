@@ -28,7 +28,7 @@ impl<'a> Model<'a> {
     pub fn is_error(&self, ty: &Type) -> bool {
         match ty {
             Type::Errors(_) => true,
-            Type::Named(named) => !self.checker.error_members(named).is_empty(),
+            Type::Named(named) => self.checker.is_error_type(named),
             _ => false,
         }
     }

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use super::check_files;
 
 fn find_b_files(folder: &Path, found: &mut Vec<PathBuf>) {
-    for entry in fs::read_dir(folder).expect("examples folder") {
+    for entry in fs::read_dir(folder).expect("fixture folder") {
         let path = entry.expect("folder entry").path();
         if path.is_dir() {
             find_b_files(&path, found);
@@ -15,8 +15,8 @@ fn find_b_files(folder: &Path, found: &mut Vec<PathBuf>) {
 }
 
 #[test]
-fn accepts_the_dungeon_example() {
-    let folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/dungeon");
+fn accepts_the_logistics_fixture() {
+    let folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/logistics");
     let mut paths = Vec::new();
     find_b_files(&folder, &mut paths);
     let sources: Vec<String> = paths
@@ -33,7 +33,7 @@ fn accepts_the_dungeon_example() {
             .count(),
         3
     );
-    assert_eq!(program.domains[0].name.name, "Game");
+    assert_eq!(program.domains[0].name.name, "Logistics");
 }
 
 #[test]

@@ -110,6 +110,13 @@ fn makes_an_instance_of_each_generic_for_each_type() {
     run_program("generics");
 }
 
+/// Lists get room from the `Length` on a function's result and a command's
+/// parameter, not only from fields.
+#[test]
+fn sizes_lists_from_results_and_command_parameters() {
+    run_program("sizes");
+}
+
 #[test]
 fn runs_commands_events_policies_and_repositories() {
     run_program("game");
@@ -231,23 +238,24 @@ fn stops_with_the_error_when_the_domain_fails() {
 }
 
 #[test]
-fn runs_the_dungeon_example_until_it_quits() {
-    run_program_at(
-        &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/dungeon"),
-        "dungeon_run",
-    );
+fn runs_the_logistics_fixture() {
+    run_program_at(&logistics(), "logistics_run");
 }
 
-/// The scripted keys move the player, then defeat the nearest enemy, whose
-/// `EnemyDefeated` event makes Dungeon drop treasure and Scoring add points.
+fn logistics() -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/logistics")
+}
+
+/// The scripted reports take the cargo from Hong Kong to Helsinki along the
+/// route Routing found. Each handling event registered reaches the cargo
+/// through the `UpdateDelivery` policy, until it is claimed.
 #[test]
-fn plays_the_dungeon_as_scripted() {
+fn ships_the_cargo_as_scripted() {
     if !has_c_compiler() {
         return;
     }
-    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/dungeon");
-    let output = generate(&example, "test", "dungeon_outcome");
-    let harness = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/harness/dungeon_outcome.c");
+    let output = generate(&logistics(), "test", "logistics_outcome");
+    let harness = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/harness/logistics_outcome.c");
     fs::copy(harness, output.join("outcome.c")).unwrap();
     let renamed = compile(&output, &["-c", "-Dmain=b_program_main", "program.c"]);
     assert!(
@@ -277,27 +285,25 @@ fn plays_the_dungeon_as_scripted() {
     let printed = String::from_utf8_lossy(&ran.stdout);
     assert_eq!(
         printed,
-        "status 0\nplayer 32,24\nenemies 1 treasure 1\npoints 100\n"
+        "Claimed at FIHEL\nRouted\nstatus 0\nlegs 2\nclaimed 1 at FIHEL\nmisdirected 0\nlast event 1 on day 10\n"
     );
     fs::remove_dir_all(output).ok();
 }
 
 #[test]
-fn compiles_the_dungeon_example_for_every_target() {
+fn compiles_the_logistics_fixture_for_every_target() {
     if !has_c_compiler() {
         return;
     }
-    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/dungeon");
-    for target in ["test", "spectrum_48k"] {
-        let output = generate(&example, target, "dungeon");
-        if target == "spectrum_48k" {
-            fs::copy(
-                example.join("platform/spectrum.c"),
-                output.join("spectrum.c"),
-            )
-            .unwrap();
+    let fixture = logistics();
+    for target in ["test", "desktop"] {
+        let output = generate(&fixture, target, "logistics");
+        let mut files = vec!["-c", "b_runtime.c", "program.c"];
+        if target == "desktop" {
+            fs::copy(fixture.join("platform/desktop.c"), output.join("desktop.c")).unwrap();
+            files.extend(["b_files.c", "desktop.c"]);
         }
-        let built = compile(&output, &["-c", "b_runtime.c", "program.c"]);
+        let built = compile(&output, &files);
         assert!(
             built.status.success(),
             "{target}: {}",

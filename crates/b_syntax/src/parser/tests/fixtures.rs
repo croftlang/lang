@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use super::parse_ok;
 
 fn find_b_files(folder: &Path, found: &mut Vec<PathBuf>) {
-    for entry in fs::read_dir(folder).expect("examples folder") {
+    for entry in fs::read_dir(folder).expect("a folder of b files") {
         let path = entry.expect("folder entry").path();
         if path.is_dir() {
             find_b_files(&path, found);
@@ -15,11 +15,11 @@ fn find_b_files(folder: &Path, found: &mut Vec<PathBuf>) {
 }
 
 #[test]
-fn parses_every_example_file() {
-    let examples = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
+fn parses_every_fixture_file() {
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures");
     let mut files = Vec::new();
-    find_b_files(&examples, &mut files);
-    assert!(files.len() > 5, "expected the dungeon example files");
+    find_b_files(&fixtures, &mut files);
+    assert!(files.len() > 5, "expected the fixture files");
     for path in files {
         let source = fs::read_to_string(&path).expect("example file");
         let file = std::panic::catch_unwind(|| parse_ok(&source));

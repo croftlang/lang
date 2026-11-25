@@ -1,0 +1,100 @@
+// Shipping: booking cargo, routing it and tracking where it is. The core
+// of the business, in the words the company's own people use.
+context Shipping
+
+publish {
+    SetUpBooking,
+    RouteCargo,
+    RegisterReports,
+    Track,
+    SAMPLE_CARGO,
+    TrackingId,
+    UnLocode,
+    VoyageNumber,
+    Day,
+    HandlingType,
+    HandlingActivity,
+    HandlingReport,
+    HandlingReports,
+    HandlingEventId,
+    Clock
+}
+
+const MAX_LEGS: Int = 6
+const SAMPLE_CARGO: TrackingId = 1
+
+identity TrackingId: Int where Range(1, 9999)
+identity HandlingEventId: Int where Range(1, 9999)
+
+// A UN/LOCODE, such as CNHKG for Hong Kong: two letters for the country,
+// then three for the place.
+value UnLocode: String where Length(5)
+
+// A scheduled voyage, such as V100.
+value VoyageNumber: String where Length(4)
+
+// Days since the season began.
+value Day: Int where Range(0, 3650)
+
+// Where the cargo must go, and when it must be there by. The customer
+// agrees this when booking; it changes only when they ask.
+value RouteSpecification {
+    origin: UnLocode
+    destination: UnLocode
+    arrival_deadline: Day
+}
+
+// One voyage the cargo takes, from loading to unloading.
+value Leg {
+    voyage: VoyageNumber
+    load_at: UnLocode
+    unload_at: UnLocode
+    load_day: Day
+    unload_day: Day
+}
+
+// The legs planned for the cargo, in order. A cargo with no legs has not
+// been routed.
+value Itinerary {
+    legs: List<Leg> where Length(0, MAX_LEGS), each GoesSomewhere
+}
+
+enum HandlingType { Receive, Load, Unload, Claim }
+
+// What was done to a cargo, and where. Loading and unloading name the
+// voyage.
+value HandlingActivity {
+    kind: HandlingType
+    location: UnLocode
+    voyage: Option<VoyageNumber>
+}
+
+// What a dock terminal reports: which cargo, and what was done to it. The
+// terminal numbers each report, and the number identifies the handling
+// event registered for it.
+value HandlingReport {
+    number: HandlingEventId
+    tracking_id: TrackingId
+    activity: HandlingActivity
+}
+
+enum TransportStatus { NotReceived, InPort, OnboardCarrier, Claimed }
+
+enum RoutingStatus { NotRouted, Routed, Misrouted }
+
+// Where the cargo is in its journey, worked out from how it was last handled.
+value Delivery {
+    transport_status: TransportStatus
+    last_location: Option<UnLocode>
+    current_voyage: Option<VoyageNumber>
+    misdirected: Bool
+}
+
+constraint GoesSomewhere(leg: Leg) = leg.load_at != leg.unload_at && leg.load_day.value <= leg.unload_day.value
+
+// A cargo is only ever claimed where it was going.
+constraint ClaimedAtDestination(cargo: Cargo) =
+    cargo.delivery.transport_status != Claimed || cargo.delivery.last_location == Some(cargo.route.destination)
+
+// Routing found no path that meets the route specification.
+error NoRoute

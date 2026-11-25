@@ -1,0 +1,56 @@
+// Routing: finding paths through the network of scheduled voyages. It is
+// another team's system with a model of its own, of nodes, edges and paths,
+// and knows nothing of cargo. Shipping reaches it through a translation.
+context Routing {
+    publish { Edge, Path, find_path }
+
+    const MAX_DAY: Int = 3650
+    const MAX_EDGES: Int = 16
+
+    // One scheduled voyage between two nodes, leaving and arriving on the
+    // days given.
+    value Edge {
+        voyage: String where Length(4)
+        from_node: String where Length(5)
+        to_node: String where Length(5)
+        departs: Int where Range(0, MAX_DAY)
+        arrives: Int where Range(0, MAX_DAY)
+    }
+
+    // The edges to follow, in order.
+    value Path {
+        edges: List<Edge> where Length(1, 2)
+    }
+
+    // The voyages scheduled this season.
+    fn timetable(): List<Edge> where Length(0, MAX_EDGES) = [
+        Edge { voyage: "V100", from_node: "CNHKG", to_node: "USLBG", departs: 1, arrives: 14 },
+        Edge { voyage: "V200", from_node: "USLBG", to_node: "FIHEL", departs: 16, arrives: 28 },
+        Edge { voyage: "V300", from_node: "CNHKG", to_node: "NLRTM", departs: 3, arrives: 26 },
+        Edge { voyage: "V400", from_node: "NLRTM", to_node: "FIHEL", departs: 27, arrives: 31 }
+    ]
+
+    // A path from one node to another that arrives by the deadline: the
+    // earliest direct voyage, or else a voyage with one change.
+    fn find_path(start: String, end: String, deadline: Int): Option<Path> = {
+        let edges = timetable()
+        let direct = edges
+            .filter(edge -> edge.from_node == start && edge.to_node == end && edge.arrives <= deadline)
+            .min_by(edge -> edge.arrives)
+        match direct {
+            Some(edge) -> Some(Path { edges: [edge] })
+            None -> with_one_change(edges, start, end, deadline)
+        }
+    }
+
+    fn with_one_change(edges: List<Edge>, start: String, end: String, deadline: Int): Option<Path> =
+        match edges.find(first -> first.from_node == start && onward(edges, first, end, deadline).is_some) {
+            Some(first) -> onward(edges, first, end, deadline).map(next -> Path { edges: [first, next] })
+            None -> None
+        }
+
+    // A voyage on to the end from where `first` arrives, leaving after it does.
+    fn onward(edges: List<Edge>, first: Edge, end: String, deadline: Int): Option<Edge> = edges.find(
+        next -> next.from_node == first.to_node && next.to_node == end && next.departs >= first.arrives && next.arrives <= deadline
+    )
+}

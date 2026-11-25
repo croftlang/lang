@@ -28,8 +28,7 @@ impl<'a> Generator<'a> {
                 variant.name
             ));
         }
-        let body =
-            format!("    b_u8 tag;\n    union {{\n{cases}        b_u8 none;\n    }} as;\n");
+        let body = format!("    b_u8 tag;\n    union {{\n{cases}        b_u8 none;\n    }} as;\n");
         format!("{tags}{}", struct_definition(&name, &body))
     }
 }

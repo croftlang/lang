@@ -7,25 +7,33 @@ constraints you attach to them. b is designed to compile to portable C, so one
 program can run on a ZX Spectrum, an Atari ST, Windows, macOS and Linux.
 
 ```b
-context Dungeon {
-    aggregate Room {
-        identity id: RoomId
-        enemies: List<Enemy> where Length(0, MAX_ENEMIES), each Alive
-        exit: Position
+context Shipping {
+    aggregate Cargo {
+        identity tracking_id: TrackingId
+        route: RouteSpecification
+        itinerary: Itinerary
+        delivery: Delivery
 
-        invariant ExitClear or ExitBlocked
+        invariant ClaimedAtDestination or ClaimedElsewhere
 
-        error NotFound
-        error EnemyMissing { enemy_id: EnemyId }
+        error AlreadyClaimed
+        error ClaimedElsewhere
 
-        // Damages one enemy, and defeats it at zero hit points.
-        command Attack(enemy_id: EnemyId, damage: Int where Range(1, 20)) {
-            enemies.contains(enemy_id) or EnemyMissing { enemy_id }
+        // Works out the delivery again after the cargo is handled.
+        command RecordHandling(activity: HandlingActivity) {
+            delivery.transport_status != Claimed or AlreadyClaimed
         } = {
-            let enemy = enemies.get(enemy_id)
-            let remaining = max(0, enemy.hit_points - damage)
-            set enemies = enemies.replace(enemy with { hit_points: remaining })
-            emit EnemyDamaged { enemy_id, remaining }
+            let misdirected = !expects(itinerary, activity)
+            set delivery = Delivery {
+                transport_status: status_after(activity.kind)
+                last_location: Some(activity.location)
+                current_voyage: voyage_after(activity)
+                misdirected: misdirected
+            }
+            emit Handled { activity }
+            if misdirected {
+                emit Misdirected { location: activity.location }
+            }
         }
     }
 }
@@ -38,11 +46,11 @@ the top of a file. A header claims the rest of the file. Add an `aggregate`
 header to write part of one aggregate:
 
 ```b
-// dungeon/room/commands.b
-context Dungeon
-aggregate Room
+// shipping/cargo/commands.b
+context Shipping
+aggregate Cargo
 
-command Move(direction: Direction) = {
+command AssignToRoute(chosen: Itinerary) = {
     ...
 }
 ```
@@ -80,16 +88,17 @@ b compile . --target desktop    # check, then write C to target/b/desktop/
 ```
 
 Every `.c` file in the output folder is part of the program, for example
-`cc -std=c89 target/b/desktop/*.c -o game`. Besides `program.c` and
+`cc -std=c89 target/b/desktop/*.c -o logistics`. Besides `program.c` and
 `b_runtime.c`, it holds your native files and the standard adapters the
 target uses, such as `b_files.c` for `StdioFiles`, and `b_http.c` for
 `CurlHttp`, which needs `-lcurl` when linking.
 
-Try it on the example, a small dungeon game split across twelve files:
+Try it on the test fixture, a small cargo shipping system after the one in
+Eric Evans' *Domain-Driven Design*, split across thirteen files:
 
 ```sh
-b check examples/dungeon
-b compile examples/dungeon --target spectrum_48k
+b check tests/fixtures/logistics
+b compile tests/fixtures/logistics --target desktop
 ```
 
 ## Editors
@@ -113,18 +122,18 @@ functions. The compiler checks every name in it against the program.
 
 ```toml
 [package]
-name = "dungeon"
+name = "logistics"
 version = "0.1.0"
 
-[target.spectrum_48k]
-native = ["platform/spectrum.c"]
+[target.desktop]
+native = ["platform/desktop.c"]
 
-[target.spectrum_48k.adapters]
-Screen = "SpectrumScreen"
-Keyboard = "SpectrumKeyboard"
-Files = "DivmmcFiles"
-Rooms = "FileStorage"
-Scoreboards = "FileStorage"
+[target.desktop.adapters]
+HandlingReports = "TerminalReports"
+Clock = "SystemClock"
+Files = "StdioFiles"
+Cargos = "FileStorage"
+HandlingEvents = "FileStorage"
 ```
 
 `b check` works without a `b.toml`; `b compile` needs one.
@@ -139,26 +148,18 @@ may not form a circle. The contract also imports what the body needs. The
 body runs first.
 
 ```b
-domain Game {
+domain Logistics {
     contexts {
-        Dungeon -> Scoring
-        Dungeon -> Platform
+        Routing -> Shipping
+        Shipping -> Platform
     }
 
-    use { SetUpRooms, PlayTurn, FIRST_ROOM, Keyboard } from Dungeon
-    use { SetUpScoring } from Scoring
-
-    calls Keyboard
+    use { SetUpBooking, RouteCargo, RegisterReports, Track, SAMPLE_CARGO } from Shipping
 } = {
-    SetUpRooms()?
-    SetUpScoring()?
-    loop {
-        let pressed = keyboard.pressed()
-        if pressed == Some(Quit) {
-            break
-        }
-        PlayTurn(FIRST_ROOM, pressed)?
-    }
+    SetUpBooking()?
+    RouteCargo(SAMPLE_CARGO)?
+    RegisterReports()?
+    Track(SAMPLE_CARGO)?
 }
 ```
 
@@ -176,9 +177,9 @@ program (`program.h`, `program.c`), and copies in the target's native C files.
 the target's own C compiler.
 
 ```sh
-cd examples/dungeon/target/b/test
-cc -std=c89 *.c -o dungeon
-./dungeon --title
+cd tests/fixtures/logistics/target/b/desktop
+cc -std=c89 *.c -o logistics
+printf '1 1 receive CNHKG\n2 1 load CNHKG V100\n' | ./logistics
 ```
 
 - **C89 only.** No `//` comments, no declarations after statements, no
@@ -201,8 +202,8 @@ cc -std=c89 *.c -o dungeon
 - **Repositories** turn each aggregate into bytes, the hash of its layout
   and then every field, numbers as four bytes least significant first, so a
   save reads the same on every machine. The adapter for `Storage` that
-  `b.toml` binds keeps them under a key such as `rooms12`: in memory by
-  default, or with `FileStorage` in `rooms12.dat` through the target's
+  `b.toml` binds keeps them under a key such as `carg12`, for cargo 12: in memory by
+  default, or with `FileStorage` in `carg12.dat` through the target's
   `Files` adapter. Bytes from a different version of the program load as
   `StorageDamaged`.
 - **Contracts.** Preconditions with an error, and invariants, are always

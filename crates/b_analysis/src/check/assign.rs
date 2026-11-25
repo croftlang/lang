@@ -40,6 +40,12 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Whether a named type is an error type. An aggregate's error set always
+    /// is, even when the aggregate has no errors and the set is empty.
+    pub(super) fn is_error_type(&self, named: &Resolved) -> bool {
+        named.kind == SymbolKind::ErrorSet || !self.error_members(named).is_empty()
+    }
+
     /// Whether a value of type `from` can be used where `to` is expected.
     /// A plain value is also accepted where a `Result` of it is expected.
     pub(super) fn accepts(&self, to: &Type, from: &Type) -> bool {
@@ -50,7 +56,7 @@ impl<'a> Checker<'a> {
             }
             // `Errors([])` is any error at all, which a domain's body can pass up.
             (Type::Errors(errors), from) if errors.is_empty() => match from {
-                Type::Named(named) => !self.error_members(named).is_empty(),
+                Type::Named(named) => self.is_error_type(named),
                 Type::Errors(_) => true,
                 _ => false,
             },
@@ -77,9 +83,14 @@ impl<'a> Checker<'a> {
     }
 
     /// Whether every error `from` stands for is one of the errors `to` stands for.
+    /// An aggregate with no errors has an empty error set: it never fails,
+    /// so any error type can carry it.
     fn includes_errors(&self, to: &Resolved, from: &Resolved) -> bool {
         let members = self.error_members(to);
         let from_members = self.error_members(from);
+        if from.kind == SymbolKind::ErrorSet && from_members.is_empty() {
+            return !members.is_empty() || to.kind == SymbolKind::ErrorSet;
+        }
         !from_members.is_empty() && from_members.iter().all(|error| members.contains(error))
     }
 }

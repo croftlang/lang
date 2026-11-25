@@ -1,0 +1,13 @@
+// Adapters for a desktop computer, in C from platform/desktop.c.
+context Platform
+
+use { HandlingReports, HandlingReport, HandlingActivity, HandlingType, VoyageNumber, Clock } from Shipping
+
+adapter SystemClock for Clock = {
+    fn today() = native clock_today()
+}
+
+// Reads reports typed at a dock terminal, one a line.
+adapter TerminalReports for HandlingReports = {
+    fn next() = native terminal_next_report()
+}

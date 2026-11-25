@@ -1,6 +1,6 @@
 mod declarations;
-mod examples;
 mod expressions;
+mod fixtures;
 
 use crate::ast::{ContextDecl, ContextItem, Expr, File, Statement};
 use crate::span::SourceId;
