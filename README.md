@@ -78,6 +78,10 @@ croft check tests/fixtures/logistics
 croft compile tests/fixtures/logistics --target desktop
 ```
 
+## Reference
+
+For full reference documentation, see [./docs/reference](./docs/reference)
+
 ## Editors
 
 `croft lsp` runs a language server, showing you errors as you type, without
