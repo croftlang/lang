@@ -24,6 +24,12 @@ typedef struct {
 #define DN_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define DN_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define DN_ABS(a) ((a) < 0 ? -(a) : (a))
+/* Through unsigned long, since C leaves shifting a negative number left undefined. */
+#define DN_SHIFT_LEFT(value, amount) ((dn_int) ((unsigned long) (value) << (amount)))
+/* C89 leaves shifting a negative number right up to the compiler, so the
+   sign is kept by hand: ~ makes it positive, and ~ again after the shift. */
+#define DN_SHIFT_RIGHT(value, amount) \
+    ((dn_int) ((value) < 0 ? ~(~(value) >> (amount)) : (value) >> (amount)))
 
 /* Stops the program when a contract is broken. */
 void dn_fail(const char *message);
@@ -31,7 +37,8 @@ void dn_fail(const char *message);
 #ifdef DN_DEBUG
 #define DN_CHECK(condition, message) if (!(condition)) dn_fail(message)
 #else
-#define DN_CHECK(condition, message)
+/* Not worked out, but still a use of what it names, for the compiler. */
+#define DN_CHECK(condition, message) (void) sizeof(condition)
 #endif
 
 /* Sets every byte of a value to zero, so unused parts are never read unset. */

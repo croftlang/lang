@@ -56,6 +56,9 @@ impl<'g, 'a> Writer<'g, 'a> {
                 format!("(!{})", self.value(operand, &Type::Bool))
             }
             ExprKind::Unary(UnaryOp::Negate, operand) => format!("(-{})", self.value(operand, &ty)),
+            ExprKind::Unary(UnaryOp::BitNot, operand) => {
+                format!("(~{})", self.value(operand, &Type::Int))
+            }
             ExprKind::Binary(op, left, right) => self.binary(*op, left, right, &ty),
             ExprKind::OrElse(inner, error) => self.or_else(inner, error, &ty),
             ExprKind::Try(inner) => self.try_value(inner),

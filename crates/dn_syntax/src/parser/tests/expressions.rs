@@ -128,3 +128,32 @@ fn reads_list_literals() {
     };
     assert!(matches!(three.kind, ExprKind::List(ref items) if items.len() == 3));
 }
+
+#[test]
+fn binds_bit_operators_tighter_than_comparisons() {
+    let body = function_body("fn f(bits: Int): Bool = bits & 4 != 0");
+    let ExprKind::Binary(BinaryOp::NotEqual, left, _) = body.kind else {
+        panic!("expected !=")
+    };
+    assert!(matches!(
+        left.kind,
+        ExprKind::Binary(BinaryOp::BitAnd, _, _)
+    ));
+    let body = function_body("fn f(a: Int): Int = a | 1 << 3 + 1");
+    let ExprKind::Binary(BinaryOp::BitOr, _, right) = body.kind else {
+        panic!("expected |")
+    };
+    let ExprKind::Binary(BinaryOp::ShiftLeft, _, shift) = right.kind else {
+        panic!("expected <<")
+    };
+    assert!(matches!(shift.kind, ExprKind::Binary(BinaryOp::Add, _, _)));
+}
+
+#[test]
+fn reads_nested_type_arguments_ending_in_two_brackets() {
+    let body = function_body("fn f(rows: List<List<Int>>): Int = ~rows.length >> 1");
+    assert!(matches!(
+        body.kind,
+        ExprKind::Binary(BinaryOp::ShiftRight, _, _)
+    ));
+}

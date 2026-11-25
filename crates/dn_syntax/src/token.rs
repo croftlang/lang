@@ -33,6 +33,12 @@ pub enum TokenKind {
     And,
     Or,
     Not,
+    Ampersand,
+    Pipe,
+    Caret,
+    Tilde,
+    ShiftLeft,
+    ShiftRight,
     Question,
     EndOfFile,
 }
@@ -72,6 +78,12 @@ impl TokenKind {
             TokenKind::And => "&&",
             TokenKind::Or => "||",
             TokenKind::Not => "!",
+            TokenKind::Ampersand => "&",
+            TokenKind::Pipe => "|",
+            TokenKind::Caret => "^",
+            TokenKind::Tilde => "~",
+            TokenKind::ShiftLeft => "<<",
+            TokenKind::ShiftRight => ">>",
             TokenKind::Question => "?",
         };
         format!("`{symbol}`")

@@ -14,6 +14,7 @@ value Point {
 }
 
 const START_X: Int = 3
+const FIRE: Int = 1 << 4
 
 fn check(ok: Bool): Result<Unit, WrongAnswer> = {
     if ok {
@@ -55,5 +56,10 @@ service Start(): Result<Unit, WrongAnswer> {
     check("42".to_int().unwrap_or(0) == 42 && "x".to_int().is_none)?
     check("a,b,c".split(",").length == 3)?
     check(max(3, 9) - min(3, 9) == 6)?
+    let keys = 0b0001_0011
+    check(keys & FIRE != 0 && keys & 4 == 0)?
+    check((keys | 4) ^ 1 == 0b1_0110 && ~0 == -1)?
+    let amount = words.length
+    check(1 << amount == 8 && -16 >> 2 == -4 && -1 << 1 == -2)?
     Unit
 }

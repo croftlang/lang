@@ -103,6 +103,8 @@ pub struct Pattern {
 pub enum UnaryOp {
     Not,
     Negate,
+    /// `~bits`: every bit flipped.
+    BitNot,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -120,4 +122,9 @@ pub enum BinaryOp {
     GreaterEqual,
     And,
     Or,
+    BitAnd,
+    BitOr,
+    BitXor,
+    ShiftLeft,
+    ShiftRight,
 }

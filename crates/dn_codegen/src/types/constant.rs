@@ -11,6 +11,9 @@ pub fn evaluate(program: &Program, model: &Model, context: &str, value: &Expr) -
         ExprKind::Unary(UnaryOp::Negate, operand) => {
             Some(-evaluate(program, model, context, operand)?)
         }
+        ExprKind::Unary(UnaryOp::BitNot, operand) => {
+            Some(!evaluate(program, model, context, operand)?)
+        }
         ExprKind::Binary(op, left, right) => {
             let (left, right) = (
                 evaluate(program, model, context, left)?,
@@ -22,6 +25,11 @@ pub fn evaluate(program: &Program, model: &Model, context: &str, value: &Expr) -
                 BinaryOp::Multiply => left.checked_mul(right),
                 BinaryOp::Divide => left.checked_div(right),
                 BinaryOp::Remainder => left.checked_rem(right),
+                BinaryOp::BitAnd => Some(left & right),
+                BinaryOp::BitOr => Some(left | right),
+                BinaryOp::BitXor => Some(left ^ right),
+                BinaryOp::ShiftLeft => u32::try_from(right).ok().and_then(|r| left.checked_shl(r)),
+                BinaryOp::ShiftRight => u32::try_from(right).ok().and_then(|r| left.checked_shr(r)),
                 _ => None,
             }
         }

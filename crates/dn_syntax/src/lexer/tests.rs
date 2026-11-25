@@ -78,3 +78,26 @@ fn reports_unterminated_strings() {
     let error = tokenize("\"open", SourceId(0)).unwrap_err();
     assert!(error.message.contains("unterminated"));
 }
+
+#[test]
+fn reads_binary_numbers_and_bit_operators() {
+    assert_eq!(
+        token_kinds("0b1010_0001 a & b | c ^ ~d << 2 >> 1"),
+        vec![
+            TokenKind::Int(0b1010_0001),
+            TokenKind::Identifier("a".to_string()),
+            TokenKind::Ampersand,
+            TokenKind::Identifier("b".to_string()),
+            TokenKind::Pipe,
+            TokenKind::Identifier("c".to_string()),
+            TokenKind::Caret,
+            TokenKind::Tilde,
+            TokenKind::Identifier("d".to_string()),
+            TokenKind::ShiftLeft,
+            TokenKind::Int(2),
+            TokenKind::ShiftRight,
+            TokenKind::Int(1),
+            TokenKind::EndOfFile,
+        ]
+    );
+}

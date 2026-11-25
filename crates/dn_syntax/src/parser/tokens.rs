@@ -101,4 +101,10 @@ impl Parser {
         let found = self.peek().kind.describe();
         Diagnostic::new(format!("expected {expected}, found {found}"), self.span())
     }
+
+    /// Turns the `>>` ahead into `>`, as if its first `>` had been read.
+    pub(super) fn split_shift_right(&mut self) {
+        let index = self.position.min(self.tokens.len() - 1);
+        self.tokens[index].kind = TokenKind::Greater;
+    }
 }

@@ -4,6 +4,9 @@ use std::fmt;
 
 use crate::symbols::SymbolKind;
 
+/// Shifts stay below the width of the smallest `Int` on any target, 32 bits.
+pub const MAX_SHIFT: i64 = 32;
+
 /// A declaration a name refers to: its context, its full name there, and its kind.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Resolved {

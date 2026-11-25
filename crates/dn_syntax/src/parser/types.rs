@@ -35,7 +35,7 @@ impl Parser {
                     break;
                 }
             }
-            self.expect(&TokenKind::Greater)?;
+            self.close_type_arguments()?;
         }
         Ok(TypeExpr { path, arguments })
     }
@@ -106,5 +106,16 @@ impl Parser {
             }
         }
         Ok(parameters)
+    }
+
+    /// The `>` that ends type arguments. In `List<List<Int>>` the lexer reads
+    /// `>>` as one token, so it is split, leaving the second `>` for the outer type.
+    fn close_type_arguments(&mut self) -> ParseResult<()> {
+        if self.check(&TokenKind::ShiftRight) {
+            self.split_shift_right();
+            return Ok(());
+        }
+        self.expect(&TokenKind::Greater)?;
+        Ok(())
     }
 }

@@ -105,3 +105,17 @@ fn checks_string_methods() {
         "`String` has no method `shout`",
     );
 }
+
+#[test]
+fn checks_bit_operators() {
+    let source = game("fn f(bits: Int): Bool = bits & 0b100 != 0 && ~bits >> 1 > 0");
+    assert_eq!(errors(&source), Vec::<String>::new());
+    assert_error(
+        &game("fn f(on: Bool): Int = on & 1"),
+        "expected `Int`, found `Bool`",
+    );
+    assert_error(
+        &game("fn f(bits: Int): Int = bits << 32"),
+        "cannot shift by 32, only by 0 to 31",
+    );
+}

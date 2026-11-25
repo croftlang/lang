@@ -109,12 +109,18 @@ fn describe_argument(value: &dn_syntax::ast::Expr) -> String {
         ExprKind::Int(number) => number.to_string(),
         ExprKind::Name(name) => name.clone(),
         ExprKind::Unary(UnaryOp::Negate, inner) => format!("-{}", describe_argument(inner)),
+        ExprKind::Unary(UnaryOp::BitNot, inner) => format!("~{}", describe_argument(inner)),
         ExprKind::Binary(op, left, right) => {
             let symbol = match op {
                 BinaryOp::Add => "+",
                 BinaryOp::Subtract => "-",
                 BinaryOp::Multiply => "*",
                 BinaryOp::Divide => "/",
+                BinaryOp::BitAnd => "&",
+                BinaryOp::BitOr => "|",
+                BinaryOp::BitXor => "^",
+                BinaryOp::ShiftLeft => "<<",
+                BinaryOp::ShiftRight => ">>",
                 _ => "?",
             };
             format!(

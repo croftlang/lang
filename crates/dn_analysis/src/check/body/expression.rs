@@ -2,6 +2,8 @@
 
 use dn_syntax::ast::{BinaryOp, Expr, ExprKind, UnaryOp};
 
+use crate::types::MAX_SHIFT;
+
 use super::BodyChecker;
 use crate::types::Type;
 
@@ -70,6 +72,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 }
                 ty
             }
+            UnaryOp::BitNot => {
+                self.expect(operand, &Type::Int);
+                Type::Int
+            }
         }
     }
 
@@ -103,6 +109,24 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 }
                 self.expect(right, &ty);
                 ty
+            }
+            BitAnd | BitOr | BitXor => {
+                self.expect(left, &Type::Int);
+                self.expect(right, &Type::Int);
+                Type::Int
+            }
+            ShiftLeft | ShiftRight => {
+                self.expect(left, &Type::Int);
+                self.expect(right, &Type::Int);
+                if let ExprKind::Int(amount) = right.kind {
+                    if !(0..MAX_SHIFT).contains(&amount) {
+                        self.error(
+                            format!("cannot shift by {amount}, only by 0 to {}", MAX_SHIFT - 1),
+                            right.span,
+                        );
+                    }
+                }
+                Type::Int
             }
         }
     }

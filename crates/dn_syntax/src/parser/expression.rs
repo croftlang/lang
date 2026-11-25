@@ -43,6 +43,8 @@ impl Parser {
         if self.peek().newline_before {
             return None;
         }
+        // Bit operators bind tighter than comparisons, so `bits & FIRE != 0`
+        // means `(bits & FIRE) != 0`, unlike in C.
         let operator = match self.peek().kind {
             TokenKind::Or => (BinaryOp::Or, 1),
             TokenKind::And => (BinaryOp::And, 2),
@@ -52,11 +54,16 @@ impl Parser {
             TokenKind::LessEqual => (BinaryOp::LessEqual, 4),
             TokenKind::Greater => (BinaryOp::Greater, 4),
             TokenKind::GreaterEqual => (BinaryOp::GreaterEqual, 4),
-            TokenKind::Plus => (BinaryOp::Add, 5),
-            TokenKind::Minus => (BinaryOp::Subtract, 5),
-            TokenKind::Star => (BinaryOp::Multiply, 6),
-            TokenKind::Slash => (BinaryOp::Divide, 6),
-            TokenKind::Percent => (BinaryOp::Remainder, 6),
+            TokenKind::Pipe => (BinaryOp::BitOr, 5),
+            TokenKind::Caret => (BinaryOp::BitXor, 6),
+            TokenKind::Ampersand => (BinaryOp::BitAnd, 7),
+            TokenKind::ShiftLeft => (BinaryOp::ShiftLeft, 8),
+            TokenKind::ShiftRight => (BinaryOp::ShiftRight, 8),
+            TokenKind::Plus => (BinaryOp::Add, 9),
+            TokenKind::Minus => (BinaryOp::Subtract, 9),
+            TokenKind::Star => (BinaryOp::Multiply, 10),
+            TokenKind::Slash => (BinaryOp::Divide, 10),
+            TokenKind::Percent => (BinaryOp::Remainder, 10),
             _ => return None,
         };
         Some(operator)
@@ -67,6 +74,7 @@ impl Parser {
         let op = match self.peek().kind {
             TokenKind::Not => UnaryOp::Not,
             TokenKind::Minus => UnaryOp::Negate,
+            TokenKind::Tilde => UnaryOp::BitNot,
             _ => return self.parse_postfix(true),
         };
         self.advance();

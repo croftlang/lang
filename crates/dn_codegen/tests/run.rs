@@ -76,6 +76,10 @@ fn checks_rules_in_debug_builds() {
         run("debug", "each"),
         (Some(1), "count: numbers must satisfy each Even".to_string())
     );
+    assert_eq!(
+        run("debug", "shift"),
+        (Some(1), "shift by less than 0 or more than 31".to_string())
+    );
     assert_eq!(run("release", "argument"), (Some(0), String::new()));
     fs::remove_dir_all(output).ok();
 }

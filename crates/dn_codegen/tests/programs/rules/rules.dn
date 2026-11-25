@@ -29,6 +29,9 @@ context Clinic {
         if chosen.contains("each") {
             let counted = count([2, 3])
         }
+        if chosen.contains("shift") {
+            let shifted = 1 << chosen.length * 40
+        }
         Unit
     }
 }
