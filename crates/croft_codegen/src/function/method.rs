@@ -5,7 +5,7 @@ use croft_analysis::types::Resolved;
 use croft_analysis::Type;
 use croft_syntax::ast::{Argument, Expr, ExprKind};
 
-use super::Writer;
+use super::{Into, Writer};
 use crate::names::c_name;
 
 /// The most characters a whole number takes as text: a 64-bit `long` and its sign.
@@ -18,15 +18,17 @@ impl<'g, 'a> Writer<'g, 'a> {
         name: &str,
         arguments: &[Argument],
         ty: &Type,
+        into: Into<'_>,
     ) -> String {
         let receiver_type = self.type_of(receiver, None);
 
         match &receiver_type {
-            Type::Port(port) => self.port_call(port, name, arguments, ty),
+            Type::Port(port) => self.port_call(port, name, arguments, ty, into),
             Type::Repository(repository) => {
                 let parameters = self.gen.operation_parameters(repository, name);
                 let passed = self.pass_all(arguments, &parameters);
-                self.call_into(&format!("{}_{name}", c_name(repository)), passed, ty)
+                let function = format!("{}_{name}", c_name(repository));
+                self.call_to(&function, passed, ty, into)
             }
             Type::String => {
                 let (text, bounded) = self.bounded_view(receiver);
@@ -90,6 +92,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         name: &str,
         arguments: &[Argument],
         ty: &Type,
+        into: Into<'_>,
     ) -> String {
         if port.context.is_empty() {
             return self.builtin_port_call(&port.name, arguments, ty);
@@ -104,7 +107,12 @@ impl<'g, 'a> Writer<'g, 'a> {
         let result = self.gen.operation_result(port, name);
         let result = self.gen.keep_bound(&result, ty);
 
-        self.call_into(&format!("{}_{name}", c_name(&adapter)), passed, &result)
+        self.call_to(
+            &format!("{}_{name}", c_name(&adapter)),
+            passed,
+            &result,
+            into,
+        )
     }
 
     /// An operation on a built-in port, which the runtime supplies on every target.

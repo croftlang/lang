@@ -3,11 +3,17 @@
 use croft_analysis::Type;
 use croft_syntax::ast::{Argument, ExprKind};
 
-use super::Writer;
-use crate::types::bounds::is_string;
+use super::{Into, Writer};
+use crate::types::bounds::{is_string, unbounded};
 
 impl<'g, 'a> Writer<'g, 'a> {
-    pub fn builtin(&mut self, name: &str, arguments: &[Argument], ty: &Type) -> String {
+    pub fn builtin(
+        &mut self,
+        name: &str,
+        arguments: &[Argument],
+        ty: &Type,
+        into: Into<'_>,
+    ) -> String {
         let value = |writer: &mut Self, index: usize, want: &Type| match arguments.get(index) {
             Some(argument) => writer.value(&argument.value, want),
             None => "0".to_string(),
@@ -37,6 +43,15 @@ impl<'g, 'a> Writer<'g, 'a> {
                     return "0".to_string();
                 };
 
+                // With no strings to bound, the value is made straight in place.
+                if unbounded(&inner) == self.gen.narrowest(&unbounded(&inner)) {
+                    let made = ty.clone();
+                    let temp = self.place_for(&made, into);
+                    self.line(format!("{temp}.{flag} = {on};"));
+                    self.value_into(&format!("{temp}.{field}"), &argument.value, &inner);
+                    return temp;
+                }
+
                 // `Some(x)` and `Ok(x)` keep the bounds of `x`. `Err(e)` holds
                 // no value, so its value takes the least room.
                 let (c, given) = match &argument.value.kind {
@@ -61,7 +76,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                     _ => ty.clone(),
                 };
 
-                let temp = self.temp(&made);
+                let temp = self.place_for(&made, into);
                 self.line(format!("{temp}.{flag} = {on};"));
                 let place = format!("{temp}.{field}");
 

@@ -1,0 +1,5 @@
+[package]
+name = "early_returns"
+
+[target.test]
+main = "Check"

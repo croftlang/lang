@@ -3,7 +3,7 @@
 use croft_analysis::Type;
 use croft_syntax::ast::{Argument, Expr};
 
-use super::Writer;
+use super::{Into, Writer};
 use crate::types::bounds::is_string;
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -79,10 +79,23 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// Calls `function` with the arguments and a temporary for the result.
-    pub fn call_into(&mut self, function: &str, mut passed: Vec<String>, result: &Type) -> String {
-        let temp = self.temp(result);
-        passed.push(format!("&{temp}"));
+    pub fn call_into(&mut self, function: &str, passed: Vec<String>, result: &Type) -> String {
+        self.call_to(function, passed, result, None)
+    }
+
+    /// Calls `function`, giving back its result in `into`, a place and its
+    /// type, when that has the result's C type, or else in a temporary.
+    pub fn call_to(
+        &mut self,
+        function: &str,
+        mut passed: Vec<String>,
+        result: &Type,
+        into: Into<'_>,
+    ) -> String {
+        let place = self.place_for(result, into);
+
+        passed.push(format!("&{place}"));
         self.line(format!("{function}({});", passed.join(", ")));
-        temp
+        place
     }
 }

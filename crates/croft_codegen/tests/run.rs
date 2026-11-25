@@ -482,3 +482,27 @@ fn sizes_strings_from_where_they_come_from() {
     assert!(c.contains("void Words_dots(croft_int p_count, croft_string *out)"));
     fs::remove_dir_all(output).ok();
 }
+
+#[test]
+fn writes_early_returns_straight_into_the_result() {
+    run_program("early_returns");
+}
+
+/// Each early return builds its variant straight in the result, and the
+/// returns share the temporaries they need.
+#[test]
+fn shares_temporaries_between_early_returns() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/early_returns");
+    let output = generate(&source, "test", "early_returns_c");
+    let c = fs::read_to_string(output.join("program.c")).expect("program.c");
+
+    let start = c.find("void Orders_read(").expect("read");
+    let body = &c[start..start + c[start..].find("\n}\n").expect("its end")];
+
+    assert!(
+        body.contains("(*out).value.tag = Orders_Order_Wait;"),
+        "{body}"
+    );
+    assert!(!body.contains("Orders_Order t"), "{body}");
+    fs::remove_dir_all(output).ok();
+}
