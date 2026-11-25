@@ -412,7 +412,7 @@ fn writes_string_literals_straight_into_results() {
     let body = &c[start..start + c[start..].find("\n}\n").expect("its end")];
 
     assert!(
-        body.contains("croft_string_set(&(*out), \"circle\");"),
+        body.contains("croft_string_set(\"circle\", CROFT_OUT((*out)));"),
         "{body}"
     );
 
@@ -449,4 +449,27 @@ fn reports_sizes_for_a_target() {
     assert!(report.contains("Largest stack frames"), "{report}");
     assert!(report.contains("  Till.cash\n"), "{report}");
     assert!(!report.contains("Shelf.stock"), "{report}");
+}
+
+/// Strings get the room they can need, and keep their values through
+/// lists, options, matches, variants and `set`.
+#[test]
+fn keeps_strings_in_the_size_they_can_need() {
+    run_program("bounded_strings");
+}
+
+/// `split` on a parameter with a `Length` makes a list of strings that
+/// size, not of the longest string anywhere.
+#[test]
+fn sizes_strings_from_where_they_come_from() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/bounded_strings");
+    let output = generate(&source, "test", "bounded_strings_c");
+    let c = fs::read_to_string(output.join("program.c")).expect("program.c");
+
+    let start = c.find("void Words_words(").expect("words");
+    let body = &c[start..start + c[start..].find("\n}\n").expect("its end")];
+
+    assert!(body.contains("croft_list_text_12 t"), "{body}");
+    assert!(!body.contains("croft_string t"), "{body}");
+    fs::remove_dir_all(output).ok();
 }

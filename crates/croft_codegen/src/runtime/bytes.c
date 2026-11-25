@@ -53,13 +53,13 @@ void croft_bytes_slice(const croft_bytes *bytes, croft_int start, croft_int end,
 }
 
 /* Each byte becomes one character, up to the string's capacity. */
-void croft_bytes_to_text(const croft_bytes *bytes, croft_string *out)
+void croft_bytes_to_text(const croft_bytes *bytes, char *out, croft_u16 *length, croft_u16 capacity)
 {
     croft_u16 index;
-    out->length = 0;
-    for (index = 0; index < bytes->length && out->length < CROFT_STRING_CAPACITY; index++) {
-        out->text[out->length] = (char) bytes->items[index];
-        out->length++;
+    *length = 0;
+    for (index = 0; index < bytes->length && *length < capacity; index++) {
+        out[*length] = (char) bytes->items[index];
+        (*length)++;
     }
     CROFT_CHECK(index == bytes->length, "bytes are longer than a string can hold");
 }

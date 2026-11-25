@@ -135,10 +135,6 @@ impl<'a> Generator<'a> {
                 place = format!("((p_value->croft_flags[{byte}] & {mask}) != 0)");
             }
 
-            if !decl.constraints.is_empty() && self.text_capacity(named, field).is_some() {
-                place = writer.load_text(&place);
-            }
-
             for constraint in &decl.constraints {
                 writer.check_constraint(
                     &place,

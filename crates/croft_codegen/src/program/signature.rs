@@ -6,6 +6,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::Parameter;
 
 use crate::function::Writer;
+use crate::types::bounds::is_string;
 use crate::Generator;
 
 impl<'a> Generator<'a> {
@@ -23,7 +24,10 @@ impl<'a> Generator<'a> {
 
         parameters
             .iter()
-            .map(|p| (p.name.name.clone(), lower(p)))
+            .map(|p| {
+                let ty = self.parameter_type(context, lower(p), &p.constraints);
+                (p.name.name.clone(), ty)
+            })
             .collect()
     }
 
@@ -40,7 +44,7 @@ impl<'a> Generator<'a> {
         for (parameter, ty) in parameters {
             let c_type = self.c_type(ty);
 
-            list.push(if *ty == Type::String {
+            list.push(if is_string(ty) {
                 format!("croft_string_view p_{parameter}")
             } else if self.is_scalar(ty) {
                 format!("{c_type} p_{parameter}")
@@ -70,11 +74,11 @@ impl<'g, 'a> Writer<'g, 'a> {
             let c = format!("p_{name}");
             self.parameter(&c);
 
-            if *ty == Type::String {
+            if is_string(ty) {
                 self.views.insert(c.clone());
             }
 
-            let value = if self.gen.is_scalar(ty) || *ty == Type::String {
+            let value = if self.gen.is_scalar(ty) || is_string(ty) {
                 c
             } else {
                 format!("(*{c})")

@@ -21,6 +21,7 @@ impl<'a> Model<'a> {
                     .collect(),
                 name: variant.name,
                 error: variant.error,
+                declared_in: variant.declared_in,
             })
             .collect()
     }

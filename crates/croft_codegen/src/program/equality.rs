@@ -78,7 +78,7 @@ impl<'a> Generator<'a> {
                 let mut tests =
                     String::from("    if (a->tag != b->tag) {\n        return 0;\n    }\n");
 
-                for variant in self.model.variants(named) {
+                for variant in self.variants(named) {
                     for (field, field_type) in &variant.fields {
                         let same = self.compare(
                             &format!("a->as.{}.{field}", variant.name),
@@ -104,12 +104,18 @@ impl<'a> Generator<'a> {
 
                 let fields: Vec<String> = (self.struct_fields(named).into_iter())
                     .filter(|(field, _, _)| self.flag_bit(named, field).is_none())
-                    .map(|(field, field_type, _)| match self.text_capacity(named, &field) {
-                        Some(_) => format!(
-                            "croft_text_equal(a->{field}.text, a->{field}.length, b->{field}.text, b->{field}.length)"
+                    .map(
+                        |(field, field_type, _)| match self.text_capacity(named, &field) {
+                            Some(_) => format!(
+                            "croft_string_equal(CROFT_VIEW(a->{field}), CROFT_VIEW(b->{field}))"
                         ),
-                        None => self.compare(&format!("a->{field}"), &format!("b->{field}"), &field_type),
-                    })
+                            None => self.compare(
+                                &format!("a->{field}"),
+                                &format!("b->{field}"),
+                                &field_type,
+                            ),
+                        },
+                    )
                     .chain(flags)
                     .collect();
 
@@ -130,10 +136,8 @@ impl<'a> Generator<'a> {
             return format!("({a} == {b})");
         }
 
-        if *ty == Type::String {
-            return format!(
-                "croft_string_equal(croft_string_view_of(&{a}), croft_string_view_of(&{b}))"
-            );
+        if matches!(ty, Type::String | Type::Text(_)) {
+            return format!("croft_string_equal(CROFT_VIEW({a}), CROFT_VIEW({b}))");
         }
 
         if *ty == Type::Bytes {

@@ -38,6 +38,7 @@ impl<'a> Generator<'a> {
             Type::Float => 8,
             Type::Bool | Type::Unit => 1,
             Type::String => 2 + self.sizes.string_capacity,
+            Type::Text(length) => 2 + i64::from(*length),
             Type::Bytes => 2 + self.sizes.bytes_capacity,
             Type::List(item) => 2 + self.sizes.list_capacity(item) * self.memory_size(item),
             Type::Map(key, value) => {
@@ -76,7 +77,7 @@ impl<'a> Generator<'a> {
                 }
                 SymbolKind::Enum if self.is_plain_enum(named) => 1,
                 SymbolKind::Enum => {
-                    let largest = (self.model.variants(named).into_iter())
+                    let largest = (self.variants(named).into_iter())
                         .map(|v| {
                             v.fields
                                 .iter()

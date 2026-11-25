@@ -32,10 +32,15 @@ impl<'g, 'a> Writer<'g, 'a> {
                     _ => return "0".to_string(),
                 };
 
-                let inner = value(self, 0, &inner);
                 let temp = self.temp(ty);
                 self.line(format!("{temp}.{flag} = {on};"));
-                self.line(format!("{temp}.{field} = {inner};"));
+
+                match arguments.first() {
+                    Some(argument) => {
+                        self.assign(&format!("{temp}.{field}"), &argument.value, &inner)
+                    }
+                    None => self.line(format!("{temp}.{field} = 0;")),
+                }
 
                 temp
             }

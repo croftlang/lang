@@ -8,6 +8,9 @@ use croft_syntax::ast::{Argument, Expr, ExprKind};
 use super::Writer;
 use crate::names::c_name;
 
+/// The most characters a whole number takes as text: a 64-bit `long` and its sign.
+const INT_DIGITS: i64 = 20;
+
 impl<'g, 'a> Writer<'g, 'a> {
     pub fn method(
         &mut self,
@@ -26,15 +29,15 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.call_into(&format!("{}_{name}", c_name(repository)), passed, ty)
             }
             Type::String => {
-                let text = self.view(receiver);
-                self.string_method(&text, name, arguments, ty)
+                let (text, bounded) = self.bounded_view(receiver);
+                self.string_method((&text, &bounded), name, arguments, ty)
             }
             Type::Map(key, value) => {
-                let (map, _) = self.eval(receiver, None);
+                let map = self.value(receiver, &receiver_type);
                 self.map_method(&map, key, value, name, arguments, ty)
             }
             Type::Bytes => {
-                let (bytes, _) = self.eval(receiver, None);
+                let bytes = self.value(receiver, &Type::Bytes);
                 self.bytes_method(&bytes, name, arguments, ty)
             }
             Type::Decimal(places) if name == "to_string" => {
@@ -42,7 +45,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let temp = self.temp(&Type::String);
 
                 self.line(format!(
-                    "croft_decimal_to_string({number}, {places}, &{temp});"
+                    "croft_decimal_to_string({number}, {places}, CROFT_OUT({temp}));"
                 ));
 
                 temp
@@ -57,17 +60,24 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             Type::Int if name == "to_string" => {
                 let number = self.value(receiver, &Type::Int);
-                let temp = self.temp(&Type::String);
-                self.line(format!("croft_int_to_string({number}, &{temp});"));
+                let digits = self.gen.text_type(INT_DIGITS);
+                let temp = self.temp(&digits);
+                self.line(format!("croft_int_to_string({number}, CROFT_OUT({temp}));"));
                 temp
             }
-            Type::List(item) => {
-                let (list, _) = self.eval(receiver, None);
-                self.list_method(&list, item, name, arguments, ty)
+            Type::List(_) => {
+                let (list, bounded) = self.eval(receiver, None);
+                let Type::List(item) = bounded else {
+                    return "0".to_string();
+                };
+                self.list_method(&list, &item, name, arguments, ty)
             }
-            Type::Option(item) => {
-                let (option, _) = self.eval(receiver, None);
-                self.option_method(&option, item, name, arguments, ty)
+            Type::Option(_) => {
+                let (option, bounded) = self.eval(receiver, None);
+                let Type::Option(item) = bounded else {
+                    return "0".to_string();
+                };
+                self.option_method(&option, &item, name, arguments, ty)
             }
             _ => "0".to_string(),
         }
@@ -119,7 +129,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         ));
 
         self.line(format!(
-            "croft_argument({index}, &{list}.items[{list}.length]);"
+            "croft_argument({index}, CROFT_OUT({list}.items[{list}.length]));"
         ));
 
         self.line(format!("{list}.length++;"));

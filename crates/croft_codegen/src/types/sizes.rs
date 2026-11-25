@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use croft_analysis::{Model, Program, Type};
 use croft_syntax::ast::{ConstraintUse, TypeExpr};
 
+use super::bounds::unbounded;
 use super::constant::evaluate;
 
 /// Used when no `Length` constraint says otherwise.
@@ -191,14 +192,14 @@ impl Sizes {
     /// The most entries a map of this type can hold.
     pub fn map_capacity(&self, map: &Type) -> i64 {
         self.map_capacity
-            .get(map)
+            .get(&unbounded(map))
             .copied()
             .unwrap_or(DEFAULT_LIST_CAPACITY)
     }
 
     pub fn list_capacity(&self, item: &Type) -> i64 {
         self.list_capacity
-            .get(item)
+            .get(&unbounded(item))
             .copied()
             .unwrap_or(DEFAULT_LIST_CAPACITY)
     }

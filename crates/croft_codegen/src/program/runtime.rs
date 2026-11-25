@@ -44,6 +44,27 @@ pub fn trim_runtime(runtime: &str, program: &str) -> String {
     source
 }
 
+/// `program` and the body of each macro in `header` that it uses, such as
+/// `CROFT_VIEW`, so the functions those call are kept too.
+pub fn with_macros(header: &str, program: &str) -> String {
+    let mut reached = program.to_string();
+
+    for line in header.lines() {
+        let Some(definition) = line.strip_prefix("#define ") else {
+            continue;
+        };
+
+        let name_end = definition.find(['(', ' ']).unwrap_or(definition.len());
+
+        if mentions(program, &definition[..name_end]) {
+            reached.push('\n');
+            reached.push_str(&definition[name_end..]);
+        }
+    }
+
+    reached
+}
+
 /// Splits C source into what comes before the first function, and each
 /// function with the comments and blank lines just above it. A function
 /// starts on a line that isn't indented and opens with a name and `(`, and

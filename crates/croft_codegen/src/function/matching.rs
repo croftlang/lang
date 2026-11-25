@@ -26,8 +26,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     fn arms(&mut self, subject: &Expr, arms: &[MatchArm], ty: &Type, result: Option<&str>) {
-        let subject_type = self.type_of(subject, None);
-        let (subject, _) = self.eval(subject, None);
+        let (subject, subject_type) = self.eval(subject, None);
 
         for (index, arm) in arms.iter().enumerate() {
             let (test, bindings) = self.arm_test(&subject, &subject_type, &arm.pattern);
@@ -97,7 +96,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 vec![(format!("{subject}.error"), (**error).clone())],
             ),
             Type::Named(owner) => {
-                let variants = self.gen.model.variants(owner);
+                let variants = self.gen.variants(owner);
 
                 let Some(variant) = variants.into_iter().find(|v| v.name == name) else {
                     return ("0".to_string(), Vec::new());

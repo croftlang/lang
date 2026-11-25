@@ -26,8 +26,7 @@ const RUNTIME_SOURCE: &str = concat!(
     include_str!("../runtime/croft_runtime.c"),
     include_str!("../runtime/decimal.c"),
     include_str!("../runtime/bytes.c"),
-    include_str!("../runtime/saving.c"),
-    include_str!("../runtime/text.c")
+    include_str!("../runtime/saving.c")
 );
 
 impl<'a> Generator<'a> {
@@ -94,7 +93,10 @@ impl<'a> Generator<'a> {
                 // `croft_fail` is always kept: `CROFT_CHECK` in croft.h calls it.
                 contents: runtime::trim_runtime(
                     RUNTIME_SOURCE,
-                    &format!("croft_fail\n{header}{source}{reached}"),
+                    &runtime::with_macros(
+                        RUNTIME_HEADER,
+                        &format!("croft_fail\n{header}{source}{reached}"),
+                    ),
                 ),
             },
             GeneratedFile {

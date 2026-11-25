@@ -76,7 +76,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             "to_text" => {
                 let temp = self.temp(ty);
-                self.line(format!("croft_bytes_to_text(&{bytes}, &{temp});"));
+                self.line(format!("croft_bytes_to_text(&{bytes}, CROFT_OUT({temp}));"));
                 temp
             }
             _ => "0".to_string(),

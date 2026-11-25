@@ -7,61 +7,61 @@ use croft_syntax::ast::{Expr, ExprKind};
 
 use super::Writer;
 use crate::names::c_string;
+use crate::types::bounds::is_string;
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// A string expression as a `croft_string_view`, copying nothing that
     /// already has a place: a literal stays in the program's constant text.
     pub fn view(&mut self, value: &Expr) -> String {
+        self.bounded_view(value).0
+    }
+
+    /// A string expression as a view, and the bounded string type of what
+    /// it borrows: a literal is as long as it is.
+    pub fn bounded_view(&mut self, value: &Expr) -> (String, Type) {
         match &value.kind {
             ExprKind::String(text) => {
-                format!(
-                    "croft_string_view_from({}, {})",
-                    c_string(text),
-                    text.chars().count()
+                let length = text.chars().count();
+
+                (
+                    format!("croft_string_view_from({}, {length})", c_string(text)),
+                    self.gen.text_type(length as i64),
                 )
             }
             ExprKind::Name(name) => match self.lookup(name) {
-                Some((c, _)) if self.views.contains(&c) => c,
+                Some((c, ty)) if self.views.contains(&c) => (c, ty),
                 _ => {
-                    let c = self.value(value, &Type::String);
+                    let (c, ty) = self.eval(value, Some(&Type::String));
 
-                    self.view_of(&c)
+                    (self.view_of(&c), ty)
                 }
             },
             _ => {
-                let c = self.value(value, &Type::String);
+                let (c, ty) = self.eval(value, Some(&Type::String));
 
-                self.view_of(&c)
+                (self.view_of(&c), ty)
             }
         }
     }
 
-    /// A view of `c`, a `croft_string` or a view already.
+    /// A view of `c`: any string, or a view already.
     pub fn view_of(&self, c: &str) -> String {
         if self.views.contains(c) {
             return c.to_string();
         }
 
-        match c
-            .strip_prefix("(*")
-            .and_then(|inner| inner.strip_suffix(')'))
-        {
-            Some(pointer) if !pointer.contains(['(', ')', '.', ' ']) => {
-                format!("croft_string_view_of({pointer})")
-            }
-            _ => format!("croft_string_view_of(&{c})"),
-        }
+        format!("CROFT_VIEW({c})")
     }
 
-    /// `c` as a `croft_string` of its own: a borrowed parameter is copied
-    /// only when it is kept or passed on as a whole value.
-    pub fn owned(&mut self, c: String) -> String {
+    /// `c` as a string of its own, of type `ty`: a borrowed parameter is
+    /// copied only when it is kept or passed on as a whole value.
+    pub fn owned(&mut self, c: String, ty: &Type) -> String {
         if !self.views.contains(&c) {
             return c;
         }
 
-        let temp = self.temp(&Type::String);
-        self.line(format!("croft_string_from_view({c}, &{temp});"));
+        let temp = self.temp(ty);
+        self.line(format!("croft_string_copy({c}, CROFT_OUT({temp}));"));
 
         temp
     }
@@ -71,16 +71,16 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// `match` writes into it, so neither needs a temporary of its own.
     pub fn value_into(&mut self, target: &str, value: &Expr, ty: &Type) -> String {
         match &value.kind {
-            ExprKind::String(text) if *ty == Type::String => {
-                self.line(format!("croft_string_set(&{target}, {});", c_string(text)));
+            ExprKind::String(text) if is_string(ty) => {
+                self.line(format!(
+                    "croft_string_set({}, CROFT_OUT({target}));",
+                    c_string(text)
+                ));
             }
             ExprKind::Match(subject, arms) if *ty != Type::Unit => {
                 self.match_into(subject, arms, ty, target);
             }
-            _ => {
-                let c = self.value(value, ty);
-                self.line(format!("{target} = {c};"));
-            }
+            _ => self.assign(target, value, ty),
         }
 
         target.to_string()

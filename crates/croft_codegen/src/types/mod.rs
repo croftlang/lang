@@ -1,5 +1,6 @@
 //! C type definitions: structs for Croft types, sizes from constraints, and their order.
 
+pub mod bounds;
 pub mod constant;
 pub mod define;
 pub mod enums;

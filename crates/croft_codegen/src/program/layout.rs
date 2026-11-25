@@ -17,6 +17,7 @@ impl<'a> Generator<'a> {
 
         match &ty {
             Type::String => 2 + self.sizes.string_capacity,
+            Type::Text(length) => 2 + i64::from(*length),
             Type::Bytes => 2 + self.sizes.bytes_capacity,
             Type::List(item) => 2 + self.sizes.list_capacity(item) * self.serialized_size(item),
             Type::Option(item) => 4 + self.serialized_size(item),
@@ -25,7 +26,7 @@ impl<'a> Generator<'a> {
                     * (self.serialized_size(key) + self.serialized_size(value))
             }
             Type::Named(named) if named.kind == SymbolKind::Enum => {
-                let variants = self.model.variants(named).into_iter().map(|variant| {
+                let variants = self.variants(named).into_iter().map(|variant| {
                     (variant.fields.iter())
                         .map(|(_, ty)| self.serialized_size(ty))
                         .sum::<i64>()
@@ -58,7 +59,7 @@ impl<'a> Generator<'a> {
             Type::Option(item) => format!("Option<{}>", self.layout(item)),
             Type::Map(key, value) => format!("Map<{},{}>", self.layout(key), self.layout(value)),
             Type::Named(named) if named.kind == SymbolKind::Enum && !self.is_scalar(&ty) => {
-                let variants: Vec<String> = (self.model.variants(named).into_iter())
+                let variants: Vec<String> = (self.variants(named).into_iter())
                     .map(|variant| {
                         let fields: Vec<String> = (variant.fields.iter())
                             .map(|(name, ty)| format!("{name}:{}", self.layout(ty)))

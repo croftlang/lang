@@ -26,7 +26,14 @@ impl<'g, 'a> Writer<'g, 'a> {
                     }
 
                     let declared = self.declarations.len();
-                    let c = self.value(value, &ty);
+                    // A name `set` later needs room for whatever it is set to.
+                    let (c, ty) = if usage::statements_set(&statements[index + 1..], &name.name) {
+                        (self.value(value, &ty), ty)
+                    } else {
+                        let (c, bounded) = self.eval(value, Some(&ty));
+                        let kept = self.gen.keep_bound(&bounded, &ty);
+                        (self.convert(c, &bounded, &kept), kept)
+                    };
 
                     // A temporary made just now for this value becomes the
                     // name itself, rather than being copied into another.
@@ -45,19 +52,29 @@ impl<'g, 'a> Writer<'g, 'a> {
                 }
                 Statement::Set(name, value) => {
                     let (target, ty) = self.set_target(&name.name);
-                    let c = self.value(value, &ty);
 
                     let own = self
                         .own
                         .as_ref()
-                        .filter(|_| self.lookup(&name.name).is_none());
+                        .filter(|_| self.lookup(&name.name).is_none())
+                        .map(|own| {
+                            (
+                                own.prefix.trim_end_matches('.').to_string(),
+                                own.owner.clone(),
+                            )
+                        });
 
-                    match own.map(|own| {
-                        (
-                            own.prefix.trim_end_matches('.').to_string(),
-                            own.owner.clone(),
-                        )
-                    }) {
+                    let kept_in_own_size = (own.as_ref())
+                        .and_then(|(_, owner)| owner.as_ref())
+                        .and_then(|owner| self.gen.text_capacity(owner, &name.name));
+
+                    // Any string can be written into a field of its own size.
+                    let c = match kept_in_own_size {
+                        Some(_) => self.eval(value, None).0,
+                        None => self.value(value, &ty),
+                    };
+
+                    match own {
                         Some((prefix, owner)) => {
                             self.write_field(owner.as_ref(), &prefix, &name.name, &c)
                         }
@@ -66,7 +83,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 }
                 Statement::Expr(value) => match &value.kind {
                     ExprKind::If(condition, block) => self.guard(condition, block),
-                    _ if is_last => result = self.value(value, want),
+                    _ if is_last => result = self.bounded_value(value, want),
                     _ => {
                         self.eval(value, None);
                     }
@@ -132,10 +149,22 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
     }
 
-    /// Ends the function with a value already of its result type.
+    /// The value of `value` for a place of type `want`, keeping the bounds
+    /// of its strings: whoever takes it copies it to the size it needs.
+    pub fn bounded_value(&mut self, value: &Expr, want: &Type) -> String {
+        let (c, ty) = self.eval(value, Some(want));
+        let kept = self.gen.keep_bound(&ty, want);
+
+        self.convert(c, &ty, &kept)
+    }
+
+    /// Ends the function with a value of its result type, or one that
+    /// differs only in the bounds of its strings.
     pub fn give_back(&mut self, value: String) {
-        if let Returns::Value(_) = self.returns {
-            self.line(format!("*out = {value};"));
+        if let Returns::Value(result) = &self.returns {
+            let result = result.clone();
+            let from = self.bounded_type(&value, &result);
+            self.copy_into("(*out)", &value, &from, &result);
         }
 
         self.line("return;");

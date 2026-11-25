@@ -114,7 +114,7 @@ impl<'a> Generator<'a> {
                     "    if (!croft_bytes_take_int(in, at, &number)) {\n        return 0;\n    }\n    value->tag = number;\n".to_string(),
                 );
 
-                for variant in self.model.variants(named) {
+                for variant in self.variants(named) {
                     let tag = format!("{}_{}", c_name(named), variant.name);
                     let (mut fields_write, mut fields_read) = (String::new(), String::new());
 
@@ -159,13 +159,13 @@ impl<'a> Generator<'a> {
                     }
                     let place = format!("value->{field}");
 
-                    if let Some(capacity) = self.text_capacity(named, &field) {
+                    if self.text_capacity(named, &field).is_some() {
                         write.push_str(&format!(
-                            "    if (!croft_bytes_put_text(out, {place}.text, {place}.length)) {{\n        return 0;\n    }}\n"
+                            "    if (!croft_bytes_put_string(out, CROFT_VIEW({place}))) {{\n        return 0;\n    }}\n"
                         ));
 
                         read.push_str(&format!(
-                            "    if (!croft_bytes_take_text(in, at, {place}.text, &{place}.length, {capacity})) {{\n        return 0;\n    }}\n"
+                            "    if (!croft_bytes_take_string(in, at, CROFT_OUT({place}))) {{\n        return 0;\n    }}\n"
                         ));
 
                         continue;
@@ -194,13 +194,17 @@ impl<'a> Generator<'a> {
         }
 
         let name = match ty {
-            Type::String => "string".to_string(),
+            Type::String | Type::Text(_) => "string".to_string(),
             Type::Bytes => "bytes".to_string(),
             _ => self.serializer_for(ty),
         };
 
         let (write, read) = match ty {
-            Type::String | Type::Bytes => (
+            Type::String | Type::Text(_) => (
+                format!("croft_bytes_put_string(out, CROFT_VIEW({place}))"),
+                format!("croft_bytes_take_string(in, at, CROFT_OUT({place}))"),
+            ),
+            Type::Bytes => (
                 format!("croft_bytes_put_{name}(out, &{place})"),
                 format!("croft_bytes_take_{name}(in, at, &{place})"),
             ),

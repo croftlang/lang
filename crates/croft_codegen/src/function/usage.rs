@@ -12,6 +12,25 @@ pub fn statements_use(statements: &[Statement], name: &str) -> bool {
     })
 }
 
+/// Whether any of these statements, or the blocks inside them, `set`s `name`.
+pub fn statements_set(statements: &[Statement], name: &str) -> bool {
+    statements.iter().any(|statement| match statement {
+        Statement::Set(target, value) => target.name == name || sets(value, name),
+        Statement::Let(_, _, value) | Statement::Expr(value) => sets(value, name),
+    })
+}
+
+fn sets(value: &Expr, name: &str) -> bool {
+    match &value.kind {
+        ExprKind::Block(statements) => statements_set(statements, name),
+        ExprKind::If(_, body) | ExprKind::Loop(_, body) | ExprKind::Lambda(_, body) => {
+            sets(body, name)
+        }
+        ExprKind::Match(_, arms) => arms.iter().any(|arm| sets(&arm.value, name)),
+        _ => false,
+    }
+}
+
 /// Whether `name` is read anywhere in `value`. Shorthand fields, such as
 /// `{ enemy_id }`, read the name too.
 pub fn uses(value: &Expr, name: &str) -> bool {

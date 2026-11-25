@@ -1,0 +1,71 @@
+// Strings kept in the size they can need: from literals, `Length`s, and the
+// methods that make one string from another. Nothing is ever cut short.
+context Words
+
+use { trim, split, to_lower } from Std.Text
+
+error WrongAnswer
+
+value Label {
+    name: String where Length(1, 8)
+}
+
+enum Command {
+    Take(noun: String where Length(1, 6))
+    Wait
+}
+
+// The longest `Length` anywhere, so every unbounded string holds 40.
+fn shout(text: String where Length(0, 40)): String = text + "!"
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn words(line: String where Length(0, 12)): List<String> = line.trim().to_lower().split(" ")
+
+fn second(line: String where Length(0, 12)): String = {
+    let parts = line.split(" ")
+    parts.drop(1).first.unwrap_or("there is no second word")
+}
+
+fn read_command(line: String where Length(0, 12)): Command = {
+    let parts = line.split(" ")
+    let noun = parts.drop(1).first.unwrap_or("")
+    if noun.is_empty {
+        Command.Wait
+    }
+    Command.Take(noun: noun)
+}
+
+fn noun_of(given: Command): String = match given {
+    Take(noun) -> noun
+    Wait -> "nothing"
+}
+
+fn greet(label: Label): String = "hello " + label.name + ", " + 42.to_string()
+
+service Check(): Result<Unit, WrongAnswer> = {
+    let found = words("  Get LAMP ")
+    check(found.length == 2 && found.first.unwrap_or("") == "get")?
+    check(found.last.unwrap_or("") == "lamp")?
+    check(second("get lamp") == "lamp")?
+    check(second("look") == "there is no second word")?
+    check(noun_of(read_command("get key")) == "key")?
+    check(noun_of(read_command("look")) == "nothing")?
+    check(greet(Label { name: "bri" }) == "hello bri, 42")?
+    check(shout("short") == "short!")?
+    let longer = ["a"].add("much longer than a")
+    check(longer.last.unwrap_or("") == "much longer than a")?
+    let label = "a"
+    set label = "set to something longer"
+    check(label == "set to something longer")?
+    let picked = match found.first {
+        Some(word) -> word
+        None -> "a longer answer than any word"
+    }
+    check(picked == "get")
+}

@@ -60,7 +60,6 @@ impl<'a> Generator<'a> {
                 .collect(),
             Type::Named(named) => match named.kind {
                 SymbolKind::Enum => self
-                    .model
                     .variants(named)
                     .into_iter()
                     .flat_map(|v| v.fields)

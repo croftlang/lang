@@ -9,7 +9,7 @@ use crate::Generator;
 impl<'a> Generator<'a> {
     pub(super) fn enum_definition(&self, named: &Resolved) -> String {
         let name = c_name(named);
-        let variants = self.model.variants(named);
+        let variants = self.variants(named);
 
         let tags: String = (variants.iter().enumerate())
             .map(|(index, variant)| format!("#define {name}_{} {index}\n", variant.name))

@@ -65,9 +65,24 @@ impl<'g, 'a> Writer<'g, 'a> {
                 .find(|(f, _)| f == name)
                 .map_or(Type::Unknown, |(_, ty)| ty.clone());
 
+            let kept_in_own_size = owner.and_then(|owner| self.gen.text_capacity(owner, name));
+
             let value = match &given.value {
-                Some(value) => self.value(value, &field_type),
-                None => self.read_name(name),
+                // Any string can be written into a field of its own size.
+                Some(value) if kept_in_own_size.is_some() => self.eval(value, None).0,
+                Some(value) if owner.is_none() || self.gen.is_scalar(&field_type) => {
+                    self.value(value, &field_type)
+                }
+                Some(value) => {
+                    self.assign(&format!("{target}.{name}"), value, &field_type);
+                    continue;
+                }
+                None if kept_in_own_size.is_some() => self.read_name(name),
+                None => {
+                    let c = self.read_name(name);
+                    let from = self.bounded_type(&c, &field_type);
+                    self.convert(c, &from, &field_type)
+                }
             };
 
             self.write_field(owner, target, name, &value);
@@ -85,7 +100,6 @@ impl<'g, 'a> Writer<'g, 'a> {
     ) -> String {
         let info = self
             .gen
-            .model
             .variants(owner)
             .into_iter()
             .find(|v| v.name == variant);
@@ -119,8 +133,17 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         for ((name, field_type), value) in info.fields.iter().zip(values) {
             let Some(value) = value else { continue };
-            let value = self.value(value, field_type);
-            self.line(format!("{prefix}.{name} = {value};"));
+            let place = format!("{prefix}.{name}");
+
+            // A string kept in its own size is checked, by name, to fit.
+            if let Type::Text(capacity) = field_type {
+                let (c, _) = self.eval(value, None);
+                let label = format!("{}.{variant}: {name}", owner.name);
+                self.store_text(&place, &c, i64::from(*capacity), &label);
+                continue;
+            }
+
+            self.assign(&place, value, field_type);
         }
 
         temp

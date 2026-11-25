@@ -18,7 +18,8 @@ hit_points: Int where Range(0, 100)
 // on a list and on each of its items
 enemies: List<Enemy> where Length(0, MAX_ENEMIES), each Alive
 
-// Length also sizes a string field: this one holds 12 characters, not 32.
+// Length also sizes a string: this field holds 12 characters, not 32. So do
+// the strings made from it, such as title.trim() or each part of a split.
 // Longer text is cut short, and a debug build stops and names the field.
 title: String where Length(1, 12)
 

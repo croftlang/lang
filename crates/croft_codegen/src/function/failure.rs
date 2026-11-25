@@ -26,21 +26,30 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// `value?`
     pub fn try_value(&mut self, inner: &Expr) -> String {
-        let (result, _) = self.eval(inner, None);
+        let (result, ty) = self.eval(inner, None);
         self.open(format!("if (!{result}.ok)"));
         self.fail(&format!("{result}.error"));
         self.close();
-        format!("{result}.value")
+
+        match ty {
+            Type::Result(value, _) => self.typed(format!("{result}.value"), &value),
+            _ => format!("{result}.value"),
+        }
     }
 
     /// `value or Error` on a `Result`, an `Option` or a `Bool`.
     pub fn or_else(&mut self, inner: &Expr, error: &Expr, _ty: &Type) -> String {
-        let inner_type = self.type_of(inner, None);
-        let (value, _) = self.eval(inner, None);
+        let (value, inner_type) = self.eval(inner, None);
 
         let (failed, success) = match inner_type {
-            Type::Result(..) => (format!("!{value}.ok"), format!("{value}.value")),
-            Type::Option(_) => (format!("!{value}.some"), format!("{value}.value")),
+            Type::Result(item, _) => (
+                format!("!{value}.ok"),
+                self.typed(format!("{value}.value"), &item),
+            ),
+            Type::Option(item) => (
+                format!("!{value}.some"),
+                self.typed(format!("{value}.value"), &item),
+            ),
             _ => (format!("!{value}"), "0".to_string()),
         };
 

@@ -179,7 +179,7 @@ impl<'a> Generator<'a> {
 
                 format!(
                     "    croft_string key;\n    {loaded} kept;\n    croft_u16 at = 0;\n    croft_int layout = 0;\n\n    \
-                     croft_clear(out, sizeof *out);\n    croft_storage_key({prefix}, (croft_int) {value}, &key);\n    {storage}_load(croft_string_view_of(&key), &kept);\n    \
+                     croft_clear(out, sizeof *out);\n    croft_storage_key({prefix}, (croft_int) {value}, &key);\n    {storage}_load(CROFT_VIEW(key), &kept);\n    \
                      if (!kept.ok) {{\n        out->error = kept.error;\n        return;\n    }}\n    \
                      if (!kept.value.some) {{\n        {missing}\n    }}\n    \
                      if (!croft_bytes_take_int(&kept.value.value, &at, &layout) || layout != {hash}L\n        \
@@ -196,14 +196,14 @@ impl<'a> Generator<'a> {
                      croft_clear(out, sizeof *out);\n    data.length = 0;\n    \
                      if (!croft_bytes_put_int(&data, {hash}L) || !croft_write_{serializer}(&{value}, &data)) {{\n        \
                      out->error.code = {full};\n        return;\n    }}\n    \
-                     croft_storage_key({prefix}, (croft_int) {value}.{field}, &key);\n    {storage}_save(croft_string_view_of(&key), &data, &kept);\n    \
+                     croft_storage_key({prefix}, (croft_int) {value}.{field}, &key);\n    {storage}_save(CROFT_VIEW(key), &data, &kept);\n    \
                      if (!kept.ok) {{\n        out->error = kept.error;\n        return;\n    }}\n    \
                      out->ok = 1;\n    croft_events_keep({kind}, {key});\n"
                 )
             }
             StorageShape::Remove => format!(
                 "    croft_string key;\n    {written} kept;\n\n    \
-                 croft_clear(out, sizeof *out);\n    croft_storage_key({prefix}, (croft_int) {value}, &key);\n    {storage}_remove(croft_string_view_of(&key), &kept);\n    \
+                 croft_clear(out, sizeof *out);\n    croft_storage_key({prefix}, (croft_int) {value}, &key);\n    {storage}_remove(CROFT_VIEW(key), &kept);\n    \
                  if (!kept.ok) {{\n        out->error = kept.error;\n        return;\n    }}\n    out->ok = 1;\n"
             ),
         }

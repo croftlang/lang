@@ -77,6 +77,10 @@ impl<'a> Generator<'a> {
             Type::Float => "double".to_string(),
             Type::Bool => "croft_bool".to_string(),
             Type::String => "croft_string".to_string(),
+            Type::Text(length) => {
+                self.texts.borrow_mut().insert(i64::from(*length));
+                format!("croft_text_{length}")
+            }
             Type::Bytes => "croft_bytes".to_string(),
             Type::Unit | Type::Unknown | Type::Port(_) | Type::Repository(_) => {
                 "croft_unit".to_string()
@@ -108,6 +112,7 @@ impl<'a> Generator<'a> {
                 Type::result(self.canonical(value), self.canonical(error))
             }
             Type::Unknown | Type::Port(_) | Type::Repository(_) => Type::Unit,
+            Type::Text(length) if i64::from(*length) >= self.sizes.string_capacity => Type::String,
             other => other.clone(),
         }
     }

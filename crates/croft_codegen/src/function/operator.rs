@@ -4,6 +4,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::{BinaryOp, Expr};
 
 use super::Writer;
+use crate::types::bounds::is_string;
 use crate::types::constant::evaluate;
 
 const MAX_SHIFT: i64 = croft_analysis::MAX_SHIFT;
@@ -26,11 +27,11 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         let left_type = self.type_of(left, None);
 
-        if left_type == Type::String && matches!(op, Equal | NotEqual | Add) {
-            return self.string_operator(op, left, right, ty);
+        if is_string(&left_type) && matches!(op, Equal | NotEqual | Add) {
+            return self.string_operator(op, left, right);
         }
 
-        let (left, _) = self.eval(left, None);
+        let left = self.value(left, &left_type);
         let right = self.value(right, &left_type);
 
         match op {
@@ -121,14 +122,18 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// `==`, `!=` and `+` on strings, read through views so a literal on
     /// either side is never copied.
-    fn string_operator(&mut self, op: BinaryOp, left: &Expr, right: &Expr, ty: &Type) -> String {
-        let left = self.view(left);
-        let right = self.view(right);
+    fn string_operator(&mut self, op: BinaryOp, left: &Expr, right: &Expr) -> String {
+        let (left, left_type) = self.bounded_view(left);
+        let (right, right_type) = self.bounded_view(right);
 
         match op {
             BinaryOp::Add => {
-                let temp = self.temp(ty);
-                self.line(format!("croft_string_join({left}, {right}, &{temp});"));
+                let length = self.gen.bound(&left_type) + self.gen.bound(&right_type);
+                let joined = self.gen.text_type(length);
+                let temp = self.temp(&joined);
+                self.line(format!(
+                    "croft_string_join({left}, {right}, CROFT_OUT({temp}));"
+                ));
                 temp
             }
             BinaryOp::NotEqual => format!("(!croft_string_equal({left}, {right}))"),

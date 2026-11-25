@@ -76,6 +76,9 @@ pub struct Writer<'g, 'a> {
     /// C names holding a `croft_string_view`: the function's string
     /// parameters, borrowed rather than copied.
     pub(crate) views: HashSet<String>,
+    /// C names and places whose strings have a bound, and their types:
+    /// `t_3` is a `List<Text(32)>`, `p_line` a `Text(32)`.
+    pub(crate) bounded: HashMap<String, Type>,
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -95,6 +98,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             parameters: Vec::new(),
             scopes: vec![HashMap::new()],
             views: HashSet::new(),
+            bounded: HashMap::new(),
         }
     }
 }
