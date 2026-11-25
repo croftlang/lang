@@ -222,10 +222,16 @@ adapter, which uses C's stdio: `Files = "StdioFiles"` in `dn.toml`.
 What the domain needs from the outside world, by signature only.
 
 ### Repository
-A port for loading and saving one aggregate, built on another port:
-`repository Rooms for Room in Storage`. The compiler writes `find`, which
-fails with the aggregate's errors, and `save`, which fails with the storage
-port's error.
+A port for loading and saving one aggregate: `repository Rooms for Room`.
+The compiler writes `find` and `save`. `find` fails with the aggregate's
+errors or a `StorageError`, and `save` with a `StorageError`. Where it keeps
+them is chosen for each target in `dn.toml`: `Rooms = "MemoryStorage"`, the
+default, or `Rooms = "FileStorage"`.
+
+### StorageError
+What loading or saving an aggregate can fail with, built in to every
+program with a repository: `StorageFull`, `StorageDamaged` (written by a
+different version of the program, or damaged) and `StorageUnavailable`.
 
 ### Arguments
 The built-in port that gives a program its command-line arguments. A

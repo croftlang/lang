@@ -76,6 +76,15 @@ void dn_bytes_add(const dn_bytes *bytes, dn_int byte, dn_bytes *out);
 void dn_bytes_slice(const dn_bytes *bytes, dn_int start, dn_int end, dn_bytes *out);
 void dn_bytes_to_text(const dn_bytes *bytes, dn_string *out);
 void dn_string_to_bytes(const dn_string *text, dn_bytes *out);
+dn_bool dn_bytes_put_int(dn_bytes *out, dn_int value);
+dn_bool dn_bytes_take_int(const dn_bytes *in, dn_u16 *at, dn_int *out);
+dn_bool dn_bytes_put_length(dn_bytes *out, dn_u16 length);
+dn_bool dn_bytes_take_length(const dn_bytes *in, dn_u16 *at, dn_u16 *out);
+dn_bool dn_bytes_put_string(dn_bytes *out, const dn_string *text);
+dn_bool dn_bytes_take_string(const dn_bytes *in, dn_u16 *at, dn_string *out);
+dn_bool dn_bytes_put_bytes(dn_bytes *out, const dn_bytes *bytes);
+dn_bool dn_bytes_take_bytes(const dn_bytes *in, dn_u16 *at, dn_bytes *out);
+void dn_storage_path(const char *prefix, dn_int identity, dn_string *out);
 dn_bool dn_string_to_int(const dn_string *text, dn_int *out);
 
 void dn_arguments_set(int count, char **values);

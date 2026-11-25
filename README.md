@@ -92,9 +92,9 @@ dn compile examples/dungeon --target spectrum_48k
 ## The project file
 
 `dn.toml` sits beside the `.dn` files and holds what is about the build
-rather than the domain: for each target, the adapter that fills each port
-and the C files holding its native functions. The compiler checks every name
-in it against the program.
+rather than the domain: for each target, the adapter that fills each port,
+where each repository keeps its aggregates, and the C files holding native
+functions. The compiler checks every name in it against the program.
 
 ```toml
 [package]
@@ -107,7 +107,9 @@ native = ["platform/spectrum.c"]
 [target.spectrum_48k.adapters]
 Screen = "SpectrumScreen"
 Keyboard = "SpectrumKeyboard"
-Storage = "DivmmcStorage"
+Files = "DivmmcFiles"
+Rooms = "FileStorage"
+Scoreboards = "FileStorage"
 ```
 
 `dn check` works without a `dn.toml`; `dn compile` needs one.
@@ -178,8 +180,12 @@ cc -std=c89 *.c -o dungeon
 - **Events** are queued by commands and kept once the aggregate that raised
   them is saved. When a service ends, its kept events go to the policies;
   events from a failed command, or from a change that was never saved, are dropped.
-- **Repositories** keep their aggregates in memory for now. Saving through
-  the storage port comes later.
+- **Repositories** keep their aggregates in memory unless `dn.toml` says
+  `FileStorage`. Then each aggregate is a file of its own, such as
+  `rooms12.dat`, written through the target's `Files` adapter: the hash of
+  the aggregate's layout, then every field, numbers as four bytes least
+  significant first, so a save reads the same on every machine. A file from a
+  different version of the program loads as `StorageDamaged`.
 - **Contracts.** Preconditions with an error, and invariants, are always
   checked. Built with `-DDN_DEBUG`, a program also checks plain preconditions
   and every `where` constraint: on arguments when a function, command or adapter

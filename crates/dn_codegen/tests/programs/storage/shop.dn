@@ -1,0 +1,111 @@
+// Saves a shelf in FileStorage, in shelve12.dat, finds it again and checks
+// it came back the same; then finds one that was never saved, and one whose
+// file is damaged.
+context Shop {
+    publish { Check }
+
+    use { Files, FileError } from Std.Files
+    use { Decimal } from Std.Numbers
+    use { to_bytes } from Std.Text
+
+    identity ShelfId: Int where Range(1, 99)
+    identity ItemId: Int where Range(0, 9)
+
+    enum Label {
+        Plain
+        Sale(percent: Int where Range(1, 90))
+    }
+
+    aggregate Shelf {
+        identity id: ShelfId
+        name: String where Length(0, 16)
+        price: Decimal<2>
+        label: Label
+        best: Option<Int>
+        items: List<Item> where Length(0, 4)
+
+        entity Item {
+            identity id: ItemId
+            count: Int where Range(0, 255)
+            open: Bool
+        }
+
+        error NotFound
+    }
+
+    repository Shelves for Shelf
+
+    error WrongAnswer
+
+    fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+        if ok {
+            Ok(Unit)
+        }
+        Err(WrongAnswer)
+    }
+
+    enum Failure {
+        include Shelf.Error
+        include StorageError
+        include WrongAnswer
+        include FileError
+    }
+
+    enum Finding {
+        include Shelf.Error
+        include StorageError
+    }
+
+    fn is_missing(error: Finding): Bool = match error {
+        NotFound -> true
+        StorageFull -> false
+        StorageDamaged -> false
+        StorageUnavailable -> false
+    }
+
+    fn is_damaged(error: Finding): Bool = match error {
+        NotFound -> false
+        StorageFull -> false
+        StorageDamaged -> true
+        StorageUnavailable -> false
+    }
+
+    service Check(): Result<Unit, Failure> {
+        calls Shelves, Files, Console
+    } = {
+        let shelf = Shelf {
+            id: 12,
+            name: "Garden",
+            price: -3.75,
+            label: Label.Sale(percent: 20),
+            best: Some(3),
+            items: [
+                Shelf.Item { id: 3, count: 200, open: true },
+                Shelf.Item { id: 7, count: 0, open: false }
+            ]
+        }
+        shelves.save(shelf)?
+        check(files.exists("shelve12.dat"))?
+        let found = shelves.find(12)?
+        check(found == shelf)?
+        let missing = match shelves.find(13) {
+            Ok(other) -> false
+            Err(error) -> is_missing(error)
+        }
+        check(missing)?
+        files.write("shelve12.dat", "not a shelf".to_bytes())?
+        let damaged = match shelves.find(12) {
+            Ok(other) -> false
+            Err(error) -> is_damaged(error)
+        }
+        check(damaged)?
+        files.remove("shelve12.dat")?
+        console.print("ok")
+        Unit
+    }
+}
+
+domain Program {
+    contexts { Shop }
+    use { Check } from Shop
+} = Check()?

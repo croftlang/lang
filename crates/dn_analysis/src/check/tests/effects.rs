@@ -4,8 +4,6 @@ fn game(extra: &str) -> String {
     format!(
         "context Game {{\n\
          identity RoomId: Int\n\
-         error StorageError\n\
-         port Storage {{\n fn load(name: String): Result<Int, StorageError>\n}}\n\
          port Screen {{\n fn clear(): Unit\n}}\n\
          aggregate Room {{\n\
              identity id: RoomId\n\
@@ -14,7 +12,7 @@ fn game(extra: &str) -> String {
              event Healed {{ lives: Int }}\n\
              command Heal(amount: Int) = {{\n set lives = lives + amount\n emit Healed {{ lives }}\n }}\n\
          }}\n\
-         repository Rooms for Room in Storage\n\
+         repository Rooms for Room\n\
          enum GameError {{\n include Room.Error\n include StorageError\n }}\n\
          {extra}\n}}"
     )

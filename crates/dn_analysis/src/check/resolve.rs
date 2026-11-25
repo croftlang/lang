@@ -4,6 +4,7 @@
 //! names the context imports with `use`. A name can also be written with its
 //! context in front, `Dungeon.Room.EnemyDefeated`, if that context publishes it.
 
+use crate::standard::STORAGE_CONTEXT;
 use dn_syntax::ast::Path;
 
 use super::Checker;
@@ -51,6 +52,10 @@ impl<'a> Checker<'a> {
             if use_decl.names.iter().any(|name| name.text() == text) {
                 return self.lookup(&use_decl.from.text(), &text);
             }
+        }
+        // `StorageError` and its errors need no import.
+        if self.is_published(STORAGE_CONTEXT, &text) {
+            return self.lookup(STORAGE_CONTEXT, &text);
         }
         let (first, rest) = path.segments.split_first()?;
         let rest: Vec<&str> = rest.iter().map(|segment| segment.name.as_str()).collect();

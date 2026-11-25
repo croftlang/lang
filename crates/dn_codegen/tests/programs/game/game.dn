@@ -27,17 +27,7 @@ aggregate Board {
     }
 }
 
-repository Boards for Board in Storage
-
-error StorageError
-
-port Storage {
-    fn load(name: String): Result<Int, StorageError>
-}
-
-adapter NoStorage for Storage = {
-    fn load(name) = Err(StorageError)
-}
+repository Boards for Board
 
 policy BonusOnScore when Board.Scored {
     issue AddBonus on Board(event.source)

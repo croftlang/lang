@@ -1,6 +1,6 @@
-//! Repositories. For now each keeps its aggregates in memory; saving through
-//! the storage port comes later. Saving an aggregate keeps the events its
-//! commands raised, so policies hear about them.
+//! Repositories, kept in memory or, with `FileStorage`, one file for each
+//! aggregate through the target's `Files` adapter. Saving an aggregate keeps
+//! the events its commands raised, so policies hear about them.
 
 use dn_analysis::symbols::SymbolKind;
 use dn_analysis::Type;
@@ -35,6 +35,10 @@ impl<'a> Generator<'a> {
             let save = format!("void {name}_save(const {item} *aggregate, {saved} *out)");
             prototypes.push(format!("{find};"));
             prototypes.push(format!("{save};"));
+            if self.file_storage.contains(&repository) {
+                out.push_str(&self.file_repository(&repository, &aggregate, &find, &save));
+                continue;
+            }
             out.push_str(&format!(
                 "{item} {name}_items[{REPOSITORY_CAPACITY}];\ndn_u16 {name}_count = 0;\n\n\
                  {find}\n{{\n    dn_u16 index;\n\n    for (index = 0; index < {name}_count; index++) {{\n        \

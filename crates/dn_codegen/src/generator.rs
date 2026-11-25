@@ -16,6 +16,10 @@ pub struct Generator<'a> {
     pub(crate) target: String,
     /// Which adapter fills each port on this target.
     pub(crate) bindings: HashMap<Resolved, Resolved>,
+    /// Repositories this target keeps in `FileStorage`; the rest stay in memory.
+    pub(crate) file_storage: HashSet<Resolved>,
+    /// Types that need functions to turn them into bytes and back.
+    pub(crate) serialized: RefCell<(Vec<Type>, HashSet<Type>)>,
     /// What runs first: the domain's body, or the target's `main` service.
     pub(crate) start: Resolved,
     pub(crate) sizes: Sizes,
@@ -49,7 +53,14 @@ impl<'a> Generator<'a> {
             ));
         };
         let mut bindings = HashMap::new();
+        let mut file_storage = HashSet::new();
         for (port, adapter) in &target_config.adapters {
+            if let Some(repository) = find(&model, &port.name, SymbolKind::Repository) {
+                if adapter.name == "FileStorage" {
+                    file_storage.insert(repository);
+                }
+                continue;
+            }
             let port = find(&model, &port.name, SymbolKind::Port);
             let adapter = find(&model, &adapter.name, SymbolKind::Adapter);
             if let (Some(port), Some(adapter)) = (port, adapter) {
@@ -64,12 +75,14 @@ impl<'a> Generator<'a> {
         let start = start
             .ok_or_else(|| format!("target `{target}` has nothing to run: declare a `domain`"))?;
         let sizes = Sizes::measure(program, &model);
-        Ok(Generator {
+        let mut generator = Generator {
             program,
             model,
             facts: &program.facts,
             target: target.to_string(),
             bindings,
+            file_storage,
+            serialized: RefCell::default(),
             start,
             sizes,
             used_types: RefCell::default(),
@@ -77,7 +90,24 @@ impl<'a> Generator<'a> {
             checks: RefCell::default(),
             checked_types: RefCell::default(),
             natives: RefCell::default(),
-        })
+        };
+        generator.make_room_for_files();
+        Ok(generator)
+    }
+
+    /// With `FileStorage`, every `Bytes` must hold a whole saved aggregate,
+    /// and every string a file name such as `rooms12.dat`.
+    fn make_room_for_files(&mut self) {
+        let mut largest = 0;
+        for repository in &self.file_storage {
+            if let Some(aggregate) = self.model.repository_aggregate(repository) {
+                largest = largest.max(4 + self.serialized_size(&Type::Named(aggregate)));
+            }
+        }
+        if !self.file_storage.is_empty() {
+            self.sizes.bytes_capacity = self.sizes.bytes_capacity.max(largest);
+            self.sizes.string_capacity = self.sizes.string_capacity.max(12);
+        }
     }
 }
 

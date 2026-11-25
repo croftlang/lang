@@ -190,3 +190,11 @@ fn reports_rules_in_a_contract_for_a_name_that_is_not_a_parameter() {
         "`b` is not a parameter, so it can't have constraints here"
     );
 }
+
+#[test]
+fn explains_that_storage_is_chosen_in_the_project_file() {
+    assert_eq!(
+        parse_error("context Shop {\n repository Shelves for Shelf in Storage\n}"),
+        "a repository's storage is chosen in dn.toml, such as `Rooms = \"FileStorage\"`"
+    );
+}

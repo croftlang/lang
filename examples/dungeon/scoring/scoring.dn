@@ -2,7 +2,7 @@
 context Scoring {
     publish { SetUpScoring }
 
-    use { Room.EnemyDefeated, Storage, StorageError } from Dungeon
+    use { Room.EnemyDefeated } from Dungeon
     use { min } from Std.Numbers
 
     identity ScoreboardId: Int where Range(1, 4)
@@ -26,7 +26,7 @@ context Scoring {
         }
     }
 
-    repository Scoreboards for Scoreboard in Storage
+    repository Scoreboards for Scoreboard
 
     // Saves an empty scoreboard, for the points to go on.
     service SetUpScoring(): Result<Unit, StorageError> {

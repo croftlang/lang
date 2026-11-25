@@ -11,9 +11,4 @@ port Keyboard {
     fn pressed(): Option<Key>
 }
 
-port Storage {
-    fn load(name: String where Length(1, 12)): Result<List<Int>, StorageError>
-    fn store(name: String where Length(1, 12), data: List<Int>): Result<Unit, StorageError>
-}
-
-repository Rooms for Room in Storage
+repository Rooms for Room

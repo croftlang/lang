@@ -72,11 +72,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let found = match method.name.as_str() {
             "find" => {
                 let identity = self.checker.identity_of(&aggregate);
+                let errors = Type::Errors(vec![errors, self.checker.storage_error()]);
                 let found = Type::result(Type::Named(aggregate.clone()), errors);
                 self.fixed("find", arguments, &[identity], found, span)
             }
             "save" => {
-                let storage = self.checker.storage_error(repository);
+                let storage = self.checker.storage_error();
                 let found = Type::result(Type::Unit, storage);
                 self.fixed(
                     "save",

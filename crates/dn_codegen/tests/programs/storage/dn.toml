@@ -1,0 +1,6 @@
+[package]
+name = "storage"
+
+[target.test.adapters]
+Files = "StdioFiles"
+Shelves = "FileStorage"

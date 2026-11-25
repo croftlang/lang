@@ -1,0 +1,21 @@
+// Std.Storage: what saving and loading an aggregate can fail with. Every
+// program with a repository has it, and its names need no import.
+context Storage {
+    publish { StorageError, StorageFull, StorageDamaged, StorageUnavailable }
+
+    // There is no room left to save the aggregate.
+    error StorageFull
+
+    // What was saved can't be read back as this aggregate: it was written by
+    // a different version of the program, or the file is damaged.
+    error StorageDamaged
+
+    // The machine couldn't read or write the storage, for any other reason.
+    error StorageUnavailable
+
+    enum StorageError {
+        include StorageFull
+        include StorageDamaged
+        include StorageUnavailable
+    }
+}

@@ -40,8 +40,8 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `repository Rooms for Room in Storage`: an aggregate of this context,
-    /// stored through a port.
+    /// `repository Rooms for Room`: an aggregate of this context, kept in
+    /// the storage dn.toml chooses.
     pub(super) fn check_repository(&mut self, scope: &Scope, repository: &RepositoryDecl) {
         let kinds = [SymbolKind::Aggregate];
         if let Some(found) = self.expect_kind(scope, &repository.aggregate, &kinds, "an aggregate")
@@ -50,9 +50,6 @@ impl<'a> Checker<'a> {
                 let message = "a repository can only store an aggregate of its own context";
                 self.error(message, repository.aggregate.span());
             }
-        }
-        if let Some(storage) = &repository.storage {
-            self.expect_kind(scope, storage, &[SymbolKind::Port], "a port");
         }
     }
 }

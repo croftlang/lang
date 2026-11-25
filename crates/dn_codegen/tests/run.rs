@@ -66,6 +66,40 @@ fn reads_and_writes_files() {
     fs::remove_dir_all(output).ok();
 }
 
+/// A shelf saved through FileStorage comes back the same, a missing one is
+/// `NotFound`, and a damaged file is `StorageDamaged`.
+#[test]
+fn saves_and_finds_aggregates_in_files() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/storage");
+    let output = generate(&source, "test", "storage");
+    let built = compile(
+        &output,
+        &[
+            "-DDN_DEBUG",
+            "dn_runtime.c",
+            "dn_files.c",
+            "program.c",
+            "-o",
+            "program",
+        ],
+    );
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("program"))
+        .current_dir(&output)
+        .output()
+        .expect("it runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "ok\n");
+    assert!(ran.status.success());
+    fs::remove_dir_all(output).ok();
+}
+
 #[test]
 fn runs_commands_events_policies_and_repositories() {
     run_program("game");

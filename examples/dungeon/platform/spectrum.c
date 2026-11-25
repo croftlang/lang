@@ -28,17 +28,37 @@ void read_key(dn_option_Dungeon_Key *out)
     out->some = 0;
 }
 
-void divmmc_load(const dn_string *name, dn_result_list_int_error *out)
+/* The DivMMC's files. Until esxDOS calls are written, reading finds nothing
+   and writing succeeds without keeping anything. */
+void divmmc_read(const dn_string *path, dn_result_bytes_error *out)
 {
-    (void) name;
+    (void) path;
+    dn_clear(out, sizeof *out);
+    out->error.code = DN_ERROR_Std_Files_NotFound;
+}
+
+void divmmc_write(const dn_string *path, const dn_bytes *data, dn_result_unit_error *out)
+{
+    (void) path;
+    (void) data;
     dn_clear(out, sizeof *out);
     out->ok = 1;
 }
 
-void divmmc_store(const dn_string *name, const dn_list_int *data, dn_result_unit_error *out)
+void divmmc_append(const dn_string *path, const dn_bytes *data, dn_result_unit_error *out)
 {
-    (void) name;
-    (void) data;
+    divmmc_write(path, data, out);
+}
+
+void divmmc_exists(const dn_string *path, dn_bool *out)
+{
+    (void) path;
+    *out = 0;
+}
+
+void divmmc_remove(const dn_string *path, dn_result_unit_error *out)
+{
+    (void) path;
     dn_clear(out, sizeof *out);
-    out->ok = 1;
+    out->error.code = DN_ERROR_Std_Files_NotFound;
 }

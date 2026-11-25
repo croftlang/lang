@@ -42,7 +42,11 @@ pub(crate) use resolve::{Resolved, Scope};
 /// Merges the files into one program and checks it, with the project file if there is one.
 pub fn check(files: Vec<File>, manifest: Option<Manifest>) -> Result<Program, Vec<Diagnostic>> {
     let mut files = files;
-    crate::standard::add_standard_sources(&mut files);
+    let saves_in_files = manifest.as_ref().is_some_and(|m| {
+        (m.targets.iter().flat_map(|t| &t.adapters))
+            .any(|(_, storage)| storage.name == crate::standard::FILE_STORAGE)
+    });
+    crate::standard::add_standard_sources(&mut files, saves_in_files);
     let mut program = Program::from_files(files);
     for (name, context) in &mut program.contexts {
         context.is_standard = crate::standard::standard_source(name).is_some();

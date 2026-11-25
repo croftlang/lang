@@ -26,7 +26,11 @@ fn accepts_the_dungeon_example() {
     let sources: Vec<&str> = sources.iter().map(String::as_str).collect();
     let program = check_files(&sources).unwrap_or_else(|errors| panic!("{errors:#?}"));
     assert_eq!(
-        program.contexts.values().filter(|c| !c.is_domain).count(),
+        program
+            .contexts
+            .values()
+            .filter(|c| !c.is_domain && !c.is_standard)
+            .count(),
         3
     );
     assert_eq!(program.domains[0].name.name, "Game");

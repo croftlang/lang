@@ -54,11 +54,10 @@ pub struct AdapterDecl {
     pub operations: Vec<FunctionDecl>,
 }
 
-/// `repository Rooms for Room in Storage`
+/// `repository Rooms for Room`. Where it saves is chosen in dn.toml.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RepositoryDecl {
     pub doc: Vec<String>,
     pub name: Identifier,
     pub aggregate: Path,
-    pub storage: Option<Path>,
 }

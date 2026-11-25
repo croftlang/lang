@@ -34,6 +34,8 @@ fn message(error: GameError): String = match error {
     EnemyMissing(enemy_id) -> "That enemy has gone."
     NotFound -> "Room missing."
     ExitBlocked -> "Something blocks the exit."
-    StorageError(name) -> "Cannot read the disk."
+    StorageFull -> "The disk is full."
+    StorageDamaged -> "The save is damaged."
+    StorageUnavailable -> "Cannot read the disk."
     KeyboardUnavailable -> "No keyboard."
 }

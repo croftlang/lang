@@ -7,11 +7,14 @@ mod constant;
 mod constraints;
 mod equality;
 mod events;
+mod file_storage;
 mod functions;
+mod layout;
 mod lookup;
 mod main;
 mod repository;
 mod runtime;
+mod serialize;
 mod signature;
 
 use crate::{GeneratedFile, Generator};
@@ -21,7 +24,8 @@ const STDIO_FILES: &str = include_str!("../runtime/files.c");
 const RUNTIME_SOURCE: &str = concat!(
     include_str!("../runtime/dn_runtime.c"),
     include_str!("../runtime/decimal.c"),
-    include_str!("../runtime/bytes.c")
+    include_str!("../runtime/bytes.c"),
+    include_str!("../runtime/saving.c")
 );
 
 impl<'a> Generator<'a> {
@@ -33,6 +37,7 @@ impl<'a> Generator<'a> {
         let events = self.events(&mut prototypes);
         let (adapter_state, adapters) = self.adapters(&mut prototypes);
         let repositories = self.repositories(&mut prototypes);
+        let serializers = self.serializer_functions();
         let main = self.main_function();
         let error_names = self.error_names(&mut prototypes);
         let event_definition = self.event_definition();
@@ -51,7 +56,7 @@ impl<'a> Generator<'a> {
             prototypes.join("\n")
         );
         let source = format!(
-            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{checks}{equalities}{functions}{commands}{events}{adapters}{repositories}{error_names}{main}"
+            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{checks}{equalities}{functions}{commands}{events}{adapters}{serializers}{repositories}{error_names}{main}"
         );
         let runtime_header = RUNTIME_HEADER
             .replace(

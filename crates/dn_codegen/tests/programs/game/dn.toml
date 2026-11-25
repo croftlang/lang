@@ -5,4 +5,4 @@ name = "game"
 main = "Start"
 
 [target.test.adapters]
-Storage = "NoStorage"
+Boards = "MemoryStorage"
