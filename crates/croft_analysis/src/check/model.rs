@@ -18,6 +18,8 @@ pub struct VariantInfo {
     pub fields: Vec<(String, Type)>,
     /// The error the variant stands for, when it is one.
     pub error: Option<Resolved>,
+    /// The enum or error that declares it, which may be one this enum includes.
+    pub declared_in: Resolved,
 }
 
 pub struct Model<'a> {

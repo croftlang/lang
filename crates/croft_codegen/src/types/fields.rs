@@ -6,7 +6,7 @@
 
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::Resolved;
-use croft_analysis::Type;
+use croft_analysis::{Type, VariantInfo};
 use croft_syntax::ast::ConstraintUse;
 
 use super::constant::evaluate;
@@ -91,6 +91,41 @@ impl<'a> Generator<'a> {
         let high = length.arguments.last()?;
 
         evaluate(self.program, &self.model, context, high)
+    }
+
+    /// The variants of an enum. A string field with a `Length` shorter than
+    /// every other string is kept in its own size, as on a value. Errors
+    /// keep full strings.
+    pub fn variants(&self, named: &Resolved) -> Vec<VariantInfo> {
+        let mut variants = self.model.variants(named);
+
+        if self.model.is_error(&Type::Named(named.clone())) {
+            return variants;
+        }
+
+        for variant in &mut variants {
+            let declared = &variant.declared_in;
+
+            if variant.error.is_some() || declared.kind != SymbolKind::Enum {
+                continue;
+            }
+
+            let record = (self.program.contexts.get(&declared.context))
+                .and_then(|context| context.enums.iter().find(|e| e.name.name == declared.name))
+                .and_then(|decl| decl.variants.iter().find(|v| v.name.name == variant.name));
+
+            let Some(record) = record else { continue };
+
+            for (name, ty) in &mut variant.fields {
+                let Some(field) = record.fields.iter().find(|f| f.name.name == *name) else {
+                    continue;
+                };
+
+                *ty = self.parameter_type(&declared.context, ty.clone(), &field.constraints);
+            }
+        }
+
+        variants
     }
 
     /// A string parameter's type: bounded by its `Length`, when it has one.

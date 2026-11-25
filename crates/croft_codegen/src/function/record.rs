@@ -100,7 +100,6 @@ impl<'g, 'a> Writer<'g, 'a> {
     ) -> String {
         let info = self
             .gen
-            .model
             .variants(owner)
             .into_iter()
             .find(|v| v.name == variant);
@@ -134,7 +133,17 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         for ((name, field_type), value) in info.fields.iter().zip(values) {
             let Some(value) = value else { continue };
-            self.assign(&format!("{prefix}.{name}"), value, field_type);
+            let place = format!("{prefix}.{name}");
+
+            // A string kept in its own size is checked, by name, to fit.
+            if let Type::Text(capacity) = field_type {
+                let (c, _) = self.eval(value, None);
+                let label = format!("{}.{variant}: {name}", owner.name);
+                self.store_text(&place, &c, i64::from(*capacity), &label);
+                continue;
+            }
+
+            self.assign(&place, value, field_type);
         }
 
         temp

@@ -78,7 +78,7 @@ impl<'a> Generator<'a> {
                 let mut tests =
                     String::from("    if (a->tag != b->tag) {\n        return 0;\n    }\n");
 
-                for variant in self.model.variants(named) {
+                for variant in self.variants(named) {
                     for (field, field_type) in &variant.fields {
                         let same = self.compare(
                             &format!("a->as.{}.{field}", variant.name),
@@ -136,7 +136,7 @@ impl<'a> Generator<'a> {
             return format!("({a} == {b})");
         }
 
-        if *ty == Type::String {
+        if matches!(ty, Type::String | Type::Text(_)) {
             return format!("croft_string_equal(CROFT_VIEW({a}), CROFT_VIEW({b}))");
         }
 

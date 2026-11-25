@@ -96,7 +96,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 vec![(format!("{subject}.error"), (**error).clone())],
             ),
             Type::Named(owner) => {
-                let variants = self.gen.model.variants(owner);
+                let variants = self.gen.variants(owner);
 
                 let Some(variant) = variants.into_iter().find(|v| v.name == name) else {
                     return ("0".to_string(), Vec::new());

@@ -77,7 +77,7 @@ impl<'a> Generator<'a> {
                 }
                 SymbolKind::Enum if self.is_plain_enum(named) => 1,
                 SymbolKind::Enum => {
-                    let largest = (self.model.variants(named).into_iter())
+                    let largest = (self.variants(named).into_iter())
                         .map(|v| {
                             v.fields
                                 .iter()
