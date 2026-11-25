@@ -23,6 +23,7 @@ impl Context {
             adapters: Vec::new(),
             repositories: Vec::new(),
             is_domain: false,
+            is_standard: false,
         }
     }
 

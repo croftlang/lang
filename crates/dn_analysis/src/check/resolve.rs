@@ -72,10 +72,8 @@ impl<'a> Checker<'a> {
         let text = path.text();
         match self.resolve(scope, path) {
             None => {
-                self.error(
-                    format!("cannot find {expected} named `{text}`"),
-                    path.span(),
-                );
+                let message = crate::standard::not_found_message(expected, &text);
+                self.error(message, path.span());
                 None
             }
             Some(found) if !kinds.contains(&found.kind) => {

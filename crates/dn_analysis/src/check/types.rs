@@ -57,7 +57,7 @@ impl<'a> Checker<'a> {
             self.error(format!("`{name}` takes no type arguments"), span);
         }
         match self.resolve(scope, &ty.path) {
-            None => self.error(format!("cannot find a type named `{name}`"), span),
+            None => self.error(crate::standard::not_found_message("a type", &name), span),
             Some(found) if !found.kind.is_type() => {
                 let actual = found.kind.describe();
                 self.error(format!("expected a type, but `{name}` is {actual}"), span);

@@ -6,6 +6,7 @@ mod effects;
 mod files;
 mod functions;
 mod manifest;
+mod standard;
 
 use dn_syntax::{parse, SourceId};
 

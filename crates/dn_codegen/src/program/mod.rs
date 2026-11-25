@@ -17,6 +17,7 @@ mod signature;
 use crate::{GeneratedFile, Generator};
 
 const RUNTIME_HEADER: &str = include_str!("../runtime/dn.h");
+const STDIO_FILES: &str = include_str!("../runtime/files.c");
 const RUNTIME_SOURCE: &str = concat!(
     include_str!("../runtime/dn_runtime.c"),
     include_str!("../runtime/decimal.c"),
@@ -61,7 +62,12 @@ impl<'a> Generator<'a> {
                 "#ifndef DN_BYTES_CAPACITY\n#define DN_BYTES_CAPACITY 64\n#endif",
                 &format!("#define DN_BYTES_CAPACITY {}", self.sizes.bytes_capacity),
             );
-        Ok(vec![
+        let standard_natives = self.standard_natives();
+        let reached: String = standard_natives
+            .iter()
+            .map(|file| file.contents.as_str())
+            .collect();
+        let mut files = vec![
             GeneratedFile {
                 name: "dn.h".to_string(),
                 contents: runtime_header,
@@ -71,7 +77,7 @@ impl<'a> Generator<'a> {
                 // `dn_fail` is always kept: `DN_CHECK` in dn.h calls it.
                 contents: runtime::trim_runtime(
                     RUNTIME_SOURCE,
-                    &format!("dn_fail\n{header}{source}"),
+                    &format!("dn_fail\n{header}{source}{reached}"),
                 ),
             },
             GeneratedFile {
@@ -82,7 +88,26 @@ impl<'a> Generator<'a> {
                 name: "program.c".to_string(),
                 contents: source,
             },
-        ])
+        ];
+        files.extend(standard_natives);
+        Ok(files)
+    }
+
+    /// The C for standard adapters this target binds, such as `dn_files.c`
+    /// when `Files` is bound to `StdioFiles`.
+    fn standard_natives(&self) -> Vec<GeneratedFile> {
+        let binds = |context: &str, name: &str| {
+            (self.bindings.values())
+                .any(|adapter| adapter.context == context && adapter.name == name)
+        };
+        let mut files = Vec::new();
+        if binds("Std.Files", "StdioFiles") {
+            files.push(GeneratedFile {
+                name: "dn_files.c".to_string(),
+                contents: STDIO_FILES.to_string(),
+            });
+        }
+        files
     }
 
     fn native_prototypes(&self) -> String {

@@ -210,6 +210,12 @@ A set of built-ins a context imports before using, like any other context:
 Each file of a context sees what any of them imports. Standard contexts need
 no arrow in the domain's `contexts`.
 
+Some standard contexts are written in dn and join the program when it
+imports from them. `Std.Files` has the `Files` port, with `read`, `write`,
+`append`, `exists` and `remove`, its errors `NotFound`, `NoRoom` and
+`Unreadable`, the enum `FileError` that includes them, and the `StdioFiles`
+adapter, which uses C's stdio: `Files = "StdioFiles"` in `dn.toml`.
+
 ## The outside world
 
 ### Port

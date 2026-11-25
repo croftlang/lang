@@ -35,6 +35,37 @@ fn prints_through_the_console() {
     fs::remove_dir_all(output).ok();
 }
 
+/// Std.Files through StdioFiles: the file is written, read back and removed,
+/// and reading it again stops the program with `NotFound`.
+#[test]
+fn reads_and_writes_files() {
+    if !has_c_compiler() {
+        return;
+    }
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/files");
+    let output = generate(&source, "test", "files");
+    let built = compile(
+        &output,
+        &["dn_runtime.c", "dn_files.c", "program.c", "-o", "program"],
+    );
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ran = std::process::Command::new(output.join("program"))
+        .current_dir(&output)
+        .output()
+        .expect("it runs");
+    assert_eq!(ran.status.code(), Some(1));
+    assert_eq!(
+        String::from_utf8_lossy(&ran.stdout),
+        "first line, then more\nStd.Files.NotFound\n"
+    );
+    assert!(!output.join("notes.txt").exists());
+    fs::remove_dir_all(output).ok();
+}
+
 #[test]
 fn runs_commands_events_policies_and_repositories() {
     run_program("game");

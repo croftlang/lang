@@ -8,7 +8,11 @@ use crate::Generator;
 
 /// `Dungeon_Room_Enemy` for `Room.Enemy` in context `Dungeon`.
 pub fn c_name(named: &Resolved) -> String {
-    format!("{}_{}", named.context, named.name.replace('.', "_"))
+    format!(
+        "{}_{}",
+        named.context.replace('.', "_"),
+        named.name.replace('.', "_")
+    )
 }
 
 /// The C name for an error's code: `DN_ERROR_Dungeon_Room_NotFound`.
