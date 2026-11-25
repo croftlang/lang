@@ -189,3 +189,21 @@ fn checks_bytes() {
         "`to_text` needs `use { to_text } from Std.Text`",
     );
 }
+
+#[test]
+fn handles_the_rest_of_a_match_with_a_wildcard() {
+    let source = game("fn f(d: Direction): Int = match d {\n North -> 1\n _ -> 0\n}");
+    assert_eq!(errors(&source), Vec::<String>::new());
+    assert_error(
+        &game("fn f(d: Direction): Int = match d {\n _ -> 0\n North -> 1\n}"),
+        "`_` handles everything left, so it must be the last arm",
+    );
+    assert_error(
+        &game("fn f(d: Direction): Int = match d {\n North -> 1\n South -> 2\n _ -> 0\n}"),
+        "every variant is already handled, so `_` is never reached",
+    );
+    assert_error(
+        &game("fn f(d: Option<Int>): Int = match d {\n Some(n) -> n\n _(x) -> 0\n}"),
+        "`_` stands for several variants, so it can't name their fields",
+    );
+}

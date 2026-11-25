@@ -168,7 +168,8 @@ steps (`set`, `emit`, `break`, a port call) runs them and the body carries on.
 Every body ends with an unconditional line.
 
 ### Match
-Chooses by enum variant and must handle every variant.
+Chooses by enum variant and must handle every variant. A last arm of `_`
+handles every variant the arms above it don't: `_ -> 0`.
 
 ### `?` and `or`
 How failure is handled. `?` passes a failure up when the body's error type

@@ -33,6 +33,15 @@ fn area(shape: Shape): Int = match shape {
     Circle -> 0
 }
 
+fn is_square(shape: Shape): Bool = match shape {
+    Square(side) -> true
+    _ -> false
+}
+
+fn anything(shape: Shape): Int = match shape {
+    _ -> 7
+}
+
 fn with_tax(price: Decimal<2>): Decimal<2> = price * 1.20
 
 fn share(total: Decimal<2>, people: Int): Decimal<2> = total / people
@@ -49,6 +58,7 @@ service Start(): Result<Unit, WrongAnswer> {
     check(a == Point { x: 3, y: 4 })?
     check(area(Shape.Square(side: 5)) == 25)?
     check(area(Shape.Circle) == 0)?
+    check(is_square(Shape.Square(side: 2)) && !is_square(Shape.Circle) && anything(Shape.Circle) == 7)?
     let none = arguments.all()
     check(none.is_empty)?
     let words = none.add("one").add("three").add("eleven")
