@@ -3,6 +3,7 @@ context Checks
 
 use { starts_with, to_upper, to_int, split, to_bytes, to_text } from Std.Text
 use { Decimal, abs, max, min } from Std.Numbers
+use { Map } from Std.Collections
 
 error WrongAnswer
 
@@ -21,6 +22,8 @@ const START_X: Int = 3
 value Score: Int where Range(0, 999)
 
 value Name: String where Length(1, 8)
+
+fn stock_of(stock: Map<String, Int>, item: String): Int = stock.get(item).unwrap_or(0)
 
 fn bonus(score: Score): Score = Score(score.value + 10)
 
@@ -93,6 +96,15 @@ service Start(): Result<Unit, WrongAnswer> {
     let best: Score = 100
     check(bonus(best).value == 110 && best == Score(100) && best != Score(5))?
     check(greet("Bri") == "Hello, Bri")?
+    let stock: Map<String, Int> = ["sword": 1, "key": 2]
+    let more = stock.set("key", 5).set("map", 1)
+    check(stock_of(stock, "key") == 2 && stock_of(more, "key") == 5 && stock_of(more, "map") == 1)?
+    check(more.length == 3 && stock.contains("sword") && !stock.contains("map"))?
+    check(more.remove("sword").length == 2 && !more.remove("sword").contains("sword"))?
+    check(more.keys.length == 3 && more.values.sum(n -> n) == 7)?
+    let empty: Map<Int, Bool> = [:]
+    check(empty.is_empty && empty.set(3, true).get(3) == Some(true))?
+    check(["a": 1, "b": 2] == ["b": 2, "a": 1] && ["a": 1] != ["a": 2])?
     let header: Bytes = [0x44, 0x4E, 1]
     check(header.length == 3 && header.get(0) == Some(68) && header.get(3).is_none)?
     check(header.add(255).slice(2, 4) == [1, 255] && !header.is_empty)?

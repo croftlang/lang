@@ -63,6 +63,7 @@ impl<'a> Generator<'a> {
             Type::Errors(_) => "dn_error".to_string(),
             Type::Named(named) => c_name(named),
             Type::List(item) => format!("dn_list_{}", self.short(item)),
+            Type::Map(key, value) => format!("dn_map_{}_{}", self.short(key), self.short(value)),
             Type::Option(item) => format!("dn_option_{}", self.short(item)),
             Type::Result(value, error) => {
                 format!("dn_result_{}_{}", self.short(value), self.short(error))
@@ -78,6 +79,7 @@ impl<'a> Generator<'a> {
             Type::Errors(_) => Type::Errors(Vec::new()),
             Type::Named(_) if self.model.is_error(ty) => Type::Errors(Vec::new()),
             Type::List(item) => Type::list(self.canonical(item)),
+            Type::Map(key, value) => Type::map(self.canonical(key), self.canonical(value)),
             Type::Option(item) => Type::option(self.canonical(item)),
             Type::Result(value, error) => {
                 Type::result(self.canonical(value), self.canonical(error))

@@ -16,6 +16,7 @@ mod failure;
 mod field;
 mod issue;
 mod list;
+mod map;
 mod method;
 mod name;
 mod option;

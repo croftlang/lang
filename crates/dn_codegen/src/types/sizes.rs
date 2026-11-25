@@ -20,6 +20,8 @@ pub struct Sizes {
     pub bytes_capacity: i64,
     /// The longest list of each item type any constraint allows.
     list_capacity: HashMap<Type, i64>,
+    /// The most entries each type of map can hold.
+    map_capacity: HashMap<Type, i64>,
 }
 
 impl Sizes {
@@ -28,6 +30,7 @@ impl Sizes {
             string_capacity: 0,
             bytes_capacity: 0,
             list_capacity: HashMap::new(),
+            map_capacity: HashMap::new(),
         };
         for (name, context) in &program.contexts {
             let mut fields: Vec<(&TypeExpr, &[ConstraintUse], Option<&str>)> = Vec::new();
@@ -113,8 +116,34 @@ impl Sizes {
                 let capacity = self.list_capacity.entry(item).or_insert(0);
                 *capacity = (*capacity).max(longest);
             }
+            "Map" => {
+                let [key, value] = ty.arguments.as_slice() else {
+                    return;
+                };
+                let key = model.lower_type(context, aggregate, key);
+                let value = model.lower_type(context, aggregate, value);
+                let map = Type::map(key.clone(), value.clone());
+                let capacity = self.map_capacity.entry(map).or_insert(0);
+                *capacity = (*capacity).max(longest);
+                // `keys` and `values` give lists, which need room for every entry.
+                for item in [key, value] {
+                    let list = self
+                        .list_capacity
+                        .entry(item)
+                        .or_insert(DEFAULT_LIST_CAPACITY);
+                    *list = (*list).max(longest);
+                }
+            }
             _ => {}
         }
+    }
+
+    /// The most entries a map of this type can hold.
+    pub fn map_capacity(&self, map: &Type) -> i64 {
+        self.map_capacity
+            .get(map)
+            .copied()
+            .unwrap_or(DEFAULT_LIST_CAPACITY)
     }
 
     pub fn list_capacity(&self, item: &Type) -> i64 {

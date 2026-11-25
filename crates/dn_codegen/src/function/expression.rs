@@ -47,6 +47,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             },
             ExprKind::Call(callee, arguments) => self.call(value, callee, arguments, &ty),
             ExprKind::List(items) => self.list_literal(items, &ty),
+            ExprKind::Map(entries) => self.map_literal(entries, &ty),
             ExprKind::Record(_, fields) => self.record(&ty, fields),
             ExprKind::With(base, fields) => {
                 let base = self.value(base, &ty);
@@ -141,6 +142,7 @@ fn has_unknown(ty: &Type) -> bool {
     match ty {
         Type::Unknown => true,
         Type::List(item) | Type::Option(item) => has_unknown(item),
+        Type::Map(key, value) => has_unknown(key) || has_unknown(value),
         Type::Result(value, error) => has_unknown(value) || has_unknown(error),
         _ => false,
     }

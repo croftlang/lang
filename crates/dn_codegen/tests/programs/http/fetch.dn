@@ -12,6 +12,7 @@ context Fetch {
         let page = http.get("http://SERVER/hello")?
         console.print(page.status.to_string())
         console.print(page.body.to_text())
+        console.print(page.headers.get("content-length").unwrap_or("none"))
         let echoed = http.post("http://SERVER/echo", "sent".to_bytes())?
         console.print(echoed.body.to_text())
         Unit

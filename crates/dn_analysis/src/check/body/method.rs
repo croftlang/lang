@@ -47,6 +47,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 self.fixed(name, arguments, &[], Type::Int, span)
             }
             Type::List(item) => self.list_method(item, name, arguments, span),
+            Type::Map(key, value) => self.map_method(key, value, name, arguments, span),
             Type::Option(item) => self.option_method(item, name, arguments, span, expected),
             _ => None,
         };

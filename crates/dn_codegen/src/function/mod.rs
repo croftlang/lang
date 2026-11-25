@@ -14,6 +14,7 @@ mod failure;
 mod issue;
 mod list;
 mod list_lambda;
+mod map;
 mod matching;
 mod method;
 mod operator;

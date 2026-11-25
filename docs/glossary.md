@@ -203,6 +203,15 @@ Functions and methods every program has, with no import. Functions: `Some`,
 `min_by`, `max_by`; a list of entities also has `get`, `contains`, `replace`
 and `remove` by identity. Options: `is_some`, `is_none`, `map`, `unwrap_or`.
 
+### Map
+Keys, each with a value, imported with `use { Map } from Std.Collections`:
+`let stock: Map<String, Int> = ["sword": 1, "key": 2]`, or `[:]` when empty.
+`get` gives an `Option` of a key's value, `set` and `remove` give a changed
+copy, and `contains`, `length`, `is_empty`, `keys` and `values` read it. Two
+maps are equal when they hold the same keys with the same values, in any
+order. A map holds as many entries as the largest `Length` constraint on its
+type allows, 16 when there is none.
+
 ### Bytes
 A sequence of bytes, each from 0 to 255, for file contents, saves and network
 messages. Written as a list of numbers where `Bytes` is expected:
@@ -215,7 +224,8 @@ messages. Written as a list of numbers where `Bytes` is expected:
 A set of built-ins a context imports before using, like any other context:
 `use { trim, split } from Std.Text`. `Std.Text` has `contains`,
 `starts_with`, `ends_with`, `to_upper`, `to_lower`, `trim`, `slice`, `split`,
-`to_int` and `to_bytes` for strings, and `to_text` for bytes. `Std.Numbers` has `Decimal`, `max`, `min` and `abs`.
+`to_int` and `to_bytes` for strings, and `to_text` for bytes. `Std.Numbers`
+has `Decimal`, `max`, `min` and `abs`. `Std.Collections` has `Map`.
 Each file of a context sees what any of them imports. Standard contexts need
 no arrow in the domain's `contexts`.
 
@@ -225,7 +235,8 @@ imports from them. `Std.Files` has the `Files` port, with `read`, `write`,
 `Unreadable`, the enum `FileError` that includes them, and the `StdioFiles`
 adapter, which uses C's stdio: `Files = "StdioFiles"` in `dn.toml`.
 `Std.Http` has the `Http` port, with `get`, `post`, `put` and `delete`, each
-giving a `Response` (its `status` and `body`) or an `HttpError`:
+giving a `Response` (its `status`, its `headers` as a map with names in
+lower case, and its `body`) or an `HttpError`:
 `Unreachable`, `TimedOut` or `TooLarge`. Its `CurlHttp` adapter uses libcurl,
 which also handles HTTPS, so a program that binds it is linked with `-lcurl`.
 

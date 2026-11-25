@@ -44,6 +44,7 @@ pub fn uses(value: &Expr, name: &str) -> bool {
                 })
         }
         ExprKind::List(items) => any_uses(items.iter(), name),
+        ExprKind::Map(entries) => entries.iter().any(|(k, v)| uses(k, name) || uses(v, name)),
         ExprKind::Binary(_, left, right)
         | ExprKind::OrElse(left, right)
         | ExprKind::If(left, right) => uses(left, name) || uses(right, name),

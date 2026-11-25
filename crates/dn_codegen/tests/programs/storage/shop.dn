@@ -6,6 +6,7 @@ context Shop {
 
     use { Files, FileError } from Std.Files
     use { Decimal } from Std.Numbers
+    use { Map } from Std.Collections
     use { to_bytes } from Std.Text
 
     identity ShelfId: Int where Range(1, 99)
@@ -22,6 +23,7 @@ context Shop {
         price: Decimal<2>
         label: Label
         best: Option<Int>
+        sizes: Map<String, Int> where Length(0, 3)
         items: List<Item> where Length(0, 4)
 
         entity Item {
@@ -79,6 +81,7 @@ context Shop {
             price: -3.75,
             label: Label.Sale(percent: 20),
             best: Some(3),
+            sizes: ["small": 2, "large": 9],
             items: [
                 Shelf.Item { id: 3, count: 200, open: true },
                 Shelf.Item { id: 7, count: 0, open: false }

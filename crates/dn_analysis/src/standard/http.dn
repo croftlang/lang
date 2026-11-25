@@ -5,6 +5,8 @@
 context Http {
     publish { Http, Response, HttpError, Unreachable, TimedOut, TooLarge, CurlHttp }
 
+    use { Map } from Std.Collections
+
     // The server couldn't be reached, or the connection broke.
     error Unreachable
 
@@ -20,9 +22,11 @@ context Http {
         include TooLarge
     }
 
-    // What the server answered: its status, such as 200 or 404, and the body.
+    // What the server answered: its status, such as 200 or 404, its headers,
+    // with names in lower case, and the body.
     value Response {
         status: Int where Range(0, 999)
+        headers: Map<String, String> where Length(0, 16)
         body: Bytes
     }
 

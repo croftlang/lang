@@ -33,6 +33,10 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let (text, _) = self.eval(receiver, None);
                 self.string_method(&text, name, arguments, ty)
             }
+            Type::Map(key, value) => {
+                let (map, _) = self.eval(receiver, None);
+                self.map_method(&map, key, value, name, arguments, ty)
+            }
             Type::Bytes => {
                 let (bytes, _) = self.eval(receiver, None);
                 self.bytes_method(&bytes, name, arguments, ty)

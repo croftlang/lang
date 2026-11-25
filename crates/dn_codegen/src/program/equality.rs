@@ -44,6 +44,17 @@ impl<'a> Generator<'a> {
                      for (index = 0; index < a->length; index++) {{\n        if (!{same}) {{\n            return 0;\n        }}\n    }}\n    return 1;\n"
                 )
             }
+            // The same keys with the same values, in any order.
+            Type::Map(key, value) => {
+                let same_key = self.compare("a->keys[index]", "b->keys[other]", key);
+                let same_value = self.compare("a->values[index]", "b->values[other]", value);
+                format!(
+                    "    dn_u16 index;\n    dn_u16 other;\n\n    if (a->length != b->length) {{\n        return 0;\n    }}\n    \
+                     for (index = 0; index < a->length; index++) {{\n        \
+                     for (other = 0; other < b->length && !{same_key}; other++) {{\n        }}\n        \
+                     if (other == b->length || !{same_value}) {{\n            return 0;\n        }}\n    }}\n    return 1;\n"
+                )
+            }
             Type::Option(item) => {
                 let same = self.compare("a->value", "b->value", item);
                 format!("    return a->some == b->some && (!a->some || {same});\n")

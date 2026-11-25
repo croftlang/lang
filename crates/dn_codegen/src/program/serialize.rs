@@ -66,6 +66,23 @@ impl<'a> Generator<'a> {
                     ),
                 )
             }
+            Type::Map(key, value) => {
+                let capacity = self.sizes.map_capacity(ty);
+                let (key_write, key_read) =
+                    self.serialize_value("value->keys[index]", key, "        ");
+                let (value_write, value_read) =
+                    self.serialize_value("value->values[index]", value, "        ");
+                (
+                    format!(
+                        "    dn_u16 index;\n\n    if (!dn_bytes_put_length(out, value->length)) {{\n        return 0;\n    }}\n    \
+                         for (index = 0; index < value->length; index++) {{\n{key_write}{value_write}    }}\n"
+                    ),
+                    format!(
+                        "    dn_u16 index;\n\n    if (!dn_bytes_take_length(in, at, &value->length) || value->length > {capacity}) {{\n        return 0;\n    }}\n    \
+                         for (index = 0; index < value->length; index++) {{\n{key_read}{value_read}    }}\n"
+                    ),
+                )
+            }
             Type::Option(item) => {
                 let (write, read) = self.serialize_value("value->value", item, "        ");
                 (

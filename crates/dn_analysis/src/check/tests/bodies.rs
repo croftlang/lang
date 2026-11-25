@@ -225,3 +225,21 @@ fn checks_single_value_types() {
         "`Point` is made with its fields: `Point { ... }`",
     );
 }
+
+#[test]
+fn checks_maps() {
+    let source = "context Shop {\n use { Map } from Std.Collections\n fn f(stock: Map<String, Int> where Length(0, 8)): Option<Int> = stock.set(\"key\", 1).get(\"key\")\n fn g(): Map<Int, Bool> = [:]\n fn h(): Int = [\"a\": 1].keys.length\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+    assert_error(
+        "context Shop {\n fn f(stock: Map<String, Int>): Int = 0\n}",
+        "`Map` needs `use { Map } from Std.Collections`",
+    );
+    assert_error(
+        "context Shop {\n use { Map } from Std.Collections\n fn f(): Map<String, Int> = [\"a\": true]\n}",
+        "expected `Int`, found `Bool`",
+    );
+    assert_error(
+        "context Shop {\n use { Map } from Std.Collections\n fn f(): Int = [:].length\n}",
+        "an empty map needs its type from where it goes, such as `let stock: Map<String, Int> = [:]`",
+    );
+}

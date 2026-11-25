@@ -4,7 +4,7 @@
 //! option methods, `Range` and `Length` need no import.
 
 /// Each standard context and the names it provides.
-pub const STANDARD_CONTEXTS: [(&str, &[&str]); 2] = [
+pub const STANDARD_CONTEXTS: [(&str, &[&str]); 3] = [
     (
         "Std.Text",
         &[
@@ -22,6 +22,7 @@ pub const STANDARD_CONTEXTS: [(&str, &[&str]); 2] = [
         ],
     ),
     ("Std.Numbers", &["Decimal", "abs", "max", "min"]),
+    ("Std.Collections", &["Map"]),
 ];
 
 /// The names a standard context provides, if `context` is one.

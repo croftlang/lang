@@ -84,6 +84,12 @@ impl<'g, 'a> Writer<'g, 'a> {
             (Type::String | Type::Bytes | Type::List(_), "is_empty") => {
                 format!("({c}.length == 0)")
             }
+            (Type::Map(..), "length") => format!("((dn_int) {c}.length)"),
+            (Type::Map(..), "is_empty") => format!("({c}.length == 0)"),
+            (Type::Map(key, value), "keys" | "values") => {
+                let item = if field == "keys" { key } else { value };
+                self.map_list(&c, item, field)
+            }
             (Type::List(item), "first" | "last") => {
                 let temp = self.temp(&Type::option((**item).clone()));
                 let index = if field == "first" {

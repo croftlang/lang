@@ -59,16 +59,34 @@ impl Parser {
     }
 
     /// `[a, b, c]`: items separated by commas, across lines if need be.
-    pub(super) fn parse_list(&mut self) -> ParseResult<Vec<crate::ast::Expr>> {
+    /// `[a, b]` or `[]` for a list, and `[key: value, ...]` or `[:]` for a map.
+    pub(super) fn parse_list_or_map(&mut self) -> ParseResult<crate::ast::ExprKind> {
+        use crate::ast::ExprKind;
         self.expect(&TokenKind::LeftBracket)?;
-        let mut items = Vec::new();
+        if self.eat(&TokenKind::Colon) {
+            self.expect(&TokenKind::RightBracket)?;
+            return Ok(ExprKind::Map(Vec::new()));
+        }
+        let (mut items, mut entries) = (Vec::new(), Vec::new());
         while !self.eat(&TokenKind::RightBracket) {
-            items.push(self.with_records(true, Self::parse_expression)?);
+            let item = self.with_records(true, Self::parse_expression)?;
+            if self.eat(&TokenKind::Colon) {
+                entries.push((item, self.with_records(true, Self::parse_expression)?));
+            } else {
+                items.push(item);
+            }
             if !self.eat(&TokenKind::Comma) {
                 self.expect(&TokenKind::RightBracket)?;
                 break;
             }
         }
-        Ok(items)
+        if !entries.is_empty() && !items.is_empty() {
+            let message = "a map's entries are each `key: value`";
+            return Err(crate::span::Diagnostic::new(message, self.span()));
+        }
+        if entries.is_empty() {
+            return Ok(ExprKind::List(items));
+        }
+        Ok(ExprKind::Map(entries))
     }
 }

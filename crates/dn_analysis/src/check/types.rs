@@ -7,7 +7,7 @@ use dn_syntax::ast::{Field, Parameter, TypeExpr};
 use super::{Checker, Scope};
 use crate::types::MAX_PLACES;
 
-const BUILTIN_TYPES: [(&str, usize); 10] = [
+const BUILTIN_TYPES: [(&str, usize); 11] = [
     ("Int", 0),
     ("Float", 0),
     ("Decimal", 0),
@@ -16,6 +16,7 @@ const BUILTIN_TYPES: [(&str, usize); 10] = [
     ("Bytes", 0),
     ("Unit", 0),
     ("List", 1),
+    ("Map", 2),
     ("Option", 1),
     ("Result", 2),
 ];
@@ -37,6 +38,9 @@ impl<'a> Checker<'a> {
         let name = ty.path.text();
         let span = ty.path.span();
         let found = ty.arguments.len();
+        if name == "Map" {
+            self.check_standard(scope.context, &name, span);
+        }
         if name == "Decimal" {
             self.check_standard(scope.context, &name, span);
             self.check_places(ty);

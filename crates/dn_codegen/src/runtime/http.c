@@ -25,6 +25,40 @@ static size_t collect(char *data, size_t size, size_t count, void *user)
     return length;
 }
 
+/* Each header line, "Name: value", kept with its name in lower case. */
+static size_t keep_header(char *data, size_t size, size_t count, void *user)
+{
+    dn_result_Std_Http_Response_error *out = (dn_result_Std_Http_Response_error *) user;
+    size_t length = size * count;
+    size_t colon = 0;
+    size_t index;
+    dn_u16 at = out->value.headers.length;
+    while (colon < length && data[colon] != ':') {
+        colon++;
+    }
+    if (colon == length || at >= sizeof out->value.headers.keys / sizeof out->value.headers.keys[0]) {
+        return length;
+    }
+    out->value.headers.keys[at].length = 0;
+    for (index = 0; index < colon && index < DN_STRING_CAPACITY; index++) {
+        char c = data[index];
+        out->value.headers.keys[at].text[index] = (char) (c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c);
+        out->value.headers.keys[at].length++;
+    }
+    index = colon + 1;
+    while (index < length && data[index] == ' ') {
+        index++;
+    }
+    out->value.headers.values[at].length = 0;
+    for (; index < length && data[index] != '\r' && data[index] != '\n'
+           && out->value.headers.values[at].length < DN_STRING_CAPACITY; index++) {
+        out->value.headers.values[at].text[out->value.headers.values[at].length] = data[index];
+        out->value.headers.values[at].length++;
+    }
+    out->value.headers.length++;
+    return length;
+}
+
 static void request(const char *method, const dn_string *url, const dn_bytes *body,
                     dn_result_Std_Http_Response_error *out)
 {
@@ -52,6 +86,8 @@ static void request(const char *method, const dn_string *url, const dn_bytes *bo
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, collect);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &answer);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, keep_header);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, out);
     if (body != 0) {
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (const char *) body->items);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long) body->length);
