@@ -166,6 +166,9 @@ cc -std=c89 *.c -o dungeon
   on any list of its item type (16 when there is none), and every string has
   room for the longest string any constraint allows (32 by default). A whole
   number field with a `Range` constraint takes the smallest C type that fits.
+- **Only what's called.** `dn_runtime.c` holds just the runtime functions the
+  program reaches. cc65 and z88dk link a whole C file at once, so anything
+  left in would cost memory on an 8-bit machine.
 - **Errors** share one C type, `dn_error`, which holds a code and the error's fields.
 - **Events** are queued by commands and kept once the aggregate that raised
   them is saved. When a service ends, its kept events go to the policies;

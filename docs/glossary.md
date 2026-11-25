@@ -186,14 +186,20 @@ All of an aggregate's errors at once, written `Room.Error`. An enum can
 service can fail.
 
 ### Built-ins
-Functions and methods every program has. Functions: `max`, `min`, `abs`,
-`Some`, `None`, `Ok`, `Err`, and the constraints `Range` and `Length`.
-Strings: `length`, `is_empty`, `contains`, `starts_with`, `ends_with`,
-`to_upper`, `to_lower`, `trim`, `slice`, `split`, `to_int`. Numbers:
-`to_string`. Lists: `length`, `is_empty`, `first`, `last`, `contains`, `get`,
+Functions and methods every program has, with no import. Functions: `Some`,
+`None`, `Ok`, `Err`, and the constraints `Range` and `Length`. Strings:
+`length`, `is_empty`, and joining with `+`. Numbers: `to_string`. Lists: `length`, `is_empty`, `first`, `last`, `contains`, `get`,
 `add`, `drop`, `take`, `filter`, `map`, `all`, `any`, `count`, `find`, `sum`,
 `min_by`, `max_by`; a list of entities also has `get`, `contains`, `replace`
 and `remove` by identity. Options: `is_some`, `is_none`, `map`, `unwrap_or`.
+
+### Standard context
+A set of built-ins a context imports before using, like any other context:
+`use { trim, split } from Std.Text`. `Std.Text` has `contains`,
+`starts_with`, `ends_with`, `to_upper`, `to_lower`, `trim`, `slice`, `split`
+and `to_int` for strings. `Std.Numbers` has `Decimal`, `max`, `min` and `abs`.
+Each file of a context sees what any of them imports. Standard contexts need
+no arrow in the domain's `contexts`.
 
 ## The outside world
 
