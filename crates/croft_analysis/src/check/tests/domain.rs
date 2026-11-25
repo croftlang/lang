@@ -1,7 +1,8 @@
 use super::check_files;
 
 const SHOP: &str = "context Shop {\n publish { Open }\n error Closed\n service Open(): Result<Unit, Closed> = Err(Closed)\n}";
-const STOCK: &str = "context Stock {\n identity ItemId: Int\n}";
+const STOCK: &str =
+    "context Stock {\n identity ItemId for Item: Int\n aggregate Item { id: ItemId }\n}";
 
 fn domain(contexts: &str, body: &str) -> String {
     format!("domain Market {{\n contexts {{ {contexts} }}\n use {{ Open }} from Shop\n}} = {{\n{body}\n}}")

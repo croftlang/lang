@@ -38,8 +38,8 @@ fn accepts_the_logistics_fixture() {
 
 #[test]
 fn merges_an_aggregate_split_across_files() {
-    let shared = "context Dungeon\nidentity RoomId: Int\n";
-    let fields = "context Dungeon\naggregate Room\nidentity id: RoomId\nlives: Int\n";
+    let shared = "context Dungeon\nidentity RoomId for Room: Int\n";
+    let fields = "context Dungeon\naggregate Room\nid: RoomId\nlives: Int\n";
     let commands = "context Dungeon\naggregate Room\ncommand Reset = {\n    set lives = 3\n}\n";
     let program = check_files(&[shared, fields, commands]).expect("no errors");
     let room = &program.contexts["Dungeon"].aggregates[0];
@@ -49,16 +49,16 @@ fn merges_an_aggregate_split_across_files() {
 
 #[test]
 fn reports_a_name_declared_in_two_files() {
-    let first = "context Dungeon\nidentity RoomId: Int\n";
-    let second = "context Dungeon {\n    identity RoomId: Int\n}";
+    let first = "context Dungeon\nidentity RoomId for Room: Int\n";
+    let second = "context Dungeon {\n    identity RoomId for Room: Int\n    aggregate Room { id: RoomId }\n}";
     let errors = check_files(&[first, second]).err().unwrap();
     assert_eq!(errors, vec!["`RoomId` is declared more than once"]);
 }
 
 #[test]
 fn reports_a_field_declared_in_two_parts_of_an_aggregate() {
-    let first = "context Dungeon\naggregate Room\nidentity id: RoomId\nlives: Int\n";
-    let second = "context Dungeon\nidentity RoomId: Int\naggregate Room\nlives: Int\n";
+    let first = "context Dungeon\naggregate Room\nid: RoomId\nlives: Int\n";
+    let second = "context Dungeon\nidentity RoomId for Room: Int\naggregate Room\nlives: Int\n";
     let errors = check_files(&[first, second]).err().unwrap();
     assert_eq!(errors, vec!["field `lives` is declared more than once"]);
 }

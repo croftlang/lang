@@ -3,10 +3,10 @@ context Game
 
 error WrongAnswer
 
-identity BoardId: Int where Range(1, 9)
+identity BoardId for Board: Int where Range(1, 9)
 
 aggregate Board {
-    identity id: BoardId
+    id: BoardId
     points: Int where Range(0, 1000)
     bonus: Int
 

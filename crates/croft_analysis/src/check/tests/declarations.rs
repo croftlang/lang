@@ -43,30 +43,70 @@ fn checks_constraint_arguments_and_each() {
 
 #[test]
 fn checks_identities_of_values_entities_and_aggregates() {
-    let source = dungeon("value Door { identity id: RoomId }");
+    let source = dungeon("identity DoorId for Door: Int\nvalue Door { id: DoorId }");
     assert_error(
         &source,
-        "value `Door` cannot have an identity; make it an entity",
+        "`Door` is a value, which has no identity; make it an entity",
     );
-    let source = dungeon("aggregate Room {\n identity id: RoomId\n entity Enemy { lives: Int }\n}");
-    assert_error(&source, "entity `Enemy` needs exactly one `identity` field");
+    let source = dungeon("aggregate Room {\n id: RoomId\n entity Enemy { lives: Int }\n}");
+    assert_error(
+        &source,
+        "entity `Enemy` has no identity; declare one in the context: `identity EnemyId for Enemy: Int`",
+    );
     let source = dungeon("aggregate Room { lives: Int }");
     assert_error(
         &source,
-        "aggregate `Room` needs exactly one `identity` field",
+        "aggregate `Room` needs a field of its identity: `id: RoomId`",
     );
-    let source = dungeon("aggregate Room { identity id: Int }");
+    let source = dungeon("aggregate Room { id: RoomId  copy: RoomId }");
     assert_error(
         &source,
-        "the identity of `Room` must be an identity type, not `Int`",
+        "aggregate `Room` already has a field of its identity `RoomId`; it holds only one",
     );
+    let source = dungeon("identity Key for Lock: Int");
+    assert_error(
+        &source,
+        "identity `Key` is for `Lock`, but `Dungeon` has no aggregate or entity by that name",
+    );
+    let source = dungeon("identity RoomKey for Room: Int");
+    assert_error(
+        &source,
+        "`Room` is already identified by `RoomId`; it has only one identity",
+    );
+}
+
+#[test]
+fn finds_identity_fields_by_their_type_whatever_they_are_called() {
+    let source = dungeon(
+        "identity HallId for Hall: Int\n\
+         aggregate Hall { key: HallId  next_room: RoomId }\n\
+         identity EnemyId for Room.Enemy: Int\n\
+         aggregate Room {\n number: RoomId\n entity Enemy { tag: EnemyId  lives: Int }\n}",
+    );
+    assert_eq!(errors(&source), Vec::<String>::new());
+}
+
+#[test]
+fn asks_which_entity_an_identity_is_for_when_two_share_a_name() {
+    let source = dungeon(
+        "identity HallId for Hall: Int\n\
+         identity EnemyId for Enemy: Int\n\
+         aggregate Hall {\n id: HallId\n entity Enemy { id: EnemyId }\n}\n\
+         aggregate Room {\n id: RoomId\n entity Enemy { id: EnemyId }\n}",
+    );
+    assert!(errors(&source).contains(
+        &"`Enemy` could be Hall.Enemy or Room.Enemy; write which one, such as `Hall.Enemy`"
+            .to_string()
+    ));
 }
 
 #[test]
 fn checks_invariants_name_an_error() {
     let aggregate = |invariant: &str| {
         let constraint = "constraint Ready(room: Room) = true";
-        dungeon(&format!("{constraint}\naggregate Room {{\n identity id: RoomId\n {invariant}\n error NotReady\n}}"))
+        dungeon(&format!(
+            "{constraint}\naggregate Room {{\n id: RoomId\n {invariant}\n error NotReady\n}}"
+        ))
     };
     assert_eq!(
         errors(&aggregate("invariant Ready or NotReady")),

@@ -39,6 +39,12 @@ impl Parser {
     }
 
     fn parse_aggregate_member(&mut self, aggregate: &mut AggregateDecl) -> ParseResult<()> {
+        let misplaced = self
+            .misplaced_in_aggregate()
+            .or_else(|| self.identity_in_fields(Some(&aggregate.name.name)));
+        if let Some(misplaced) = misplaced {
+            return Err(misplaced);
+        }
         match self.peek().kind {
             TokenKind::Keyword(Keyword::Entity) => {
                 aggregate.entities.push(self.parse_value(Keyword::Entity)?)

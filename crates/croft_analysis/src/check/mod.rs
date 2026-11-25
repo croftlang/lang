@@ -78,7 +78,7 @@ impl<'a> Checker<'a> {
         self.check_uses(context);
         for value in &context.values {
             if value.type_parameters.is_empty() {
-                self.check_value(&scope, value, false);
+                self.check_value(&scope, value);
             } else {
                 self.check_type_parameters(&value.type_parameters);
             }

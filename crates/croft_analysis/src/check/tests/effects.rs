@@ -3,10 +3,10 @@ use super::{assert_error, errors};
 fn game(extra: &str) -> String {
     format!(
         "context Game {{\n\
-         identity RoomId: Int\n\
+         identity RoomId for Room: Int\n\
          port Screen {{\n fn clear(): Unit\n}}\n\
          aggregate Room {{\n\
-             identity id: RoomId\n\
+             id: RoomId\n\
              lives: Int\n\
              error NotFound\n\
              event Healed {{ lives: Int }}\n\
@@ -138,9 +138,9 @@ fn gives_back_unit_when_there_is_no_return_type() {
 #[test]
 fn an_aggregate_with_no_errors_passes_up_anywhere() {
     let source = "context Shipping {\n\
-         identity EventId: Int\n\
+         identity EventId for Handling: Int\n\
          error NoRoute\n\
-         aggregate Handling {\n identity id: EventId\n event Registered {}\n command Register = {\n emit Registered {}\n }\n }\n\
+         aggregate Handling {\n id: EventId\n event Registered {}\n command Register = {\n emit Registered {}\n }\n }\n\
          enum ShippingError {\n include NoRoute\n }\n\
          enum Everything {\n include Handling.Error\n include NoRoute\n }\n\
          service Register(handling: Handling): Result<Handling, ShippingError> = {\n let registered = issue Register on handling?\n registered\n }\n\

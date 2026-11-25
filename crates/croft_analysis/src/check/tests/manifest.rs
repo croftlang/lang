@@ -85,8 +85,8 @@ fn reports_unknown_keys_in_the_file() {
 }
 
 const SHOP: &str = "context Shop {\n\
-    identity ShelfId: Int where Range(1, 9)\n\
-    aggregate Shelf {\n identity id: ShelfId\n error NotFound\n }\n\
+    identity ShelfId for Shelf: Int where Range(1, 9)\n\
+    aggregate Shelf {\n id: ShelfId\n error NotFound\n }\n\
     repository Shelves for Shelf\n\
     service Main(): Result<Unit, StorageError> {\n calls Shelves\n} = shelves.save(Shelf { id: 1 })\n}";
 

@@ -77,6 +77,8 @@ pub struct Field {
     pub name: Identifier,
     pub ty: TypeExpr,
     pub constraints: Vec<ConstraintUse>,
+    /// Whether this field holds its aggregate's or entity's own identity: it is
+    /// of the identity type declared `for` them. Set by analysis, not written.
     pub is_identity: bool,
     /// The starting value of an adapter's field: `keys: List<Key> = []`.
     pub value: Option<Expr>,

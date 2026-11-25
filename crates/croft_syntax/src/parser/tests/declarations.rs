@@ -3,7 +3,7 @@ use crate::ast::{ContextItem, FunctionKind};
 
 #[test]
 fn reads_a_context_header_as_the_rest_of_the_file() {
-    let file = parse_ok("context Dungeon\n\nconst MAX: Int = 16\nidentity RoomId: Int");
+    let file = parse_ok("context Dungeon\n\nconst MAX: Int = 16\nidentity RoomId for Room: Int");
     let context = only_context(&file);
     assert_eq!(context.name.name, "Dungeon");
     assert_eq!(context.items.len(), 2);
@@ -11,14 +11,13 @@ fn reads_a_context_header_as_the_rest_of_the_file() {
 
 #[test]
 fn reads_an_aggregate_header_as_the_rest_of_the_file() {
-    let source = "context Dungeon\naggregate Room\n\nidentity id: RoomId\nerror NotFound\n\
+    let source = "context Dungeon\naggregate Room\n\nid: RoomId\nerror NotFound\n\
                   command Reset = {\n    set lives = 3\n}";
     let file = parse_ok(source);
     let [ContextItem::Aggregate(room)] = &only_context(&file).items[..] else {
         panic!("expected one aggregate");
     };
     assert_eq!(room.name.name, "Room");
-    assert!(room.fields[0].is_identity);
     assert_eq!(room.errors.len(), 1);
     assert_eq!(room.commands[0].kind, FunctionKind::Command);
     assert!(room.commands[0].parameters.is_none());
@@ -141,6 +140,71 @@ fn explains_that_an_entity_belongs_in_an_aggregate() {
     assert_eq!(
         parse_error("context Shop {\n entity Item {\n identity id: ItemId\n }\n}"),
         "an entity belongs inside an aggregate; a thing with identity on its own is an `aggregate` with no entities"
+    );
+}
+
+#[test]
+fn explains_that_an_identity_type_belongs_in_the_context() {
+    assert_eq!(
+        parse_error("context Shop {\n aggregate Cart {\n identity CartId: String\n }\n}"),
+        "an identity type is declared in the context, beside the aggregate: `identity CartId for Cart: Int`; the field that holds it is written `id: CartId`"
+    );
+}
+
+#[test]
+fn reads_what_an_identity_is_for() {
+    let file = parse_ok("context Shop {\n identity LineId for Cart.Line: Int\n}");
+    let ContextItem::Identity(identity) = &only_context(&file).items[0] else {
+        panic!("expected an identity")
+    };
+    assert_eq!(identity.owner.text(), "Cart.Line");
+}
+
+#[test]
+fn explains_that_an_identity_names_what_it_identifies() {
+    assert_eq!(
+        parse_error("context Shop {\n identity CartId: String\n}"),
+        "an identity names the aggregate or entity it identifies: `identity CartId for Name: Int`"
+    );
+}
+
+#[test]
+fn explains_that_an_identity_field_needs_no_marker() {
+    assert_eq!(
+        parse_error("context Shop {\n aggregate Cart {\n identity id: CartId\n }\n}"),
+        "an identity field needs no marker: write `id: CartId`, and declare the type in the context with what it identifies: `identity CartId for Cart: Int`"
+    );
+}
+
+#[test]
+fn explains_that_a_service_belongs_in_the_context() {
+    assert_eq!(
+        parse_error("context Shop {\n aggregate Cart {\n service Checkout() = Unit\n }\n}"),
+        "`service` is declared in the context, not inside an aggregate; an aggregate holds fields, entities, invariants, errors, events and commands"
+    );
+}
+
+#[test]
+fn explains_that_aggregates_do_not_nest() {
+    assert_eq!(
+        parse_error("context Shop {\n aggregate Cart {\n aggregate Line {}\n }\n}"),
+        "aggregates do not nest; declare each aggregate in the context and refer to another by its identity"
+    );
+}
+
+#[test]
+fn explains_that_an_event_belongs_in_an_aggregate() {
+    assert_eq!(
+        parse_error("context Shop {\n event CartEmptied {}\n}"),
+        "an event belongs inside the aggregate that emits it"
+    );
+}
+
+#[test]
+fn explains_that_declarations_go_inside_a_context() {
+    assert_eq!(
+        parse_error("identity CartId for Cart: String"),
+        "`identity` is declared inside a context: `context Name { ... }`"
     );
 }
 

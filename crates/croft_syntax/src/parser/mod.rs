@@ -11,6 +11,7 @@ mod data;
 mod domain;
 mod expression;
 mod file;
+mod placement;
 mod postfix;
 mod primary;
 mod repeat;

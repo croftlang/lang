@@ -3,6 +3,7 @@
 use super::{ParseResult, Parser};
 use crate::ast::{ConstDecl, EnumDecl, Field, Identifier, IdentityDecl, RecordDecl, ValueDecl};
 use crate::keyword::Keyword;
+use crate::span::Diagnostic;
 use crate::token::TokenKind;
 
 impl Parser {
@@ -116,12 +117,23 @@ impl Parser {
         let doc = self.doc();
         self.expect_keyword(Keyword::Identity)?;
         let name = self.expect_identifier()?;
+        if !self.check_word("for") {
+            let message = format!(
+                "an identity names the aggregate or entity it identifies: \
+                 `identity {} for Name: Int`",
+                name.name
+            );
+            return Err(Diagnostic::new(message, self.span()));
+        }
+        self.advance();
+        let owner = self.parse_path()?;
         self.expect(&TokenKind::Colon)?;
         let ty = self.parse_type()?;
         let constraints = self.parse_constraints()?;
         Ok(IdentityDecl {
             doc,
             name,
+            owner,
             ty,
             constraints,
         })

@@ -6,14 +6,14 @@ fn game(extra: &str) -> String {
         "context Game {{\n\
          use {{ trim, starts_with }} from Std.Text\n\
          use {{ Decimal, max, min, abs }} from Std.Numbers\n\
-         identity RoomId: Int where Range(1, 20)\n\
-         identity EnemyId: Int where Range(0, 9)\n\
+         identity RoomId for Room: Int where Range(1, 20)\n\
+         identity EnemyId for Enemy: Int where Range(0, 9)\n\
          enum Direction {{ North, South }}\n\
          value Position {{ x: Int  y: Int }}\n\
          aggregate Room {{\n\
-             identity id: RoomId\n\
+             id: RoomId\n\
              lives: Int\n\
-             entity Enemy {{\n identity id: EnemyId\n hit_points: Int\n }}\n\
+             entity Enemy {{\n id: EnemyId\n hit_points: Int\n }}\n\
              enemies: List<Enemy>\n\
              error NotFound\n\
              event Moved {{ to: Position }}\n\

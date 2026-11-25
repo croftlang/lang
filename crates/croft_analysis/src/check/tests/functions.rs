@@ -15,7 +15,7 @@ fn checks_function_shapes() {
         &dungeon("fn width(door): Int = 3"),
         "parameter `door` needs a type",
     );
-    let source = dungeon("aggregate Room {\n identity id: RoomId\n command Reset: Int = 3\n}");
+    let source = dungeon("aggregate Room {\n id: RoomId\n command Reset: Int = 3\n}");
     assert_error(
         &source,
         "a command gives back its aggregate, so it has no return type",

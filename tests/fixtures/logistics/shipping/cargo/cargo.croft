@@ -3,7 +3,7 @@
 context Shipping
 aggregate Cargo
 
-identity tracking_id: TrackingId
+tracking_id: TrackingId
 route: RouteSpecification
 itinerary: Itinerary
 delivery: Delivery

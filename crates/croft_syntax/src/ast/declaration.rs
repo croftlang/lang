@@ -94,11 +94,13 @@ pub struct ConstDecl {
     pub value: Expr,
 }
 
-/// `identity RoomId: Int where Range(1, 20)`
+/// `identity RoomId for Room: Int where Range(1, 20)`
 #[derive(Debug, Clone, PartialEq)]
 pub struct IdentityDecl {
     pub doc: Vec<String>,
     pub name: Identifier,
+    /// The aggregate or entity it identifies: `Room`, or `Room.Enemy`.
+    pub owner: Path,
     pub ty: TypeExpr,
     pub constraints: Vec<ConstraintUse>,
 }

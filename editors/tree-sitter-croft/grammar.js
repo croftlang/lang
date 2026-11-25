@@ -145,9 +145,8 @@ module.exports = grammar({
     // Fields and invariants, separated by commas or just spaces.
     record_body: $ => seq('{', repeat(seq(choice($.field_declaration, $.invariant), optional(','))), '}'),
 
-    // `identity id: RoomId` or `hit_points: Int where Range(0, 100)`
+    // `id: RoomId` or `hit_points: Int where Range(0, 100)`
     field_declaration: $ => prec.right(seq(
-      optional('identity'),
       field('name', $._name),
       ':',
       field('type', $.type),
@@ -186,9 +185,12 @@ module.exports = grammar({
       field('value', $._expression),
     )),
 
+    // `identity RoomId for Room: Int where Range(1, 20)`
     identity_declaration: $ => seq(
       'identity',
       field('name', $._type_name),
+      'for',
+      field('owner', $.path),
       ':',
       field('type', $.type),
       optional(field('constraints', $.where_clause)),

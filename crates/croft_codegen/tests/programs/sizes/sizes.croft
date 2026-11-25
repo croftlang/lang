@@ -4,7 +4,7 @@ context Sizes
 
 error WrongAnswer
 
-identity TruckId: Int where Range(1, 9)
+identity TruckId for Truck: Int where Range(1, 9)
 
 value Stop { code: Int }
 
@@ -15,7 +15,7 @@ value Route { stops: List<Stop> where Length(1, 2) }
 value Pallet { crates: List<Crate> where Length(0, 1) }
 
 aggregate Truck {
-    identity id: TruckId
+    id: TruckId
     loaded: Int
 
     // A command's parameter sizes the list too.

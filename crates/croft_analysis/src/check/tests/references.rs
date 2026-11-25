@@ -26,9 +26,9 @@ fn target_at(analysis: &Analysis, line: u32, column: u32) -> Option<(String, Sym
 
 const ROOM: &str = "\
 context Dungeon {
-    identity RoomId: Int where Range(1, 20)
+    identity RoomId for Room: Int where Range(1, 20)
     aggregate Room {
-        identity id: RoomId
+        id: RoomId
         lives: Int
         error NotFound
         command Heal(amount: Int) = {
@@ -47,8 +47,8 @@ fn notes_types_and_their_paths() {
         "{:?}",
         analysis.diagnostics
     );
-    // `RoomId` in `identity id: RoomId`.
-    let (name, kind) = target_at(&analysis, 4, 22).expect("RoomId is noted");
+    // `RoomId` in `id: RoomId`.
+    let (name, kind) = target_at(&analysis, 4, 13).expect("RoomId is noted");
     assert_eq!(name, "Dungeon.RoomId");
     assert_eq!(kind, SymbolKind::Identity);
     // `Room` in `Room.Error` names the aggregate.

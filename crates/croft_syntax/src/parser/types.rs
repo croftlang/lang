@@ -58,7 +58,9 @@ impl Parser {
     /// A field: `identity id: RoomId` or `hit_points: Int where Range(0, 100)`.
     pub(super) fn parse_field(&mut self) -> ParseResult<Field> {
         let doc = self.doc();
-        let is_identity = self.eat_keyword(Keyword::Identity);
+        if let Some(misplaced) = self.identity_in_fields(None) {
+            return Err(misplaced);
+        }
         let name = self.expect_identifier()?;
         self.expect(&TokenKind::Colon)?;
         let ty = self.parse_type()?;
@@ -74,7 +76,7 @@ impl Parser {
             name,
             ty,
             constraints,
-            is_identity,
+            is_identity: false,
         })
     }
 

@@ -36,12 +36,19 @@ fn assert_error(source: &str, expected: &str) {
     assert_eq!(errors(source), vec![expected.to_string()]);
 }
 
-/// A small valid context to add declarations to.
+/// A small valid context to add declarations to. It has a bare `Room` for
+/// `RoomId` to identify, unless `extra` declares its own.
 fn dungeon(extra: &str) -> String {
+    let room = if extra.contains("aggregate Room") {
+        ""
+    } else {
+        "aggregate Room { id: RoomId }"
+    };
     format!(
         "context Dungeon {{\n\
-         identity RoomId: Int where Range(1, 20)\n\
+         identity RoomId for Room: Int where Range(1, 20)\n\
          value Position {{ x: Int  y: Int }}\n\
+         {room}\n\
          {extra}\n}}"
     )
 }

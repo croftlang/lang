@@ -65,7 +65,9 @@ A named value fixed at compile time, in UPPER_SNAKE_CASE.
 
 ### Identity
 A distinct type whose only job is to tell entities apart. A `TrackingId` can
-never be used where a `HandlingEventId` is expected.
+never be used where a `HandlingEventId` is expected. Each names what it
+identifies, `identity TrackingId for Cargo: Int`, and that aggregate or entity
+holds it in one field.
 
 ### Entity
 Something with an identity that stays the same while its other fields change.
