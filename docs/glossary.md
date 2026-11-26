@@ -26,6 +26,89 @@ Declared directly inside a context rather than inside an aggregate. Values,
 enums, constants, constraints, identities, functions, policies, services,
 ports and repositories live at context level.
 
+## Syntax
+
+The parts of a declaration, named on one function:
+
+```croft
+fn greet(): String where Length(0, 11) = {
+    "Hello, World"
+}
+```
+
+`fn` is the keyword, `greet` the name, `()` the empty parameter list and
+`String` the return type. Together they are the signature. `where Length(0, 11)`
+constrains the result, so it is part of the contract. Everything after `=` is
+the body, here a code block holding one statement, the string literal
+`"Hello, World"`.
+
+### Declaration
+Something a program names and defines: a context, value, enum, constant,
+constraint, identity, entity, aggregate, function, factory, command, policy,
+service, port, repository, adapter, translation or the domain. It starts with
+its keyword, such as `fn`, `value` or `aggregate`.
+
+### Keyword
+A word the language reserves, such as `fn`, `let`, `if`, `match` or `where`.
+It can't be used as a name. Words such as `on`, `for`, `from` and `when` are
+only special in one place, so they stay ordinary names elsewhere.
+
+### Signature
+How code is called, written before its contract: the keyword, the name, any
+type parameters, the parameters and the return type, as in
+`fn first_or<T>(items: List<T>, fallback: T): T`. A port declares its
+operations by signature only.
+
+### Parameter
+One named input in a signature, with its type and any constraints:
+`deadline: Int where Range(0, 3650)`. A function with none still writes `()`.
+
+### Type parameter
+A single capital letter in angle brackets after a name, standing for a type
+chosen at each use: the `T` in `first_or<T>`. See Generic.
+
+### Return type
+The type after the parameters and `:`, the kind of thing the body gives back.
+With no return type it is `Unit`.
+
+### Type
+What kind of thing a value is: `Int`, `String`, `List<Leg>`, `Cargo`. A
+type can be followed by `where` and constraints wherever it appears on a
+field, parameter or return type.
+
+### Expression
+Code that works out to a value: `1 + 2`, `cargo.route`, `"Hello, World"`,
+a `match`, a call. In Croft nearly everything is an expression, `if` and
+`loop` included.
+
+### Literal
+A value written out in full: `30`, `2.50`, `"CNHKG"`, `true`, `[a, b]`, `[]`,
+`["CNHKG": 4]`, `[:]`.
+
+### Statement
+One step of a code block, on its own line: a `let`, a `set`, or an
+expression.
+
+### Block
+Anything in braces. Each kind holds different things:
+
+- A code block holds statements, run in order, and gives back the value of
+  the last. A body, a guard and a loop each hold one:
+  `if hit_points == 0 { Defeated }`.
+- A contract block sits between a signature and `=`, and holds
+  preconditions, constraints on parameters and `calls`.
+- A field block holds the fields of a value, entity, aggregate, error or
+  event: `value Pair<A, B> { first: A  second: B }`.
+- A field value block gives fields their values when making or copying
+  one: `Cargo { ... }`, `route with { destination: "NLRTM" }`.
+- A variant block holds an enum's variants.
+- A match block holds a `match`'s arms.
+- A declaration block holds the declarations inside a context, aggregate,
+  port, repository or adapter.
+- A term block lists the terms a context publishes or uses:
+  `use { Edge, Path } from Routing`.
+- The contexts block is the domain's context map.
+
 ## Data
 
 ### Value
@@ -183,7 +266,7 @@ The outer layer, where the program meets the world. Lists the ports it uses,
 loads aggregates, issues commands and calls ports.
 
 ### Body
-Everything after `=`. Bodies are expressions with no `else`. Domain bodies
+Everything after `=`: one expression, or a code block. Bodies are expressions with no `else`. Domain bodies
 (commands, functions, constraints, translations) have no loops, so they
 always finish; list methods such as `map` and `sum` do their iterating.
 
