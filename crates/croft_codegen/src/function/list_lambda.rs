@@ -39,7 +39,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         self.open(format!(
-            "for ({index} = 0; {index} < (croft_int) {list}.length; {index}++)"
+            "for ({index} = 0; {index} < {list}.length; {index}++)"
         ));
 
         let value = self.lambda(arguments, current.clone(), item, &result);

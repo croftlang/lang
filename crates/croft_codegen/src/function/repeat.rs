@@ -3,7 +3,9 @@
 use croft_analysis::Type;
 use croft_syntax::ast::{Expr, ExprKind, LoopCounter};
 
+use super::range::Span;
 use super::Writer;
+use crate::types::width::width_for;
 
 impl<'g, 'a> Writer<'g, 'a> {
     pub fn repeat(&mut self, counter: Option<&LoopCounter>, block: &Expr) -> String {
@@ -20,14 +22,32 @@ impl<'g, 'a> Writer<'g, 'a> {
                     .iter()
                     .find(|r| r.name.text() == "Range");
 
-                let bounds: Vec<String> = range.map_or(Vec::new(), |r| {
-                    r.arguments
-                        .iter()
-                        .map(|a| self.value(a, &Type::Int))
-                        .collect()
-                });
+                let arguments = range.map_or(&[][..], |r| &r.arguments[..]);
 
-                let variable = self.variable(&format!("v_{}", counter.name.name), &Type::Int);
+                let bounds: Vec<String> = (arguments.iter())
+                    .map(|a| self.value(a, &Type::Int))
+                    .collect();
+
+                let base = format!("v_{}", counter.name.name);
+
+                // When its bounds are known the counter is kept in the
+                // smallest type that holds them, and one past the last, which
+                // ends the loop.
+                let known = match arguments {
+                    [low, high] => self.range_of(low).zip(self.range_of(high)),
+                    _ => None,
+                };
+
+                let variable = match known {
+                    Some((low, high)) => {
+                        let variable = self
+                            .raw_variable(&base, width_for(low.low, high.high.saturating_add(1)));
+
+                        self.note_range(&variable, Span::new(low.low, high.high));
+                        variable
+                    }
+                    None => self.variable(&base, &Type::Int),
+                };
 
                 let (low, high) = (
                     bounds.first().cloned().unwrap_or_default(),

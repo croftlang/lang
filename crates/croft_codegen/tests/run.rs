@@ -506,3 +506,8 @@ fn shares_temporaries_between_early_returns() {
     assert!(!body.contains("Orders_Order t"), "{body}");
     fs::remove_dir_all(output).ok();
 }
+
+#[test]
+fn works_out_narrow_numbers_as_if_they_had_32_bits() {
+    run_program("narrow_numbers");
+}

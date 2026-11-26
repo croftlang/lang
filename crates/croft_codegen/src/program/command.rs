@@ -51,7 +51,14 @@ impl<'a> Generator<'a> {
         let parameters = self.command_parameters(found, &command.name.name);
         let leading = [format!("const {} *p_self", self.c_type(&aggregate_type))];
         let name = format!("{}_{}", c_name(found), command.name.name);
-        let signature = self.signature(&name, &leading, &parameters, Some(&result));
+
+        let declared: Vec<&[croft_syntax::ast::ConstraintUse]> = (command.parameters.iter())
+            .flatten()
+            .map(|p| p.constraints.as_slice())
+            .collect();
+
+        let ranges = self.parameter_ranges(&found.context, &parameters, &declared);
+        let signature = self.ranged_signature(&name, &leading, &parameters, &ranges, Some(&result));
         prototypes.push(format!("{signature};"));
 
         let mut writer = Writer::new(self, &found.context, Returns::Command);
@@ -79,6 +86,7 @@ impl<'a> Generator<'a> {
         writer.line(format!("{mark} = croft_events_mark();"));
         writer.line(format!("(void) {mark};"));
         writer.bind_parameters(&parameters);
+        writer.note_parameter_ranges(&parameters, &ranges);
 
         let label = format!("{}.{}", found.name, command.name.name);
 

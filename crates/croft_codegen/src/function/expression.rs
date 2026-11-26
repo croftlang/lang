@@ -4,6 +4,7 @@
 use croft_analysis::{Meaning, Type};
 use croft_syntax::ast::{Expr, ExprKind, UnaryOp};
 
+use super::range::c_number;
 use super::Writer;
 use crate::names::c_string;
 use crate::types::bounds::{is_string, unbounded};
@@ -52,6 +53,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         let ty = self.type_of(value, want);
 
         let c = match &value.kind {
+            ExprKind::Int(number) if ty == Type::Int => c_number(*number),
             ExprKind::Int(number) => format!("{number}L"),
             ExprKind::Float(text) => match ty {
                 Type::Decimal(places) => format!("{}L", scaled(text, places)),
@@ -87,9 +89,13 @@ impl<'g, 'a> Writer<'g, 'a> {
             ExprKind::Unary(UnaryOp::Not, operand) => {
                 format!("(!{})", self.value(operand, &Type::Bool))
             }
-            ExprKind::Unary(UnaryOp::Negate, operand) => format!("(-{})", self.value(operand, &ty)),
+            ExprKind::Unary(UnaryOp::Negate, operand) => {
+                let inner = self.value(operand, &ty);
+                format!("(-{})", self.widened(inner, value, operand))
+            }
             ExprKind::Unary(UnaryOp::BitNot, operand) => {
-                format!("(~{})", self.value(operand, &Type::Int))
+                let inner = self.value(operand, &Type::Int);
+                format!("(~{})", self.widened(inner, value, operand))
             }
             ExprKind::Binary(op, left, right) => self.binary(*op, left, right, &ty),
             ExprKind::OrElse(inner, error) => self.or_else(inner, error, &ty),
@@ -244,11 +250,11 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.close();
             }
             (Type::List(from), Type::List(to)) => {
-                let index = self.variable("index", &Type::Int);
+                let index = self.index_variable();
                 self.line(format!("{target}.length = {source}.length;"));
 
                 self.open(format!(
-                    "for ({index} = 0; {index} < (croft_int) {source}.length; {index}++)"
+                    "for ({index} = 0; {index} < {source}.length; {index}++)"
                 ));
 
                 let (target, source) = (
@@ -281,11 +287,11 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.close();
             }
             (Type::Map(from_key, from_value), Type::Map(to_key, to_value)) => {
-                let index = self.variable("index", &Type::Int);
+                let index = self.index_variable();
                 self.line(format!("{target}.length = {source}.length;"));
 
                 self.open(format!(
-                    "for ({index} = 0; {index} < (croft_int) {source}.length; {index}++)"
+                    "for ({index} = 0; {index} < {source}.length; {index}++)"
                 ));
 
                 for (part, from, to) in

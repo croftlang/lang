@@ -12,7 +12,8 @@ constraint Alive(enemy: Room.Enemy) = enemy.hit_points > 0
 constraint OnScreen(position: Position) =
     Range(position.x, 0, SCREEN_WIDTH - 1) && Range(position.y, 0, SCREEN_HEIGHT - 1)
 
-// on a field, with arguments
+// on a field, with arguments. Range also sizes a number: this one is kept in
+// one byte, and arithmetic on it is worked out in 16 bits where that is enough.
 hit_points: Int where Range(0, 100)
 
 // on a list and on each of its items

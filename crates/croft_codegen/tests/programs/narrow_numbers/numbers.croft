@@ -1,0 +1,67 @@
+// Whole numbers with a known range are worked out in a C `int` when every
+// value fits one, and widened to a `croft_int` when the result may not. Every
+// answer must be the same as with 32 bits, even where `int` has only 16.
+context Numbers
+
+error WrongAnswer
+
+value Hero {
+    health: Int where Range(0, 1000)
+    level: Int where Range(1, 99)
+}
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+// 1000 * 1000 is past any 16-bit number.
+fn squared(n: Int where Range(0, 1000)): Int = n * n
+
+// Below zero when the hit is the larger.
+fn hurt(health: Int where Range(0, 255), hit: Int where Range(0, 255)): Int = health - hit
+
+fn strength(hero: Hero): Int = hero.health * hero.level
+
+fn flipped(n: Int where Range(0, 40000)): Int = -n
+
+fn inverted(n: Int where Range(0, 255)): Int = ~n
+
+fn above(n: Int where Range(0, 40000), floor: Int where Range(-5, 5)): Bool = n > floor
+
+fn half(n: Int where Range(-100, 100)): Int = n / 2
+
+fn doubled_level(hero: Hero): Int = {
+    let doubled = hero.level * 2
+    let big = doubled * 1000
+    big + doubled
+}
+
+fn scaled_length(word: String where Length(0, 8)): Int = word.length * 10000
+
+fn keeps(items: List<Int>, count: Int where Range(-3, 3)): Int = items.drop(count).length
+
+service Check(): Result<Unit, WrongAnswer> = {
+    check(squared(1000) == 1000000)?
+    check(squared(181) == 32761)?
+    check(hurt(10, 200) == -190)?
+    check(hurt(255, 0) == 255)?
+    check(strength(Hero { health: 1000, level: 99 }) == 99000)?
+    check(flipped(40000) == -40000)?
+    check(inverted(255) == -256)?
+    check(above(40000, -1))?
+    check(above(0, -5))?
+    check(!above(0, 5))?
+    check(half(-99) == -49)?
+    check(doubled_level(Hero { health: 1, level: 99 }) == 198198)?
+    check(scaled_length("lighthou") == 80000)?
+    check(keeps([1, 2, 3], -1) == 3)?
+    check(keeps([1, 2, 3], 2) == 1)?
+    let total = 0
+    loop (let step where Range(0, 255)) {
+        set total = total + step
+    }
+    check(total == 32640)
+}

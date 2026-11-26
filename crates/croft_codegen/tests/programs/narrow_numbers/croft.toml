@@ -1,0 +1,5 @@
+[package]
+name = "narrow_numbers"
+
+[target.test]
+main = "Check"

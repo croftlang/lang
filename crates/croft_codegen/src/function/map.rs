@@ -95,7 +95,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// `map.keys` or `map.values`, as a list.
     pub fn map_list(&mut self, map: &str, item: &Type, field: &str) -> String {
         let list = self.temp(&Type::list(item.clone()));
-        let index = self.variable("index", &Type::Int);
+        let index = self.index_variable();
 
         self.line(format!("{list}.length = {map}.length;"));
 
@@ -111,7 +111,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// Where `key` is in the map, or its length when it isn't there.
     fn map_find(&mut self, map: &str, key: &str, key_type: &Type) -> String {
-        let index = self.variable("index", &Type::Int);
+        let index = self.index_variable();
         let same = self.equal(&format!("{map}.keys[{index}]"), key, key_type);
 
         self.open(format!(

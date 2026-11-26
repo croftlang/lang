@@ -31,8 +31,9 @@ impl<'g, 'a> Writer<'g, 'a> {
             return self.string_operator(op, left, right);
         }
 
-        let left = self.value(left, &left_type);
-        let right = self.value(right, &left_type);
+        let left_c = self.value(left, &left_type);
+        let right_c = self.value(right, &left_type);
+        let (left, right) = (self.widened_operation(op, left, right, left_c), right_c);
 
         match op {
             Equal | NotEqual => {

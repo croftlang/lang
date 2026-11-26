@@ -65,6 +65,14 @@ void croft_fail(const char *message);
 #define CROFT_CHECK(condition, message) (void) sizeof(condition)
 #endif
 
+/* A parameter whose Range fits a smaller type is passed in that type, but as
+   a croft_int in debug builds, so its check sees the number as it was given. */
+#ifdef CROFT_DEBUG
+#define CROFT_RANGED(type) croft_int
+#else
+#define CROFT_RANGED(type) type
+#endif
+
 /* Sets every byte of a value to zero, so unused parts are never read unset. */
 void croft_clear(void *value, unsigned int size);
 

@@ -12,7 +12,21 @@ pub fn int_width(
     context: &str,
     constraints: &[ConstraintUse],
 ) -> &'static str {
-    let range = constraints
+    match declared_range(program, model, context, constraints) {
+        Some((low, high)) => width_for(low, high),
+        None => "croft_int",
+    }
+}
+
+/// The lowest and highest values a `Range` among `constraints` allows, when
+/// both are constants.
+pub fn declared_range(
+    program: &Program,
+    model: &Model,
+    context: &str,
+    constraints: &[ConstraintUse],
+) -> Option<(i64, i64)> {
+    constraints
         .iter()
         .filter(|r| !r.each && r.name.text() == "Range")
         .find_map(|constraint| {
@@ -24,13 +38,19 @@ pub fn int_width(
                 evaluate(program, model, context, low)?,
                 evaluate(program, model, context, high)?,
             ))
-        });
+        })
+}
 
-    match range {
-        Some((low, high)) if low >= 0 && high <= 255 => "croft_u8",
-        Some((low, high)) if low >= 0 && high <= 65535 => "croft_u16",
-        Some((low, high)) if low >= -128 && high <= 127 => "croft_i8",
-        Some((low, high)) if low >= -32768 && high <= 32767 => "croft_i16",
+/// The smallest C integer type that holds every value from `low` to `high`.
+/// A signed type comes before `croft_u16`, so that every narrow number that
+/// fits a C `int` is promoted to a signed `int` in arithmetic, even where
+/// `int` has only 16 bits.
+pub fn width_for(low: i64, high: i64) -> &'static str {
+    match (low, high) {
+        (low, high) if low >= 0 && high <= 255 => "croft_u8",
+        (low, high) if low >= -128 && high <= 127 => "croft_i8",
+        (low, high) if low >= -32768 && high <= 32767 => "croft_i16",
+        (low, high) if low >= 0 && high <= 65535 => "croft_u16",
         _ => "croft_int",
     }
 }

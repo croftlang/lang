@@ -45,8 +45,8 @@ impl<'g, 'a> Writer<'g, 'a> {
             return self.add(list, item, arguments, ty);
         }
 
-        let index = self.variable("index", &Type::Int);
-        let each = format!("for ({index} = 0; {index} < (croft_int) {list}.length; {index}++)");
+        let index = self.index_variable();
+        let each = format!("for ({index} = 0; {index} < {list}.length; {index}++)");
         let current = format!("{list}.items[{index}]");
         let temp = self.temp(ty);
 
@@ -106,8 +106,20 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                 let keep = if name == "drop" { ">=" } else { "<" };
 
+                // The counter is unsigned, so a count that may be below zero
+                // is compared as a `croft_int`.
+                let natural = (arguments.first())
+                    .and_then(|argument| self.range_of(&argument.value))
+                    .is_some_and(|range| range.is_natural());
+
+                let at = if natural {
+                    index.clone()
+                } else {
+                    format!("(croft_int) {index}")
+                };
+
                 self.line(format!(
-                    "if ({index} {keep} {count}) {temp}.items[{temp}.length++] = {current};"
+                    "if ({at} {keep} {count}) {temp}.items[{temp}.length++] = {current};"
                 ));
 
                 self.close();
