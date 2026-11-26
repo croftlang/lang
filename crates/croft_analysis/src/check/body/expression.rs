@@ -146,15 +146,19 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 Type::Bool
             }
             Add | Subtract | Multiply | Divide | Remainder => {
-                let ty = self.expr(left, None);
+                // Lists have no arithmetic, so `[0] + data` joins `Bytes`.
+                let ty = match &left.kind {
+                    ExprKind::List(_) if op == Add => self.expr(left, Some(&Type::Bytes)),
+                    _ => self.expr(left, None),
+                };
 
                 if let Some(ty) = self.decimal_arithmetic(op, &ty, left, right) {
                     return ty;
                 }
 
-                let joins_strings = op == Add && ty == Type::String;
+                let joins = op == Add && matches!(ty, Type::String | Type::Bytes);
 
-                if !ty.is_number() && !joins_strings {
+                if !ty.is_number() && !joins {
                     self.error(format!("cannot do arithmetic on `{ty}`"), left.span);
                     return Type::Unknown;
                 }

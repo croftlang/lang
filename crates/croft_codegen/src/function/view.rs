@@ -7,7 +7,7 @@ use croft_syntax::ast::{BinaryOp, Expr, ExprKind};
 
 use super::Writer;
 use crate::names::{c_name, c_string};
-use crate::types::bounds::is_string;
+use crate::types::bounds::{is_bytes, is_string};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// A string expression as a `croft_string_view`, copying nothing that
@@ -108,6 +108,26 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                     self.line(format!(
                         "croft_string_join({left}, {right}, CROFT_OUT({temp}));"
+                    ));
+
+                    self.store(target, temp, &joined, ty);
+                }
+            }
+            // Joined bytes go straight into a target with room for all of them.
+            ExprKind::Binary(BinaryOp::Add, left, right) if is_bytes(ty) => {
+                let (left, right, joined) = self.bytes_parts(left, right);
+
+                if self.gen.bound(&joined) <= self.gen.bound(ty) {
+                    self.line(format!(
+                        "croft_bytes_join({left}, {right}, CROFT_BYTES_OUT({target}));"
+                    ));
+
+                    self.note_result(target, &joined);
+                } else {
+                    let temp = self.temp(&joined);
+
+                    self.line(format!(
+                        "croft_bytes_join({left}, {right}, CROFT_BYTES_OUT({temp}));"
                     ));
 
                     self.store(target, temp, &joined, ty);

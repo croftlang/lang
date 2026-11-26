@@ -189,7 +189,7 @@ string with nothing to bound it, such as a parameter with no `Length` or a
 goes is cut short; in a debug build that stops the program and says which
 field it was. `Bytes` are kept the same way: a field, variant field,
 parameter or result with a `Length` holds that many values, a literal holds
-as many as it has, `slice` no more than it came from, `add` one more, and
+as many as it has, `slice` no more than it came from, `add` one more, `+` as many as both, and
 `to_bytes` as many as the string has characters. A `Bytes` with nothing to
 bound it holds 64 values, or the longest `Length` on any `Bytes` if that is
 longer.
@@ -343,7 +343,8 @@ type allows, 16 when there is none.
 A sequence of bytes, each from 0 to 255, for file contents, saves and network
 messages. Written as a list of numbers where `Bytes` is expected:
 `let header: Bytes = [0x44, 0x4E, 1]`. It has `length`, `is_empty`, `get`
-(an `Option<Int>`), `add` and `slice`. `Std.Text` turns text into bytes with
+(an `Option<Int>`), `add` and `slice`, and joins with `+`:
+`header + [0, 1]`. `Std.Text` turns text into bytes with
 `to_bytes`, and back with `to_text`. Each `Bytes` is kept in the most values
 it can need, as a string is; see Capacity.
 

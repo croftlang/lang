@@ -111,6 +111,7 @@ void croft_decimal_to_string(croft_int value, croft_int places, char *out, croft
 croft_bytes_view croft_bytes_view_from(const unsigned char *items, croft_u16 length);
 croft_bool croft_bytes_copy(croft_bytes_view bytes, unsigned char *out, croft_u16 *length, croft_u16 capacity);
 croft_bool croft_bytes_equal(croft_bytes_view a, croft_bytes_view b);
+void croft_bytes_join(croft_bytes_view a, croft_bytes_view b, unsigned char *out, croft_u16 *length, croft_u16 capacity);
 croft_bool croft_bytes_get(croft_bytes_view bytes, croft_int index, croft_int *out);
 void croft_bytes_add(croft_bytes_view bytes, croft_int byte, unsigned char *out, croft_u16 *length, croft_u16 capacity);
 void croft_bytes_slice(croft_bytes_view bytes, croft_int start, croft_int end, unsigned char *out, croft_u16 *length,

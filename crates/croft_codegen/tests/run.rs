@@ -512,6 +512,8 @@ fn sizes_bytes_from_where_they_come_from() {
     assert!(header
         .contains("void Packets_token_of(const Packets_Message *p_given, croft_bytes_2 *out);"));
     assert!(header.contains("void Packets_body_length(const croft_bytes *p_body, croft_int *out);"));
+    assert!(header
+        .contains("void Packets_wrapped(const croft_bytes_4 *p_payload, croft_bytes_6 *out);"));
     fs::remove_dir_all(output).ok();
 }
 
