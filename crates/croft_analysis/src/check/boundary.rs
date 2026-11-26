@@ -4,6 +4,7 @@ use std::collections::HashSet;
 
 use croft_syntax::ast::{FunctionDecl, PortDecl, RepositoryDecl};
 
+use super::constraints::ConstraintPlace;
 use super::{Checker, Resolved, Scope};
 use crate::symbols::SymbolKind;
 use crate::types::Type;
@@ -29,7 +30,9 @@ impl<'a> Checker<'a> {
             }
 
             match &operation.parameters {
-                Some(parameters) => self.check_parameters(scope, parameters, false),
+                Some(parameters) => {
+                    self.check_parameters(scope, parameters, false, ConstraintPlace::Declaration)
+                }
                 None => self.error(
                     format!("`{}` needs brackets, even with no parameters", name.name),
                     name.span,

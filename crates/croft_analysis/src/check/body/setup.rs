@@ -29,15 +29,16 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
-    /// `cond`, or `cond or Error { ... }` to fail with that error.
-    pub(super) fn check_precondition(&mut self, precondition: &Expr) {
-        match &precondition.kind {
+    /// A line of a contract: a constraint such as `from != to`, or with `or`,
+    /// `cond or Error { ... }`, failing with that error.
+    pub(super) fn check_contract_line(&mut self, line: &Expr) {
+        match &line.kind {
             ExprKind::OrElse(condition, error) => {
                 self.expect(condition, &Type::Bool);
                 self.check_failure(error);
             }
             _ => {
-                self.expect(precondition, &Type::Bool);
+                self.expect(line, &Type::Bool);
             }
         }
     }

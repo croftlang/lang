@@ -117,7 +117,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             return;
         };
 
-        for constraint in constraints {
+        // One with `or` is a failure the caller handles, not a mistake.
+        for constraint in constraints.iter().filter(|c| c.error.is_none()) {
             if self.checker.keeps_constraint(owner, constraint, &known) != Some(false) {
                 continue;
             }
@@ -178,11 +179,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
-    /// Checks each plain precondition of `function`, a mistake by the caller,
-    /// against the arguments that are known. A precondition with an error,
-    /// `mg > 0 or Refused`, is a failure the caller handles, so it is left to
-    /// the program.
-    pub(super) fn check_known_preconditions(
+    /// Checks each constraint written as a line of `function`'s contract,
+    /// such as `!numbers.is_empty`, against the arguments that are known. One
+    /// with an error, `mg > 0 or Refused`, is a failure the caller handles, so
+    /// it is left to the program.
+    pub(super) fn check_known_contract(
         &mut self,
         function: &FunctionDecl,
         owner: &Scope<'a>,
@@ -190,11 +191,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         callee: &str,
         span: Span,
     ) {
-        let plain: Vec<&Expr> = (function.preconditions.iter())
-            .filter(|precondition| !matches!(precondition.kind, ExprKind::OrElse(..)))
+        let must_hold: Vec<&Expr> = (function.preconditions.iter())
+            .filter(|line| !matches!(line.kind, ExprKind::OrElse(..)))
             .collect();
 
-        if plain.is_empty() {
+        if must_hold.is_empty() {
             return;
         }
 
@@ -214,16 +215,15 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
         }
 
-        for precondition in plain {
-            if self.checker.known_value(owner, &bindings, precondition) != Some(Known::Bool(false))
-            {
+        for line in must_hold {
+            if self.checker.known_value(owner, &bindings, line) != Some(Known::Bool(false)) {
                 continue;
             }
 
             let message = format!(
-                "`{callee}({})` breaks its contract: `{}`",
+                "`{callee}({})` breaks `{}`",
                 self.written_arguments(arguments),
-                precondition.text()
+                line.text()
             );
 
             self.error(message, span);

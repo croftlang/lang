@@ -71,6 +71,9 @@ pub struct ConstraintUse {
     pub each: bool,
     pub name: Path,
     pub arguments: Vec<Expr>,
+    /// The error after `or`: `where Overdose(4000) or Overdosed`. A broken
+    /// constraint with one fails the call with it; one without is a mistake.
+    pub error: Option<Expr>,
 }
 
 impl ConstraintUse {

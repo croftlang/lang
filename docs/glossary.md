@@ -96,7 +96,7 @@ Anything in braces. Each kind holds different things:
   the last. A body, a guard and a loop each hold one:
   `if hit_points == 0 { Defeated }`.
 - A contract block sits between a signature and `=`, and holds
-  preconditions, constraints on parameters and `calls`.
+  constraints, on parameters or on lines of their own, and `calls`.
 - A field block holds the fields of a value, entity, aggregate, error or
   event: `value Pair<A, B> { first: A  second: B }`.
 - A field value block gives fields their values when making or copying
@@ -165,8 +165,16 @@ by its own factories and only changed by its own commands.
 ## Constraints and invariants
 
 ### Constraint
-A named, pure check that returns `Bool`. Its first parameter is the value being
-checked.
+A rule a value must keep. A named one is a pure check that returns `Bool`,
+whose first parameter is the value being checked: `constraint Overdose(mg:
+Int, max: Int) = mg <= max`, used as `mg: Int where Overdose(4000)`. A
+contract line such as `from != to` is a constraint without a name. Without
+`or`, breaking one is a mistake by the caller: an error from `croft check`
+when the compiler knows the value, and otherwise a stop while the program
+runs, unless the target sets `checks = false`. With `or`, which only a
+parameter's constraint or a contract line can have, breaking it fails the
+call with that error, which the caller handles like any other failure:
+`mg where Overdose(4000) or Overdosed`.
 
 ### Range and Length
 The built-in constraints. `Range(low, high)` limits a number. `Length(low, high)`
@@ -219,25 +227,13 @@ A named way that working with an aggregate can fail, optionally with fields:
 `error NoSuchCargo { tracking_id: TrackingId }`. Errors are part of the domain;
 messages shown to the customer are not.
 
-### Precondition
-A condition in a contract that must hold for the code to run. With an error,
-`delivery.transport_status != Claimed or AlreadyClaimed`, it is a failure the domain expects:
-always checked, and handled by the caller like any other failure. Without
-one, `!numbers.is_empty`, it is a mistake by the caller: an error from
-`croft check` when the arguments it reads are known, and otherwise checked
-while the program runs, which stops with a message.
-
 ### Contract
 What a piece of code needs and what it promises, written before its body:
-its preconditions and, for services, `calls` in the braces between the
-signature and `=`; the `where` constraints on its parameters and result, which
-a parameter can have after its type or in the braces (`deadline where
-Range(0, 3650)`); and, for
-an aggregate, its invariants. The braces are left out when there is nothing
-to say. The compiler checks every `where` constraint whose value it knows, and
-reports a broken one as an error; the rest are checked as the program runs,
-which stops with a message naming the constraint that broke, unless the
-target sets `checks = false`. A contract states domain
+the constraints on its parameters, after each type or in the braces between
+the signature and `=` (`deadline where Range(0, 3650)`, or a line of its own
+such as `from != to`), and, for services, `calls`; the `where` constraints on
+its result; and, for an aggregate, its invariants. The braces are left out
+when there is nothing to say. A contract states domain
 rules once, where they apply, names
 failures in the ubiquitous language, keeps bodies simple, and tells the
 compiler how much memory data needs.

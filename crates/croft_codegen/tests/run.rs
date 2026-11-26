@@ -362,6 +362,11 @@ fn checks_rules_in_every_build_by_default() {
     );
 
     assert_eq!(
+        run("checked", "contract"),
+        (Some(1), "move_bed: from != to must hold".to_string())
+    );
+
+    assert_eq!(
         run("checked", "score"),
         (
             Some(1),
@@ -752,4 +757,36 @@ fn runs_more_list_methods() {
 #[test]
 fn runs_result_methods() {
     run_program("results");
+}
+
+/// A parameter's constraint with `or` fails the call with its error, with
+/// checks on and with the target's checks turned off.
+#[test]
+fn fails_with_a_constraints_error() {
+    run_program("failing_constraints");
+
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/failing_constraints");
+    let output = generate(&source, "unchecked", "failing_constraints_unchecked");
+    let built = compile(&output, &["croft_runtime.c", "program.c", "-o", "program"]);
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    let ran = std::process::Command::new(output.join("program"))
+        .output()
+        .expect("it runs");
+
+    assert!(
+        ran.status.success(),
+        "a check failed: {}",
+        String::from_utf8_lossy(&ran.stdout)
+    );
+    fs::remove_dir_all(output).ok();
 }

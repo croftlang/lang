@@ -289,33 +289,27 @@ fn a_function_body_is_worked_out_when_its_arguments_are_known() {
 }
 
 #[test]
-fn a_plain_precondition_broken_by_known_arguments_is_an_error() {
+fn a_contract_line_broken_by_known_arguments_is_an_error() {
     let source = clinic(
         "fn average(numbers: List<Int>): Int {\n !numbers.is_empty\n} = numbers.sum(n -> n) / numbers.length\n\
          fn treat(): Int = average([])",
     );
 
-    assert_error(
-        &source,
-        "`average([])` breaks its contract: `!numbers.is_empty`",
-    );
+    assert_error(&source, "`average([])` breaks `!numbers.is_empty`");
 }
 
 #[test]
-fn a_precondition_relating_parameters_is_worked_out() {
+fn a_contract_line_relating_parameters_is_worked_out() {
     let source = clinic(
         "fn move_bed(from: Int, to: Int): Int {\n from != to\n} = to\n\
          fn treat(): Int = move_bed(3, 3)",
     );
 
-    assert_error(
-        &source,
-        "`move_bed(3, 3)` breaks its contract: `from != to`",
-    );
+    assert_error(&source, "`move_bed(3, 3)` breaks `from != to`");
 }
 
 #[test]
-fn a_precondition_with_an_unknown_argument_is_left_to_runtime() {
+fn a_contract_line_with_an_unknown_argument_is_left_to_runtime() {
     let source = clinic(
         "fn move_bed(from: Int, to: Int): Int {\n from != to\n} = to\n\
          fn treat(bed: Int): Int = move_bed(3, bed)",
@@ -344,14 +338,14 @@ fn ward(contract: &str, issued: &str) -> String {
 }
 
 #[test]
-fn a_command_precondition_is_checked() {
+fn a_command_contract_line_is_checked() {
     let source = ward("mg > 0", "0");
 
-    assert_error(&source, "`Give(mg: 0)` breaks its contract: `mg > 0`");
+    assert_error(&source, "`Give(mg: 0)` breaks `mg > 0`");
 }
 
 #[test]
-fn a_precondition_with_an_error_is_a_failure_the_caller_handles() {
+fn a_contract_line_with_an_error_is_a_failure_the_caller_handles() {
     let source = ward("mg > 0 or Refused", "0");
 
     assert_eq!(errors(&source), Vec::<String>::new());

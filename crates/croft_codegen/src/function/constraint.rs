@@ -2,7 +2,7 @@
 
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::Type;
-use croft_syntax::ast::{Argument, ConstraintUse};
+use croft_syntax::ast::{Argument, ConstraintUse, Expr};
 
 use super::range::c_number;
 use super::Writer;
@@ -42,6 +42,56 @@ impl<'g, 'a> Writer<'g, 'a> {
         if let Some(test) = self.constraint_test(value, ty, constraint) {
             self.line(format!("CROFT_CHECK({test}, {message});"));
         }
+    }
+
+    /// Writes, for each parameter constraint with `or`, a test that fails the
+    /// call with its error when the constraint is broken. These are what the
+    /// program does, not checks, so they are written whatever the target's
+    /// `checks` setting.
+    pub fn constraint_failures(&mut self, parameters: &[(String, Type, &[ConstraintUse])]) {
+        for (parameter, ty, constraints) in parameters {
+            for constraint in constraints.iter() {
+                let Some(error) = &constraint.error else {
+                    continue;
+                };
+
+                let Some((value, _)) = self.lookup(parameter) else {
+                    continue;
+                };
+
+                if !constraint.each {
+                    let Some(test) = self.constraint_test(&value, ty, constraint) else {
+                        continue;
+                    };
+
+                    self.fail_unless(&test, error);
+                    continue;
+                }
+
+                let Some(item) = list_item(ty) else { continue };
+                let index = self.index_variable();
+                self.open(format!(
+                    "for ({index} = 0; {index} < {value}.length; {index}++)"
+                ));
+
+                if let Some(test) =
+                    self.constraint_test(&format!("{value}.items[{index}]"), item, constraint)
+                {
+                    self.fail_unless(&test, error);
+                }
+
+                self.close();
+            }
+        }
+    }
+
+    /// `if (!test)`, failing with `error`.
+    fn fail_unless(&mut self, test: &str, error: &Expr) {
+        self.open(format!("if (!{test})"));
+
+        let error = self.value(error, &Type::Errors(Vec::new()));
+        self.fail(&error);
+        self.close();
     }
 
     /// A C expression that is true when `value` keeps the constraint, or `None`

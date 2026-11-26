@@ -24,6 +24,11 @@ context Clinic {
 
     fn half(number: Int): Int where Even = number / 2
 
+    // A constraint with no name, written as a line of the contract.
+    fn move_bed(from: Int, to: Int): Int {
+        from != to
+    } = to
+
     // Its constraint is in the contract, which checks the same as writing it inline.
     fn count(numbers: List<Int>): Int {
         numbers where each Even
@@ -44,6 +49,9 @@ context Clinic {
         }
         if chosen.contains("each") {
             let counted = count([2, chosen.length * 2 + 1])
+        }
+        if chosen.contains("contract") {
+            let moved = move_bed(chosen.length, chosen.length)
         }
         if chosen.contains("score") {
             let score = Score(chosen.length * 5000)

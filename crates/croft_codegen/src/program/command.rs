@@ -1,5 +1,5 @@
 //! Commands and factories. A command works on a copy of its aggregate and
-//! gives back the changed copy only if every precondition and invariant holds;
+//! gives back the changed copy only if every constraint and invariant holds;
 //! a factory makes a new one, held to the same invariants.
 
 use croft_analysis::symbols::SymbolKind;
@@ -112,6 +112,7 @@ impl<'a> Generator<'a> {
             writer.checked_call(&call);
         }
 
+        writer.constraint_failures(&checked);
         writer.preconditions(&command.preconditions, &command.name.name);
 
         if let Some(body) = &command.body {
@@ -127,7 +128,7 @@ impl<'a> Generator<'a> {
     }
 
     /// `Cargo_Book(args..., out)`: runs the body, which makes the aggregate,
-    /// and gives it back only if every precondition and invariant holds.
+    /// and gives it back only if every constraint and invariant holds.
     fn factory(
         &self,
         found: &Resolved,
@@ -177,6 +178,7 @@ impl<'a> Generator<'a> {
             writer.checked_call(&call);
         }
 
+        writer.constraint_failures(&checked);
         writer.preconditions(&factory.preconditions, &factory.name.name);
 
         if let Some(body) = &factory.body {

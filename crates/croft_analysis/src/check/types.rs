@@ -4,6 +4,7 @@ use std::collections::HashSet;
 
 use croft_syntax::ast::{Field, Parameter, TypeExpr};
 
+use super::constraints::ConstraintPlace;
 use super::{Checker, Scope};
 use crate::facts::BuiltinName;
 use crate::types::MAX_PLACES;
@@ -128,7 +129,8 @@ impl<'a> Checker<'a> {
             }
 
             self.check_type(scope, &field.ty, false);
-            self.check_constraints(scope, &field.constraints, Some(&field.ty));
+            let place = ConstraintPlace::Field;
+            self.check_constraints(scope, &field.constraints, Some(&field.ty), place);
 
             if let Some(value) = &field.value {
                 self.error("only an adapter's fields have starting values", value.span);
@@ -141,6 +143,7 @@ impl<'a> Checker<'a> {
         scope: &Scope,
         parameters: &[Parameter],
         generic: bool,
+        place: ConstraintPlace,
     ) {
         let mut seen = HashSet::new();
 
@@ -162,7 +165,12 @@ impl<'a> Checker<'a> {
                 self.check_type(scope, ty, generic);
             }
 
-            self.check_constraints(scope, &parameter.constraints, parameter.types.first());
+            self.check_constraints(
+                scope,
+                &parameter.constraints,
+                parameter.types.first(),
+                place,
+            );
         }
     }
 }

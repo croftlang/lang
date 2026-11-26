@@ -1,0 +1,11 @@
+[package]
+name = "failing_constraints"
+
+[target.test]
+main = "Check"
+
+# A constraint with `or` is part of what the program does, so it still fails
+# the call with its error when the target turns its checks off.
+[target.unchecked]
+main = "Check"
+checks = false

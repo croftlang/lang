@@ -288,3 +288,58 @@ context A {
             (string
               (escape_sequence))
             (float)))))))
+
+================================================================================
+A parameter's constraint can end with the error it fails with
+================================================================================
+
+context Clinic
+
+fn give(mg: Int where Overdose(4000) or Overdosed): Result<Int, Overdosed> {
+  mg where Range(1, 9999) or Overdosed
+  mg > 0
+} = mg
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (function_declaration
+      (identifier)
+      (parameters
+        (parameter
+          (identifier)
+          (type
+            (type_identifier))
+          (where_clause
+            (constraint_use
+              (path
+                (identifier))
+              (arguments
+                (integer)))
+            (constraint_error
+              (identifier)))))
+      (type
+        (type_identifier)
+        (type_arguments
+          (type
+            (type_identifier))
+          (type
+            (type_identifier))))
+      (contract
+        (parameter_constraint
+          (identifier)
+          (where_clause
+            (constraint_use
+              (path
+                (identifier))
+              (arguments
+                (integer)
+                (integer)))
+            (constraint_error
+              (identifier))))
+        (binary_expression
+          (identifier)
+          (integer)))
+      (identifier))))

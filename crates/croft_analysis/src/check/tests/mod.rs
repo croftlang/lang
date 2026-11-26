@@ -4,6 +4,7 @@ mod declarations;
 mod domain;
 mod effects;
 mod factories;
+mod failing_constraints;
 mod files;
 mod functions;
 mod known_constraints;

@@ -10,7 +10,7 @@ use croft_syntax::ast::{ConstraintUse, Expr, ExprKind};
 use super::constraints::CheckPlace;
 
 use crate::function::{Returns, Writer};
-use crate::names::c_name;
+use crate::names::{c_name, c_string};
 use crate::Generator;
 
 /// How many times `settle_results` writes every function before giving up.
@@ -143,6 +143,7 @@ impl<'a> Generator<'a> {
             writer.checked_call(&call);
         }
 
+        writer.constraint_failures(&checked);
         writer.preconditions(preconditions, &found.name);
 
         if let Some(body) = body {
@@ -162,7 +163,8 @@ impl<'a> Generator<'a> {
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
-    /// `cond or Error` fails with the error; a plain condition is checked when checks are on.
+    /// A contract's lines: `cond or Error` fails with the error, and a plain
+    /// constraint such as `from != to` is checked when checks are on.
     pub fn preconditions(&mut self, preconditions: &[Expr], owner: &str) {
         for precondition in preconditions {
             match &precondition.kind {
@@ -176,10 +178,9 @@ impl<'g, 'a> Writer<'g, 'a> {
                 }
                 _ => {
                     let condition = self.value(precondition, &Type::Bool);
+                    let message = c_string(&format!("{owner}: {} must hold", precondition.text()));
 
-                    self.line(format!(
-                        "CROFT_CHECK({condition}, \"a precondition of {owner} failed\");"
-                    ));
+                    self.line(format!("CROFT_CHECK({condition}, {message});"));
                 }
             }
         }

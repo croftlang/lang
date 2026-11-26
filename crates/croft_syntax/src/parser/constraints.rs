@@ -6,8 +6,9 @@ use crate::keyword::Keyword;
 use crate::token::TokenKind;
 
 impl Parser {
-    /// `where Length(0, MAX_ENEMIES), each Alive`. A comma followed by
-    /// `name:` starts the next parameter instead.
+    /// `where Length(0, MAX_ENEMIES), each Alive`, where each may end with
+    /// the error it fails with: `Overdose(4000) or Overdosed`. A comma
+    /// followed by `name:` starts the next parameter instead.
     pub(super) fn parse_constraints(&mut self) -> ParseResult<Vec<ConstraintUse>> {
         let mut constraints = Vec::new();
 
@@ -19,6 +20,12 @@ impl Parser {
             let each = self.eat_keyword(Keyword::Each);
             let mut constraint = self.parse_constraint_use()?;
             constraint.each = each;
+
+            if self.check_keyword(Keyword::Or) && !self.peek().newline_before {
+                self.advance();
+                constraint.error = Some(self.parse_or_operand()?);
+            }
+
             constraints.push(constraint);
 
             let next_is_constraint = self.check(&TokenKind::Comma)
@@ -50,6 +57,7 @@ impl Parser {
             each: false,
             name,
             arguments,
+            error: None,
         })
     }
 }

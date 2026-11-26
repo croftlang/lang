@@ -9,12 +9,47 @@ use crate::symbols::SymbolKind;
 /// How many arguments each built-in constraint takes, after the value it checks.
 const BUILTIN_CONSTRAINTS: [(&str, &[usize]); 2] = [("Range", &[2]), ("Length", &[1, 2])];
 
+/// Where a `where` clause is written, which decides whether its constraints
+/// may end with `or Error`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ConstraintPlace {
+    /// A parameter of a function, service, command or factory: the call can
+    /// fail with the error.
+    Parameter,
+    /// A parameter of a port operation or of a constraint, which has no body
+    /// of its own to fail.
+    Declaration,
+    Field,
+    Result,
+    Identity,
+    LoopCounter,
+}
+
+impl ConstraintPlace {
+    /// Why a constraint here cannot fail with an error, or `None` when it can.
+    fn without_errors(self) -> Option<&'static str> {
+        match self {
+            ConstraintPlace::Parameter => None,
+            ConstraintPlace::Declaration => {
+                Some("this parameter belongs to a declaration with no body to fail")
+            }
+            ConstraintPlace::Field => Some("a field is part of a value that is always made"),
+            ConstraintPlace::Result => Some("a result is given back by the function itself"),
+            ConstraintPlace::Identity => Some("an identity is always made"),
+            ConstraintPlace::LoopCounter => {
+                Some("a loop counter only takes the values its constraints allow")
+            }
+        }
+    }
+}
+
 impl<'a> Checker<'a> {
     pub(super) fn check_constraints(
         &mut self,
         scope: &Scope,
         constraints: &[ConstraintUse],
         ty: Option<&TypeExpr>,
+        place: ConstraintPlace,
     ) {
         let is_list = ty.is_some_and(|ty| ty.path.text() == "List");
 
@@ -24,6 +59,32 @@ impl<'a> Checker<'a> {
             }
 
             self.check_constraint_use(scope, constraint);
+        }
+
+        self.reject_constraint_errors(constraints, place);
+    }
+
+    /// Reports each `or Error` on a constraint written where nothing can fail.
+    pub(super) fn reject_constraint_errors(
+        &mut self,
+        constraints: &[ConstraintUse],
+        place: ConstraintPlace,
+    ) {
+        let Some(reason) = place.without_errors() else {
+            return;
+        };
+
+        for constraint in constraints {
+            let Some(error) = &constraint.error else {
+                continue;
+            };
+
+            let message = format!(
+                "only a parameter's constraint can fail with an error: {reason}, so `{}` must hold",
+                constraint.text()
+            );
+
+            self.error(message, error.span);
         }
     }
 

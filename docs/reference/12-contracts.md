@@ -1,6 +1,6 @@
 # Contracts
 
-What code needs and what it promises, read before its body. A precondition with an error is a failure the domain expects: always checked, handled by the caller. A plain precondition is a mistake by the caller: an error from `croft check` when the arguments it reads are known, as with `where` constraints, and otherwise checked while the program runs, unless the target sets `checks = false`. A precondition with an error stays a runtime check even then, since failing with it is something the caller is written to handle. where constraints limit parameters and results; a parameter's constraints can follow its type or go in the contract, whichever reads better. Invariants hold after every factory and command, and calls lists the ports a service touches. It is separate from use, which only brings in names from another context. Use them to write each domain rule once, where it applies, to name failures in the domain's words, and to keep bodies simple.
+What code needs and what it promises, read before its body. Its constraints can follow a parameter's type or go in the contract, whichever reads better, and a line of the contract such as `from != to` is a constraint without a name. A constraint without `or` is a mistake by the caller if broken: an error from `croft check` when the values it reads are known, and otherwise a stop while the program runs, unless the target sets `checks = false`. A constraint with `or` is a failure the domain expects: always checked, it fails the call with its error, which the caller handles. Only a parameter's constraint or a contract line can have `or`; a field or result has nowhere to fail, so its constraints must hold. Invariants hold after every factory and command, and calls lists the ports a service touches. It is separate from use, which only brings in names from another context. Use them to write each domain rule once, where it applies, to name failures in the domain's words, and to keep bodies simple.
 
 ```croft
 // expected failure: always checked, the caller handles OutOfStock
@@ -18,6 +18,9 @@ fn average(numbers: List<Int>): Int {
 
 // constraints on a parameter and on the result
 fn heal(amount: Int where Range(1, 50)): Int where Range(0, 100) = ...
+
+// expected failure on a parameter: `give(5000)` compiles, and fails with Overdosed
+fn give(mg: Int where Overdose(4000) or Overdosed): Result<Int, Overdosed> = mg
 
 // the same constraints, kept out of a long signature
 fn attack(damage: Int, target: EnemyId): Result<Room, Room.Error> {

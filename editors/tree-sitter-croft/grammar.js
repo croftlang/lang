@@ -228,7 +228,12 @@ module.exports = grammar({
     // Constraints.
 
     // `where Length(0, MAX_ENEMIES), each Alive`
-    where_clause: $ => seq('where', $.constraint_use, repeat(seq(',', $.constraint_use))),
+    where_clause: $ => seq(
+      'where',
+      $.constraint_use,
+      optional($.constraint_error),
+      repeat(seq(',', $.constraint_use, optional($.constraint_error))),
+    ),
 
     // `Range(1, 20)`, `Alive` or `each Alive`
     constraint_use: $ => prec.right(seq(
@@ -236,6 +241,10 @@ module.exports = grammar({
       field('name', $.path),
       optional(field('arguments', $.arguments)),
     )),
+
+    // On a parameter, the error a broken constraint fails the call with:
+    // the `or Overdosed` in `where Overdose(4000) or Overdosed`.
+    constraint_error: $ => prec.right(seq('or', field('error', $._expression))),
 
     // `constraint Alive(enemy: Room.Enemy) = enemy.hit_points > 0`
     constraint_declaration: $ => prec.right(seq(
@@ -277,7 +286,7 @@ module.exports = grammar({
       optional(field('constraints', $.where_clause)),
     ),
 
-    // Preconditions, parameter constraints and the ports a body `calls`.
+    // Constraints, on a parameter or on their own line, and the ports a body `calls`.
     contract: $ => seq('{', repeat(choice($.calls_clause, $.parameter_constraint, $._expression)), '}'),
 
     // `damage where Range(1, 20)`, in a contract.

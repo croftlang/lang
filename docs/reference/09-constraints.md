@@ -50,3 +50,16 @@ let given = give(5000)
 
 A value that is only known while the program runs, such as input or something read from a port, is checked when it reaches the constraint, and a broken one stops the program with a message naming it: `give: mg must satisfy Overdose(4000)`. This happens on every target unless its section of `croft.toml` sets `checks = false`.
 
+## Failing with an error
+
+A constraint on a parameter can end with `or` and an error. Breaking it is then not a mistake but a failure the domain expects: the call fails with that error, which the caller handles like any other, so `croft check` accepts a call it knows will fail. It is always checked, whatever the target's `checks` setting. Only a parameter's constraint, inline or in the contract, can have `or`; a field, single value, result or loop counter has nowhere to fail, so its constraints must hold.
+
+```croft
+error Overdosed
+
+fn give(mg: Int where Overdose(4000) or Overdosed): Result<Int, Overdosed> = mg
+
+// compiles; fails with Overdosed
+let given = give(5000)?
+```
+

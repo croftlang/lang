@@ -26,9 +26,13 @@ impl<'a> Generator<'a> {
         place: &CheckPlace,
         parameters: &[(String, Type, &[ConstraintUse])],
     ) -> Option<String> {
-        if parameters
+        // A constraint with `or` fails the call instead; `constraint_failures` writes it.
+        let must_hold =
+            |constraints: &[ConstraintUse]| constraints.iter().any(|c| c.error.is_none());
+
+        if !parameters
             .iter()
-            .all(|(_, _, constraints)| constraints.is_empty())
+            .any(|(_, _, constraints)| must_hold(constraints))
         {
             return None;
         }
@@ -46,7 +50,7 @@ impl<'a> Generator<'a> {
         for (parameter, ty, constraints) in parameters {
             let (value, _) = writer.lookup(parameter).expect("a bound parameter");
 
-            for constraint in constraints.iter() {
+            for constraint in constraints.iter().filter(|c| c.error.is_none()) {
                 writer.check_constraint(
                     &value,
                     ty,

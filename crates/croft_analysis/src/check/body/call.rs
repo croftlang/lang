@@ -183,7 +183,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         self.check_arguments(arguments, &parameters, factory, span, true);
 
         if let Some(declared) = declared {
-            self.check_known_preconditions(declared, &scope, arguments, factory, span);
+            self.check_known_contract(declared, &scope, arguments, factory, span);
         }
 
         let declared = declared
@@ -252,7 +252,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let function = (scope.context.functions.iter()).find(|f| f.name.name == found.name);
 
         if let (Some(function), false) = (function, found.kind == SymbolKind::Constraint) {
-            self.check_known_preconditions(function, &scope, arguments, &found.name, span);
+            self.check_known_contract(function, &scope, arguments, &found.name, span);
         }
 
         result
