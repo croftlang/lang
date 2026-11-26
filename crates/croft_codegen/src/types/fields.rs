@@ -1,7 +1,7 @@
 //! The fields of the structs for values, entities, aggregates and events. A
 //! string field with a `Length` shorter than the longest string anywhere is
-//! kept in a `croft_text_N` of just that many characters, and copied into a
-//! full `croft_string` when it is read. When a value, entity or aggregate has
+//! kept in a `croft_text_N` of just that many characters, and a `Bytes` field
+//! with one shorter than the longest `Bytes` in a `croft_bytes_N`. When a value, entity or aggregate has
 //! two or more `Bool` fields, each is one bit of `croft_flags`, eight to a byte.
 
 use croft_analysis::symbols::SymbolKind;
@@ -19,22 +19,18 @@ impl<'a> Generator<'a> {
     pub fn struct_fields(&self, named: &Resolved) -> Vec<(String, Type, String)> {
         let mut fields: Vec<(String, Type, String)> = (self.model.fields(named).into_iter())
             .map(|(name, ty, field)| {
-                let text = self.text_capacity(named, &name);
-
-                let c = match ty {
-                    Type::String if text.is_some() => {
-                        let capacity = text.unwrap_or_default();
-                        self.texts.borrow_mut().insert(capacity);
-                        format!("croft_text_{capacity}")
-                    }
-                    Type::Int => int_width(
-                        self.program,
-                        &self.model,
-                        &named.context,
-                        &field.constraints,
-                    )
-                    .to_string(),
-                    _ => self.c_type(&ty),
+                let c = match self.own_size(named, &name) {
+                    Some(kept) => self.c_type(&kept),
+                    None => match ty {
+                        Type::Int => int_width(
+                            self.program,
+                            &self.model,
+                            &named.context,
+                            &field.constraints,
+                        )
+                        .to_string(),
+                        _ => self.c_type(&ty),
+                    },
                 };
 
                 (name, ty, c)
@@ -62,6 +58,30 @@ impl<'a> Generator<'a> {
     /// every other string: its own `Length`. Errors, enum variants and
     /// adapters keep full strings.
     pub fn text_capacity(&self, owner: &Resolved, field: &str) -> Option<i64> {
+        self.kept_capacity(owner, field, &Type::String)
+    }
+
+    /// How many values a `Bytes` field keeps, when that is fewer than every
+    /// other `Bytes`: its own `Length`, as for a string field.
+    pub fn bytes_field_capacity(&self, owner: &Resolved, field: &str) -> Option<i64> {
+        self.kept_capacity(owner, field, &Type::Bytes)
+    }
+
+    /// The type a field is kept in when it has a size of its own: a
+    /// `croft_text_N` or a `croft_bytes_N`.
+    pub fn own_size(&self, owner: &Resolved, field: &str) -> Option<Type> {
+        if let Some(capacity) = self.text_capacity(owner, field) {
+            return Some(self.text_type(capacity));
+        }
+
+        let capacity = self.bytes_field_capacity(owner, field)?;
+
+        Some(self.bytes_type(capacity))
+    }
+
+    /// The `Length` of a field of type `kind`, `String` or `Bytes`, when it
+    /// is below the shared size for that type.
+    fn kept_capacity(&self, owner: &Resolved, field: &str, kind: &Type) -> Option<i64> {
         use SymbolKind::{Aggregate, Entity, Event, Value};
 
         if !matches!(owner.kind, Value | Entity | Aggregate | Event)
@@ -73,13 +93,18 @@ impl<'a> Generator<'a> {
         let fields = self.model.fields(owner);
         let (_, ty, declared) = fields.into_iter().find(|(name, _, _)| name == field)?;
 
-        if ty != Type::String {
+        let shared = match kind {
+            Type::String => self.sizes.string_capacity,
+            _ => self.sizes.bytes_capacity,
+        };
+
+        if ty != *kind {
             return None;
         }
 
         let capacity = self.length_bound(&owner.context, &declared.constraints)?;
 
-        (capacity < self.sizes.string_capacity).then_some(capacity.max(1))
+        (capacity < shared).then_some(capacity.max(1))
     }
 
     /// The most a `Length` among `constraints` allows, when there is one.
@@ -128,10 +153,12 @@ impl<'a> Generator<'a> {
         variants
     }
 
-    /// A string parameter's type: bounded by its `Length`, when it has one.
+    /// A string or `Bytes` parameter's type: bounded by its `Length`, when
+    /// it has one.
     pub fn parameter_type(&self, context: &str, ty: Type, constraints: &[ConstraintUse]) -> Type {
         match (ty, self.length_bound(context, constraints)) {
             (Type::String, Some(length)) => self.text_type(length),
+            (Type::Bytes, Some(length)) => self.bytes_type(length),
             (ty, _) => ty,
         }
     }

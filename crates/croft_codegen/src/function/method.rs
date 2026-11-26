@@ -40,8 +40,8 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.map_method(&map, key, value, name, arguments, ty)
             }
             Type::Bytes => {
-                let bytes = self.value(receiver, &Type::Bytes);
-                self.bytes_method(&bytes, name, arguments, ty)
+                let (bytes, bounded) = self.eval(receiver, None);
+                self.bytes_method((&bytes, &bounded), name, arguments, ty)
             }
             Type::Decimal(places) if name == "to_string" => {
                 let number = self.value(receiver, &Type::Decimal(*places));

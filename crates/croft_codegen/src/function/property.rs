@@ -8,7 +8,7 @@ use croft_syntax::ast::Expr;
 
 use super::Writer;
 use crate::names::{c_name, error_code};
-use crate::types::bounds::is_string;
+use crate::types::bounds::{is_bytes, is_string};
 
 impl<'g, 'a> Writer<'g, 'a> {
     pub fn name(&mut self, value: &Expr, name: &str, ty: &Type) -> String {
@@ -116,13 +116,12 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         let (c, inner_type) = self.eval(inner, None);
 
+        let has_length = is_bytes(&inner_type)
+            || matches!(inner_type, Type::String | Type::Text(_) | Type::List(_));
+
         match (&inner_type, field) {
-            (Type::String | Type::Text(_) | Type::Bytes | Type::List(_), "length") => {
-                self.length_of(&c, &inner_type)
-            }
-            (Type::String | Type::Text(_) | Type::Bytes | Type::List(_), "is_empty") => {
-                format!("({c}.length == 0)")
-            }
+            (_, "length") if has_length => self.length_of(&c, &inner_type),
+            (_, "is_empty") if has_length => format!("({c}.length == 0)"),
             (Type::Map(..), "length") => self.length_of(&c, &inner_type),
             (Type::Map(..), "is_empty") => format!("({c}.length == 0)"),
             (Type::Map(key, value), "keys" | "values") => {

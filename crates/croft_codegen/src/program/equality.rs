@@ -140,8 +140,8 @@ impl<'a> Generator<'a> {
             return format!("croft_string_equal(CROFT_VIEW({a}), CROFT_VIEW({b}))");
         }
 
-        if *ty == Type::Bytes {
-            return format!("croft_bytes_equal(&{a}, &{b})");
+        if matches!(ty, Type::Bytes | Type::SizedBytes(_)) {
+            return format!("croft_bytes_equal(CROFT_BYTES_VIEW({a}), CROFT_BYTES_VIEW({b}))");
         }
 
         format!("{}(&{a}, &{b})", self.equality_for(ty))

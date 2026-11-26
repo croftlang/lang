@@ -99,10 +99,11 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                     let kept_in_own_size = (own.as_ref())
                         .and_then(|(_, owner)| owner.as_ref())
-                        .and_then(|owner| self.gen.text_capacity(owner, &name.name));
+                        .and_then(|owner| self.gen.own_size(owner, &name.name));
 
-                    // Any string can be written into a field of its own size.
+                    // Any string or `Bytes` can be written into a field of its own size.
                     let c = match kept_in_own_size {
+                        Some(Type::SizedBytes(_)) => self.eval(value, None).0,
                         Some(_) => self.view(value),
                         None => self.value(value, &ty),
                     };

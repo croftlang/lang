@@ -45,6 +45,19 @@ typedef struct {
     unsigned char items[CROFT_BYTES_CAPACITY];
 } croft_bytes;
 
+/* Bytes borrowed for the length of a call, as croft_string_view borrows
+   text: the values of a full croft_bytes, or of a croft_bytes_N kept in a
+   size of its own. A Bytes is read through CROFT_BYTES_VIEW, and written by
+   a runtime function given CROFT_BYTES_OUT: where its values go, where its
+   length goes, and how many values there is room for. */
+typedef struct {
+    const unsigned char *items;
+    croft_u16 length;
+} croft_bytes_view;
+
+#define CROFT_BYTES_VIEW(b) croft_bytes_view_from((b).items, (b).length)
+#define CROFT_BYTES_OUT(b) (b).items, &(b).length, (croft_u16) sizeof (b).items
+
 #define CROFT_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define CROFT_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define CROFT_ABS(a) ((a) < 0 ? -(a) : (a))
@@ -95,12 +108,15 @@ croft_int croft_decimal_multiply(croft_int a, croft_int b, croft_int scale);
 croft_int croft_decimal_divide(croft_int a, croft_int b, croft_int scale);
 void croft_decimal_to_string(croft_int value, croft_int places, char *out, croft_u16 *length, croft_u16 capacity);
 
-croft_bool croft_bytes_equal(const croft_bytes *a, const croft_bytes *b);
-croft_bool croft_bytes_get(const croft_bytes *bytes, croft_int index, croft_int *out);
-void croft_bytes_add(const croft_bytes *bytes, croft_int byte, croft_bytes *out);
-void croft_bytes_slice(const croft_bytes *bytes, croft_int start, croft_int end, croft_bytes *out);
-void croft_bytes_to_text(const croft_bytes *bytes, char *out, croft_u16 *length, croft_u16 capacity);
-void croft_string_to_bytes(croft_string_view text, croft_bytes *out);
+croft_bytes_view croft_bytes_view_from(const unsigned char *items, croft_u16 length);
+croft_bool croft_bytes_copy(croft_bytes_view bytes, unsigned char *out, croft_u16 *length, croft_u16 capacity);
+croft_bool croft_bytes_equal(croft_bytes_view a, croft_bytes_view b);
+croft_bool croft_bytes_get(croft_bytes_view bytes, croft_int index, croft_int *out);
+void croft_bytes_add(croft_bytes_view bytes, croft_int byte, unsigned char *out, croft_u16 *length, croft_u16 capacity);
+void croft_bytes_slice(croft_bytes_view bytes, croft_int start, croft_int end, unsigned char *out, croft_u16 *length,
+                       croft_u16 capacity);
+void croft_bytes_to_text(croft_bytes_view bytes, char *out, croft_u16 *length, croft_u16 capacity);
+void croft_string_to_bytes(croft_string_view text, unsigned char *out, croft_u16 *length, croft_u16 capacity);
 croft_bool croft_bytes_put_int(croft_bytes *out, croft_int value);
 croft_bool croft_bytes_take_int(const croft_bytes *in, croft_u16 *at, croft_int *out);
 croft_bool croft_bytes_put_byte(croft_bytes *out, croft_u8 value);
@@ -110,8 +126,9 @@ croft_bool croft_bytes_take_length(const croft_bytes *in, croft_u16 *at, croft_u
 croft_bool croft_bytes_put_string(croft_bytes *out, croft_string_view text);
 croft_bool croft_bytes_take_string(const croft_bytes *in, croft_u16 *at, char *text, croft_u16 *length,
                                    croft_u16 capacity);
-croft_bool croft_bytes_put_bytes(croft_bytes *out, const croft_bytes *bytes);
-croft_bool croft_bytes_take_bytes(const croft_bytes *in, croft_u16 *at, croft_bytes *out);
+croft_bool croft_bytes_put_bytes(croft_bytes *out, croft_bytes_view bytes);
+croft_bool croft_bytes_take_bytes(const croft_bytes *in, croft_u16 *at, unsigned char *items, croft_u16 *length,
+                                  croft_u16 capacity);
 void croft_storage_key(const char *prefix, croft_int identity, croft_string *out);
 
 croft_bool croft_string_to_int(croft_string_view text, croft_int *out);

@@ -30,7 +30,15 @@ impl<'a> Generator<'a> {
             })
             .collect();
 
-        texts + &out
+        let byte_sizes: String = (self.byte_sizes.borrow().iter())
+            .map(|n| {
+                format!(
+                    "typedef struct {{\n    croft_u16 length;\n    unsigned char items[{n}];\n}} croft_bytes_{n};\n\n"
+                )
+            })
+            .collect();
+
+        texts + &byte_sizes + &out
     }
 
     fn define(&self, ty: &Type, done: &mut HashSet<Type>, out: &mut String) {

@@ -20,7 +20,11 @@ pub fn c_size(c_type: &str) -> Option<i64> {
         "double" => 8,
         "croft_string_view" => POINTER_SIZE + 2,
         _ => {
-            let capacity = c_type.strip_prefix("croft_text_")?.parse::<i64>().ok()?;
+            let capacity = (c_type.strip_prefix("croft_text_"))
+                .or_else(|| c_type.strip_prefix("croft_bytes_"))?
+                .parse::<i64>()
+                .ok()?;
+
             2 + capacity
         }
     };
@@ -41,6 +45,7 @@ impl<'a> Generator<'a> {
             Type::Text(length) => 2 + i64::from(*length),
             Type::Borrowed(_) => POINTER_SIZE + 2,
             Type::Bytes => 2 + self.sizes.bytes_capacity,
+            Type::SizedBytes(length) => 2 + i64::from(*length),
             Type::List(item) => 2 + self.sizes.list_capacity(item) * self.memory_size(item),
             Type::Map(key, value) => {
                 let map = Type::map((**key).clone(), (**value).clone());

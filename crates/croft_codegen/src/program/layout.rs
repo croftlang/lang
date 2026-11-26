@@ -19,6 +19,7 @@ impl<'a> Generator<'a> {
             Type::String => 2 + self.sizes.string_capacity,
             Type::Text(length) => 2 + i64::from(*length),
             Type::Bytes => 2 + self.sizes.bytes_capacity,
+            Type::SizedBytes(length) => 2 + i64::from(*length),
             Type::List(item) => 2 + self.sizes.list_capacity(item) * self.serialized_size(item),
             Type::Option(item) => 4 + self.serialized_size(item),
             Type::Map(key, value) => {
@@ -37,8 +38,8 @@ impl<'a> Generator<'a> {
             Type::Named(named) => {
                 let fields: i64 = (self.struct_fields(named).into_iter())
                     .filter(|(field, _, _)| self.flag_bit(named, field).is_none())
-                    .map(|(field, ty, _)| match self.text_capacity(named, &field) {
-                        Some(capacity) => 2 + capacity,
+                    .map(|(field, ty, _)| match self.own_size(named, &field) {
+                        Some(kept) => 2 + self.bound(&kept),
                         None => self.serialized_size(&ty),
                     })
                     .sum();
@@ -73,8 +74,9 @@ impl<'a> Generator<'a> {
             }
             Type::Named(named) if !self.is_scalar(&ty) => {
                 let fields: Vec<String> = (self.struct_fields(named).into_iter())
-                    .map(|(name, ty, _)| match self.text_capacity(named, &name) {
-                        Some(capacity) => format!("{name}:String<{capacity}>"),
+                    .map(|(name, ty, _)| match self.own_size(named, &name) {
+                        Some(Type::SizedBytes(capacity)) => format!("{name}:Bytes<{capacity}>"),
+                        Some(kept) => format!("{name}:String<{}>", self.bound(&kept)),
                         None if self.flag_bit(named, &name).is_some() => format!("{name}:Flag"),
                         None => format!("{name}:{}", self.layout(&ty)),
                     })

@@ -33,6 +33,8 @@ pub struct Generator<'a> {
     pub(crate) checked_types: RefCell<HashSet<Resolved>>,
     /// The capacities of the `croft_text_N` structs string fields are kept in.
     pub(crate) texts: RefCell<std::collections::BTreeSet<i64>>,
+    /// The sizes of `croft_bytes_N` the program uses, as `texts` for strings.
+    pub(crate) byte_sizes: RefCell<std::collections::BTreeSet<i64>>,
     /// Native C functions called by adapters, with their prototypes.
     pub(crate) natives: RefCell<Vec<(String, String)>>,
     /// What each function and translation gives back, with the bounds of its
@@ -116,6 +118,7 @@ impl<'a> Generator<'a> {
             checks: RefCell::default(),
             checked_types: RefCell::default(),
             texts: RefCell::default(),
+            byte_sizes: RefCell::default(),
             natives: RefCell::default(),
             results: RefCell::default(),
         };
@@ -152,6 +155,7 @@ pub(crate) struct SavedState {
     checks: Vec<(String, String)>,
     checked_types: HashSet<Resolved>,
     texts: std::collections::BTreeSet<i64>,
+    byte_sizes: std::collections::BTreeSet<i64>,
     natives: Vec<(String, String)>,
 }
 
@@ -164,6 +168,7 @@ impl<'a> Generator<'a> {
             checks: self.checks.borrow().clone(),
             checked_types: self.checked_types.borrow().clone(),
             texts: self.texts.borrow().clone(),
+            byte_sizes: self.byte_sizes.borrow().clone(),
             natives: self.natives.borrow().clone(),
         }
     }
@@ -175,6 +180,7 @@ impl<'a> Generator<'a> {
         *self.checks.borrow_mut() = saved.checks.clone();
         *self.checked_types.borrow_mut() = saved.checked_types.clone();
         *self.texts.borrow_mut() = saved.texts.clone();
+        *self.byte_sizes.borrow_mut() = saved.byte_sizes.clone();
         *self.natives.borrow_mut() = saved.natives.clone();
     }
 }
