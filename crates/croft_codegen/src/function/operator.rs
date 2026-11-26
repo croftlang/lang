@@ -4,7 +4,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::{BinaryOp, Expr};
 
 use super::Writer;
-use crate::types::bounds::{is_bytes, is_string};
+use crate::types::bounds::{is_bytes, is_string, list_item};
 use crate::types::constant::evaluate;
 
 const MAX_SHIFT: i64 = croft_analysis::MAX_SHIFT;
@@ -42,6 +42,15 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         if matches!(left_type, Type::List(_)) && op == Add {
             return self.join_lists(left, right, ty);
+        }
+
+        if matches!(left_type, Type::List(_)) && matches!(op, Equal | NotEqual) {
+            let equal = self.equal_lists(left, right);
+
+            return match op {
+                Equal => equal,
+                _ => format!("(!{equal})"),
+            };
         }
 
         let left_c = self.value(left, &left_type);
@@ -149,20 +158,26 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// `first + second` on lists: the items of both, in a list with room
-    /// for the strings of either, as many as a list of them holds.
+    /// for the strings of either, and for as many items as both hold.
     fn join_lists(&mut self, left: &Expr, right: &Expr, ty: &Type) -> String {
         let (first, first_type) = self.eval(left, Some(ty));
         let (second, second_type) = self.eval(right, Some(ty));
-        let joined = self
-            .gen
-            .keep_bound(&self.gen.wider(&first_type, &second_type), ty);
+        let wider = self.gen.wider(&first_type, &second_type);
+        let length = self.gen.capacity(&first_type) + self.gen.capacity(&second_type);
 
-        let (Type::List(item), Type::List(second_item)) = (&joined, &second_type) else {
+        let joined = match list_item(&wider) {
+            Some(item) => self.gen.list_type(item.clone(), length),
+            None => wider.clone(),
+        };
+
+        let joined = self.gen.keep_bound(&joined, ty);
+
+        let (Some(item), Some(second_item)) = (list_item(&joined), list_item(&second_type)) else {
             return "0".to_string();
         };
 
-        let (item, second_item) = ((**item).clone(), (**second_item).clone());
-        let capacity = self.gen.sizes.list_capacity(&item);
+        let (item, second_item) = (item.clone(), second_item.clone());
+        let capacity = self.gen.capacity(&joined);
         let temp = self.temp(&joined);
         let index = self.index_variable();
         let slot = format!("{temp}.items[{temp}.length]");
@@ -186,6 +201,26 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.close();
 
         temp
+    }
+
+    /// `first == second` on lists, whatever their sizes. Only when their
+    /// items differ in the bounds of their strings is one copied, into a
+    /// list that has room for either.
+    fn equal_lists(&mut self, left: &Expr, right: &Expr) -> String {
+        let (first, first_type) = self.eval(left, None);
+        let (second, second_type) = self.eval(right, None);
+
+        let item_of = |writer: &Self, ty: &Type| list_item(ty).map(|item| writer.gen.c_type(item));
+
+        if item_of(self, &first_type) == item_of(self, &second_type) {
+            return self.equal(&first, &second, &first_type);
+        }
+
+        let both = self.gen.wider(&first_type, &second_type);
+        let first = self.convert(first, &first_type, &both);
+        let second = self.convert(second, &second_type, &both);
+
+        self.equal(&first, &second, &both)
     }
 
     /// `==`, `!=` and `+` on strings, read through views so a literal on

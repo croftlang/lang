@@ -7,6 +7,7 @@ use croft_syntax::ast::{Argument, ConstraintUse};
 use super::range::c_number;
 use super::Writer;
 use crate::names::{c_name, c_string};
+use crate::types::bounds::list_item;
 use crate::types::constant::{decimal_bound, evaluate};
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -22,7 +23,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         let message = c_string(&format!("{what} must satisfy {}", describe(constraint)));
 
         if constraint.each {
-            let Type::List(item) = ty else { return };
+            let Some(item) = list_item(ty) else { return };
             let index = self.index_variable();
             self.open(format!(
                 "for ({index} = 0; {index} < {value}.length; {index}++)"

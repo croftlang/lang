@@ -57,7 +57,9 @@ impl<'a> Generator<'a> {
 
     fn dependencies(&self, ty: &Type) -> Vec<Type> {
         match ty {
-            Type::List(item) | Type::Option(item) => vec![(**item).clone()],
+            Type::List(item) | Type::SizedList(item, _) | Type::Option(item) => {
+                vec![(**item).clone()]
+            }
             Type::Map(key, value) => vec![(**key).clone(), (**value).clone()],
             Type::Result(value, error) => vec![(**value).clone(), (**error).clone()],
             Type::Errors(_) => self
@@ -87,9 +89,11 @@ impl<'a> Generator<'a> {
     fn definition(&self, ty: &Type) -> String {
         match ty {
             Type::Errors(_) => self.error_definition(),
-            Type::List(_) | Type::Map(..) | Type::Option(_) | Type::Result(..) => {
-                self.generic_definition(ty)
-            }
+            Type::List(_)
+            | Type::SizedList(..)
+            | Type::Map(..)
+            | Type::Option(_)
+            | Type::Result(..) => self.generic_definition(ty),
             Type::Named(named) => match named.kind {
                 SymbolKind::Identity => {
                     let scope = &self.program.contexts[&named.context];

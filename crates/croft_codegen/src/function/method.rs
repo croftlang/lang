@@ -70,10 +70,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             Type::List(_) => {
                 let (list, bounded) = self.eval(receiver, None);
-                let Type::List(item) = bounded else {
-                    return "0".to_string();
-                };
-                self.list_method(&list, &item, name, arguments, ty)
+                self.list_method(&list, &bounded, name, arguments, ty)
             }
             Type::Option(_) => {
                 let (option, bounded) = self.eval(receiver, None);
@@ -141,7 +138,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         self.line(format!("{list}.length = 0;"));
 
-        let capacity = self.gen.sizes.list_capacity(&Type::String);
+        let capacity = self.gen.capacity(ty);
 
         self.open(format!(
             "for ({index} = 0; {index} < croft_argument_count() && {index} < {capacity}; {index}++)"

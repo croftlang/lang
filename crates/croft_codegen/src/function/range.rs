@@ -211,7 +211,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         match ty {
             ty if is_string(ty) => Some(self.gen.bound(ty)),
             Type::Bytes | Type::SizedBytes(_) => Some(self.gen.bound(ty)),
-            Type::List(item) => Some(sizes.list_capacity(item)),
+            Type::List(_) | Type::SizedList(..) => Some(self.gen.capacity(ty)),
             Type::Map(..) => Some(sizes.map_capacity(ty)),
             _ => None,
         }

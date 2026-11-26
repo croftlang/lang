@@ -7,7 +7,7 @@ use croft_syntax::ast::{Expr, ExprKind, UnaryOp};
 use super::range::c_number;
 use super::Writer;
 use crate::names::c_string;
-use crate::types::bounds::{is_bytes, is_string, unbounded};
+use crate::types::bounds::{is_bytes, is_string, list_item, unbounded};
 use crate::types::constant::{scale, scaled};
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -18,6 +18,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         // A literal, `[]` or `None` is written straight into the type wanted.
         if matches!(value.kind, ExprKind::String(_)) && is_string(want)
+            || matches!(value.kind, ExprKind::List(_)) && list_item(want).is_some()
             || self.is_empty(value, want)
         {
             let temp = self.temp(want);
@@ -179,13 +180,20 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         if self.is_empty(value, ty) {
-            match ty {
-                Type::List(_) => self.line(format!("{target}.length = 0;")),
-                _ => self.line(format!("croft_clear(&{target}, sizeof {target});")),
+            match list_item(ty) {
+                Some(_) => self.line(format!("{target}.length = 0;")),
+                None => self.line(format!("croft_clear(&{target}, sizeof {target});")),
             }
 
             let empty = self.gen.narrowest(ty);
             self.note_result(target, &empty);
+            return;
+        }
+
+        if let (ExprKind::List(items), Some(item)) = (&value.kind, list_item(ty)) {
+            let literal = self.gen.list_type(item.clone(), items.len() as i64);
+            self.fill_list(target, items, ty);
+            self.note_result(target, &literal);
             return;
         }
 
@@ -211,7 +219,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// Whether `value` is `[]` for a list of `ty`, or `None` for an option.
     fn is_empty(&self, value: &Expr, ty: &Type) -> bool {
         match (&value.kind, ty) {
-            (ExprKind::List(items), Type::List(_)) => items.is_empty(),
+            (ExprKind::List(items), Type::List(_) | Type::SizedList(..)) => items.is_empty(),
             (ExprKind::Name(_) | ExprKind::Field(..), Type::Option(_)) => {
                 matches!(self.gen.facts.meaning(value.id), Some(Meaning::NoneValue))
             }
@@ -220,9 +228,9 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// Writes `source`, of type `from`, into `target`, of type `to`, which
-    /// differ at most in the bounds of their strings and `Bytes`. A string or
-    /// `Bytes` longer than `to` has room for is cut short, and stops a debug
-    /// build.
+    /// differ at most in the bounds of their strings, `Bytes` and lists. A
+    /// string, `Bytes` or list longer than `to` has room for is cut short,
+    /// and stops a debug build.
     pub fn copy_into(&mut self, target: &str, source: &str, from: &Type, to: &Type) {
         self.note_result(target, from);
 
@@ -268,21 +276,10 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                 self.close();
             }
-            (Type::List(from), Type::List(to)) => {
-                let index = self.index_variable();
-                self.line(format!("{target}.length = {source}.length;"));
-
-                self.open(format!(
-                    "for ({index} = 0; {index} < {source}.length; {index}++)"
-                ));
-
-                let (target, source) = (
-                    format!("{target}.items[{index}]"),
-                    format!("{source}.items[{index}]"),
-                );
-
-                self.copy_into(&target, &source, from, to);
-                self.close();
+            (from_list, to_list)
+                if list_item(from_list).is_some() && list_item(to_list).is_some() =>
+            {
+                self.copy_list(target, source, from_list, to_list);
             }
             (Type::Option(from), Type::Option(to)) => {
                 self.line(format!("{target}.some = {source}.some;"));
@@ -330,6 +327,43 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
     }
 
+    /// Copies a list item by item into one of another size, or with items
+    /// of other bounds. Items past the room `to` has are left out, and stop
+    /// a debug build.
+    fn copy_list(&mut self, target: &str, source: &str, from: &Type, to: &Type) {
+        let (Some(from_item), Some(to_item)) = (list_item(from), list_item(to)) else {
+            return;
+        };
+
+        let (from_item, to_item) = (from_item.clone(), to_item.clone());
+        let room = self.gen.capacity(to);
+        let index = self.index_variable();
+
+        let length = if self.gen.capacity(from) <= room {
+            format!("{source}.length")
+        } else {
+            self.line(format!(
+                "CROFT_CHECK({source}.length <= {room}, \"a list holds at most {room} items\");"
+            ));
+
+            format!("({source}.length < {room} ? {source}.length : {room})")
+        };
+
+        self.line(format!("{target}.length = {length};"));
+
+        self.open(format!(
+            "for ({index} = 0; {index} < {target}.length; {index}++)"
+        ));
+
+        let (target, source) = (
+            format!("{target}.items[{index}]"),
+            format!("{source}.items[{index}]"),
+        );
+
+        self.copy_into(&target, &source, &from_item, &to_item);
+        self.close();
+    }
+
     /// A single-value type around `value`, checked against its constraints
     /// in debug builds: `Score(120)`, or `120` where a `Score` is expected.
     pub fn wrap_single_value(&mut self, value: String, ty: &Type) -> String {
@@ -366,16 +400,14 @@ impl<'g, 'a> Writer<'g, 'a> {
             );
         }
 
-        let name = self.gen.equality_for(ty);
-
-        format!("{name}(&{left}, &{right})")
+        self.gen.equality_call(left, right, ty)
     }
 }
 
 fn has_unknown(ty: &Type) -> bool {
     match ty {
         Type::Unknown => true,
-        Type::List(item) | Type::Option(item) => has_unknown(item),
+        Type::List(item) | Type::SizedList(item, _) | Type::Option(item) => has_unknown(item),
         Type::Map(key, value) => has_unknown(key) || has_unknown(value),
         Type::Result(value, error) => has_unknown(value) || has_unknown(error),
         _ => false,

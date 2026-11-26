@@ -65,7 +65,11 @@ impl<'g, 'a> Writer<'g, 'a> {
                 .find(|(f, _)| f == name)
                 .map_or(Type::Unknown, |(_, ty)| ty.clone());
 
-            let kept_in_own_size = owner.and_then(|owner| self.gen.own_size(owner, name));
+            // A list kept in a size of its own already has that size in
+            // `field_type`, so only strings and `Bytes` are written apart.
+            let kept_in_own_size = owner
+                .and_then(|owner| self.gen.own_size(owner, name))
+                .filter(|kept| !matches!(kept, Type::SizedList(..)));
 
             let value = match &given.value {
                 // Any string or `Bytes` can be written into a field of its own size.

@@ -604,9 +604,10 @@ fn sizes_strings_from_where_they_come_from() {
     let start = c.find("void Words_words(").expect("words");
     let body = &c[start..start + c[start..].find("\n}\n").expect("its end")];
 
-    // Each part is borrowed from the lowered line, and copied only to be given back.
-    assert!(body.contains("croft_list_string_view t"), "{body}");
-    assert!(body.contains("croft_list_text_12 *out"), "{body}");
+    // Each part is borrowed from the lowered line, and copied only to be
+    // given back. A line of 12 characters splits into at most 13 parts.
+    assert!(body.contains("croft_list13_string_view t"), "{body}");
+    assert!(body.contains("croft_list13_text_12 *out"), "{body}");
     assert!(!body.contains("croft_string t"), "{body}");
 
     // Results are as long as what the body gives back, or their own `Length`.
@@ -648,6 +649,60 @@ fn sizes_bytes_from_where_they_come_from() {
     assert!(header.contains("void Packets_body_length(const croft_bytes *p_body, croft_int *out);"));
     assert!(header
         .contains("void Packets_wrapped(const croft_bytes_4 *p_payload, croft_bytes_6 *out);"));
+    fs::remove_dir_all(output).ok();
+}
+
+/// Lists kept in the size they can need, through literals, `add`, `+`,
+/// `filter`, `map`, `split`, fields, variants, `with`, `set`, and an
+/// aggregate saved and found.
+#[test]
+fn keeps_lists_in_the_size_they_can_need() {
+    run_program("bounded_lists");
+}
+
+/// A list field, parameter or result with a `Length` below the longest is a
+/// `croft_listN_...`, one with nothing to bound it a full `croft_list_...`,
+/// and lists of any size share one equality function for their items.
+#[test]
+fn sizes_lists_from_where_they_come_from() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/bounded_lists");
+    let output = generate(&source, "test", "bounded_lists_c");
+    let header = fs::read_to_string(output.join("program.h")).expect("program.h");
+
+    assert!(
+        header.contains("    croft_list3_Packing_Item items;"),
+        "{header}"
+    );
+    assert!(header.contains("    croft_list4_int weights;"), "{header}");
+    assert!(
+        header.contains("            croft_list2_int coins;"),
+        "{header}"
+    );
+    assert!(
+        header.contains("    croft_list3_Packing_Item carrying;"),
+        "{header}"
+    );
+
+    assert!(header.contains("void Packing_starter(croft_list2_Packing_Item *out);"));
+    assert!(header.contains(
+        "void Packing_with_flask(const croft_list3_Packing_Item *p_items, croft_list4_Packing_Item *out);"
+    ));
+    assert!(
+        header.contains("void Packing_coins_of(const Packing_Bag *p_bag, croft_list2_int *out);")
+    );
+    assert!(header
+        .contains("void Packing_heavy(const croft_list4_int *p_weights, croft_list4_int *out);"));
+    assert!(header
+        .contains("void Packing_joined(const croft_list2_int *p_first, croft_list5_int *out);"));
+    assert!(
+        header.contains("void Packing_words(croft_string_view p_line, croft_list10_text_9 *out);")
+    );
+    assert!(header.contains("void Packing_total(const croft_list_int *p_weights, croft_int *out);"));
+
+    assert!(
+        header.contains("croft_bool croft_equal_list_int(const croft_int *a, croft_u16 a_length,")
+    );
+    assert!(!header.contains("croft_equal_list4_int"), "{header}");
     fs::remove_dir_all(output).ok();
 }
 

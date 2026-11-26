@@ -1,26 +1,32 @@
 //! The fields of the structs for values, entities, aggregates and events. A
 //! string field with a `Length` shorter than the longest string anywhere is
-//! kept in a `croft_text_N` of just that many characters, and a `Bytes` field
-//! with one shorter than the longest `Bytes` in a `croft_bytes_N`. When a value, entity or aggregate has
-//! two or more `Bool` fields, each is one bit of `croft_flags`, eight to a byte.
+//! kept in a `croft_text_N` of just that many characters, a `Bytes` field
+//! with one shorter than the longest `Bytes` in a `croft_bytes_N`, and a list
+//! field with one shorter than the longest list of its items in a
+//! `croft_listN_...`. When a value, entity or aggregate has two or more `Bool`
+//! fields, each is one bit of `croft_flags`, eight to a byte.
 
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::Resolved;
 use croft_analysis::{Type, VariantInfo};
 use croft_syntax::ast::ConstraintUse;
 
+use super::bounds::list_item;
 use super::constant::evaluate;
 use super::width::int_width;
 use crate::Generator;
 
 impl<'a> Generator<'a> {
     /// A struct's fields: name, Croft type and C type. Whole numbers with a
-    /// `Range` get the smallest C type that fits. Events also carry `source`.
+    /// `Range` get the smallest C type that fits, and a list kept in its own
+    /// size has that size in its type. Events also carry `source`.
     pub fn struct_fields(&self, named: &Resolved) -> Vec<(String, Type, String)> {
         let mut fields: Vec<(String, Type, String)> = (self.model.fields(named).into_iter())
             .map(|(name, ty, field)| {
-                let c = match self.own_size(named, &name) {
-                    Some(kept) => self.c_type(&kept),
+                let kept = self.own_size(named, &name);
+
+                let c = match &kept {
+                    Some(kept) => self.c_type(kept),
                     None => match ty {
                         Type::Int => int_width(
                             self.program,
@@ -31,6 +37,11 @@ impl<'a> Generator<'a> {
                         .to_string(),
                         _ => self.c_type(&ty),
                     },
+                };
+
+                let ty = match kept {
+                    Some(kept @ Type::SizedList(..)) => kept,
+                    _ => ty,
                 };
 
                 (name, ty, c)
@@ -68,25 +79,50 @@ impl<'a> Generator<'a> {
     }
 
     /// The type a field is kept in when it has a size of its own: a
-    /// `croft_text_N` or a `croft_bytes_N`.
+    /// `croft_text_N`, a `croft_bytes_N` or a `croft_listN_...`.
     pub fn own_size(&self, owner: &Resolved, field: &str) -> Option<Type> {
         if let Some(capacity) = self.text_capacity(owner, field) {
             return Some(self.text_type(capacity));
         }
 
-        let capacity = self.bytes_field_capacity(owner, field)?;
+        if let Some(capacity) = self.bytes_field_capacity(owner, field) {
+            return Some(self.bytes_type(capacity));
+        }
 
-        Some(self.bytes_type(capacity))
+        self.list_field_type(owner, field)
+    }
+
+    /// The type a list field is kept in when its `Length` allows fewer items
+    /// than every other list of its items holds.
+    fn list_field_type(&self, owner: &Resolved, field: &str) -> Option<Type> {
+        if !self.keeps_own_sizes(owner) {
+            return None;
+        }
+
+        let fields = self.model.fields(owner);
+        let (_, ty, declared) = fields.into_iter().find(|(name, _, _)| name == field)?;
+        let item = list_item(&ty)?.clone();
+        let capacity = self.length_bound(&owner.context, &declared.constraints)?;
+
+        match self.list_type(item, capacity) {
+            sized @ Type::SizedList(..) => Some(sized),
+            _ => None,
+        }
+    }
+
+    /// Whether `owner` keeps fields in sizes of their own: values, entities,
+    /// aggregates and events do, but errors and adapters keep full ones.
+    fn keeps_own_sizes(&self, owner: &Resolved) -> bool {
+        use SymbolKind::{Aggregate, Entity, Event, Value};
+
+        matches!(owner.kind, Value | Entity | Aggregate | Event)
+            && !self.model.is_error(&Type::Named(owner.clone()))
     }
 
     /// The `Length` of a field of type `kind`, `String` or `Bytes`, when it
     /// is below the shared size for that type.
     fn kept_capacity(&self, owner: &Resolved, field: &str, kind: &Type) -> Option<i64> {
-        use SymbolKind::{Aggregate, Entity, Event, Value};
-
-        if !matches!(owner.kind, Value | Entity | Aggregate | Event)
-            || self.model.is_error(&Type::Named(owner.clone()))
-        {
+        if !self.keeps_own_sizes(owner) {
             return None;
         }
 
@@ -153,12 +189,13 @@ impl<'a> Generator<'a> {
         variants
     }
 
-    /// A string or `Bytes` parameter's type: bounded by its `Length`, when
-    /// it has one.
+    /// A string, `Bytes` or list parameter's type: bounded by its `Length`,
+    /// when it has one.
     pub fn parameter_type(&self, context: &str, ty: Type, constraints: &[ConstraintUse]) -> Type {
         match (ty, self.length_bound(context, constraints)) {
             (Type::String, Some(length)) => self.text_type(length),
             (Type::Bytes, Some(length)) => self.bytes_type(length),
+            (Type::List(item), Some(length)) => self.list_type(*item, length),
             (ty, _) => ty,
         }
     }

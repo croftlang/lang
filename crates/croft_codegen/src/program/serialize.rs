@@ -62,8 +62,8 @@ impl<'a> Generator<'a> {
 
     fn serializer_bodies(&self, ty: &Type) -> (String, String) {
         match ty {
-            Type::List(item) => {
-                let capacity = self.sizes.list_capacity(item);
+            Type::List(item) | Type::SizedList(item, _) => {
+                let capacity = self.capacity(ty);
                 let (write, read) = self.serialize_value("value->items[index]", item, "        ");
 
                 (

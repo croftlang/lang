@@ -1,6 +1,8 @@
 //! `croft size`: how much memory a program's types and functions take on
 //! one target, worked out from the C it generates, and where to shrink it.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::{Program, Type};
 
@@ -29,6 +31,7 @@ pub fn size_report(program: &Program, target: &str) -> Result<String, String> {
     out.push_str(&generator.frames_section(c));
     out.push_str(&generator.strings_section());
     out.push_str(&generator.bytes_section());
+    out.push_str(&generator.lists_section());
     out.push_str(&generator.numbers_section());
 
     Ok(out)
@@ -148,6 +151,49 @@ impl<'a> Generator<'a> {
              and `Length`s it comes from.\n{sizes}  One with nothing to bound it holds \
              {capacity} values ({} bytes).\n",
             2 + capacity
+        )
+    }
+
+    /// How many items the lists of each item type hold: those kept in
+    /// sizes of their own, and one with nothing to bound it. Says nothing
+    /// for a program that uses no lists.
+    fn lists_section(&self) -> String {
+        let mut items: BTreeMap<String, (i64, BTreeSet<i64>)> = BTreeMap::new();
+
+        for ty in self.used_types.borrow().0.iter() {
+            let (item, sized) = match ty {
+                Type::List(item) => (item, None),
+                Type::SizedList(item, length) => (item, Some(i64::from(*length))),
+                _ => continue,
+            };
+
+            let entry = (items.entry(format!("List<{item}>")))
+                .or_insert_with(|| (self.sizes.list_capacity(item), BTreeSet::new()));
+
+            entry.1.extend(sized);
+        }
+
+        if items.is_empty() {
+            return String::new();
+        }
+
+        let lines: String = (items.iter())
+            .map(|(list, (capacity, sized))| {
+                let sized: Vec<String> = sized.iter().map(i64::to_string).collect();
+
+                let sized = if sized.is_empty() {
+                    String::new()
+                } else {
+                    format!("sized ones hold {} items; ", sized.join(", "))
+                };
+
+                format!("  {list}: {sized}one with nothing to bound it holds {capacity}.\n")
+            })
+            .collect();
+
+        format!(
+            "\nLists\n  Each list is kept in the most items it can need, from the literals \
+             and `Length`s it comes from.\n{lines}"
         )
     }
 

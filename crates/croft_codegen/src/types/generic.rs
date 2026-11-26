@@ -10,8 +10,8 @@ impl<'a> Generator<'a> {
         let name = self.c_type(ty);
 
         let fields = match ty {
-            Type::List(item) => {
-                let capacity = self.sizes.list_capacity(item);
+            Type::List(item) | Type::SizedList(item, _) => {
+                let capacity = self.capacity(ty);
 
                 format!(
                     "    croft_u16 length;\n    {} items[{capacity}];\n",

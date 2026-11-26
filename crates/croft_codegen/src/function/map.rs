@@ -92,9 +92,10 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
     }
 
-    /// `map.keys` or `map.values`, as a list.
-    pub fn map_list(&mut self, map: &str, item: &Type, field: &str) -> String {
-        let list = self.temp(&Type::list(item.clone()));
+    /// `map.keys` or `map.values`, as a list with room for every entry.
+    pub fn map_list(&mut self, map: &str, map_type: &Type, item: &Type, field: &str) -> String {
+        let entries = self.gen.sizes.map_capacity(map_type);
+        let list = self.temp(&self.gen.list_type(item.clone(), entries));
         let index = self.index_variable();
 
         self.line(format!("{list}.length = {map}.length;"));

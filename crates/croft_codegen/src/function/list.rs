@@ -6,17 +6,23 @@ use croft_analysis::Type;
 use croft_syntax::ast::Argument;
 
 use super::Writer;
-use crate::types::bounds::{is_bytes, is_string};
+use crate::types::bounds::{is_bytes, is_string, list_item};
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// `list.name(arguments)`, on `list`, a list of type `list_type`.
     pub fn list_method(
         &mut self,
         list: &str,
-        item: &Type,
+        list_type: &Type,
         name: &str,
         arguments: &[Argument],
         ty: &Type,
     ) -> String {
+        let Some(item) = list_item(list_type) else {
+            return "0".to_string();
+        };
+
+        let item = &item.clone();
         let identity = self.identity_field(item);
 
         let key_type = match &identity {
@@ -29,25 +35,28 @@ impl<'g, 'a> Writer<'g, 'a> {
             None => "0".to_string(),
         };
 
-        // The methods that give back the list's own items keep their bounds.
-        let ty = match name {
-            "get" | "find" | "min_by" | "max_by" => {
+        // The methods that give back the list's own items keep their bounds,
+        // and those that give back a list are no longer than it.
+        let ty = match (name, list_item(ty)) {
+            ("get" | "find" | "min_by" | "max_by", _) => {
                 self.gen.keep_bound(&Type::option(item.clone()), ty)
             }
-            "remove" | "replace" | "drop" | "take" | "filter" | "reverse" | "sort" | "sort_by" => {
-                self.gen.keep_bound(&Type::list(item.clone()), ty)
-            }
+            (
+                "remove" | "replace" | "drop" | "take" | "filter" | "reverse" | "sort" | "sort_by",
+                _,
+            ) => self.gen.keep_bound(list_type, ty),
+            ("map", Some(mapped)) => self.gen.with_item(list_type, mapped.clone()),
             _ => ty.clone(),
         };
 
         let ty = &ty;
 
         if name == "add" {
-            return self.add(list, item, arguments, ty);
+            return self.add(list, list_type, arguments, ty);
         }
 
         if name == "join" {
-            return self.join(list, item, arguments);
+            return self.join(list, list_type, arguments);
         }
 
         if name == "sort" || name == "sort_by" {
@@ -174,28 +183,30 @@ impl<'g, 'a> Writer<'g, 'a> {
         temp
     }
 
-    /// `list.add(item)`: a list with room for the strings of both.
-    fn add(&mut self, list: &str, item: &Type, arguments: &[Argument], ty: &Type) -> String {
-        let Some(argument) = arguments.first() else {
+    /// `list.add(item)`: a list one item longer, with room for the strings
+    /// of both.
+    fn add(&mut self, list: &str, list_type: &Type, arguments: &[Argument], ty: &Type) -> String {
+        let (Some(argument), Some(item)) = (arguments.first(), list_item(list_type)) else {
             return "0".to_string();
         };
 
         let (added, added_type) = self.eval(&argument.value, Some(item));
         let wider = self.gen.wider(item, &added_type);
-        let ty = self.gen.keep_bound(&Type::list(wider), ty);
+        let longer = self.gen.list_type(wider, self.gen.capacity(list_type) + 1);
+        let ty = self.gen.keep_bound(&longer, ty);
 
-        let Type::List(kept) = &ty else {
+        let Some(kept) = list_item(&ty) else {
             return "0".to_string();
         };
 
         // The added item as one of the list's type, but for its bounds.
-        let kept = (**kept).clone();
+        let kept = kept.clone();
         let given = self.gen.keep_bound(&added_type, &kept);
         let added = self.convert(added, &added_type, &given);
 
-        let capacity = self.gen.sizes.list_capacity(item);
+        let capacity = self.gen.capacity(&ty);
         let temp = self.temp(&ty);
-        self.copy_into(&temp, list, &Type::list(item.clone()), &ty);
+        self.copy_into(&temp, list, list_type, &ty);
 
         self.line(format!(
             "CROFT_CHECK({temp}.length < {capacity}, \"a list is full\");"
@@ -211,7 +222,10 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// `names.join(", ")`: each string, with the separator between each two.
-    fn join(&mut self, list: &str, item: &Type, arguments: &[Argument]) -> String {
+    fn join(&mut self, list: &str, list_type: &Type, arguments: &[Argument]) -> String {
+        let item = list_item(list_type).cloned().unwrap_or(Type::String);
+        let item = &item;
+
         let (value, separator_type) = match arguments.first() {
             Some(argument) => self.bounded_view(&argument.value),
             None => ("croft_string_view_from(\"\", 0)".to_string(), Type::Text(1)),
@@ -220,7 +234,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         let separator = self.raw_variable("separator", "croft_string_view");
         self.line(format!("{separator} = {value};"));
 
-        let capacity = self.gen.sizes.list_capacity(item);
+        let capacity = self.gen.capacity(list_type);
         let most =
             capacity * self.gen.bound(item) + (capacity - 1) * self.gen.bound(&separator_type);
         let joined = self.temp(&self.gen.text_type(most));
@@ -302,13 +316,13 @@ impl<'g, 'a> Writer<'g, 'a> {
         Some((name, ty))
     }
 
-    /// `[a, b, c]`: a list of exactly these items.
+    /// `[a, b, c]`: a list of exactly these items, with room for no more.
     pub fn list_literal(&mut self, items: &[croft_syntax::ast::Expr], ty: &Type) -> String {
         if is_bytes(ty) {
             return self.bytes_literal(items);
         }
 
-        let Type::List(item) = ty else {
+        let Some(item) = list_item(ty) else {
             return "0".to_string();
         };
 
@@ -316,11 +330,24 @@ impl<'g, 'a> Writer<'g, 'a> {
         let ty = if items.is_empty() {
             self.gen.narrowest(ty)
         } else {
-            ty.clone()
+            self.gen.list_type(item.clone(), items.len() as i64)
         };
 
         let list = self.temp(&ty);
-        let capacity = self.gen.sizes.list_capacity(item);
+        self.fill_list(&list, items, &ty);
+
+        list
+    }
+
+    /// Writes the items of `[a, b, c]` straight into `list`, a list of type
+    /// `ty`, stopping a debug build when there are more than it holds.
+    pub fn fill_list(&mut self, list: &str, items: &[croft_syntax::ast::Expr], ty: &Type) {
+        let Some(item) = list_item(ty) else {
+            return;
+        };
+
+        let item = &item.clone();
+        let capacity = self.gen.capacity(ty);
 
         self.line(format!(
             "{list}.length = {};",
@@ -336,7 +363,5 @@ impl<'g, 'a> Writer<'g, 'a> {
         for (index, value) in items.iter().take(capacity as usize).enumerate() {
             self.assign(&format!("{list}.items[{index}]"), value, item);
         }
-
-        list
     }
 }

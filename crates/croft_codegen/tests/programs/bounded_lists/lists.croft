@@ -1,0 +1,106 @@
+// Lists kept in the size they can need: from literals, `Length`s, and the
+// methods that make one list from another. Nothing is ever cut short.
+context Packing
+
+use { split } from Std.Text
+
+error WrongAnswer
+
+enum Item { Rope, Lamp, Map, Flask }
+
+value Kit {
+    items: List<Item> where Length(0, 3)
+    weights: List<Int> where Length(0, 4)
+}
+
+enum Bag {
+    Pouch(coins: List<Int> where Length(0, 2))
+    Empty
+}
+
+identity PackId for Pack: Int where Range(1, 9)
+
+aggregate Pack {
+    id: PackId
+    carrying: List<Item> where Length(0, 3)
+
+    error NotFound
+
+    factory Open(id: PackId) = Pack { id, carrying: [Item.Rope] }
+
+    command Carry(item: Item) = {
+        set carrying = carrying.add(item)
+    }
+}
+
+repository Packs for Pack
+
+enum Failure {
+    include WrongAnswer
+    include Pack.Error
+    include StorageError
+}
+
+// The longest `Length` anywhere, so every unsized list of whole numbers and
+// of items holds 40.
+fn total(weights: List<Int> where Length(0, 40)): Int = weights.sum(w -> w)
+
+fn everything(items: List<Item> where Length(0, 40)): Int = items.length
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn starter(): List<Item> = [Item.Rope, Item.Lamp]
+
+fn with_flask(items: List<Item> where Length(0, 3)): List<Item> = items.add(Item.Flask)
+
+fn coins_of(bag: Bag): List<Int> = match bag {
+    Pouch(coins) -> coins
+    Empty -> []
+}
+
+fn heavy(weights: List<Int> where Length(0, 4)): List<Int> = weights.filter(w -> w > 5)
+
+fn doubled(weights: List<Int> where Length(0, 4)): List<Int> = weights.map(w -> w * 2)
+
+// As long as both sides: 2 and 3.
+fn joined(first: List<Int> where Length(0, 2)): List<Int> = first + [7, 8, 9]
+
+fn words(line: String where Length(0, 9)): List<String> = line.split(" ")
+
+service Check(): Result<Unit, Failure> {
+    calls Packs
+} = {
+    let kit = Kit { items: starter(), weights: [3, 9] }
+    check(kit.items == [Item.Rope, Item.Lamp] && kit.weights.get(1) == Some(9))?
+    check(with_flask([Item.Map]) == [Item.Map, Item.Flask] && with_flask([]).length == 1)?
+    check(coins_of(Bag.Pouch(coins: [5, 6])) == [5, 6] && coins_of(Bag.Empty).is_empty)?
+    check(heavy([3, 9, 12]) == [9, 12] && doubled([1, 2]) == [2, 4])?
+    check(joined([1, 2]) == [1, 2, 7, 8, 9] && joined([]) == [7, 8, 9])?
+    check(words("up the ma") == ["up", "the", "ma"] && words("").length == 1)?
+    // A short list goes where a long one is wanted, and back.
+    let one = [1]
+    let grown = one.add(2).add(3)
+    check(total(grown) == 6 && grown.length == 3)?
+    let copied = kit with { weights: grown }
+    check(copied.weights == [1, 2, 3] && total(copied.weights) == 6)?
+    check(everything(kit.items + [Item.Map]) == 3)?
+    let kept = [1]
+    set kept = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    check(kept.length == 10 && kept.drop(8) == [9, 10])?
+    let log: List<Int> = []
+    set log = log + grown
+    set log = log + log
+    set log = [0] + log
+    check(log == [0, 1, 2, 3, 1, 2, 3] && log.reverse().first == Some(3))?
+    // Saved and found again, in a field of its own size.
+    let pack = Pack.Open(id: 3)?
+    packs.save(pack)?
+    issue Carry(item: Item.Lamp) on Pack(3)?
+    let found = packs.find(3)?
+    check(found.carrying == [Item.Rope, Item.Lamp])
+}
