@@ -1,0 +1,5 @@
+[package]
+name = "copies"
+
+[target.test.adapters]
+Files = "StdioFiles"

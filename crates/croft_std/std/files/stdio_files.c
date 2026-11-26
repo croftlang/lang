@@ -1,6 +1,7 @@
 /* Std.Files through C89's stdio, for the StdioFiles adapter. Written out
-   only for a target that binds Files to StdioFiles. Listing a folder needs
-   POSIX, so it is only built where there is one: Unix, macOS and MiNT. */
+   only for a target that binds Files to StdioFiles. Listing and making
+   folders needs POSIX, so they are only built where there is one: Unix,
+   macOS and MiNT. */
 #if defined(__unix__) || defined(__unix) || defined(__APPLE__) || defined(__MINT__)
 #define CROFT_HAS_FOLDERS
 #ifndef _POSIX_C_SOURCE
@@ -118,6 +119,89 @@ void croft_files_remove(croft_string_view path, croft_result_unit_error *out)
         return;
     }
     out->ok = 1;
+}
+
+/* How much of a file is copied at a time: little, for 8-bit machines. */
+#define CROFT_COPY_CHUNK 128
+
+void croft_files_copy(croft_string_view from, croft_string_view to, croft_result_unit_error *out)
+{
+    char name[CROFT_PATH_CAPACITY + 1];
+    unsigned char chunk[CROFT_COPY_CHUNK];
+    FILE *source;
+    FILE *copy;
+    size_t count;
+    croft_bool written = 1;
+    croft_clear(out, sizeof *out);
+    to_path(from, name);
+    source = fopen(name, "rb");
+    if (source == 0) {
+        fail(&out->error, CROFT_ERROR_Std_Files_NotFound);
+        return;
+    }
+    to_path(to, name);
+    copy = fopen(name, "wb");
+    if (copy == 0) {
+        fclose(source);
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
+    while (written && (count = fread(chunk, 1, CROFT_COPY_CHUNK, source)) > 0) {
+        written = fwrite(chunk, 1, count, copy) == count;
+    }
+    if (ferror(source)) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+    } else if (!written) {
+        fail(&out->error, CROFT_ERROR_Std_Files_NoRoom);
+    } else {
+        out->ok = 1;
+    }
+    fclose(source);
+    if (fclose(copy) != 0 && out->ok) {
+        out->ok = 0;
+        fail(&out->error, CROFT_ERROR_Std_Files_NoRoom);
+    }
+}
+
+#ifdef CROFT_HAS_FOLDERS
+/* Whether `path`, a C string, names a folder. */
+static croft_bool is_folder_path(const char *path)
+{
+    struct stat info;
+    return stat(path, &info) == 0 && S_ISDIR(info.st_mode);
+}
+#endif
+
+/* Makes each folder on the way, from the first, so `a/b/c` makes `a`, then
+   `a/b`, then `a/b/c`. */
+void croft_files_make_folder(croft_string_view path, croft_result_unit_error *out)
+{
+#ifdef CROFT_HAS_FOLDERS
+    char name[CROFT_PATH_CAPACITY + 1];
+    size_t at;
+    size_t length;
+    char kept;
+    croft_clear(out, sizeof *out);
+    to_path(path, name);
+    length = strlen(name);
+    for (at = 1; at <= length; at++) {
+        if (name[at] != '/' && name[at] != '\0') {
+            continue;
+        }
+        kept = name[at];
+        name[at] = '\0';
+        if (!is_folder_path(name) && mkdir(name, 0777) != 0 && !is_folder_path(name)) {
+            fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+            return;
+        }
+        name[at] = kept;
+    }
+    out->ok = 1;
+#else
+    (void) path;
+    croft_clear(out, sizeof *out);
+    fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+#endif
 }
 
 #ifdef CROFT_HAS_FOLDERS

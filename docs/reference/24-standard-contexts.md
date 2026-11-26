@@ -31,13 +31,15 @@ stock.set("map", 1)         // a copy with map added
 stock.remove("sword")       // a copy without sword
 stock.contains("key")   stock.length   stock.is_empty   stock.keys   stock.values
 
-// Std.Files: read, write, append, exists, remove, list
+// Std.Files: read, write, append, exists, remove, list, make_folder, copy
 service Keep(): Result<Unit, FileError> {
     calls Files
 } = {
     files.write("notes.txt", "first line".to_bytes())?
     let data = files.read("notes.txt")?
     let pages = files.list("docs")?   // ["a.md", "b.md", "drafts/"], in byte order
+    files.make_folder("site/blog")?    // and site, if it isn't there yet
+    files.copy("logo.png", "site/logo.png")?   // any size, not only what a Bytes holds
     ...
 }
 
