@@ -125,6 +125,11 @@ impl<'g, 'a> Writer<'g, 'a> {
                 }
                 _ => self.assign(target, value, ty),
             },
+            // `Err(e)?` always leaves the function, so it never gives a value
+            // to write.
+            ExprKind::Try(_) if *self.gen.facts.type_of(value.id) == Type::Unknown => {
+                self.eval(value, None);
+            }
             ExprKind::Issue(issue) => {
                 let made = self.type_of(value, Some(ty));
                 let c = self.issue(value, issue, &made, Some((target, ty)));

@@ -21,6 +21,7 @@ mod operator;
 mod option;
 mod output;
 mod property;
+pub(crate) mod range;
 mod record;
 mod repeat;
 mod scope;
@@ -93,6 +94,9 @@ pub struct Writer<'g, 'a> {
     handed: Vec<(String, String)>,
     /// Temporaries nothing uses any more, by C type, to be handed out again.
     free: Vec<(String, String)>,
+    /// C names holding a whole number whose values are known, such as a
+    /// parameter with a `Range` or a `let` of a sum of two of them.
+    pub(crate) ranges: HashMap<String, range::Span>,
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -117,6 +121,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             stable: HashSet::new(),
             handed: Vec::new(),
             free: Vec::new(),
+            ranges: HashMap::new(),
         }
     }
 }

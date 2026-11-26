@@ -4,6 +4,7 @@ use croft_analysis::symbols::SymbolKind;
 use croft_analysis::Type;
 use croft_syntax::ast::{Argument, ConstraintUse};
 
+use super::range::c_number;
 use super::Writer;
 use crate::names::{c_name, c_string};
 use crate::types::constant::{decimal_bound, evaluate};
@@ -22,10 +23,9 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         if constraint.each {
             let Type::List(item) = ty else { return };
-            let index = self.variable("index", &Type::Int);
-
+            let index = self.index_variable();
             self.open(format!(
-                "for ({index} = 0; {index} < (croft_int) {value}.length; {index}++)"
+                "for ({index} = 0; {index} < {value}.length; {index}++)"
             ));
 
             if let Some(test) =
@@ -94,9 +94,17 @@ impl<'g, 'a> Writer<'g, 'a> {
                     ("Range", [low, high]) => {
                         Some(format!("({value} >= {low}L && {value} <= {high}L)"))
                     }
-                    ("Length", [exact]) => Some(format!("((croft_int) {value}.length == {exact}L)")),
+                    ("Length", [exact]) => {
+                        Some(format!("({value}.length == {})", c_number(*exact)))
+                    }
+                    // A length is never below zero, so that end needs no test.
+                    ("Length", [0, high]) => {
+                        Some(format!("({value}.length <= {})", c_number(*high)))
+                    }
                     ("Length", [low, high]) => Some(format!(
-                        "((croft_int) {value}.length >= {low}L && (croft_int) {value}.length <= {high}L)"
+                        "({value}.length >= {} && {value}.length <= {})",
+                        c_number(*low),
+                        c_number(*high)
                     )),
                     _ => None,
                 }

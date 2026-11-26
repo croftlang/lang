@@ -109,7 +109,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             let text = self.view(inner);
 
             return match field {
-                "length" => format!("((croft_int) {text}.length)"),
+                "length" => self.length_of(&text, &inner_type),
                 _ => format!("({text}.length == 0)"),
             };
         }
@@ -118,12 +118,12 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         match (&inner_type, field) {
             (Type::String | Type::Text(_) | Type::Bytes | Type::List(_), "length") => {
-                format!("((croft_int) {c}.length)")
+                self.length_of(&c, &inner_type)
             }
             (Type::String | Type::Text(_) | Type::Bytes | Type::List(_), "is_empty") => {
                 format!("({c}.length == 0)")
             }
-            (Type::Map(..), "length") => format!("((croft_int) {c}.length)"),
+            (Type::Map(..), "length") => self.length_of(&c, &inner_type),
             (Type::Map(..), "is_empty") => format!("({c}.length == 0)"),
             (Type::Map(key, value), "keys" | "values") => {
                 let item = if field == "keys" { key } else { value };

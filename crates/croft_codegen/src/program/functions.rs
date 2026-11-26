@@ -118,11 +118,14 @@ impl<'a> Generator<'a> {
         };
 
         let parameters = self.parameters_of(found);
-        let signature = self.signature(&c_name(found), &[], &parameters, Some(&result));
+        let ranges = self.parameter_ranges(&found.context, &parameters, &constraints);
+        let signature =
+            self.ranged_signature(&c_name(found), &[], &parameters, &ranges, Some(&result));
         prototypes.push(format!("{signature};"));
 
         let mut writer = Writer::new(self, &found.context, Returns::Value(result.clone()));
         writer.bind_parameters(&parameters);
+        writer.note_parameter_ranges(&parameters, &ranges);
 
         let place = CheckPlace {
             context: &found.context,

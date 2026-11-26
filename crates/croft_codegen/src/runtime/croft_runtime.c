@@ -136,23 +136,28 @@ void croft_string_to_lower(croft_string_view text, char *out, croft_u16 *length,
     }
 }
 
-/* The text without the spaces at either end, still borrowed from text. */
+/* The text without the spaces at either end, still borrowed from text.
+   The view is kept before it is returned: zsdcc, z88dk's compiler, fails on
+   returning another function's struct straight away. */
 croft_string_view croft_string_trimmed(croft_string_view text)
 {
     croft_int start = 0;
     croft_int end = text.length;
+    croft_string_view trimmed;
     while (start < end && text.text[start] == ' ') {
         start++;
     }
     while (end > start && text.text[end - 1] == ' ') {
         end--;
     }
-    return croft_string_part(text, start, end);
+    trimmed = croft_string_part(text, start, end);
+    return trimmed;
 }
 
 /* The characters from start up to end, still borrowed from text. */
 croft_string_view croft_string_part(croft_string_view text, croft_int start, croft_int end)
 {
+    croft_string_view part;
     if (start < 0) {
         start = 0;
     }
@@ -162,7 +167,9 @@ croft_string_view croft_string_part(croft_string_view text, croft_int start, cro
     if (end < start) {
         end = start;
     }
-    return croft_string_view_from(text.text + start, (croft_u16) (end - start));
+    part.text = text.text + start;
+    part.length = (croft_u16) (end - start);
+    return part;
 }
 
 void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u16 capacity)

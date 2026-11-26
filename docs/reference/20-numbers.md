@@ -1,6 +1,6 @@
 # Numbers
 
-Int is a whole number of at least 32 bits, narrowed by its Range constraint where it is stored. Decimal<2>, imported from Std.Numbers, is a fixed-point number with two decimal places, exact and portable to machines without floating point. A literal such as 2.50 is a Decimal wherever one is expected, and an Int works anywhere a Decimal does. Adding and subtracting are exact; multiplying and dividing round half to even. Bit operators work on Int and bind tighter than comparisons, so `keys & FIRE != 0` tests the bit. Shifts go from 0 to 31. A let can name its type. Bytes holds values from 0 to 255, written as a list of numbers.
+Int is a whole number of at least 32 bits. Where its values are known, from a Range on a field, parameter or loop counter, a length, or arithmetic on them, it is kept in the smallest type that holds them, and worked out in 16 bits when every value fits, as 8-bit machines do fastest; the answer is always the one 32 bits would give. Decimal<2>, imported from Std.Numbers, is a fixed-point number with two decimal places, exact and portable to machines without floating point. A literal such as 2.50 is a Decimal wherever one is expected, and an Int works anywhere a Decimal does. Adding and subtracting are exact; multiplying and dividing round half to even. Bit operators work on Int and bind tighter than comparisons, so `keys & FIRE != 0` tests the bit. Shifts go from 0 to 31. A let can name its type. Bytes holds values from 0 to 255, written as a list of numbers.
 
 ```croft
 use { Decimal } from Std.Numbers

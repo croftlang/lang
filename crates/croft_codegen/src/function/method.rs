@@ -128,7 +128,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// `arguments.all()`: the program's command-line arguments.
     fn all_arguments(&mut self, ty: &Type) -> String {
         let list = self.temp(ty);
-        let index = self.variable("index", &Type::Int);
+        let index = self.index_variable();
 
         self.line(format!("{list}.length = 0;"));
 

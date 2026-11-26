@@ -44,7 +44,22 @@ fn describe(order: Option<Order>): String = match order {
     None -> "nothing"
 }
 
+// An early return that ends in `?` on an error leaves with the error.
+fn refuse(count: Int): Result<Unit, WrongAnswer> = {
+    if count < 0 {
+        Err(WrongAnswer)?
+    }
+    Ok(Unit)
+}
+
+fn refused(count: Int): Bool = match refuse(count) {
+    Ok(done) -> false
+    Err(error) -> true
+}
+
 service Check(): Result<Unit, WrongAnswer> = {
+    check(refused(-1))?
+    check(!refused(1))?
     check(describe(read("lamp", 2)) == "lamp x2")?
     check(describe(read("rope", 12)) == "lots of rope")?
     check(describe(read("oil", -1)) == "sell oil")?

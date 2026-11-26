@@ -4,6 +4,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::{Expr, ExprKind, Statement};
 
 use super::{usage, Returns, Writer};
+use crate::types::width::width_for;
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// Writes a block's statements and gives back its last line's value.
@@ -38,6 +39,23 @@ impl<'g, 'a> Writer<'g, 'a> {
                     let handed = self.temps_mark();
                     // A name `set` later needs room for whatever it is set to.
                     let set_later = usage::statements_set(&statements[index + 1..], &name.name);
+
+                    // A whole number that is never changed is kept in the
+                    // smallest C type that holds every value it can be.
+                    let range = (!set_later && ty == Type::Int)
+                        .then(|| self.range_of(value))
+                        .flatten();
+
+                    if let Some(range) = range {
+                        let c = self.value(value, &ty);
+                        let width = width_for(range.low, range.high);
+                        let variable = self.raw_variable(&format!("v_{}", name.name), width);
+
+                        self.line(format!("{variable} = {c};"));
+                        self.note_range(&variable, range);
+                        self.bind(&name.name, variable, ty);
+                        continue;
+                    }
 
                     let (c, ty) = if set_later {
                         let c = self.value(value, &ty);
