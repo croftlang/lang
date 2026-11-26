@@ -45,15 +45,6 @@ pub fn standard_context_of(name: &str) -> Option<&'static str> {
 /// the `Console` and `Arguments` ports, which every target supplies.
 pub const CONSOLE_CONTEXT: &str = "Std.Console";
 
-/// Standard contexts written in Croft, each with the name it is imported by.
-/// They join the program only when something imports from them.
-pub const STANDARD_SOURCES: [(&str, &str); 4] = [
-    ("Std.Files", include_str!("files.croft")),
-    ("Std.Http", include_str!("http.croft")),
-    (STORAGE_CONTEXT, include_str!("storage.croft")),
-    (CONSOLE_CONTEXT, include_str!("console.croft")),
-];
-
 /// The standard context every program with a repository has, whose names
 /// need no import: `StorageError` and its errors.
 pub const STORAGE_CONTEXT: &str = "Std.Storage";
@@ -64,11 +55,10 @@ pub const MEMORY_STORAGE: &str = "MemoryStorage";
 pub const FILE_STORAGE: &str = "FileStorage";
 
 /// The source of a standard context written in Croft, if `context` is one.
+/// The sources are kept in `croft_std`, beside the C of their adapters; they
+/// join the program only when something imports from them.
 pub fn standard_source(context: &str) -> Option<&'static str> {
-    STANDARD_SOURCES
-        .iter()
-        .find(|(name, _)| *name == context)
-        .map(|(_, source)| *source)
+    croft_std::context(context).map(|context| context.source)
 }
 
 mod sources;

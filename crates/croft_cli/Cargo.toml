@@ -10,6 +10,7 @@ name = "croft"
 path = "src/main.rs"
 
 [dependencies]
+croft_std = { path = "../croft_std" }
 croft_syntax = { path = "../croft_syntax" }
 croft_analysis = { path = "../croft_analysis" }
 croft_codegen = { path = "../croft_codegen" }

@@ -8,7 +8,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use croft_analysis::standard::{standard_source_id, STANDARD_SOURCES};
+use croft_analysis::standard::standard_source_id;
 use croft_syntax::SourceId;
 
 /// The folder the standard contexts are written to, one for each version of Croft.
@@ -29,8 +29,9 @@ fn written() -> Option<&'static Path> {
         let folder = folder();
         std::fs::create_dir_all(&folder).ok()?;
 
-        for (context, text) in STANDARD_SOURCES {
-            let path = folder.join(file_name(context));
+        for standard in &croft_std::CONTEXTS {
+            let text = standard.source;
+            let path = folder.join(file_name(standard.name));
 
             if std::fs::read_to_string(&path).is_ok_and(|old| old == text) {
                 continue;
@@ -55,11 +56,11 @@ fn written() -> Option<&'static Path> {
 
 /// The file a standard source can be read from, written if need be.
 pub fn path_of(id: SourceId) -> Option<PathBuf> {
-    let (context, _) = STANDARD_SOURCES
+    let context = croft_std::CONTEXTS
         .iter()
-        .find(|(context, _)| standard_source_id(context) == id)?;
+        .find(|context| standard_source_id(context.name) == id)?;
 
-    Some(written()?.join(file_name(context)))
+    Some(written()?.join(file_name(context.name)))
 }
 
 /// The standard source a path is one of, and its text.
@@ -70,9 +71,9 @@ pub fn source_at(path: &Path) -> Option<(SourceId, &'static str)> {
 
     let name = path.file_name()?.to_str()?;
 
-    let (context, text) = STANDARD_SOURCES
+    let context = croft_std::CONTEXTS
         .iter()
-        .find(|(context, _)| file_name(context) == name)?;
+        .find(|context| file_name(context.name) == name)?;
 
-    Some((standard_source_id(context), text))
+    Some((standard_source_id(context.name), context.source))
 }

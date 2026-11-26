@@ -4,14 +4,14 @@
 use croft_syntax::ast::{ContextItem, File};
 use croft_syntax::{parse, SourceId};
 
-use super::{standard_source, CONSOLE_CONTEXT, STANDARD_SOURCES, STORAGE_CONTEXT};
+use super::{standard_source, CONSOLE_CONTEXT, STORAGE_CONTEXT};
 
 /// The source id of a standard context: counting down from the top, so no
 /// project file has one, and each context's expressions are told apart.
 pub fn standard_source_id(context: &str) -> SourceId {
-    let index = STANDARD_SOURCES
+    let index = croft_std::CONTEXTS
         .iter()
-        .position(|(name, _)| *name == context);
+        .position(|standard| standard.name == context);
 
     SourceId(u32::MAX - index.unwrap_or(0) as u32)
 }
@@ -86,14 +86,15 @@ pub fn add_standard_sources(files: &mut Vec<File>, bound: &[String]) {
 /// The standard context written in Croft that publishes `name`, if one does,
 /// so a missing import can be named in the error.
 pub fn standard_context_publishing(name: &str) -> Option<&'static str> {
-    STANDARD_SOURCES.iter().find_map(|(context, source)| {
-        let file = parse(source, standard_source_id(context)).ok()?;
+    croft_std::CONTEXTS.iter().find_map(|standard| {
+        let context = standard.name;
+        let file = parse(standard.source, standard_source_id(context)).ok()?;
 
         let publishes = file.contexts.iter().flat_map(|c| &c.items).any(|item| {
             matches!(item, ContextItem::Publish(paths) if paths.iter().any(|p| p.text() == name))
         });
 
-        publishes.then_some(*context)
+        publishes.then_some(context)
     })
 }
 

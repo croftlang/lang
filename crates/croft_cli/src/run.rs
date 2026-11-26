@@ -6,9 +6,6 @@ use std::process::Command;
 
 use crate::compile;
 
-/// The C file written for a target that binds `Http` to `CurlHttp`, which needs libcurl.
-const CURL_ADAPTER: &str = "croft_http.c";
-
 /// Runs the program and returns its exit code. Arguments after `--` go to the program.
 pub fn run(arguments: &[String]) -> Result<i32, String> {
     let (ours, theirs) = match arguments.iter().position(|a| a == "--") {
@@ -32,8 +29,9 @@ pub fn run(arguments: &[String]) -> Result<i32, String> {
         .arg("-o")
         .arg(&file_name);
 
-    if output.sources.iter().any(|name| name == CURL_ADAPTER) {
-        build.arg("-lcurl");
+    // A standard adapter's C can need a library, as `CurlHttp` needs libcurl.
+    for name in &output.sources {
+        build.args(croft_std::links_for(name));
     }
 
     let built = build

@@ -94,6 +94,7 @@ on hover, clicking takes you straight to the definition.
 | Crate            | Responsibility                                                       |
 | ---------------- | -------------------------------------------------------------------- |
 | `croft_syntax`   | Lexer, parser and syntax tree                                        |
+| `croft_std`      | Standard contexts written in Croft, beside the C of their adapters   |
 | `croft_analysis` | Merging files, name resolution, declaration checks and type checking |
 | `croft_codegen`  | C89 generation for one target                                        |
 | `croft_cli`      | The `croft` command, and the language server, `croft lsp`            |

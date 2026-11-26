@@ -1,0 +1,8 @@
+[package]
+name = "croft_std"
+description = "The standard contexts of the Croft language written in Croft, and the C behind their adapters"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
