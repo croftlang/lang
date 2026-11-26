@@ -4,7 +4,7 @@
   "description": "Syntax highlighting, errors as you type, hover and go to definition for the Croft domain language.",
   "version": "0.1.0",
   "publisher": "briward",
-  "license": "MIT",
+  "license": "MIT OR Apache-2.0",
   "engines": {
     "vscode": "^1.82.0"
   },

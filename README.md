@@ -106,3 +106,17 @@ cargo test
 
 The `croft_codegen` tests generate C for small programs, build it with `cc` in
 strict C89 mode with every warning as an error, and run it.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Licence
+
+Croft is licensed under either of the [Apache License, Version 2.0](LICENSE-APACHE)
+or the [MIT licence](LICENSE-MIT), at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in Croft by you, as defined in the Apache-2.0 licence, shall be
+dual licensed as above, without any additional terms or conditions.
