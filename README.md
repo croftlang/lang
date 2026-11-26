@@ -1,5 +1,7 @@
 <img src="./docs/assets/croft-banner.svg" alt="Croft" width="100%">
 
+![CI](https://github.com/croftlang/lang/actions/workflows/ci.yml/badge.svg)
+
 ## Introduction 
 
 Croft is a domain language, declarative structure, imperative behaviour. The
