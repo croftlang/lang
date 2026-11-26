@@ -117,6 +117,8 @@ impl<'a> Generator<'a> {
                 Type::result(self.canonical(value), self.canonical(error))
             }
             Type::Unknown | Type::Port(_) | Type::Repository(_) => Type::Unit,
+            // Every borrowed string is a `croft_string_view`, however long.
+            Type::Borrowed(_) => Type::Borrowed(1),
             Type::Text(length) if i64::from(*length) >= self.sizes.string_capacity => Type::String,
             Type::SizedBytes(length) if i64::from(*length) >= self.sizes.bytes_capacity => {
                 Type::Bytes
@@ -125,7 +127,15 @@ impl<'a> Generator<'a> {
         }
     }
 
+    /// The part of a list's, map's, option's or result's C name for one of
+    /// its types. A `Decimal` is a `croft_int`, but a list of them may hold
+    /// a different number of items than a list of `Int`, so it is named
+    /// apart.
     fn short(&self, ty: &Type) -> String {
+        if let Type::Decimal(places) = ty {
+            return format!("decimal{places}");
+        }
+
         let name = self.c_type(ty);
 
         name.strip_prefix("croft_")
