@@ -3,17 +3,38 @@
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::Type;
 
+use crate::types::bounds::list_item;
 use crate::Generator;
 
 impl<'a> Generator<'a> {
-    /// The name of the function that compares two values of `ty`, generated later.
-    pub fn equality_for(&self, ty: &Type) -> String {
-        let ty = self.canonical(ty);
+    /// A C expression that is true when `a` and `b`, two values of `ty`,
+    /// are equal. Lists are compared by their items and lengths, so lists of
+    /// any size share one function for their item type.
+    pub fn equality_call(&self, a: &str, b: &str, ty: &Type) -> String {
+        let name = self.equality_for(ty);
 
-        let name = format!(
-            "croft_equal_{}",
-            self.c_type(&ty).trim_start_matches("croft_")
-        );
+        if list_item(ty).is_some() {
+            return format!("{name}({a}.items, {a}.length, {b}.items, {b}.length)");
+        }
+
+        format!("{name}(&{a}, &{b})")
+    }
+
+    /// The name of the function that compares two values of `ty`, generated
+    /// later. Every list of the same items shares one.
+    fn equality_for(&self, ty: &Type) -> String {
+        let ty = match list_item(ty) {
+            Some(item) => Type::list(self.canonical(item)),
+            None => self.canonical(ty),
+        };
+
+        let name = match &ty {
+            Type::List(item) => format!("croft_equal_list_{}", self.short(item)),
+            _ => format!(
+                "croft_equal_{}",
+                self.c_type(&ty).trim_start_matches("croft_")
+            ),
+        };
 
         let mut equalities = self.equalities.borrow_mut();
 
@@ -36,8 +57,20 @@ impl<'a> Generator<'a> {
             index += 1;
 
             let name = self.equality_for(&ty);
-            let c_type = self.c_type(&ty);
-            let signature = format!("croft_bool {name}(const {c_type} *a, const {c_type} *b)");
+
+            let signature = match list_item(&ty) {
+                Some(item) => {
+                    let item = self.c_type(item);
+                    format!(
+                        "croft_bool {name}(const {item} *a, croft_u16 a_length, const {item} *b, croft_u16 b_length)"
+                    )
+                }
+                None => {
+                    let c_type = self.c_type(&ty);
+                    format!("croft_bool {name}(const {c_type} *a, const {c_type} *b)")
+                }
+            };
+
             prototypes.push(format!("{signature};"));
 
             let body = self.equality_body(&ty);
@@ -49,12 +82,12 @@ impl<'a> Generator<'a> {
 
     fn equality_body(&self, ty: &Type) -> String {
         match ty {
-            Type::List(item) => {
-                let same = self.compare("a->items[index]", "b->items[index]", item);
+            Type::List(item) | Type::SizedList(item, _) => {
+                let same = self.compare("a[index]", "b[index]", item);
 
                 format!(
-                    "    croft_u16 index;\n\n    if (a->length != b->length) {{\n        return 0;\n    }}\n    \
-                     for (index = 0; index < a->length; index++) {{\n        if (!{same}) {{\n            return 0;\n        }}\n    }}\n    return 1;\n"
+                    "    croft_u16 index;\n\n    if (a_length != b_length) {{\n        return 0;\n    }}\n    \
+                     for (index = 0; index < a_length; index++) {{\n        if (!{same}) {{\n            return 0;\n        }}\n    }}\n    return 1;\n"
                 )
             }
             // The same keys with the same values, in any order.
@@ -144,6 +177,6 @@ impl<'a> Generator<'a> {
             return format!("croft_bytes_equal(CROFT_BYTES_VIEW({a}), CROFT_BYTES_VIEW({b}))");
         }
 
-        format!("{}(&{a}, &{b})", self.equality_for(ty))
+        self.equality_call(a, b, ty)
     }
 }

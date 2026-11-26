@@ -1,8 +1,9 @@
-//! How long a string or a `Bytes` can be. Code generation works out a bound
-//! for each one it builds, from literals, `Length` constraints and the
-//! methods that make one from another, and keeps it in a `croft_text_N` or a
-//! `croft_bytes_N` of just that size. One with no bound below the shared size
-//! is a full `croft_string` or `croft_bytes`.
+//! How long a string, a `Bytes` or a list can be. Code generation works out a
+//! bound for each one it builds, from literals, `Length` constraints and the
+//! methods that make one from another, and keeps it in a `croft_text_N`, a
+//! `croft_bytes_N` or a `croft_listN_...` of just that size. One with no
+//! bound below the shared size is a full `croft_string`, `croft_bytes` or
+//! `croft_list_...`.
 
 use croft_analysis::Type;
 
@@ -18,13 +19,22 @@ pub fn is_bytes(ty: &Type) -> bool {
     matches!(ty, Type::Bytes | Type::SizedBytes(_))
 }
 
-/// `ty` with every bounded string a plain `String` again, and every bounded
-/// `Bytes` a plain `Bytes`: the type the checker gave it.
+/// The type of a list's items, whatever its size.
+pub fn list_item(ty: &Type) -> Option<&Type> {
+    match ty {
+        Type::List(item) | Type::SizedList(item, _) => Some(item),
+        _ => None,
+    }
+}
+
+/// `ty` with every bounded string a plain `String` again, every bounded
+/// `Bytes` a plain `Bytes` and every sized list a plain `List`: the type the
+/// checker gave it.
 pub fn unbounded(ty: &Type) -> Type {
     match ty {
         Type::Text(_) | Type::Borrowed(_) => Type::String,
         Type::SizedBytes(_) => Type::Bytes,
-        Type::List(item) => Type::list(unbounded(item)),
+        Type::List(item) | Type::SizedList(item, _) => Type::list(unbounded(item)),
         Type::Option(item) => Type::option(unbounded(item)),
         Type::Map(key, value) => Type::map(unbounded(key), unbounded(value)),
         Type::Result(value, error) => Type::result(unbounded(value), unbounded(error)),
@@ -32,10 +42,10 @@ pub fn unbounded(ty: &Type) -> Type {
     }
 }
 
-/// Whether `ty` holds a bounded string or `Bytes` anywhere.
+/// Whether `ty` holds a bounded string, `Bytes` or list anywhere.
 pub fn has_bound(ty: &Type) -> bool {
     match ty {
-        Type::Text(_) | Type::Borrowed(_) | Type::SizedBytes(_) => true,
+        Type::Text(_) | Type::Borrowed(_) | Type::SizedBytes(_) | Type::SizedList(..) => true,
         Type::List(item) | Type::Option(item) => has_bound(item),
         Type::Map(key, value) | Type::Result(key, value) => has_bound(key) || has_bound(value),
         _ => false,
@@ -63,13 +73,37 @@ impl<'a> Generator<'a> {
         Type::SizedBytes(length.max(1) as u16)
     }
 
-    /// `ty` with each string as short as it can be: the type of `None`,
-    /// `[]` or `Err(e)`, which hold no string at all.
+    /// A list of at most `length` items: sized when that is less than the
+    /// shared size for lists of `item`. Like a string, it holds at least one.
+    pub fn list_type(&self, item: Type, length: i64) -> Type {
+        if length >= self.sizes.list_capacity(&item) {
+            return Type::list(item);
+        }
+
+        Type::SizedList(Box::new(item), length.max(1) as u16)
+    }
+
+    /// The most items a list of `ty` holds.
+    pub fn capacity(&self, ty: &Type) -> i64 {
+        match ty {
+            Type::SizedList(_, length) => i64::from(*length),
+            Type::List(item) => self.sizes.list_capacity(item),
+            _ => 0,
+        }
+    }
+
+    /// A list of `ty`'s size holding items of `item`.
+    pub fn with_item(&self, ty: &Type, item: Type) -> Type {
+        self.list_type(item, self.capacity(ty))
+    }
+
+    /// `ty` with each string as short as it can be and each list as small:
+    /// the type of `None`, `[]` or `Err(e)`, which hold nothing at all.
     pub fn narrowest(&self, ty: &Type) -> Type {
         match ty {
             Type::String | Type::Text(_) => self.text_type(1),
             Type::Bytes | Type::SizedBytes(_) => self.bytes_type(1),
-            Type::List(item) => Type::list(self.narrowest(item)),
+            Type::List(item) | Type::SizedList(item, _) => self.list_type(self.narrowest(item), 1),
             Type::Option(item) => Type::option(self.narrowest(item)),
             Type::Map(key, value) => Type::map(self.narrowest(key), self.narrowest(value)),
             Type::Result(value, error) => {
@@ -84,7 +118,9 @@ impl<'a> Generator<'a> {
     pub fn owned_type(&self, ty: &Type) -> Type {
         match ty {
             Type::Borrowed(length) => self.text_type(i64::from(*length)),
-            Type::List(item) => Type::list(self.owned_type(item)),
+            Type::List(item) | Type::SizedList(item, _) => {
+                self.with_item(ty, self.owned_type(item))
+            }
             Type::Option(item) => Type::option(self.owned_type(item)),
             Type::Map(key, value) => Type::map(self.owned_type(key), self.owned_type(value)),
             Type::Result(value, error) => {
@@ -106,10 +142,15 @@ impl<'a> Generator<'a> {
     }
 
     /// A type with room for a value of either `a` or `b`, which differ only
-    /// in the bounds of their strings and `Bytes`.
+    /// in the bounds of their strings, `Bytes` and lists.
     /// Two borrowed strings give a borrowed string; a borrowed string and
     /// one of its own give one of its own.
     pub fn wider(&self, a: &Type, b: &Type) -> Type {
+        if let (Some(a_item), Some(b_item)) = (list_item(a), list_item(b)) {
+            let length = self.capacity(a).max(self.capacity(b));
+            return self.list_type(self.wider(a_item, b_item), length);
+        }
+
         match (a, b) {
             (Type::Borrowed(a), Type::Borrowed(b)) => Type::Borrowed((*a).max(*b)),
             (a, b) if is_string(a) && is_string(b) => {
@@ -118,7 +159,6 @@ impl<'a> Generator<'a> {
             (a, b) if is_bytes(a) && is_bytes(b) => {
                 self.bytes_type(self.bound(a).max(self.bound(b)))
             }
-            (Type::List(a), Type::List(b)) => Type::list(self.wider(a, b)),
             (Type::Option(a), Type::Option(b)) => Type::option(self.wider(a, b)),
             (Type::Map(ak, av), Type::Map(bk, bv)) => {
                 Type::map(self.wider(ak, bk), self.wider(av, bv))

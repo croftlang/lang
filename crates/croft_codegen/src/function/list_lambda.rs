@@ -4,6 +4,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::Argument;
 
 use super::Writer;
+use crate::types::bounds::list_item;
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// Methods that call a lambda with each item.
@@ -18,8 +19,8 @@ impl<'g, 'a> Writer<'g, 'a> {
     ) {
         let current = format!("{list}.items[{index}]");
 
-        let result = match (name, ty) {
-            ("map", Type::List(mapped)) => (**mapped).clone(),
+        let result = match (name, list_item(ty)) {
+            ("map", Some(mapped)) => mapped.clone(),
             ("sum" | "min_by" | "max_by", _) => Type::Int,
             _ => Type::Bool,
         };

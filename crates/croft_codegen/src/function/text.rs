@@ -59,6 +59,8 @@ impl<'g, 'a> Writer<'g, 'a> {
             Some(Type::SizedBytes(capacity)) => {
                 self.store_bytes(&target, value, i64::from(capacity), &label);
             }
+            // A list is already in the field's size: `value` made it so.
+            Some(Type::SizedList(..)) => self.line(format!("{target} = {value};")),
             Some(kept) => self.store_text(&target, value, self.gen.bound(&kept), &label),
             None => self.line(format!("{target} = {value};")),
         }

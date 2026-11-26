@@ -194,7 +194,13 @@ as many as it has, `slice` and `set` no more than it came from, `add` one
 more, `add_u16` two more, `+` as many as both, and
 `to_bytes` as many as the string has characters. A `Bytes` with nothing to
 bound it holds 64 values, or the longest `Length` on any `Bytes` if that is
-longer.
+longer. Lists are kept the same way: a field, variant field, parameter or
+result with a `Length` holds that many items, a literal holds as many as it
+has, `filter`, `map`, `drop`, `take`, `remove`, `reverse` and `sort` no more
+than the list they come from, `add` one more, `+` as many as both, `split`
+one more than its string has characters, `lines` as many, and `keys` and
+`values` as many as the map holds. A list with nothing to bound it holds the
+longest `Length` on any list of the same items, or 16 if none has one.
 
 ### Where
 Attaches constraints to a type, on a field, parameter or return type:

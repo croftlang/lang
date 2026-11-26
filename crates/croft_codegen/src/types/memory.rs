@@ -46,7 +46,9 @@ impl<'a> Generator<'a> {
             Type::Borrowed(_) => POINTER_SIZE + 2,
             Type::Bytes => 2 + self.sizes.bytes_capacity,
             Type::SizedBytes(length) => 2 + i64::from(*length),
-            Type::List(item) => 2 + self.sizes.list_capacity(item) * self.memory_size(item),
+            Type::List(item) | Type::SizedList(item, _) => {
+                2 + self.capacity(&ty) * self.memory_size(item)
+            }
             Type::Map(key, value) => {
                 let map = Type::map((**key).clone(), (**value).clone());
                 2 + self.sizes.map_capacity(&map)

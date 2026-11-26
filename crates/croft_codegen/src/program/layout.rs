@@ -20,7 +20,9 @@ impl<'a> Generator<'a> {
             Type::Text(length) => 2 + i64::from(*length),
             Type::Bytes => 2 + self.sizes.bytes_capacity,
             Type::SizedBytes(length) => 2 + i64::from(*length),
-            Type::List(item) => 2 + self.sizes.list_capacity(item) * self.serialized_size(item),
+            Type::List(item) | Type::SizedList(item, _) => {
+                2 + self.capacity(&ty) * self.serialized_size(item)
+            }
             Type::Option(item) => 4 + self.serialized_size(item),
             Type::Map(key, value) => {
                 2 + self.sizes.map_capacity(&ty)
@@ -39,8 +41,8 @@ impl<'a> Generator<'a> {
                 let fields: i64 = (self.struct_fields(named).into_iter())
                     .filter(|(field, _, _)| self.flag_bit(named, field).is_none())
                     .map(|(field, ty, _)| match self.own_size(named, &field) {
+                        Some(Type::SizedList(..)) | None => self.serialized_size(&ty),
                         Some(kept) => 2 + self.bound(&kept),
-                        None => self.serialized_size(&ty),
                     })
                     .sum();
 
@@ -57,6 +59,7 @@ impl<'a> Generator<'a> {
 
         match &ty {
             Type::List(item) => format!("List<{}>", self.layout(item)),
+            Type::SizedList(item, length) => format!("List<{},{length}>", self.layout(item)),
             Type::Option(item) => format!("Option<{}>", self.layout(item)),
             Type::Map(key, value) => format!("Map<{},{}>", self.layout(key), self.layout(value)),
             Type::Named(named) if named.kind == SymbolKind::Enum && !self.is_scalar(&ty) => {
@@ -76,6 +79,7 @@ impl<'a> Generator<'a> {
                 let fields: Vec<String> = (self.struct_fields(named).into_iter())
                     .map(|(name, ty, _)| match self.own_size(named, &name) {
                         Some(Type::SizedBytes(capacity)) => format!("{name}:Bytes<{capacity}>"),
+                        Some(Type::SizedList(..)) => format!("{name}:{}", self.layout(&ty)),
                         Some(kept) => format!("{name}:String<{}>", self.bound(&kept)),
                         None if self.flag_bit(named, &name).is_some() => format!("{name}:Flag"),
                         None => format!("{name}:{}", self.layout(&ty)),

@@ -1,7 +1,7 @@
 <img src="./branding/banner.png" alt="Croft" width="100%">
 
 This repository contains the source code for the Croft programming language;
-it's compiler, standard library and language server.
+its compiler, standard library and language server.
 
 ![CI](https://github.com/croftlang/lang/actions/workflows/ci.yml/badge.svg)
 

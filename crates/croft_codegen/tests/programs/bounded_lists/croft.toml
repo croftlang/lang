@@ -1,0 +1,5 @@
+[package]
+name = "bounded_lists"
+
+[target.test]
+main = "Check"

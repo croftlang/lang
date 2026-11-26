@@ -95,6 +95,7 @@ impl<'a> Generator<'a> {
             Type::Errors(_) => "croft_error".to_string(),
             Type::Named(named) => c_name(named),
             Type::List(item) => format!("croft_list_{}", self.short(item)),
+            Type::SizedList(item, length) => format!("croft_list{length}_{}", self.short(item)),
             Type::Map(key, value) => format!("croft_map_{}_{}", self.short(key), self.short(value)),
             Type::Option(item) => format!("croft_option_{}", self.short(item)),
             Type::Result(value, error) => {
@@ -113,6 +114,9 @@ impl<'a> Generator<'a> {
             Type::Errors(_) => Type::Errors(Vec::new()),
             Type::Named(_) if self.model.is_error(ty) => Type::Errors(Vec::new()),
             Type::List(item) => Type::list(self.canonical(item)),
+            Type::SizedList(item, length) => {
+                self.list_type(self.canonical(item), i64::from(*length))
+            }
             Type::Map(key, value) => Type::map(self.canonical(key), self.canonical(value)),
             Type::Option(item) => Type::option(self.canonical(item)),
             Type::Result(value, error) => {
@@ -133,7 +137,7 @@ impl<'a> Generator<'a> {
     /// its types. A `Decimal` is a `croft_int`, but a list of them may hold
     /// a different number of items than a list of `Int`, so it is named
     /// apart.
-    fn short(&self, ty: &Type) -> String {
+    pub(crate) fn short(&self, ty: &Type) -> String {
         if let Type::Decimal(places) = ty {
             return format!("decimal{places}");
         }

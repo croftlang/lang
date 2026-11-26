@@ -43,6 +43,9 @@ pub enum Type {
     SizedBytes(u16),
     Unit,
     List(Box<Type>),
+    /// A list that holds at most this many items. Only code generation makes
+    /// one, as it does `Text` for a string; the checker sees it as a `List`.
+    SizedList(Box<Type>, u16),
     /// Keys, each with a value, such as how many of each item the player holds.
     Map(Box<Type>, Box<Type>),
     Option(Box<Type>),
@@ -106,7 +109,7 @@ impl fmt::Display for Type {
             Type::String | Type::Text(_) | Type::Borrowed(_) => write!(f, "String"),
             Type::Bytes | Type::SizedBytes(_) => write!(f, "Bytes"),
             Type::Unit => write!(f, "Unit"),
-            Type::List(item) => write!(f, "List<{item}>"),
+            Type::List(item) | Type::SizedList(item, _) => write!(f, "List<{item}>"),
             Type::Map(key, value) => write!(f, "Map<{key}, {value}>"),
             Type::Option(item) => write!(f, "Option<{item}>"),
             Type::Result(value, error) => write!(f, "Result<{value}, {error}>"),

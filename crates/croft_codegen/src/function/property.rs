@@ -8,7 +8,7 @@ use croft_syntax::ast::Expr;
 
 use super::Writer;
 use crate::names::{c_name, error_code};
-use crate::types::bounds::{is_bytes, is_string};
+use crate::types::bounds::{is_bytes, is_string, list_item};
 
 impl<'g, 'a> Writer<'g, 'a> {
     pub fn name(&mut self, value: &Expr, name: &str, ty: &Type) -> String {
@@ -117,7 +117,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         let (c, inner_type) = self.eval(inner, None);
 
         let has_length = is_bytes(&inner_type)
-            || matches!(inner_type, Type::String | Type::Text(_) | Type::List(_));
+            || list_item(&inner_type).is_some()
+            || matches!(inner_type, Type::String | Type::Text(_));
 
         match (&inner_type, field) {
             (_, "length") if has_length => self.length_of(&c, &inner_type),
@@ -126,9 +127,9 @@ impl<'g, 'a> Writer<'g, 'a> {
             (Type::Map(..), "is_empty") => format!("({c}.length == 0)"),
             (Type::Map(key, value), "keys" | "values") => {
                 let item = if field == "keys" { key } else { value };
-                self.map_list(&c, item, field)
+                self.map_list(&c, &inner_type, item, field)
             }
-            (Type::List(item), "first" | "last") => {
+            (Type::List(item) | Type::SizedList(item, _), "first" | "last") => {
                 let temp = self.temp(&Type::option((**item).clone()));
 
                 let index = if field == "first" {

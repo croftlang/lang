@@ -4,6 +4,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::Argument;
 
 use super::Writer;
+use crate::types::bounds::list_item;
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// `text` is a `croft_string_view`, kept in a variable so the string it
@@ -100,11 +101,16 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let value = part(self, 0);
                 self.line(format!("{separator} = {value};"));
                 let item = if stable { part_type } else { owned };
-                self.split(&text, &separator, &item)
+                // A string of n characters splits into at most n + 1 parts.
+                let parts = self.gen.list_type(item, self.gen.bound(bounded) + 1);
+                self.split(&text, &separator, &parts)
             }
             "lines" => {
                 let item = if stable { part_type } else { owned };
-                self.lines(&text, &item)
+                // Every line but an empty last one, which isn't kept, takes
+                // at least one character.
+                let lines = self.gen.list_type(item, self.gen.bound(bounded));
+                self.lines(&text, &lines)
             }
             "index_of" => {
                 let part = part(self, 0);
@@ -172,12 +178,13 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// `text.lines()`: each line, without its `\n` or `\r\n`, borrowed from
-    /// `text` or copied, as `item` says. A last line that ends in `\n` has
-    /// no empty line after it.
-    fn lines(&mut self, text: &str, item: &Type) -> String {
-        let lines = self.temp(&Type::list(item.clone()));
+    /// `text` or copied, as the item type of `ty` says. A last line that
+    /// ends in `\n` has no empty line after it.
+    fn lines(&mut self, text: &str, ty: &Type) -> String {
+        let item = list_item(ty).cloned().unwrap_or(Type::String);
+        let lines = self.temp(ty);
         let at = self.raw_variable("at", "croft_u16");
-        let capacity = self.gen.sizes.list_capacity(&Type::String);
+        let capacity = self.gen.capacity(ty);
 
         self.line(format!("{lines}.length = 0;"));
         self.line(format!("{at} = 0;"));
@@ -201,9 +208,10 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// `line.split(",")`: the parts between each separator, each borrowed
-    /// from `text` or copied, as `item` says.
-    fn split(&mut self, text: &str, separator: &str, item: &Type) -> String {
-        let parts = self.temp(&Type::list(item.clone()));
+    /// from `text` or copied, as the item type of `ty` says.
+    fn split(&mut self, text: &str, separator: &str, ty: &Type) -> String {
+        let item = list_item(ty).cloned().unwrap_or(Type::String);
+        let parts = self.temp(ty);
         let start = self.variable("start", &Type::Int);
         let found = self.variable("found", &Type::Int);
 
@@ -227,7 +235,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         self.line(format!("{parts}.length++;"));
 
-        let capacity = self.gen.sizes.list_capacity(&Type::String);
+        let capacity = self.gen.capacity(ty);
 
         self.open(format!(
             "if ({found} < 0 || {separator}.length == 0 || {parts}.length >= {capacity})"
