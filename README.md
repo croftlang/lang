@@ -61,6 +61,7 @@ croft check . # compiler check
 croft compile . --target desktop # check and compile to C
 croft run . --target desktop # check, compile and run C
 croft size . --target spectrum_48k # memory each type and function takes
+croft fmt . # lay out the source files in the Croft style
 ```
 
 Try it on the test fixture, a small cargo shipping system after the one in Eric
@@ -79,7 +80,8 @@ For full reference documentation, see [./docs/reference](./docs/reference)
 
 `croft lsp` runs a language server, showing you errors as you type, without
 needing to run the compiler. It also shows you function signatures and comments
-on hover, clicking takes you straight to the definition.
+on hover, clicking takes you straight to the definition, and it formats a file
+the same way as `croft fmt`.
 
 - VS Code: [editors/vscode](editors/vscode), with highlighting from a TextMate
   grammar.
@@ -94,6 +96,7 @@ on hover, clicking takes you straight to the definition.
 | `croft_std`      | Standard contexts written in Croft, beside the C of their adapters   |
 | `croft_analysis` | Merging files, name resolution, declaration checks and type checking |
 | `croft_codegen`  | C89 generation for one target                                        |
+| `croft_format`   | The formatter, `croft fmt`                                           |
 | `croft_cli`      | The `croft` command, and the language server, `croft lsp`            |
 
 ## Development

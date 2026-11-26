@@ -1,6 +1,7 @@
 //! Whitespace and `//` comments. Comment lines directly above a token are its doc.
 
 use super::Lexer;
+use crate::token::Comment;
 
 impl<'a> Lexer<'a> {
     /// Skips whitespace and `//` comments. Returns the comment lines that sit
@@ -37,7 +38,10 @@ impl<'a> Lexer<'a> {
         doc
     }
 
+    /// Reads one comment, keeping it as written, and returns its trimmed text.
     fn read_comment(&mut self) -> String {
+        let span = self.current_span();
+
         self.advance();
         self.advance();
 
@@ -52,6 +56,14 @@ impl<'a> Lexer<'a> {
             self.advance();
         }
 
-        text.trim().to_string()
+        let written = text.trim_end().to_string();
+        let trimmed = written.trim_start().to_string();
+
+        self.comments.push(Comment {
+            text: written,
+            span,
+        });
+
+        trimmed
     }
 }

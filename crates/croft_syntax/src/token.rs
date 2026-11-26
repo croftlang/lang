@@ -101,3 +101,13 @@ pub struct Token {
     /// Comment lines directly above this token, with no blank line between.
     pub doc: Vec<String>,
 }
+
+/// A `//` comment where it was written. The compiler only reads `Token::doc`;
+/// the formatter needs every comment.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Comment {
+    /// Everything after `//`, without trailing whitespace.
+    pub text: String,
+    /// Where the `//` starts.
+    pub span: Span,
+}

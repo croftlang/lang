@@ -24,6 +24,7 @@ version = "0.1.0"
 dependencies = [
  "croft_analysis",
  "croft_codegen",
+ "croft_format",
  "croft_std",
  "croft_syntax",
  "crossbeam-channel",
@@ -39,6 +40,13 @@ version = "0.1.0"
 dependencies = [
  "croft_analysis",
  "croft_std",
+ "croft_syntax",
+]
+
+[[package]]
+name = "croft_format"
+version = "0.1.0"
+dependencies = [
  "croft_syntax",
 ]
 

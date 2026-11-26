@@ -34,15 +34,7 @@ impl Project {
             path.to_path_buf()
         };
 
-        let paths = if metadata.is_file() {
-            vec![path.to_path_buf()]
-        } else {
-            let mut paths = Vec::new();
-            find_source_files(path, &mut paths)
-                .map_err(|error| format!("cannot read `{}`: {error}", path.display()))?;
-            paths.sort();
-            paths
-        };
+        let paths = source_paths(path)?;
 
         if paths.is_empty() {
             return Err(format!(
@@ -109,6 +101,26 @@ impl Project {
 
         croft_analysis::check(modules, manifest)
     }
+}
+
+/// The source files at a path: the file itself, or every source file in the
+/// folder and the folders inside it, sorted.
+pub fn source_paths(path: &Path) -> Result<Vec<PathBuf>, String> {
+    let metadata =
+        fs::metadata(path).map_err(|error| format!("cannot open `{}`: {error}", path.display()))?;
+
+    if metadata.is_file() {
+        return Ok(vec![path.to_path_buf()]);
+    }
+
+    let mut paths = Vec::new();
+
+    find_source_files(path, &mut paths)
+        .map_err(|error| format!("cannot read `{}`: {error}", path.display()))?;
+
+    paths.sort();
+
+    Ok(paths)
 }
 
 fn find_source_files(dir: &Path, found: &mut Vec<PathBuf>) -> std::io::Result<()> {
