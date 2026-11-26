@@ -1,16 +1,24 @@
 <img src="./branding/banner.png" alt="Croft" width="100%">
 
+This repository contains the source code for the Croft programming language;
+it's compiler, standard library and language server.
+
 ![CI](https://github.com/croftlang/lang/actions/workflows/ci.yml/badge.svg)
 
-## Introduction 
+## Why Croft?
 
-Croft is an experimental domain language, declarative structure, imperative behaviour. The
-domain model is the program: you write it with domain-driven design's building
-blocks (contexts, values, entities, aggregates, factories, commands, events, ports and
-adapters) and the compiler checks the constraints you attach to them. Croft is
-designed to compile to portable C, so you can ship cross-platform.
+- **Clarity:** The domain model _is_ the code, not just a diagram beside it.
+  Your contexts, aggregates, commands and events outline what your program is
+  about, and a command's contract houses the business rules themselves.
+- **Reliability:** Constraints such as `where Length(0, 32)` and command
+  contracts are checked by the compiler, so broken rules show up before runtime,
+  and every type has a known size.
+- **Portability:** Croft compiles to C89, needing no additional runtime, so it
+  runs wherever a C compiler does, from modern desktops to the ZX Spectrum and
+  Atari ST. Ports and adapters make the program the same on every machine, and
+  `croft.toml` configures what connects to them.
 
-## Usage
+## Getting started
 
 ```croft
 context Greeter {
@@ -43,9 +51,9 @@ domain Application {
 ```
 
 Source files end in `.croft`, or in `.cro` on machines whose file names are
-limited to 8.3. A project can mix the two, and the compiler reads either in 
+limited to 8.3. A project can mix the two, and the compiler reads either in
 capitals too, as in `CARGO.CRO`.
-
+ƒ
 ```sh
 cargo install --path crates/croft_cli
 
@@ -54,17 +62,6 @@ croft compile . --target desktop # check and compile to C
 croft run . --target desktop # check, compile and run C
 croft size . --target spectrum_48k # memory each type and function takes
 ```
-
-Every `.c` file in the output folder is part of the program, for example
-`cc -std=c89 target/croft/desktop/*.c -o logistics`. Besides `program.c` and
-`croft_runtime.c`, it holds your native files and the standard adapters the
-target uses, such as `croft_files.c` for `StdioFiles`, and `croft_http.c` for
-`CurlHttp`, which needs `-lcurl` when linking.
-
-`croft run . --target desktop` does all of this in one step: it compiles, builds
-the C with `$CC` (or `cc`), adding `-lcurl` when the target uses `CurlHttp`, and
-runs the program from `target/croft/desktop/<package name>`. Arguments after
-`--` go to the program.
 
 Try it on the test fixture, a small cargo shipping system after the one in Eric
 Evans' _Domain-Driven Design_, split across thirteen files:
@@ -115,8 +112,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and the
 
 ## Licence
 
-Croft is licensed under either of the [Apache License, Version 2.0](LICENSE-APACHE)
-or the [MIT licence](LICENSE-MIT), at your option.
+Croft is licensed under either of the
+[Apache License, Version 2.0](LICENSE-APACHE) or the [MIT licence](LICENSE-MIT),
+at your option.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in Croft by you, as defined in the Apache-2.0 licence, shall be
