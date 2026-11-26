@@ -2,7 +2,8 @@
 //! constraints they must keep, so a broken one is found by `croft check`.
 
 use croft_syntax::ast::{
-    Argument, ConstraintUse, Expr, ExprId, ExprKind, Field, FieldValue, Parameter, Statement,
+    Argument, ConstraintUse, Expr, ExprId, ExprKind, Field, FieldValue, FunctionDecl, Parameter,
+    Statement,
 };
 
 use super::BodyChecker;
@@ -159,16 +160,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             return;
         };
 
-        let written: Vec<String> = (arguments.iter())
-            .filter_map(|argument| {
-                let value = self.known_local_value(&argument.value)?.describe();
-
-                match &argument.name {
-                    Some(name) => Some(format!("{}: {value}", name.name)),
-                    None => Some(value),
-                }
-            })
-            .collect();
+        let written = self.written_arguments(arguments);
 
         for constraint in &function.return_constraints {
             if self.checker.keeps_constraint(&owner, constraint, &result) != Some(false) {
@@ -176,15 +168,84 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
 
             let message = format!(
-                "`{}({})` gives back `{}`, which breaks `{}`",
+                "`{}({written})` gives back `{}`, which breaks `{}`",
                 found.name,
-                written.join(", "),
                 result.describe(),
                 constraint.text()
             );
 
             self.error(message, span);
         }
+    }
+
+    /// Checks each plain precondition of `function`, a mistake by the caller,
+    /// against the arguments that are known. A precondition with an error,
+    /// `mg > 0 or Refused`, is a failure the caller handles, so it is left to
+    /// the program.
+    pub(super) fn check_known_preconditions(
+        &mut self,
+        function: &FunctionDecl,
+        owner: &Scope<'a>,
+        arguments: &[Argument],
+        callee: &str,
+        span: Span,
+    ) {
+        let plain: Vec<&Expr> = (function.preconditions.iter())
+            .filter(|precondition| !matches!(precondition.kind, ExprKind::OrElse(..)))
+            .collect();
+
+        if plain.is_empty() {
+            return;
+        }
+
+        let parameters = function.parameters.as_deref().unwrap_or(&[]);
+        let mut bindings = Bindings::new();
+
+        for (position, argument) in arguments.iter().enumerate() {
+            let parameter = match &argument.name {
+                Some(name) => parameters.iter().find(|p| p.name.name == name.name),
+                None => parameters.get(position),
+            };
+
+            let known = self.known_local_value(&argument.value);
+
+            if let (Some(parameter), Some(known)) = (parameter, known) {
+                bindings.insert(parameter.name.name.clone(), known);
+            }
+        }
+
+        for precondition in plain {
+            if self.checker.known_value(owner, &bindings, precondition) != Some(Known::Bool(false))
+            {
+                continue;
+            }
+
+            let message = format!(
+                "`{callee}({})` breaks its contract: `{}`",
+                self.written_arguments(arguments),
+                precondition.text()
+            );
+
+            self.error(message, span);
+        }
+    }
+
+    /// The arguments of a call as their known values, `...` where one is not
+    /// known, for messages: `move_bed(3, ...)`.
+    fn written_arguments(&self, arguments: &[Argument]) -> String {
+        let written: Vec<String> = (arguments.iter())
+            .map(|argument| {
+                let value = (self.known_local_value(&argument.value))
+                    .map_or("...".to_string(), |known| known.describe());
+
+                match &argument.name {
+                    Some(name) => format!("{}: {value}", name.name),
+                    None => value,
+                }
+            })
+            .collect();
+
+        written.join(", ")
     }
 
     /// The value of `value` in this body, when it is known: literals,

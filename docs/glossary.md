@@ -223,8 +223,9 @@ messages shown to the customer are not.
 A condition in a contract that must hold for the code to run. With an error,
 `delivery.transport_status != Claimed or AlreadyClaimed`, it is a failure the domain expects:
 always checked, and handled by the caller like any other failure. Without
-one, `!numbers.is_empty`, it is a mistake by the caller: checked while the
-program runs, which stops with a message.
+one, `!numbers.is_empty`, it is a mistake by the caller: an error from
+`croft check` when the arguments it reads are known, and otherwise checked
+while the program runs, which stops with a message.
 
 ### Contract
 What a piece of code needs and what it promises, written before its body:

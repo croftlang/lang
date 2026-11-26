@@ -184,6 +184,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         self.check_arguments(arguments, &parameters, &command.name, command.span, true);
 
+        let name = command.name.clone();
+        self.check_known_preconditions(command_decl, &scope, arguments, &name, command.span);
+
         let declared = command_decl.parameters.as_deref().unwrap_or(&[]);
         let constraints = Self::parameter_constraints(declared);
         self.check_known_arguments(arguments, &constraints, &scope, &command.name.clone());

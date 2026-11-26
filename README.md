@@ -12,8 +12,9 @@ its compiler, standard library and language server.
   about, and a command's contract houses the business rules themselves.
 - **Reliability:** Constraints such as `where Length(0, 32)` are checked by the
   compiler wherever it knows the value, so `give(5000)` against
-  `Overdose(4000)` doesn't compile. Values only known while running, and command
-  contracts, are checked as the program runs, and every type has a known size.
+  `Overdose(4000)` doesn't compile, and contracts are checked the same way.
+  Values only known while running are checked as the program runs, and every
+  type has a known size.
 - **Portability:** Croft compiles to C89, needing no additional runtime, so it
   runs wherever a C compiler does, from modern desktops to the ZX Spectrum and
   Atari ST. Ports and adapters make the program the same on every machine, and

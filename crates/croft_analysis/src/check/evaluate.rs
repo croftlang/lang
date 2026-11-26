@@ -95,6 +95,11 @@ impl<'a> Checker<'a> {
             ExprKind::Field(receiver, member) if member.name == "length" => {
                 known(receiver)?.length()
             }
+            ExprKind::Field(receiver, member) if member.name == "is_empty" => {
+                let length = known(receiver)?.length()?;
+
+                Known::binary(BinaryOp::Equal, length, Known::int(0))
+            }
             ExprKind::Field(..) => self.constant_value(scope, &expr_path(value)?, depth),
             ExprKind::Unary(op, operand) => Known::unary(*op, known(operand)?),
             ExprKind::Binary(BinaryOp::And, left, right) => {

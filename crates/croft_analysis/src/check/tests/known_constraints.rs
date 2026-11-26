@@ -287,3 +287,72 @@ fn a_function_body_is_worked_out_when_its_arguments_are_known() {
         "`give` is given `5000` for `mg`, which breaks `Overdose(4000)`",
     );
 }
+
+#[test]
+fn a_plain_precondition_broken_by_known_arguments_is_an_error() {
+    let source = clinic(
+        "fn average(numbers: List<Int>): Int {\n !numbers.is_empty\n} = numbers.sum(n -> n) / numbers.length\n\
+         fn treat(): Int = average([])",
+    );
+
+    assert_error(
+        &source,
+        "`average([])` breaks its contract: `!numbers.is_empty`",
+    );
+}
+
+#[test]
+fn a_precondition_relating_parameters_is_worked_out() {
+    let source = clinic(
+        "fn move_bed(from: Int, to: Int): Int {\n from != to\n} = to\n\
+         fn treat(): Int = move_bed(3, 3)",
+    );
+
+    assert_error(
+        &source,
+        "`move_bed(3, 3)` breaks its contract: `from != to`",
+    );
+}
+
+#[test]
+fn a_precondition_with_an_unknown_argument_is_left_to_runtime() {
+    let source = clinic(
+        "fn move_bed(from: Int, to: Int): Int {\n from != to\n} = to\n\
+         fn treat(bed: Int): Int = move_bed(3, bed)",
+    );
+
+    assert_eq!(errors(&source), Vec::<String>::new());
+}
+
+/// A ward whose `Give` command has `contract` between its signature and body.
+fn ward(contract: &str, issued: &str) -> String {
+    format!(
+        "context Ward {{\n\
+         identity BedId for Bed: Int where Range(1, 9)\n\
+         aggregate Bed {{\n\
+         id: BedId\n\
+         given: Int\n\
+         error NotFound\n\
+         error Refused\n\
+         command Give(mg: Int) {{\n {contract}\n}} = {{\n set given = given + mg\n }}\n\
+         }}\n\
+         repository Beds for Bed\n\
+         enum WardError {{\n include Bed.Error\n include StorageError\n }}\n\
+         service Treat(): Result<Unit, WardError> {{\n calls Beds\n}} = {{\n\
+         issue Give(mg: {issued}) on Bed(1)?\n}}\n}}"
+    )
+}
+
+#[test]
+fn a_command_precondition_is_checked() {
+    let source = ward("mg > 0", "0");
+
+    assert_error(&source, "`Give(mg: 0)` breaks its contract: `mg > 0`");
+}
+
+#[test]
+fn a_precondition_with_an_error_is_a_failure_the_caller_handles() {
+    let source = ward("mg > 0 or Refused", "0");
+
+    assert_eq!(errors(&source), Vec::<String>::new());
+}
