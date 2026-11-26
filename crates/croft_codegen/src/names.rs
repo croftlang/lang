@@ -56,6 +56,8 @@ pub fn c_string(text: &str) -> String {
             '"' => escaped.push_str("\\\""),
             '\\' => escaped.push_str("\\\\"),
             '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
             c if c.is_ascii() && !c.is_ascii_control() => escaped.push(c),
             _ => escaped.push('?'),
         }
