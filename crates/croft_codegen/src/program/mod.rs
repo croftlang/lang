@@ -20,8 +20,6 @@ mod signature;
 use crate::{GeneratedFile, Generator};
 
 const RUNTIME_HEADER: &str = include_str!("../runtime/croft.h");
-const STDIO_FILES: &str = include_str!("../runtime/files.c");
-const CURL_HTTP: &str = include_str!("../runtime/http.c");
 const RUNTIME_SOURCE: &str = concat!(
     include_str!("../runtime/croft_runtime.c"),
     include_str!("../runtime/decimal.c"),
@@ -116,31 +114,25 @@ impl<'a> Generator<'a> {
         Ok(files)
     }
 
-    /// The C for standard adapters this target binds: `croft_files.c` when
-    /// `Files` is bound to `StdioFiles`, and `croft_http.c` for `CurlHttp`.
+    /// The C for standard adapters this target binds, kept in `croft_std`
+    /// beside their contexts: `croft_files.c` when `Files` is bound to
+    /// `StdioFiles`, and `croft_http.c` for `CurlHttp`. Each is written once,
+    /// however many ports are bound to it.
     fn standard_natives(&self) -> Vec<GeneratedFile> {
-        let binds = |context: &str, name: &str| {
-            (self.bindings.values())
-                .any(|adapter| adapter.context == context && adapter.name == name)
-        };
+        let mut adapters: Vec<&croft_std::Adapter> = (self.bindings.values())
+            .filter_map(|adapter| croft_std::adapter(&adapter.context, &adapter.name))
+            .collect();
 
-        let mut files = Vec::new();
+        adapters.sort_by_key(|adapter| adapter.file);
+        adapters.dedup_by_key(|adapter| adapter.file);
 
-        if binds("Std.Files", "StdioFiles") {
-            files.push(GeneratedFile {
-                name: "croft_files.c".to_string(),
-                contents: STDIO_FILES.to_string(),
-            });
-        }
-
-        if binds("Std.Http", "CurlHttp") {
-            files.push(GeneratedFile {
-                name: "croft_http.c".to_string(),
-                contents: CURL_HTTP.to_string(),
-            });
-        }
-
-        files
+        adapters
+            .into_iter()
+            .map(|adapter| GeneratedFile {
+                name: adapter.file.to_string(),
+                contents: adapter.c.to_string(),
+            })
+            .collect()
     }
 
     fn native_prototypes(&self) -> String {

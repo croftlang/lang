@@ -44,10 +44,10 @@ impl ProjectState {
             return Some(&file.text);
         }
 
-        croft_analysis::standard::STANDARD_SOURCES
+        croft_std::CONTEXTS
             .iter()
-            .find(|(context, _)| croft_analysis::standard::standard_source_id(context) == id)
-            .map(|(_, text)| *text)
+            .find(|context| croft_analysis::standard::standard_source_id(context.name) == id)
+            .map(|context| context.source)
     }
 }
 

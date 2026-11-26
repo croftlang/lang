@@ -12,6 +12,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 name = "croft_analysis"
 version = "0.1.0"
 dependencies = [
+ "croft_std",
  "croft_syntax",
  "serde",
  "toml",
@@ -23,6 +24,7 @@ version = "0.1.0"
 dependencies = [
  "croft_analysis",
  "croft_codegen",
+ "croft_std",
  "croft_syntax",
  "crossbeam-channel",
  "lsp-server",
@@ -36,8 +38,13 @@ name = "croft_codegen"
 version = "0.1.0"
 dependencies = [
  "croft_analysis",
+ "croft_std",
  "croft_syntax",
 ]
+
+[[package]]
+name = "croft_std"
+version = "0.1.0"
 
 [[package]]
 name = "croft_syntax"
