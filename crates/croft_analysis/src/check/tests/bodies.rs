@@ -214,6 +214,20 @@ fn checks_bytes() {
         "context Shop {\n fn f(data: Bytes): String = data.to_text()\n}",
         "`to_text` needs `use { to_text } from Std.Text`",
     );
+
+    // `+` joins `Bytes`, with a literal on either side.
+    let source = "context Shop {\n fn f(data: Bytes): Bytes = [0] + data + [1, 2]\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+
+    assert_error(
+        "context Shop {\n fn f(data: Bytes): Bytes = data + 1\n}",
+        "expected `Bytes`, found `Int`",
+    );
+
+    assert_error(
+        "context Shop {\n fn f(data: Bytes): Bytes = data - data\n}",
+        "cannot do arithmetic on `Bytes`",
+    );
 }
 
 #[test]

@@ -18,7 +18,7 @@ fn with_tax(price: Decimal<2> where Range(0, 999.99)): Decimal<2> = price * 1.20
 // 10.00 / 3 is 3.33; 0.05 / 2 rounds to 0.02, the even neighbour
 fn share(total: Decimal<2>, people: Int): Decimal<2> = total / people
 
-let header: Bytes = [0x44, 0x4E, 1]   // length, get, add, slice
+let header: Bytes = [0x44, 0x4E, 1]   // length, get, add, slice, and + to join
 
 let price: Decimal<2> = 4
 price.to_string()  // "4.00"

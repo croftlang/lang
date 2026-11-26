@@ -4,7 +4,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::{BinaryOp, Expr};
 
 use super::Writer;
-use crate::types::bounds::is_string;
+use crate::types::bounds::{is_bytes, is_string};
 use crate::types::constant::evaluate;
 
 const MAX_SHIFT: i64 = croft_analysis::MAX_SHIFT;
@@ -29,6 +29,15 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         if is_string(&left_type) && matches!(op, Equal | NotEqual | Add) {
             return self.string_operator(op, left, right);
+        }
+
+        if is_bytes(&left_type) && op == Add {
+            let (left, right, joined) = self.bytes_parts(left, right);
+            let temp = self.temp(&joined);
+            self.line(format!(
+                "croft_bytes_join({left}, {right}, CROFT_BYTES_OUT({temp}));"
+            ));
+            return temp;
         }
 
         let left_c = self.value(left, &left_type);
@@ -119,6 +128,20 @@ impl<'g, 'a> Writer<'g, 'a> {
         };
 
         format!("{name}({value}, {amount})")
+    }
+
+    /// The two sides of `+` on `Bytes`, as views, and the type with room
+    /// for both.
+    pub(super) fn bytes_parts(&mut self, left: &Expr, right: &Expr) -> (String, String, Type) {
+        let (left, left_type) = self.eval(left, Some(&Type::Bytes));
+        let (right, right_type) = self.eval(right, Some(&Type::Bytes));
+        let length = self.gen.bound(&left_type) + self.gen.bound(&right_type);
+
+        (
+            format!("CROFT_BYTES_VIEW({left})"),
+            format!("CROFT_BYTES_VIEW({right})"),
+            self.gen.bytes_type(length),
+        )
     }
 
     /// `==`, `!=` and `+` on strings, read through views so a literal on

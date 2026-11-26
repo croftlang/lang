@@ -37,6 +37,25 @@ croft_bool croft_bytes_equal(croft_bytes_view a, croft_bytes_view b)
     return 1;
 }
 
+/* a and then b. The values of b are copied last to first, and a only when
+   it is somewhere else, so out may be where a is borrowed from. */
+void croft_bytes_join(croft_bytes_view a, croft_bytes_view b, unsigned char *out, croft_u16 *length, croft_u16 capacity)
+{
+    croft_u16 index;
+    croft_u16 kept = a.length < capacity ? a.length : capacity;
+    croft_u16 added = b.length < capacity - kept ? b.length : (croft_u16) (capacity - kept);
+    for (index = added; index > 0; index--) {
+        out[kept + index - 1] = b.items[index - 1];
+    }
+    if (a.items != out) {
+        for (index = 0; index < kept; index++) {
+            out[index] = a.items[index];
+        }
+    }
+    *length = (croft_u16) (kept + added);
+    CROFT_CHECK(a.length + b.length <= capacity, "joined bytes are longer than bytes can hold");
+}
+
 croft_bool croft_bytes_get(croft_bytes_view bytes, croft_int index, croft_int *out)
 {
     if (index < 0 || index >= (croft_int) bytes.length) {

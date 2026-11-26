@@ -65,6 +65,9 @@ fn first_two(given: Bytes where Length(0, 8)): Option<Bytes> = {
     Some(given.slice(0, 2))
 }
 
+// As long as both sides: 4 and 2.
+fn wrapped(payload: Bytes where Length(0, 4)): Bytes = payload + [0xFF, 0xFE]
+
 service Check(): Result<Unit, Failure> {
     calls Mailboxes
 } = {
@@ -84,6 +87,15 @@ service Check(): Result<Unit, Failure> {
     let kept: Bytes = [1]
     set kept = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     check(kept.length == 10 && kept.slice(8, 10) == [9, 10])?
+    // Joined, into a field, from a function, and onto itself.
+    check(wrapped([1, 2]) == [1, 2, 0xFF, 0xFE] && wrapped([]) == [0xFF, 0xFE])?
+    let joined = header with { magic: hi + [33] }
+    check(joined.magic.to_text() == "hi!")?
+    let log: Bytes = []
+    set log = log + hi
+    set log = log + log
+    set log = [0] + log
+    check(log == [0, 104, 105, 104, 105])?
     // Saved and found again, in a field of its own size.
     let mailbox = Mailbox.Open(id: 3)?
     mailboxes.save(mailbox)?
