@@ -45,11 +45,17 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
 
             members.extend(methods(&[
                 "contains", "get", "add", "drop", "take", "filter", "all", "any", "count", "find",
-                "sum", "min_by", "max_by", "map",
+                "sum", "min_by", "max_by", "map", "reverse", "sort_by",
             ]));
 
             if item.named(&[SymbolKind::Entity]).is_some() {
                 members.extend(methods(&["remove", "replace"]));
+            } else {
+                members.push(("index_of", Operation));
+            }
+
+            if item.is_number() || **item == Type::String {
+                members.push(("sort", Operation));
             }
 
             members

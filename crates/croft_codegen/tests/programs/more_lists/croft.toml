@@ -1,0 +1,5 @@
+[package]
+name = "more_lists"
+
+[target.test]
+main = "Check"

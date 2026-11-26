@@ -618,3 +618,9 @@ fn shares_temporaries_between_early_returns() {
 fn works_out_narrow_numbers_as_if_they_had_32_bits() {
     run_program("narrow_numbers");
 }
+
+/// sort, sort_by, reverse, index_of and `+` on lists.
+#[test]
+fn runs_more_list_methods() {
+    run_program("more_lists");
+}

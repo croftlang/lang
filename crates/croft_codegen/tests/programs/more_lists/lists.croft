@@ -1,0 +1,56 @@
+// sort, sort_by, reverse, index_of and + on lists, and [item] + list,
+// beside [0] + bytes, which still joins Bytes.
+context Lists
+
+use { Decimal } from Std.Numbers
+use { split } from Std.Text
+
+error WrongAnswer
+
+value Post {
+    title: String where Length(0, 12)
+    day: Int where Range(1, 31)
+}
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn newest_first(posts: List<Post>): List<Post> = posts.sort_by(p -> 0 - p.day)
+
+fn titles(posts: List<Post>): List<String> = posts.map(p -> p.title)
+
+fn with_header(data: Bytes): Bytes = [0x44, 0x4E] + data
+
+service Check(): Result<Unit, WrongAnswer> = {
+    check([3, 1, 2].sort() == [1, 2, 3])?
+    check(["pear", "apple", "fig", "app"].sort() == ["app", "apple", "fig", "pear"])?
+    let prices: List<Decimal<2>> = [2.50, 0.99, 10.00]
+    check(prices.sort() == [0.99, 2.50, 10.00])?
+    let empty: List<Int> = []
+    check(empty.sort().is_empty && empty.reverse().is_empty)?
+    check([1, 2, 3].reverse() == [3, 2, 1])?
+    check(["a", "b"].reverse() == ["b", "a"])?
+    let posts = [
+        Post { title: "first", day: 3 },
+        Post { title: "second", day: 9 },
+        Post { title: "third", day: 3 },
+        Post { title: "fourth", day: 1 }
+    ]
+    // Posts on the same day keep their order.
+    check(titles(newest_first(posts)) == ["second", "first", "third", "fourth"])?
+    check(titles(posts.sort_by(p -> p.title.length)) == ["first", "third", "second", "fourth"])?
+    check([5, 6, 7].index_of(7) == Some(2))?
+    check([5, 6, 7].index_of(8) == None)?
+    check(["x", "y"].index_of("y") == Some(1))?
+    check([1, 2] + [3] == [1, 2, 3])?
+    let more = [4, 5]
+    check([3] + more == [3, 4, 5])?
+    check(more + [] == [4, 5])?
+    check(["a"] + "b c".split(" ") == ["a", "b", "c"])?
+    let joined = with_header([1])
+    check(joined.length == 3 && joined.get(0) == Some(0x44))
+}

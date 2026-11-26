@@ -101,6 +101,7 @@ void croft_string_to_upper(croft_string_view text, char *out, croft_u16 *length,
 void croft_string_to_lower(croft_string_view text, char *out, croft_u16 *length, croft_u16 capacity);
 croft_string_view croft_string_trimmed(croft_string_view text);
 croft_string_view croft_string_part(croft_string_view text, croft_int start, croft_int end);
+int croft_string_compare(croft_string_view a, croft_string_view b);
 void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u16 capacity);
 
 croft_int croft_divide_even(croft_int numerator, croft_int denominator);

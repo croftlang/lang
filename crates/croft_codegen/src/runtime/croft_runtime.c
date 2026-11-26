@@ -172,6 +172,19 @@ croft_string_view croft_string_part(croft_string_view text, croft_int start, cro
     return part;
 }
 
+/* Below zero when a comes before b, byte by byte, the shorter first when one
+   starts the other; zero when they are the same, and above zero otherwise. */
+int croft_string_compare(croft_string_view a, croft_string_view b)
+{
+    croft_u16 index;
+    for (index = 0; index < a.length && index < b.length; index++) {
+        if (a.text[index] != b.text[index]) {
+            return (unsigned char) a.text[index] < (unsigned char) b.text[index] ? -1 : 1;
+        }
+    }
+    return a.length == b.length ? 0 : (a.length < b.length ? -1 : 1);
+}
+
 void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u16 capacity)
 {
     char digits[20];

@@ -325,10 +325,12 @@ an empty set: it never fails, so any error type can pass it up.
 ### Built-ins
 Functions and methods every program has, with no import. Functions: `Some`,
 `None`, `Ok`, `Err`, and the constraints `Range` and `Length`. Strings:
-`length`, `is_empty`, and joining with `+`. Numbers: `to_string`. Lists: `length`, `is_empty`, `first`, `last`, `contains`, `get`,
-`add`, `drop`, `take`, `filter`, `map`, `all`, `any`, `count`, `find`, `sum`,
-`min_by`, `max_by`; a list of entities also has `get`, `contains`, `replace`
-and `remove` by identity. Options: `is_some`, `is_none`, `map`, `unwrap_or`.
+`length`, `is_empty`, and joining with `+`. Numbers: `to_string`. Lists:
+`length`, `is_empty`, `first`, `last`, `contains`, `get`, `index_of`, `add`,
+`drop`, `take`, `reverse`, `filter`, `map`, `all`, `any`, `count`, `find`,
+`sum`, `min_by`, `max_by`, `sort_by`, `sort` for numbers and strings, and
+joining with `+`; a list of entities also has `get`, `contains`, `replace` and
+`remove` by identity. Options: `is_some`, `is_none`, `map`, `unwrap_or`.
 
 ### Map
 Keys, each with a value, imported with `use { Map } from Std.Collections`:
