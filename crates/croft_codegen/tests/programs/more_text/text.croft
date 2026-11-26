@@ -1,0 +1,57 @@
+// replace, index_of, lines, repeat, pad_left, pad_right and join, on
+// literals, parameters and strings with a Length of their own.
+context Text
+
+use { replace, index_of, lines, repeat, pad_left, pad_right, join, split, trim } from Std.Text
+
+error WrongAnswer
+
+value Page {
+    title: String where Length(0, 12)
+}
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn escape(text: String): String = text.replace("&", "&amp;").replace("<", "&lt;")
+
+fn score(points: Int where Range(0, 9999)): String = points.to_string().pad_left(5, "0")
+
+fn rule(width: Int where Range(0, 8)): String = "-".repeat(width)
+
+fn second_line(text: String): String = text.lines().get(1).unwrap_or("")
+
+fn tidy(words: List<String>): String = words.map(w -> w.trim()).join(", ")
+
+service Check(): Result<Unit, WrongAnswer> = {
+    check("a-b-c".replace("-", "+") == "a+b+c")?
+    check("aaa".replace("a", "bb") == "bbbbbb")?
+    check("abc".replace("", "x") == "abc")?
+    check("abc".replace("abc", "") == "")?
+    check(escape("<b> & </b>") == "&lt;b> &amp; &lt;/b>")?
+    check("lighthouse".index_of("house") == Some(5))?
+    check("lighthouse".index_of("x") == None)?
+    check("one\ntwo\r\nthree\n".lines() == ["one", "two", "three"])?
+    check("".lines().length == 0)?
+    check("a\n\nb".lines() == ["a", "", "b"])?
+    check(second_line("first\nsecond") == "second")?
+    check("ab".repeat(3) == "ababab")?
+    check("ab".repeat(0) == "")?
+    check(rule(4) == "----")?
+    check(score(42) == "00042")?
+    check(score(123456 / 100) == "01234")?
+    check("7".pad_right(3, ".") == "7..")?
+    check("long".pad_left(2, " ") == "long")?
+    check("x".pad_left(4, "ab") == "abax")?
+    check(["a", "b", "c"].join(", ") == "a, b, c")?
+    check(["solo"].join("-") == "solo")?
+    let none: List<String> = []
+    check(none.join(",") == "")?
+    check(tidy(" a , b ".split(",")) == "a, b")?
+    let page = Page { title: "Notes & More" }
+    check(page.title.replace("&", "and") == "Notes and More")
+}

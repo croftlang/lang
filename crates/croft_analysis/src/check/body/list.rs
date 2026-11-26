@@ -57,6 +57,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 Type::option(Type::Int),
                 span,
             ),
+            "join" if *item == Type::String => {
+                let context = self.scope.context;
+                self.checker.check_standard(context, name, span);
+                self.fixed(name, arguments, &[Type::String], Type::String, span)
+            }
             "add" => self.fixed(name, arguments, std::slice::from_ref(item), list, span),
             "drop" | "take" => self.fixed(name, arguments, &[Type::Int], list, span),
             "reverse" => self.fixed(name, arguments, &[], list, span),

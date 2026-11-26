@@ -178,10 +178,11 @@ How much a string, list or `Bytes` can hold, fixed when the program is
 compiled. A string field, variant field, parameter or result with a `Length`
 constraint holds that many characters. A string the program builds holds as
 many as it can need: a literal is as long as it is, `trim`, `slice` and each
-part of `split` are no longer than the string they come from, a joined
-string is as long as both parts, and a function gives back a string as long
-as the longest it can return. Each part of `split`, and the result of `trim`
-or `slice`, borrows its characters from the string it comes from rather than
+part of `split` or `lines` are no longer than the string they come from, a
+joined string is as long as both parts, `repeat` and `pad_left` as long as
+the `Range` of their count or width allows, and a function gives back a
+string as long as the longest it can return. Each part of `split` or
+`lines`, and the result of `trim` or `slice`, borrows its characters from the string it comes from rather than
 copying them, unless that string can change before the function returns. A
 string with nothing to bound it, such as a parameter with no `Length` or a
 `let` that is `set` again later, holds 32 characters, or the longest
@@ -353,8 +354,10 @@ it can need, as a string is; see Capacity.
 ### Standard context
 A set of built-ins a context imports before using, like any other context:
 `use { trim, split } from Std.Text`. `Std.Text` has `contains`,
-`starts_with`, `ends_with`, `to_upper`, `to_lower`, `trim`, `slice`, `split`,
-`to_int` and `to_bytes` for strings, and `to_text` for bytes. `Std.Numbers`
+`starts_with`, `ends_with`, `index_of`, `to_upper`, `to_lower`, `trim`,
+`slice`, `split`, `lines`, `replace`, `repeat`, `pad_left`, `pad_right`,
+`to_int` and `to_bytes` for strings, `join` for a list of strings, and
+`to_text` for bytes. `Std.Numbers`
 has `Decimal`, `max`, `min` and `abs`. `Std.Collections` has `Map`.
 Each file of a context sees what any of them imports. Standard contexts need
 no arrow in the domain's `contexts`.

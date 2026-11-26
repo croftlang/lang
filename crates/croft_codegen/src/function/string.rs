@@ -102,8 +102,102 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let item = if stable { part_type } else { owned };
                 self.split(&text, &separator, &item)
             }
+            "lines" => {
+                let item = if stable { part_type } else { owned };
+                self.lines(&text, &item)
+            }
+            "index_of" => {
+                let part = part(self, 0);
+                let temp = self.temp(ty);
+                self.line(format!(
+                    "{temp}.value = croft_string_find({text}, {part}, 0);"
+                ));
+                self.line(format!("{temp}.some = {temp}.value >= 0;"));
+                temp
+            }
+            "replace" => {
+                let from = part(self, 0);
+
+                let (to, to_type) = match arguments.get(1) {
+                    Some(argument) => self.bounded_view(&argument.value),
+                    None => ("croft_string_view_from(\"\", 0)".to_string(), Type::Text(1)),
+                };
+
+                // Each character changed, at most, for all of `to`.
+                let most = self.gen.bound(bounded) * self.gen.bound(&to_type).max(1);
+                let temp = self.temp(&self.gen.text_type(most));
+
+                self.line(format!(
+                    "croft_string_replace({text}, {from}, {to}, CROFT_OUT({temp}));"
+                ));
+
+                temp
+            }
+            "repeat" => {
+                let count = number(self, 0);
+                let most = self.most(arguments.first()).map_or(i64::MAX, |high| {
+                    self.gen.bound(bounded).saturating_mul(high)
+                });
+                let temp = self.temp(&self.gen.text_type(most));
+
+                self.line(format!(
+                    "croft_string_repeat({text}, {count}, CROFT_OUT({temp}));"
+                ));
+
+                temp
+            }
+            "pad_left" | "pad_right" => {
+                let width = number(self, 0);
+                let fill = part(self, 1);
+                let before = u8::from(name == "pad_left");
+                let most = self
+                    .most(arguments.first())
+                    .map_or(i64::MAX, |high| high.max(self.gen.bound(bounded)));
+                let temp = self.temp(&self.gen.text_type(most));
+
+                self.line(format!(
+                    "croft_string_pad({text}, {width}, {fill}, {before}, CROFT_OUT({temp}));"
+                ));
+
+                temp
+            }
             _ => "0".to_string(),
         }
+    }
+
+    /// The most a whole-number argument can be, when its range is known.
+    fn most(&self, argument: Option<&Argument>) -> Option<i64> {
+        let range = self.range_of(&argument?.value)?;
+        Some(range.high.max(0))
+    }
+
+    /// `text.lines()`: each line, without its `\n` or `\r\n`, borrowed from
+    /// `text` or copied, as `item` says. A last line that ends in `\n` has
+    /// no empty line after it.
+    fn lines(&mut self, text: &str, item: &Type) -> String {
+        let lines = self.temp(&Type::list(item.clone()));
+        let at = self.raw_variable("at", "croft_u16");
+        let capacity = self.gen.sizes.list_capacity(&Type::String);
+
+        self.line(format!("{lines}.length = 0;"));
+        self.line(format!("{at} = 0;"));
+
+        self.open(format!(
+            "while ({at} < {text}.length && {lines}.length < {capacity})"
+        ));
+
+        let line = format!("croft_string_line({text}, &{at})");
+        let slot = format!("{lines}.items[{lines}.length]");
+
+        match item {
+            Type::Borrowed(_) => self.line(format!("{slot} = {line};")),
+            _ => self.line(format!("croft_string_copy({line}, CROFT_OUT({slot}));")),
+        }
+
+        self.line(format!("{lines}.length++;"));
+        self.close();
+
+        lines
     }
 
     /// `line.split(",")`: the parts between each separator, each borrowed

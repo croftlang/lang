@@ -46,6 +46,10 @@ impl<'g, 'a> Writer<'g, 'a> {
             return self.add(list, item, arguments, ty);
         }
 
+        if name == "join" {
+            return self.join(list, item, arguments);
+        }
+
         if name == "sort" || name == "sort_by" {
             return self.sort(list, item, arguments, ty);
         }
@@ -204,6 +208,40 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.close();
 
         temp
+    }
+
+    /// `names.join(", ")`: each string, with the separator between each two.
+    fn join(&mut self, list: &str, item: &Type, arguments: &[Argument]) -> String {
+        let (value, separator_type) = match arguments.first() {
+            Some(argument) => self.bounded_view(&argument.value),
+            None => ("croft_string_view_from(\"\", 0)".to_string(), Type::Text(1)),
+        };
+
+        let separator = self.raw_variable("separator", "croft_string_view");
+        self.line(format!("{separator} = {value};"));
+
+        let capacity = self.gen.sizes.list_capacity(item);
+        let most =
+            capacity * self.gen.bound(item) + (capacity - 1) * self.gen.bound(&separator_type);
+        let joined = self.temp(&self.gen.text_type(most));
+        let index = self.index_variable();
+
+        self.line(format!("{joined}.length = 0;"));
+        self.open(format!(
+            "for ({index} = 0; {index} < {list}.length; {index}++)"
+        ));
+
+        self.line(format!(
+            "if ({index} > 0) croft_string_join(CROFT_VIEW({joined}), {separator}, CROFT_OUT({joined}));"
+        ));
+
+        self.line(format!(
+            "croft_string_join(CROFT_VIEW({joined}), CROFT_VIEW({list}.items[{index}]), CROFT_OUT({joined}));"
+        ));
+
+        self.close();
+
+        joined
     }
 
     /// `sort` and `sort_by`: a copy in order, numbers by size and strings

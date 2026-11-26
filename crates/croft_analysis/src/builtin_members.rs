@@ -31,6 +31,12 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
                 "split",
                 "to_int",
                 "to_bytes",
+                "index_of",
+                "replace",
+                "lines",
+                "repeat",
+                "pad_left",
+                "pad_right",
             ]));
 
             members
@@ -56,6 +62,10 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
 
             if item.is_number() || **item == Type::String {
                 members.push(("sort", Operation));
+            }
+
+            if **item == Type::String {
+                members.push(("join", Operation));
             }
 
             members

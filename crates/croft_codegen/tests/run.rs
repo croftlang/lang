@@ -619,6 +619,12 @@ fn works_out_narrow_numbers_as_if_they_had_32_bits() {
     run_program("narrow_numbers");
 }
 
+/// Std.Text's replace, index_of, lines, repeat, padding and join.
+#[test]
+fn runs_more_text_methods() {
+    run_program("more_text");
+}
+
 /// sort, sort_by, reverse, index_of and `+` on lists.
 #[test]
 fn runs_more_list_methods() {

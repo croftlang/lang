@@ -1,0 +1,5 @@
+[package]
+name = "more_text"
+
+[target.test]
+main = "Check"
