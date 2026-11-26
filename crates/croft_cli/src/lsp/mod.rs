@@ -1,5 +1,5 @@
 //! `croft lsp`: a language server, so editors can show errors as you type, what
-//! a name is on hover, and where it is declared.
+//! a name is on hover, and where it is declared, and can format a file.
 //!
 //! It speaks the language server protocol over stdin and stdout. A change
 //! to a file checks its project again, with the files open in the editor
@@ -26,17 +26,19 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, DidSaveTextDocument,
     Notification as _, PublishDiagnostics,
 };
-use lsp_types::request::{Completion, GotoDefinition, HoverRequest, Request as _};
+use lsp_types::request::{Completion, Formatting, GotoDefinition, HoverRequest, Request as _};
 use lsp_types::{
     CompletionOptions, CompletionParams, CompletionResponse, Diagnostic, DiagnosticSeverity,
-    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents, HoverParams,
-    HoverProviderCapability, InitializeParams, Location, MarkupContent, MarkupKind, OneOf,
-    PublishDiagnosticsParams, ServerCapabilities, TextDocumentPositionParams,
-    TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
+    DocumentFormattingParams, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents,
+    HoverParams, HoverProviderCapability, InitializeParams, Location, MarkupContent, MarkupKind,
+    OneOf, PublishDiagnosticsParams, ServerCapabilities, TextDocumentPositionParams,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri,
 };
 
 use self::lookup::Found;
-use self::position::{from_position, name_range, path_to_uri, uri_to_path, word_range};
+use self::position::{
+    from_position, name_range, path_to_uri, uri_to_path, whole_range, word_range,
+};
 use self::session::{ProjectState, Session};
 use croft_syntax::SourceId;
 
@@ -47,6 +49,7 @@ pub fn run() -> Result<(), String> {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         definition_provider: Some(OneOf::Left(true)),
+        document_formatting_provider: Some(OneOf::Left(true)),
         completion_provider: Some(CompletionOptions {
             trigger_characters: Some(vec![".".to_string()]),
             ..CompletionOptions::default()
@@ -150,6 +153,8 @@ impl Server<'_> {
                 .map(|p| serde_json::to_value(self.definition(&p.text_document_position_params))),
             Completion::METHOD => params::<CompletionParams>(request)
                 .map(|p| serde_json::to_value(self.complete(&p.text_document_position))),
+            Formatting::METHOD => params::<DocumentFormattingParams>(request)
+                .map(|p| serde_json::to_value(self.format(&p.text_document.uri))),
             _ => {
                 self.reply(Response::new_err(id, -32601, "unknown request".into()));
                 return;
@@ -313,6 +318,36 @@ impl Server<'_> {
         let (line, column) = from_position(text, at.position);
         let items = completion::complete(state, id, text, line, column);
         Some(CompletionResponse::Array(items))
+    }
+
+    /// The file laid out in the Croft style, as one edit replacing all of
+    /// it, or no edits when it already is. Nothing when it does not parse,
+    /// whose errors are already shown.
+    fn format(&self, uri: &Uri) -> Option<Vec<TextEdit>> {
+        let path = uri_to_path(uri)?;
+
+        // The standard library's files are only there to be read.
+        if standard::source_at(&path).is_some() {
+            return None;
+        }
+
+        let saved;
+
+        let text = match self.session.open_text(&path) {
+            Some(text) => text,
+            None => {
+                saved = std::fs::read_to_string(&path).ok()?;
+                saved.as_str()
+            }
+        };
+
+        let formatted = croft_format::format_source(text).ok()?;
+
+        if formatted == text {
+            return Some(Vec::new());
+        }
+
+        Some(vec![TextEdit::new(whole_range(text), formatted)])
     }
 }
 

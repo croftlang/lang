@@ -14,6 +14,7 @@ croft_std = { path = "../croft_std" }
 croft_syntax = { path = "../croft_syntax" }
 croft_analysis = { path = "../croft_analysis" }
 croft_codegen = { path = "../croft_codegen" }
+croft_format = { path = "../croft_format" }
 crossbeam-channel = "0.5"
 lsp-server = "0.7"
 lsp-types = "0.97"

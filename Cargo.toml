@@ -5,6 +5,7 @@ members = [
     "crates/croft_std",
     "crates/croft_analysis",
     "crates/croft_codegen",
+    "crates/croft_format",
     "crates/croft_cli",
 ]
 

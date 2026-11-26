@@ -127,6 +127,7 @@ croft/
 │   ├── croft_std/         # Standard contexts written in Croft, and their adapters' C
 │   ├── croft_analysis/    # Merging files, name resolution and type checking
 │   ├── croft_codegen/     # C89 generation for one target
+│   ├── croft_format/      # The formatter, croft fmt
 │   └── croft_cli/         # The croft command and the language server
 ├── docs/
 │   ├── glossary.md        # The names of the language's parts

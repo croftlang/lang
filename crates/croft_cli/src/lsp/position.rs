@@ -49,6 +49,15 @@ pub fn name_range(text: &str, span: Span, length: usize) -> Range {
     Range::new(start, end)
 }
 
+/// The range of the whole text, from its start to just after its last character.
+pub fn whole_range(text: &str) -> Range {
+    let lines = text.matches('\n').count() as u32;
+    let last_line = text.rsplit('\n').next().unwrap_or("");
+    let units: usize = last_line.chars().map(char::len_utf16).sum();
+
+    Range::new(Position::new(0, 0), Position::new(lines, units as u32))
+}
+
 /// The range of the word at `span`, or of its one character when it is not
 /// in a word. A diagnostic only knows where it starts, so this is what it underlines.
 pub fn word_range(text: &str, span: Span) -> Range {
@@ -201,6 +210,15 @@ mod tests {
         assert_eq!(to_position(text, 2, 6), Position::new(1, 6));
         assert_eq!(from_position(text, Position::new(1, 6)), (2, 6));
         assert_eq!(from_position(text, Position::new(0, 5)), (1, 6));
+    }
+
+    #[test]
+    fn the_whole_range_ends_after_the_last_character() {
+        let range = whole_range("let é = 1\nlet 🙂x = 2");
+        assert_eq!(range.end, Position::new(1, 11));
+
+        let range = whole_range("one\n");
+        assert_eq!(range.end, Position::new(1, 0));
     }
 
     #[test]

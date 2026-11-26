@@ -1,4 +1,4 @@
-use super::tokenize;
+use super::{tokenize, tokenize_with_comments};
 use crate::keyword::Keyword;
 use crate::span::SourceId;
 use crate::token::{Token, TokenKind};
@@ -71,6 +71,34 @@ fn attaches_comments_directly_above_as_doc() {
 fn ignores_comments_separated_by_a_blank_line() {
     let found = tokens("// note\n\ncommand Reset");
     assert!(found[0].doc.is_empty());
+}
+
+#[test]
+fn keeps_every_comment_as_written() {
+    let source = "// note\n\nlet x = 0x4F //  trailing  \n";
+    let tokenized = tokenize_with_comments(source, SourceId(0)).expect("source should tokenize");
+
+    let comments: Vec<(&str, u32, u32)> = tokenized
+        .comments
+        .iter()
+        .map(|comment| {
+            (
+                comment.text.as_str(),
+                comment.span.line,
+                comment.span.column,
+            )
+        })
+        .collect();
+
+    assert_eq!(comments, vec![(" note", 1, 1), ("  trailing", 3, 14)]);
+
+    let texts: Vec<&str> = tokenized
+        .ranges
+        .iter()
+        .map(|range| &source[range.clone()])
+        .collect();
+
+    assert_eq!(texts, vec!["let", "x", "=", "0x4F", ""]);
 }
 
 #[test]
