@@ -3,6 +3,7 @@
 use croft_syntax::ast::Path;
 
 use super::{Checker, Resolved};
+use crate::standard::CONSOLE_CONTEXT;
 use crate::symbols::SymbolKind;
 
 impl<'a> Checker<'a> {
@@ -27,6 +28,14 @@ impl<'a> Checker<'a> {
         }
 
         found.retain(|resolved| resolved.kind == kind);
+
+        // A port the program declares replaces the standard one it is named after.
+        if found
+            .iter()
+            .any(|resolved| resolved.context != CONSOLE_CONTEXT)
+        {
+            found.retain(|resolved| resolved.context != CONSOLE_CONTEXT);
+        }
 
         match found.len() {
             1 => found.pop(),

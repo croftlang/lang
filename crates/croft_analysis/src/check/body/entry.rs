@@ -5,8 +5,7 @@ use croft_syntax::ast::{FunctionDecl, FunctionKind, Parameter};
 use super::{BodyChecker, BodyKind};
 use crate::check::{Checker, Scope};
 use crate::program::Context;
-use crate::symbols::SymbolKind;
-use crate::types::{Resolved, Type};
+use crate::types::Type;
 
 impl<'a> Checker<'a> {
     pub(in crate::check) fn check_bodies(&mut self, context: &'a Context) {
@@ -138,12 +137,3 @@ impl<'a> Checker<'a> {
 }
 
 impl<'c, 'a> BodyChecker<'c, 'a> {}
-
-/// A built-in port, such as `Arguments`. It belongs to no context.
-pub(super) fn builtin_port(name: &str) -> Resolved {
-    Resolved {
-        context: String::new(),
-        name: name.to_string(),
-        kind: SymbolKind::Port,
-    }
-}

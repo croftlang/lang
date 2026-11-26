@@ -6,6 +6,7 @@ use super::{
 /// A context, or the part of one written in a single file.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContextDecl {
+    pub doc: Vec<String>,
     pub name: Identifier,
     pub items: Vec<ContextItem>,
 }

@@ -393,16 +393,16 @@ program with a repository: `StorageFull`, `StorageDamaged` (written by a
 different version of the program, or damaged) and `StorageUnavailable`.
 
 ### Arguments
-The built-in port that gives a program its command-line arguments. A
-service lists it in `calls`, then reads `arguments.all()` for a
-`List<String>`. Every target supplies it; targets without a command line,
-such as the ZX Spectrum, give an empty list.
+The port in `Std.Console` that gives a program its command-line arguments,
+with no import needed. A service lists it in `calls`, then reads
+`arguments.all()` for a `List<String>`. Every target supplies it; targets
+without a command line, such as the ZX Spectrum, give an empty list.
 
 ### Console
-The built-in port that prints a line: `console.print("hello")` in a
-service or domain that lists it in `calls`. Every target supplies it, so
-`croft.toml` names no adapter for it. A program's own port called `Console`
-replaces it.
+The port in `Std.Console` that prints a line, with no import needed:
+`console.print("hello")` in a service or domain that lists it in `calls`.
+Every target supplies it, so `croft.toml` names no adapter for it. A
+program's own port called `Console` replaces it.
 
 ### Adapter
 Implements a port, usually in a `Platform` context: `adapter FixedClock for

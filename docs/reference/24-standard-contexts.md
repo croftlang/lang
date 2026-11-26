@@ -1,6 +1,6 @@
 # Standard contexts
 
-The rest of the built-ins are imported, like names from any other context, so each context says what it relies on and the standard library can grow without filling every namespace. An import covers every file of the context, and needs no arrow in the domain's contexts. Std.Files and Std.Http are written in dn: a port, its errors, and an adapter that dn.toml can bind, StdioFiles on any machine with C's stdio and CurlHttp wherever libcurl is, which also brings HTTPS. Whatever is imported, the generated C only carries the runtime functions the program calls.
+Two standard contexts need no import: Std.Console, with the `Console` and `Arguments` ports, and Std.Storage, for repositories. The rest of the built-ins are imported, like names from any other context, so each context says what it relies on and the standard library can grow without filling every namespace. An import covers every file of the context, and needs no arrow in the domain's contexts. Std.Files and Std.Http are written in dn: a port, its errors, and an adapter that dn.toml can bind, StdioFiles on any machine with C's stdio and CurlHttp wherever libcurl is, which also brings HTTPS. Whatever is imported, the generated C only carries the runtime functions the program calls.
 
 ```croft
 context Notes

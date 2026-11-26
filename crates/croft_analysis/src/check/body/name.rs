@@ -36,6 +36,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             "None" => {
                 self.note(id, Meaning::NoneValue);
+
+                self.checker.facts.builtins.push(crate::facts::BuiltinName {
+                    span,
+                    name: name.to_string(),
+                });
+
                 return Type::option(Type::Unknown);
             }
             _ => {}

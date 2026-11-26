@@ -1,6 +1,5 @@
 //! Functions, services, translations, commands, policies and constraints.
 
-use crate::standard::is_builtin_port;
 use croft_syntax::ast::{ConstraintDecl, FunctionDecl, FunctionKind, PolicyDecl};
 
 use super::{Checker, Scope};
@@ -44,12 +43,7 @@ impl<'a> Checker<'a> {
             let kinds = [SymbolKind::Port, SymbolKind::Repository];
 
             for port in &function.calls {
-                let is_builtin =
-                    is_builtin_port(&port.text()) && self.resolve(scope, port).is_none();
-
-                if !is_builtin {
-                    self.expect_kind(scope, port, &kinds, "a port or repository");
-                }
+                self.expect_kind(scope, port, &kinds, "a port or repository");
             }
         } else if let Some(port) = function.calls.first() {
             self.error("only a service can call ports", port.span());

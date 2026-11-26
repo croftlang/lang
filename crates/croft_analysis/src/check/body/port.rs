@@ -13,30 +13,6 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         method: &Identifier,
         arguments: &[Argument],
     ) -> Type {
-        if port.context.is_empty() {
-            let operation = match (port.name.as_str(), method.name.as_str()) {
-                ("Arguments", "all") => Some((vec![], Type::list(Type::String))),
-                ("Console", "print") => Some((vec![("text", Type::String)], Type::Unit)),
-                _ => None,
-            };
-
-            let Some((parameters, result)) = operation else {
-                let message = format!("port `{}` has no operation `{}`", port.name, method.name);
-                self.error(message, method.span);
-                return Type::Unknown;
-            };
-
-            let parameters: Vec<(String, Type)> = (parameters.into_iter())
-                .map(|(name, ty)| (name.to_string(), ty))
-                .collect();
-
-            self.check_arguments(arguments, &parameters, &method.name, method.span, false);
-
-            let receiver = Type::Port(port.clone());
-            self.note_member(method, &receiver, &result, MemberKind::Operation, None);
-            return result;
-        }
-
         let scope = self.checker.scope_of(port);
 
         let decl = scope

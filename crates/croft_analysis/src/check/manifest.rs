@@ -1,7 +1,7 @@
 //! Checking `croft.toml` against the program: what each target runs, and an
 //! adapter for every port each target needs.
 
-use crate::standard::{is_builtin_port, FILE_STORAGE, STORAGE_CONTEXT};
+use crate::standard::{CONSOLE_CONTEXT, FILE_STORAGE, STORAGE_CONTEXT};
 use std::collections::BTreeSet;
 
 use croft_syntax::ast::Identifier;
@@ -62,18 +62,16 @@ impl<'a> Checker<'a> {
                 continue;
             }
 
-            if is_builtin_port(&port_name.name)
-                && self.find_quietly(port_name, SymbolKind::Port).is_none()
-            {
-                let message = format!("`{}` is built in, so it needs no adapter", port_name.name);
-                self.error(message, port_name.span);
-                continue;
-            }
-
             let Some(port) = self.find_anywhere(&to_path(port_name), SymbolKind::Port, "a port")
             else {
                 continue;
             };
+
+            if port.context == CONSOLE_CONTEXT {
+                let message = format!("`{}` is built in, so it needs no adapter", port_name.name);
+                self.error(message, port_name.span);
+                continue;
+            }
 
             if !bound.insert((port.context.clone(), port.name.clone())) {
                 let message = format!(
@@ -126,7 +124,9 @@ impl<'a> Checker<'a> {
             }
         }
 
-        for (_, port) in needed.difference(&bound) {
+        let supplied = |(context, _): &&(String, String)| context != CONSOLE_CONTEXT;
+
+        for (_, port) in needed.difference(&bound).filter(supplied) {
             let message = format!(
                 "target `{}` has no adapter for port `{port}`",
                 target.name.name

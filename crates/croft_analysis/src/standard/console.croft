@@ -1,0 +1,21 @@
+// Std.Console: the command line a program runs from. Every program has it,
+// and its names need no import: a service lists `Console` or `Arguments` in
+// `calls` and uses them. Every target supplies both, so croft.toml names no
+// adapter for them; the compiler writes their C. A port the program declares
+// with the same name replaces one of these.
+context Console {
+    publish { Console, Arguments }
+
+    // Text for whoever runs the program.
+    port Console {
+        // Prints the text and starts a new line.
+        fn print(text: String): Unit
+    }
+
+    // The words the program was run with, after its own name.
+    port Arguments {
+        // Each of them, in order. Targets without a command line, such as
+        // the ZX Spectrum, give an empty list.
+        fn all(): List<String>
+    }
+}

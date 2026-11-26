@@ -3,7 +3,6 @@
 
 use croft_syntax::ast::{Expr, ExprKind, Parameter};
 
-use super::entry::builtin_port;
 use super::BodyChecker;
 use crate::naming::to_snake_case;
 use crate::symbols::SymbolKind;
@@ -23,7 +22,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             let handle = match self.checker.resolve(&self.scope, path) {
                 Some(found) if found.kind == SymbolKind::Repository => Type::Repository(found),
                 Some(found) => Type::Port(found),
-                None => Type::Port(builtin_port(&path.last().name)),
+                None => Type::Unknown,
             };
 
             self.bind(&to_snake_case(&path.last().name), handle, false, None);

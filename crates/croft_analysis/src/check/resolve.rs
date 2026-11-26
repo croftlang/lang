@@ -4,7 +4,7 @@
 //! names the context imports with `use`. A name can also be written with its
 //! context in front, `Dungeon.Room.EnemyDefeated`, if that context publishes it.
 
-use crate::standard::STORAGE_CONTEXT;
+use crate::standard::{CONSOLE_CONTEXT, STORAGE_CONTEXT};
 use croft_syntax::ast::Path;
 
 use crate::facts::Reference;
@@ -94,9 +94,11 @@ impl<'a> Checker<'a> {
             }
         }
 
-        // `StorageError` and its errors need no import.
-        if self.is_published(STORAGE_CONTEXT, &text) {
-            return self.lookup(STORAGE_CONTEXT, &text);
+        // `StorageError` and its errors, `Console` and `Arguments` need no import.
+        for standard in [STORAGE_CONTEXT, CONSOLE_CONTEXT] {
+            if self.is_published(standard, &text) {
+                return self.lookup(standard, &text);
+            }
         }
 
         let (first, rest) = path.segments.split_first()?;

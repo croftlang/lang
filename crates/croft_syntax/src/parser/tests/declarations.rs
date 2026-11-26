@@ -98,7 +98,11 @@ fn reads_an_adapter_without_a_target() {
 
 #[test]
 fn keeps_doc_comments() {
-    let file = parse_ok("context Dungeon {\n    // Moves the player.\n    fn walk(): Unit\n}");
+    let file = parse_ok(
+        "// Rooms and what is in them.\ncontext Dungeon {\n    // Moves the player.\n    fn walk(): Unit\n}",
+    );
+
+    assert_eq!(only_context(&file).doc, vec!["Rooms and what is in them."]);
 
     let ContextItem::Function(walk) = &only_context(&file).items[0] else {
         panic!("expected a function")
