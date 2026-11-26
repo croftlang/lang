@@ -1,7 +1,21 @@
 /* Std.Files through C89's stdio, for the StdioFiles adapter. Written out
-   only for a target that binds Files to StdioFiles. */
+   only for a target that binds Files to StdioFiles. Listing a folder needs
+   POSIX, so it is only built where there is one: Unix, macOS and MiNT. */
+#if defined(__unix__) || defined(__unix) || defined(__APPLE__) || defined(__MINT__)
+#define CROFT_HAS_FOLDERS
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 1
+#endif
+#endif
+
 #include <stdio.h>
 #include "program.h"
+
+#ifdef CROFT_HAS_FOLDERS
+#include <dirent.h>
+#include <string.h>
+#include <sys/stat.h>
+#endif
 
 /* The longest path fopen is given. */
 #define CROFT_PATH_CAPACITY 255
@@ -104,4 +118,86 @@ void croft_files_remove(croft_string_view path, croft_result_unit_error *out)
         return;
     }
     out->ok = 1;
+}
+
+#ifdef CROFT_HAS_FOLDERS
+/* Whether the entry called `name` in `folder`, a C string, is a folder. */
+static croft_bool is_folder(const char *folder, const char *name)
+{
+    char path[2 * CROFT_PATH_CAPACITY + 2];
+    struct stat info;
+    size_t length = strlen(folder);
+    strcpy(path, folder);
+    if (length > 0 && folder[length - 1] != '/') {
+        strcat(path, "/");
+    }
+    strcat(path, name);
+    return stat(path, &info) == 0 && S_ISDIR(info.st_mode);
+}
+
+/* Whether a comes before b, byte by byte, the shorter first when one starts
+   the other. */
+static croft_bool comes_before(const croft_string *a, const croft_string *b)
+{
+    croft_u16 index;
+    for (index = 0; index < a->length && index < b->length; index++) {
+        if (a->text[index] != b->text[index]) {
+            return (unsigned char) a->text[index] < (unsigned char) b->text[index];
+        }
+    }
+    return a->length < b->length;
+}
+#endif
+
+/* Each name is put in order as it is read, so the list is always sorted. */
+void croft_files_list(croft_string_view folder, croft_result_list_string_error *out)
+{
+#ifdef CROFT_HAS_FOLDERS
+    char name[CROFT_PATH_CAPACITY + 1];
+    croft_u16 capacity = (croft_u16) (sizeof out->value.items / sizeof out->value.items[0]);
+    croft_u16 room = (croft_u16) sizeof out->value.items[0].text;
+    croft_string found;
+    croft_u16 at;
+    DIR *dir;
+    struct dirent *entry;
+    croft_clear(out, sizeof *out);
+    to_path(folder, name);
+    dir = opendir(name);
+    if (dir == 0) {
+        fail(&out->error, CROFT_ERROR_Std_Files_NotFound);
+        return;
+    }
+    while ((entry = readdir(dir)) != 0) {
+        size_t length = strlen(entry->d_name);
+        croft_bool inner;
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        inner = is_folder(name, entry->d_name);
+        if (out->value.length >= capacity || length + inner > room) {
+            closedir(dir);
+            croft_clear(out, sizeof *out);
+            fail(&out->error, CROFT_ERROR_Std_Files_NoRoom);
+            return;
+        }
+        memcpy(found.text, entry->d_name, length);
+        if (inner) {
+            found.text[length] = '/';
+        }
+        found.length = (croft_u16) (length + inner);
+        at = out->value.length;
+        while (at > 0 && comes_before(&found, &out->value.items[at - 1])) {
+            out->value.items[at] = out->value.items[at - 1];
+            at--;
+        }
+        out->value.items[at] = found;
+        out->value.length++;
+    }
+    closedir(dir);
+    out->ok = 1;
+#else
+    (void) folder;
+    croft_clear(out, sizeof *out);
+    fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+#endif
 }

@@ -83,6 +83,79 @@ fn reads_and_writes_files() {
     fs::remove_dir_all(output).ok();
 }
 
+/// `Files.list` through StdioFiles: the names in a folder in order, each
+/// folder's ending in `/`; `NoRoom` for more names than a list holds, and
+/// `NotFound` for a folder that isn't there.
+#[test]
+fn lists_the_names_in_a_folder() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/folders");
+    let output = generate(&source, "test", "folders");
+
+    let built = compile(
+        &output,
+        &[
+            "croft_runtime.c",
+            "croft_files.c",
+            "program.c",
+            "-o",
+            "program",
+        ],
+    );
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    let pages = output.join("pages");
+    fs::create_dir_all(pages.join("drafts")).expect("a folder");
+
+    for name in ["b.md", "a.md", "Z.md"] {
+        fs::write(pages.join(name), "").expect("a file");
+    }
+
+    // One more than a `List<String>` holds.
+    let many = output.join("many");
+    fs::create_dir_all(&many).expect("a folder");
+
+    for index in 0..17 {
+        fs::write(many.join(format!("{index}.md")), "").expect("a file");
+    }
+
+    let run = |folder: &str| {
+        std::process::Command::new(output.join("program"))
+            .arg(folder)
+            .current_dir(&output)
+            .output()
+            .expect("it runs")
+    };
+
+    let listed = run("pages");
+    assert_eq!(listed.status.code(), Some(0));
+    assert_eq!(
+        String::from_utf8_lossy(&listed.stdout),
+        "Z.md\na.md\nb.md\ndrafts/\n"
+    );
+
+    let full = run("many");
+    assert_eq!(full.status.code(), Some(1));
+    assert_eq!(String::from_utf8_lossy(&full.stdout), "Std.Files.NoRoom\n");
+
+    let missing = run("missing");
+    assert_eq!(missing.status.code(), Some(1));
+    assert_eq!(
+        String::from_utf8_lossy(&missing.stdout),
+        "Std.Files.NotFound\n"
+    );
+
+    fs::remove_dir_all(output).ok();
+}
+
 /// A shelf saved through FileStorage comes back the same, a missing one is
 /// `NotFound`, and a damaged file is `StorageDamaged`.
 #[test]

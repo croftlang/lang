@@ -33,14 +33,23 @@ context Files {
         fn exists(path: String): Bool
 
         fn remove(path: String): Result<Unit, FileError>
+
+        // The name of everything in the folder, in order, with a `/` on the
+        // end of each folder's name. Fails with `NotFound` when there is no
+        // such folder, and `NoRoom` when there are more names than a
+        // `List<String>` holds or a name is longer than a string.
+        fn list(folder: String): Result<List<String>, FileError>
     }
 
-    // Files through C89's stdio: fopen, fread, fwrite and remove.
+    // Files through C89's stdio: fopen, fread, fwrite and remove. Listing a
+    // folder needs POSIX's opendir, so on a machine without it, such as an
+    // 8-bit one, `list` fails with `Unreadable`.
     adapter StdioFiles for Files = {
         fn read(path) = native croft_files_read(path)
         fn write(path, data) = native croft_files_write(path, data)
         fn append(path, data) = native croft_files_append(path, data)
         fn exists(path) = native croft_files_exists(path)
         fn remove(path) = native croft_files_remove(path)
+        fn list(folder) = native croft_files_list(folder)
     }
 }
