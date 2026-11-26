@@ -23,7 +23,11 @@
           ".croft",
           ".cro"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/croft-file-light.svg",
+          "dark": "./icons/croft-file-dark.svg"
+        }
       }
     ],
     "grammars": [
