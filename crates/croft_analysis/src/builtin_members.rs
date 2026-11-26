@@ -1,8 +1,8 @@
 //! The fields and methods the language gives its own types, by name, for
 //! editors to offer. The checks in `check/body` (`property.rs`,
-//! `method.rs`, `string.rs`, `list.rs`, `map.rs`, `option.rs` and
-//! `bytes.rs`) decide what each one takes and gives back; when one is added
-//! there, add it here too.
+//! `method.rs`, `string.rs`, `list.rs`, `map.rs`, `option.rs`,
+//! `result.rs` and `bytes.rs`) decide what each one takes and gives back;
+//! when one is added there, add it here too.
 
 use crate::facts::MemberKind;
 use crate::symbols::SymbolKind;
@@ -78,6 +78,11 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
         Type::Option(_) => {
             let mut members = fields(&["is_some", "is_none"]);
             members.extend(methods(&["map", "unwrap_or"]));
+            members
+        }
+        Type::Result(..) => {
+            let mut members = fields(&["is_ok", "is_err"]);
+            members.extend(methods(&["map", "map_err", "unwrap_or"]));
             members
         }
         Type::Int | Type::Float => methods(&["to_string"]),

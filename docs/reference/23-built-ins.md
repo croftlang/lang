@@ -25,4 +25,8 @@ enemies.replace(enemy)   enemies.remove(enemy_id)
 
 // options
 found.is_some   found.is_none   found.map(e -> e.id)   found.unwrap_or(0)
+
+// results
+loaded.is_ok   loaded.is_err   loaded.map(r -> r.name)   loaded.unwrap_or(fallback)
+loaded.map_err(e -> GameError.SaveDamaged)
 ```

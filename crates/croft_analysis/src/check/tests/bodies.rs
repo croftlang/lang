@@ -319,3 +319,48 @@ fn checks_generics_through_their_instances() {
         "cannot do arithmetic on `Bool`",
     );
 }
+
+#[test]
+fn checks_the_newer_text_list_and_result_methods() {
+    assert_error(
+        "context Shop {\n fn f(text: String): String = text.replace(\"a\", \"b\")\n}",
+        "`replace` needs `use { replace } from Std.Text`",
+    );
+
+    assert_error(
+        "context Shop {\n fn f(names: List<String>): String = names.join(\",\")\n}",
+        "`join` needs `use { join } from Std.Text`",
+    );
+
+    assert_error(
+        "context Shop {\n use { join } from Std.Text\n fn f(counts: List<Int>): String = counts.join(\",\")\n}",
+        "`List<Int>` has no method `join`",
+    );
+
+    assert_error(
+        "context Shop {\n fn f(flags: List<Bool>): List<Bool> = flags.sort()\n}",
+        "`List<Bool>` has no method `sort`",
+    );
+
+    assert_error(
+        "context Shop {\n fn f(flags: List<Bool>): List<Bool> = flags.sort_by(f -> f)\n}",
+        "the lambda passed to `sort_by` must give back `Int`, found `Bool`",
+    );
+
+    // `[item] + list` joins lists; `[0] + bytes` still joins `Bytes`.
+    let source = "context Shop {\n fn f(rest: List<Int>): List<Int> = [1] + rest + [2]\n fn g(data: Bytes): Bytes = [0] + data\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+
+    assert_error(
+        "context Shop {\n fn f(rest: List<String>): List<String> = [1] + rest\n}",
+        "expected `String`, found `Int`",
+    );
+
+    let source = "context Shop {\n error Late\n fn f(r: Result<Int, Late>): Bool = r.is_ok && r.map(n -> n + 1).unwrap_or(0) > 1\n}";
+    assert_eq!(errors(source), Vec::<String>::new());
+
+    assert_error(
+        "context Shop {\n error Late\n fn f(r: Result<Int, Late>): Result<Int, Late> = r.map_err(e -> 3)\n}",
+        "the lambda passed to `map_err` must give back an error, found `Int`",
+    );
+}

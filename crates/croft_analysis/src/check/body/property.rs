@@ -22,6 +22,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             (Type::Map(key, _), "keys") => Some(Type::list((**key).clone())),
             (Type::Map(_, value), "values") => Some(Type::list((**value).clone())),
             (Type::Option(_), "is_some" | "is_none") => Some(Type::Bool),
+            (Type::Result(..), "is_ok" | "is_err") => Some(Type::Bool),
             (Type::Named(named), "source") if named.kind == SymbolKind::Event => {
                 let aggregate = named.name.split('.').next().unwrap_or_default();
                 let aggregate = self.checker.lookup(&named.context, aggregate);

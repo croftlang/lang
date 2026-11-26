@@ -630,3 +630,9 @@ fn runs_more_text_methods() {
 fn runs_more_list_methods() {
     run_program("more_lists");
 }
+
+/// is_ok, is_err, map, map_err and unwrap_or on results.
+#[test]
+fn runs_result_methods() {
+    run_program("results");
+}

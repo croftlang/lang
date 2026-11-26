@@ -332,6 +332,7 @@ Functions and methods every program has, with no import. Functions: `Some`,
 `sum`, `min_by`, `max_by`, `sort_by`, `sort` for numbers and strings, and
 joining with `+`; a list of entities also has `get`, `contains`, `replace` and
 `remove` by identity. Options: `is_some`, `is_none`, `map`, `unwrap_or`.
+Results: `is_ok`, `is_err`, `map`, `map_err`, `unwrap_or`.
 
 ### Map
 Keys, each with a value, imported with `use { Map } from Std.Collections`:

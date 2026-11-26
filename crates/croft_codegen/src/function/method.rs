@@ -1,5 +1,5 @@
 //! Method calls: port operations through the target's adapter, repositories,
-//! and the built-in methods of numbers and options.
+//! and the built-in methods of numbers, options and results.
 
 use croft_analysis::standard::CONSOLE_CONTEXT;
 use croft_analysis::types::Resolved;
@@ -81,6 +81,13 @@ impl<'g, 'a> Writer<'g, 'a> {
                     return "0".to_string();
                 };
                 self.option_method(&option, &item, name, arguments, ty)
+            }
+            Type::Result(..) => {
+                let (result, bounded) = self.eval(receiver, None);
+                let Type::Result(value, error) = bounded else {
+                    return "0".to_string();
+                };
+                self.result_method(&result, (&value, &error), name, arguments, ty)
             }
             _ => "0".to_string(),
         }
