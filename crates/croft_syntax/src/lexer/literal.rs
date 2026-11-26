@@ -14,6 +14,8 @@ impl<'a> Lexer<'a> {
                 '"' => return Ok(TokenKind::String(value)),
                 '\\' => match self.advance() {
                     Some('n') => value.push('\n'),
+                    Some('r') => value.push('\r'),
+                    Some('t') => value.push('\t'),
                     Some('"') => value.push('"'),
                     Some('\\') => value.push('\\'),
                     other => {

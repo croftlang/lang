@@ -40,6 +40,10 @@ impl<'g, 'a> Writer<'g, 'a> {
             return temp;
         }
 
+        if matches!(left_type, Type::List(_)) && op == Add {
+            return self.join_lists(left, right, ty);
+        }
+
         let left_c = self.value(left, &left_type);
         let right_c = self.value(right, &left_type);
         let (left, right) = (self.widened_operation(op, left, right, left_c), right_c);
@@ -142,6 +146,46 @@ impl<'g, 'a> Writer<'g, 'a> {
             format!("CROFT_BYTES_VIEW({right})"),
             self.gen.bytes_type(length),
         )
+    }
+
+    /// `first + second` on lists: the items of both, in a list with room
+    /// for the strings of either, as many as a list of them holds.
+    fn join_lists(&mut self, left: &Expr, right: &Expr, ty: &Type) -> String {
+        let (first, first_type) = self.eval(left, Some(ty));
+        let (second, second_type) = self.eval(right, Some(ty));
+        let joined = self
+            .gen
+            .keep_bound(&self.gen.wider(&first_type, &second_type), ty);
+
+        let (Type::List(item), Type::List(second_item)) = (&joined, &second_type) else {
+            return "0".to_string();
+        };
+
+        let (item, second_item) = ((**item).clone(), (**second_item).clone());
+        let capacity = self.gen.sizes.list_capacity(&item);
+        let temp = self.temp(&joined);
+        let index = self.index_variable();
+        let slot = format!("{temp}.items[{temp}.length]");
+
+        self.copy_into(&temp, &first, &first_type, &joined);
+
+        self.open(format!(
+            "for ({index} = 0; {index} < {second}.length; {index}++)"
+        ));
+
+        self.line(format!(
+            "CROFT_CHECK({temp}.length < {capacity}, \"a list is full\");"
+        ));
+
+        self.open(format!("if ({temp}.length < {capacity})"));
+
+        let given = format!("{second}.items[{index}]");
+        self.copy_into(&slot, &given, &second_item, &item);
+        self.line(format!("{temp}.length++;"));
+        self.close();
+        self.close();
+
+        temp
     }
 
     /// `==`, `!=` and `+` on strings, read through views so a literal on

@@ -535,14 +535,14 @@ module.exports = grammar({
 
     float: _ => /[0-9][0-9_]*\.[0-9][0-9_]*/,
 
-    // The compiler knows three escapes: \n, \" and \\.
+    // The compiler knows five escapes: \n, \r, \t, \" and \\.
     string: $ => seq(
       '"',
       repeat(choice(token.immediate(prec(1, /[^"\\]+/)), $.escape_sequence)),
       token.immediate('"'),
     ),
 
-    escape_sequence: _ => token.immediate(/\\[n"\\]/),
+    escape_sequence: _ => token.immediate(/\\[nrt"\\]/),
 
     boolean: _ => choice('true', 'false'),
   },

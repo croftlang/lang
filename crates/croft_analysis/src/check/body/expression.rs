@@ -146,9 +146,14 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 Type::Bool
             }
             Add | Subtract | Multiply | Divide | Remainder => {
-                // Lists have no arithmetic, so `[0] + data` joins `Bytes`.
-                let ty = match &left.kind {
-                    ExprKind::List(_) if op == Add => self.expr(left, Some(&Type::Bytes)),
+                // A list of numbers is also how `Bytes` are written, so
+                // `[0] + data` joins `Bytes`, unless `data` is a list.
+                if op == Add && is_list_literal(left) && !is_list_literal(right) {
+                    return self.join_onto_literal(left, right);
+                }
+
+                let ty = match op {
+                    Add if is_list_literal(left) => self.expr(left, Some(&Type::Bytes)),
                     _ => self.expr(left, None),
                 };
 
@@ -156,7 +161,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     return ty;
                 }
 
-                let joins = op == Add && matches!(ty, Type::String | Type::Bytes);
+                let joins = op == Add && matches!(ty, Type::String | Type::Bytes | Type::List(_));
 
                 if !ty.is_number() && !joins {
                     self.error(format!("cannot do arithmetic on `{ty}`"), left.span);
@@ -189,4 +194,31 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
         }
     }
+}
+
+impl<'c, 'a> BodyChecker<'c, 'a> {
+    /// `[item] + rest`: a list when `rest` is one, and otherwise `Bytes`.
+    fn join_onto_literal(&mut self, left: &Expr, right: &Expr) -> Type {
+        let right_type = self.expr(right, None);
+
+        let expected = match right_type {
+            Type::List(_) => right_type.clone(),
+            _ => Type::Bytes,
+        };
+
+        let left_type = self.expect(left, &expected);
+
+        if !self.accepts(&left_type, &right_type, right) {
+            self.error(
+                format!("expected `{left_type}`, found `{right_type}`"),
+                right.span,
+            );
+        }
+
+        left_type
+    }
+}
+
+fn is_list_literal(value: &Expr) -> bool {
+    matches!(value.kind, ExprKind::List(_))
 }

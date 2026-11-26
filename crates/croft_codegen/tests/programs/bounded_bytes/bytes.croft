@@ -65,6 +65,12 @@ fn first_two(given: Bytes where Length(0, 8)): Option<Bytes> = {
     Some(given.slice(0, 2))
 }
 
+// A tape header's length and start, as the Z80 keeps them: 0x1B00 is 00 1B.
+fn tape_header(length: Int, start: Int): Bytes = {
+    let kind: Bytes = [3]
+    kind.add_u16(length).add_u16(start)
+}
+
 // As long as both sides: 4 and 2.
 fn wrapped(payload: Bytes where Length(0, 4)): Bytes = payload + [0xFF, 0xFE]
 
@@ -96,6 +102,15 @@ service Check(): Result<Unit, Failure> {
     set log = log + log
     set log = [0] + log
     check(log == [0, 104, 105, 104, 105])?
+    // Numbers in two bytes, either way round, and a byte changed.
+    let tape = tape_header(0x1B00, 16384)
+    check(tape == [3, 0x00, 0x1B, 0x00, 0x40])?
+    check(tape.get_u16(1) == Some(0x1B00) && tape.get_u16(3) == Some(16384))?
+    check(tape.get_u16(4) == None && tape.get_u16(0 - 1) == None)?
+    let big = one.add_u16_be(0x1234)
+    check(big == [1, 0x12, 0x34] && big.get_u16_be(1) == Some(0x1234))?
+    check(big.get_u16(1) == Some(0x3412))?
+    check(big.set(0, 9) == [9, 0x12, 0x34] && big.set(5, 9) == big)?
     // Saved and found again, in a field of its own size.
     let mailbox = Mailbox.Open(id: 3)?
     mailboxes.save(mailbox)?

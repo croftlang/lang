@@ -156,6 +156,67 @@ fn lists_the_names_in_a_folder() {
     fs::remove_dir_all(output).ok();
 }
 
+/// `Files.make_folder` makes each folder on the way and leaves one that is
+/// already there, and `Files.copy` copies a file longer than a `Bytes`
+/// holds; copying one that isn't there is `NotFound`.
+#[test]
+fn makes_folders_and_copies_files() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/copies");
+    let output = generate(&source, "test", "copies");
+
+    let built = compile(
+        &output,
+        &[
+            "croft_runtime.c",
+            "croft_files.c",
+            "program.c",
+            "-o",
+            "program",
+        ],
+    );
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    let big: Vec<u8> = (0..1000).map(|index| (index % 251) as u8).collect();
+    fs::write(output.join("big.bin"), &big).expect("a file");
+
+    let run = |file: &str| {
+        std::process::Command::new(output.join("program"))
+            .arg(file)
+            .current_dir(&output)
+            .output()
+            .expect("it runs")
+    };
+
+    let built_site = run("big.bin");
+    assert_eq!(built_site.status.code(), Some(0));
+    assert_eq!(
+        String::from_utf8_lossy(&built_site.stdout),
+        "big.bin,posts/\n"
+    );
+    assert_eq!(
+        fs::read(output.join("site/blog/big.bin")).expect("the copy"),
+        big
+    );
+
+    let missing = run("missing.bin");
+    assert_eq!(missing.status.code(), Some(1));
+    assert_eq!(
+        String::from_utf8_lossy(&missing.stdout),
+        "Std.Files.NotFound\n"
+    );
+
+    fs::remove_dir_all(output).ok();
+}
+
 /// A shelf saved through FileStorage comes back the same, a missing one is
 /// `NotFound`, and a damaged file is `StorageDamaged`.
 #[test]
@@ -617,4 +678,22 @@ fn shares_temporaries_between_early_returns() {
 #[test]
 fn works_out_narrow_numbers_as_if_they_had_32_bits() {
     run_program("narrow_numbers");
+}
+
+/// Std.Text's replace, index_of, lines, repeat, padding and join.
+#[test]
+fn runs_more_text_methods() {
+    run_program("more_text");
+}
+
+/// sort, sort_by, reverse, index_of and `+` on lists.
+#[test]
+fn runs_more_list_methods() {
+    run_program("more_lists");
+}
+
+/// is_ok, is_err, map, map_err and unwrap_or on results.
+#[test]
+fn runs_result_methods() {
+    run_program("results");
 }

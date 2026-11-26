@@ -6,7 +6,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::Argument;
 
 use super::Writer;
-use crate::types::bounds::is_bytes;
+use crate::types::bounds::{is_bytes, is_string};
 
 impl<'g, 'a> Writer<'g, 'a> {
     pub fn list_method(
@@ -34,7 +34,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             "get" | "find" | "min_by" | "max_by" => {
                 self.gen.keep_bound(&Type::option(item.clone()), ty)
             }
-            "remove" | "replace" | "drop" | "take" | "filter" => {
+            "remove" | "replace" | "drop" | "take" | "filter" | "reverse" | "sort" | "sort_by" => {
                 self.gen.keep_bound(&Type::list(item.clone()), ty)
             }
             _ => ty.clone(),
@@ -44,6 +44,14 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         if name == "add" {
             return self.add(list, item, arguments, ty);
+        }
+
+        if name == "join" {
+            return self.join(list, item, arguments);
+        }
+
+        if name == "sort" || name == "sort_by" {
+            return self.sort(list, item, arguments, ty);
         }
 
         let index = self.index_variable();
@@ -108,6 +116,30 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.line(format!("{temp} = {list};"));
                 self.open(&each);
                 self.line(format!("if ({current}.{field} == {replacement}.{field}) {temp}.items[{index}] = {replacement};"));
+                self.close();
+            }
+            "index_of" => {
+                let wanted = first(self, item);
+                let test = matches(self, &wanted);
+
+                self.line(format!("{temp}.some = 0;"));
+                self.line(format!("{temp}.value = 0;"));
+                self.open(&each);
+
+                self.line(format!(
+                    "if (!{temp}.some && {test}) {{ {temp}.some = 1; {temp}.value = {index}; }}"
+                ));
+
+                self.close();
+            }
+            "reverse" => {
+                self.line(format!("{temp}.length = {list}.length;"));
+                self.open(&each);
+
+                self.line(format!(
+                    "{temp}.items[{list}.length - 1 - {index}] = {current};"
+                ));
+
                 self.close();
             }
             "drop" | "take" => {
@@ -176,6 +208,90 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.close();
 
         temp
+    }
+
+    /// `names.join(", ")`: each string, with the separator between each two.
+    fn join(&mut self, list: &str, item: &Type, arguments: &[Argument]) -> String {
+        let (value, separator_type) = match arguments.first() {
+            Some(argument) => self.bounded_view(&argument.value),
+            None => ("croft_string_view_from(\"\", 0)".to_string(), Type::Text(1)),
+        };
+
+        let separator = self.raw_variable("separator", "croft_string_view");
+        self.line(format!("{separator} = {value};"));
+
+        let capacity = self.gen.sizes.list_capacity(item);
+        let most =
+            capacity * self.gen.bound(item) + (capacity - 1) * self.gen.bound(&separator_type);
+        let joined = self.temp(&self.gen.text_type(most));
+        let index = self.index_variable();
+
+        self.line(format!("{joined}.length = 0;"));
+        self.open(format!(
+            "for ({index} = 0; {index} < {list}.length; {index}++)"
+        ));
+
+        self.line(format!(
+            "if ({index} > 0) croft_string_join(CROFT_VIEW({joined}), {separator}, CROFT_OUT({joined}));"
+        ));
+
+        self.line(format!(
+            "croft_string_join(CROFT_VIEW({joined}), CROFT_VIEW({list}.items[{index}]), CROFT_OUT({joined}));"
+        ));
+
+        self.close();
+
+        joined
+    }
+
+    /// `sort` and `sort_by`: a copy in order, numbers by size and strings
+    /// byte by byte, or by what the lambda gives each item. Items that are
+    /// the same keep their order. An insertion sort: lists are short, and it
+    /// needs no room but one item.
+    fn sort(&mut self, list: &str, item: &Type, arguments: &[Argument], ty: &Type) -> String {
+        let sorted = self.temp(ty);
+        let index = self.index_variable();
+        let at = self.index_variable();
+        let held = self.variable("held", item);
+        let before = format!("{sorted}.items[{at} - 1]");
+
+        self.line(format!("{sorted} = {list};"));
+        self.open(format!(
+            "for ({index} = 1; {index} < {sorted}.length; {index}++)"
+        ));
+        self.line(format!("{held} = {sorted}.items[{index}];"));
+
+        let key = if arguments.is_empty() {
+            None
+        } else {
+            let key = self.variable("key", &Type::Int);
+            let value = self.lambda(arguments, held.clone(), item, &Type::Int);
+            self.line(format!("{key} = {value};"));
+            Some(key)
+        };
+
+        self.line(format!("{at} = {index};"));
+        self.open(format!("while ({at} > 0)"));
+
+        let comes_first = match &key {
+            Some(key) => {
+                let other = self.lambda(arguments, before.clone(), item, &Type::Int);
+                format!("{key} < {other}")
+            }
+            None if is_string(item) => {
+                format!("croft_string_compare(CROFT_VIEW({held}), CROFT_VIEW({before})) < 0")
+            }
+            None => format!("{held} < {before}"),
+        };
+
+        self.line(format!("if (!({comes_first})) break;"));
+        self.line(format!("{sorted}.items[{at}] = {before};"));
+        self.line(format!("{at}--;"));
+        self.close();
+        self.line(format!("{sorted}.items[{at}] = {held};"));
+        self.close();
+
+        sorted
     }
 
     /// The identity field of an entity, and its type.

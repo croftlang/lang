@@ -1,0 +1,42 @@
+// is_ok, is_err, map, map_err and unwrap_or on results.
+context Results
+
+error WrongAnswer
+error TooSmall
+error Broken
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn at_least_ten(n: Int): Result<Int, TooSmall> = {
+    if n < 10 {
+        Err(TooSmall)
+    }
+    Ok(n)
+}
+
+fn name_of(n: Int): Result<String, TooSmall> = at_least_ten(n).map(v -> "n" + v.to_string())
+
+fn broken(n: Int): Result<Int, Broken> = at_least_ten(n).map_err(e -> Broken)
+
+service Check(): Result<Unit, WrongAnswer> = {
+    check(at_least_ten(12).is_ok && !at_least_ten(12).is_err)?
+    check(at_least_ten(3).is_err)?
+    check(at_least_ten(12).unwrap_or(0) == 12)?
+    check(at_least_ten(3).unwrap_or(0) == 0)?
+    check(at_least_ten(15).map(v -> v * 2).unwrap_or(0) == 30)?
+    check(at_least_ten(5).map(v -> v * 2).is_err)?
+    check(name_of(11).unwrap_or("none") == "n11")?
+    check(name_of(1).unwrap_or("none") == "none")?
+    check(broken(20).unwrap_or(0) == 20)?
+    check(broken(2).is_err)?
+    let failed = match broken(2) {
+        Ok(_) -> false
+        Err(e) -> e == Broken
+    }
+    check(failed)
+}

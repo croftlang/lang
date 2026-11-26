@@ -77,6 +77,51 @@ void croft_bytes_add(croft_bytes_view bytes, croft_int byte, unsigned char *out,
     }
 }
 
+/* The bytes with the one at index changed, or as they were when there is no
+   byte there. */
+void croft_bytes_set(croft_bytes_view bytes, croft_int index, croft_int byte, unsigned char *out, croft_u16 *length,
+                     croft_u16 capacity)
+{
+    croft_bytes_copy(bytes, out, length, capacity);
+    CROFT_CHECK(byte >= 0 && byte <= 255, "a byte is from 0 to 255");
+    if (index >= 0 && index < (croft_int) *length) {
+        out[index] = (unsigned char) byte;
+    }
+}
+
+/* The number from 0 to 65535 in the two bytes at index, the high byte first
+   when big is set. */
+croft_bool croft_bytes_get_u16(croft_bytes_view bytes, croft_int index, croft_bool big, croft_int *out)
+{
+    croft_int first;
+    croft_int second;
+    if (index < 0 || index + 1 >= (croft_int) bytes.length) {
+        *out = 0;
+        return 0;
+    }
+    first = bytes.items[index];
+    second = bytes.items[index + 1];
+    *out = big ? (first << 8) | second : (second << 8) | first;
+    return 1;
+}
+
+/* The bytes with a number from 0 to 65535 added in two, the high byte first
+   when big is set. */
+void croft_bytes_add_u16(croft_bytes_view bytes, croft_int value, croft_bool big, unsigned char *out,
+                         croft_u16 *length, croft_u16 capacity)
+{
+    unsigned char high = (unsigned char) ((value >> 8) & 0xFF);
+    unsigned char low = (unsigned char) (value & 0xFF);
+    croft_bytes_copy(bytes, out, length, capacity);
+    CROFT_CHECK(value >= 0 && value <= 65535, "a number in two bytes is from 0 to 65535");
+    CROFT_CHECK(bytes.length + 2 <= capacity, "bytes are full");
+    if (bytes.length + 2 <= capacity) {
+        out[*length] = big ? high : low;
+        out[*length + 1] = big ? low : high;
+        *length = (croft_u16) (*length + 2);
+    }
+}
+
 /* Copies forwards, so out may be where bytes is borrowed from. */
 void croft_bytes_slice(croft_bytes_view bytes, croft_int start, croft_int end, unsigned char *out, croft_u16 *length,
                        croft_u16 capacity)

@@ -172,6 +172,114 @@ croft_string_view croft_string_part(croft_string_view text, croft_int start, cro
     return part;
 }
 
+/* Text with each place that holds from changed to to, looking on after each
+   one changed. An empty from changes nothing. out is never where text is
+   borrowed from. */
+void croft_string_replace(croft_string_view text, croft_string_view from, croft_string_view to, char *out,
+                          croft_u16 *length, croft_u16 capacity)
+{
+    croft_u16 at = 0;
+    croft_u16 kept = 0;
+    croft_u16 index;
+    croft_bool fits = 1;
+    croft_string_view rest;
+    while (at < text.length) {
+        rest = croft_string_part(text, at, text.length);
+        if (from.length > 0 && croft_string_starts_with(rest, from)) {
+            for (index = 0; index < to.length; index++) {
+                if (kept < capacity) {
+                    out[kept++] = to.text[index];
+                } else {
+                    fits = 0;
+                }
+            }
+            at = (croft_u16) (at + from.length);
+        } else {
+            if (kept < capacity) {
+                out[kept++] = text.text[at];
+            } else {
+                fits = 0;
+            }
+            at++;
+        }
+    }
+    *length = kept;
+    CROFT_CHECK(fits, "replaced text is longer than a string can hold");
+}
+
+/* Text written count times, one after another. */
+void croft_string_repeat(croft_string_view text, croft_int count, char *out, croft_u16 *length, croft_u16 capacity)
+{
+    croft_u16 kept = 0;
+    croft_u16 index;
+    croft_int round;
+    for (round = 0; round < count && text.length > 0; round++) {
+        for (index = 0; index < text.length && kept < capacity; index++) {
+            out[kept++] = text.text[index];
+        }
+    }
+    *length = kept;
+    CROFT_CHECK(count <= 0 || text.length == 0 || (croft_int) text.length * count <= (croft_int) capacity,
+                "repeated text is longer than a string can hold");
+}
+
+/* Text made width characters long with the characters of fill, over and
+   over, before it or after it. Text already that long is kept as it is, and
+   an empty fill adds nothing. */
+void croft_string_pad(croft_string_view text, croft_int width, croft_string_view fill, croft_bool before, char *out,
+                      croft_u16 *length, croft_u16 capacity)
+{
+    croft_int missing = width - (croft_int) text.length;
+    croft_int added;
+    croft_u16 kept = 0;
+    croft_u16 index;
+    if (!before) {
+        croft_string_copy(text, out, &kept, capacity);
+    }
+    for (added = 0; fill.length > 0 && added < missing && kept < capacity; added++) {
+        out[kept++] = fill.text[added % fill.length];
+    }
+    if (before) {
+        for (index = 0; index < text.length && kept < capacity; index++) {
+            out[kept++] = text.text[index];
+        }
+    }
+    *length = kept;
+    CROFT_CHECK(CROFT_MAX(width, (croft_int) text.length) <= (croft_int) capacity,
+                "padded text is longer than a string can hold");
+}
+
+/* The line of text that starts at *at, without its "\n" or "\r\n", still
+   borrowed from text, and moves *at to the start of the next. */
+croft_string_view croft_string_line(croft_string_view text, croft_u16 *at)
+{
+    croft_u16 start = *at;
+    croft_u16 end = start;
+    croft_string_view line;
+    while (end < text.length && text.text[end] != '\n') {
+        end++;
+    }
+    *at = (croft_u16) (end < text.length ? end + 1 : end);
+    if (end > start && text.text[end - 1] == '\r') {
+        end--;
+    }
+    line = croft_string_part(text, start, end);
+    return line;
+}
+
+/* Below zero when a comes before b, byte by byte, the shorter first when one
+   starts the other; zero when they are the same, and above zero otherwise. */
+int croft_string_compare(croft_string_view a, croft_string_view b)
+{
+    croft_u16 index;
+    for (index = 0; index < a.length && index < b.length; index++) {
+        if (a.text[index] != b.text[index]) {
+            return (unsigned char) a.text[index] < (unsigned char) b.text[index] ? -1 : 1;
+        }
+    }
+    return a.length == b.length ? 0 : (a.length < b.length ? -1 : 1);
+}
+
 void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u16 capacity)
 {
     char digits[20];

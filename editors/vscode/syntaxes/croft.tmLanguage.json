@@ -26,14 +26,14 @@
       "end": "$"
     },
     "strings": {
-      "comment": "The lexer knows three escapes: \\n, \\\" and \\\\. Any other is an error.",
+      "comment": "The lexer knows five escapes: \\n, \\r, \\t, \\\" and \\\\. Any other is an error.",
       "name": "string.quoted.double.croft",
       "begin": "\"",
       "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.croft" } },
       "end": "\"",
       "endCaptures": { "0": { "name": "punctuation.definition.string.end.croft" } },
       "patterns": [
-        { "name": "constant.character.escape.croft", "match": "\\\\[n\"\\\\]" },
+        { "name": "constant.character.escape.croft", "match": "\\\\[nrt\"\\\\]" },
         { "name": "invalid.illegal.unknown-escape.croft", "match": "\\\\." }
       ]
     },

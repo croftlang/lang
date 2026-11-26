@@ -44,7 +44,8 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// A method of `bytes`, a C value of type `bounded`. `add` gives back
-    /// room for one more value, and `slice` no more than it had.
+    /// room for one more value, `add_u16` for two more, and `set` and
+    /// `slice` no more than it had.
     pub fn bytes_method(
         &mut self,
         (bytes, bounded): (&str, &Type),
@@ -77,6 +78,39 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                 self.line(format!(
                     "croft_bytes_add({view}, {byte}, CROFT_BYTES_OUT({temp}));"
+                ));
+
+                temp
+            }
+            "get_u16" | "get_u16_be" => {
+                let index = argument(self, 0);
+                let big = u8::from(name == "get_u16_be");
+                let temp = self.temp(ty);
+
+                self.line(format!(
+                    "{temp}.some = croft_bytes_get_u16({view}, {index}, {big}, &{temp}.value);"
+                ));
+
+                temp
+            }
+            "add_u16" | "add_u16_be" => {
+                let number = argument(self, 0);
+                let big = u8::from(name == "add_u16_be");
+                let temp = self.temp(&self.gen.bytes_type(held + 2));
+
+                self.line(format!(
+                    "croft_bytes_add_u16({view}, {number}, {big}, CROFT_BYTES_OUT({temp}));"
+                ));
+
+                temp
+            }
+            "set" => {
+                let index = argument(self, 0);
+                let byte = argument(self, 1);
+                let temp = self.temp(&self.gen.bytes_type(held));
+
+                self.line(format!(
+                    "croft_bytes_set({view}, {index}, {byte}, CROFT_BYTES_OUT({temp}));"
                 ));
 
                 temp

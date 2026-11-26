@@ -1,0 +1,5 @@
+[package]
+name = "results"
+
+[target.test]
+main = "Check"

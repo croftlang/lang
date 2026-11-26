@@ -1,0 +1,25 @@
+// Makes the folders of a site, copies the file named on the command line
+// into it, and prints what the folder then holds.
+context Site {
+    publish { Build }
+
+    use { Files, FileError } from Std.Files
+    use { join } from Std.Text
+
+    service Build(): Result<Unit, FileError> {
+        calls Files, Console, Arguments
+    } = {
+        let source = arguments.all().first.unwrap_or("big.bin")
+        files.make_folder("site/blog/posts")?
+        // Already there, so left as it is.
+        files.make_folder("site/blog")?
+        files.copy(source, "site/blog/big.bin")?
+        let names = files.list("site/blog")?
+        console.print(names.join(","))
+    }
+}
+
+domain Program {
+    contexts { Site }
+    use { Build } from Site
+} = Build()?

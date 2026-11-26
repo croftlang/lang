@@ -1,5 +1,5 @@
 //! Method calls: port operations, repositories, and the built-in methods of
-//! strings, numbers, lists and options.
+//! strings, numbers, lists, options and results.
 
 use croft_syntax::ast::{Argument, Identifier};
 
@@ -54,6 +54,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             Type::List(item) => self.list_method(item, name, arguments, span),
             Type::Map(key, value) => self.map_method(key, value, name, arguments, span),
             Type::Option(item) => self.option_method(item, name, arguments, span, expected),
+            Type::Result(value, error) => {
+                self.result_method((value, error), name, arguments, span, expected)
+            }
             _ => None,
         };
 

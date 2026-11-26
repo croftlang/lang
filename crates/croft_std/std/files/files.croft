@@ -39,11 +39,20 @@ context Files {
         // such folder, and `NoRoom` when there are more names than a
         // `List<String>` holds or a name is longer than a string.
         fn list(folder: String): Result<List<String>, FileError>
+
+        // Makes the folder, and each folder it is in that isn't there yet.
+        // A folder that is already there is left as it is.
+        fn make_folder(path: String): Result<Unit, FileError>
+
+        // Copies the file, however large, replacing the copy or making it.
+        // Fails with `NotFound` when there is nothing to copy.
+        fn copy(from: String, to: String): Result<Unit, FileError>
     }
 
-    // Files through C89's stdio: fopen, fread, fwrite and remove. Listing a
-    // folder needs POSIX's opendir, so on a machine without it, such as an
-    // 8-bit one, `list` fails with `Unreadable`.
+    // Files through C89's stdio: fopen, fread, fwrite and remove. Listing
+    // and making folders needs POSIX's opendir and mkdir, so on a machine
+    // without them, such as an 8-bit one, `list` and `make_folder` fail with
+    // `Unreadable`.
     adapter StdioFiles for Files = {
         fn read(path) = native croft_files_read(path)
         fn write(path, data) = native croft_files_write(path, data)
@@ -51,5 +60,7 @@ context Files {
         fn exists(path) = native croft_files_exists(path)
         fn remove(path) = native croft_files_remove(path)
         fn list(folder) = native croft_files_list(folder)
+        fn make_folder(path) = native croft_files_make_folder(path)
+        fn copy(from, to) = native croft_files_copy(from, to)
     }
 }

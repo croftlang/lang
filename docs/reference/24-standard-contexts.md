@@ -5,7 +5,7 @@ Two standard contexts need no import: Std.Console, with the `Console` and `Argum
 ```croft
 context Notes
 
-use { trim, split, to_upper, to_bytes, to_text } from Std.Text
+use { trim, split, to_upper, to_bytes, to_text, replace, join } from Std.Text
 use { Decimal, max, min, abs } from Std.Numbers
 use { Files, FileError } from Std.Files
 
@@ -13,6 +13,11 @@ use { Files, FileError } from Std.Files
 name.contains("Sir")   name.starts_with("Sir")   name.ends_with("!")
 name.to_upper()   name.to_lower()   name.trim()
 name.slice(0, 3)   line.split(",")   text.to_int()   // Option<Int>
+name.index_of("Sir")   // Option<Int>
+text.lines()   // without "\n" or "\r\n", and no empty line after the last
+html.replace("&", "&amp;")   "-".repeat(8)
+score.to_string().pad_left(5, "0")   name.pad_right(10, " ")
+names.join(", ")   // a List<String>
 "DN".to_bytes()   data.to_text()
 
 // Std.Numbers
@@ -26,13 +31,15 @@ stock.set("map", 1)         // a copy with map added
 stock.remove("sword")       // a copy without sword
 stock.contains("key")   stock.length   stock.is_empty   stock.keys   stock.values
 
-// Std.Files: read, write, append, exists, remove, list
+// Std.Files: read, write, append, exists, remove, list, make_folder, copy
 service Keep(): Result<Unit, FileError> {
     calls Files
 } = {
     files.write("notes.txt", "first line".to_bytes())?
     let data = files.read("notes.txt")?
     let pages = files.list("docs")?   // ["a.md", "b.md", "drafts/"], in byte order
+    files.make_folder("site/blog")?    // and site, if it isn't there yet
+    files.copy("logo.png", "site/logo.png")?   // any size, not only what a Bytes holds
     ...
 }
 

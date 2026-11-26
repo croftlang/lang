@@ -146,6 +146,8 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             (Type::Option(_), "is_some") => format!("{c}.some"),
             (Type::Option(_), "is_none") => format!("(!{c}.some)"),
+            (Type::Result(..), "is_ok") => format!("{c}.ok"),
+            (Type::Result(..), "is_err") => format!("(!{c}.ok)"),
             (Type::Named(owner), _) => {
                 let owner = owner.clone();
                 self.read_field(Some(&owner), &c, field)

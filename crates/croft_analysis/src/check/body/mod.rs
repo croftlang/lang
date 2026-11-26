@@ -26,6 +26,7 @@ mod port;
 mod property;
 mod record;
 mod repeat;
+mod result;
 mod setup;
 mod string;
 mod type_path;

@@ -101,6 +101,13 @@ void croft_string_to_upper(croft_string_view text, char *out, croft_u16 *length,
 void croft_string_to_lower(croft_string_view text, char *out, croft_u16 *length, croft_u16 capacity);
 croft_string_view croft_string_trimmed(croft_string_view text);
 croft_string_view croft_string_part(croft_string_view text, croft_int start, croft_int end);
+void croft_string_replace(croft_string_view text, croft_string_view from, croft_string_view to, char *out,
+                          croft_u16 *length, croft_u16 capacity);
+void croft_string_repeat(croft_string_view text, croft_int count, char *out, croft_u16 *length, croft_u16 capacity);
+void croft_string_pad(croft_string_view text, croft_int width, croft_string_view fill, croft_bool before, char *out,
+                      croft_u16 *length, croft_u16 capacity);
+croft_string_view croft_string_line(croft_string_view text, croft_u16 *at);
+int croft_string_compare(croft_string_view a, croft_string_view b);
 void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u16 capacity);
 
 croft_int croft_divide_even(croft_int numerator, croft_int denominator);
@@ -114,6 +121,11 @@ croft_bool croft_bytes_equal(croft_bytes_view a, croft_bytes_view b);
 void croft_bytes_join(croft_bytes_view a, croft_bytes_view b, unsigned char *out, croft_u16 *length, croft_u16 capacity);
 croft_bool croft_bytes_get(croft_bytes_view bytes, croft_int index, croft_int *out);
 void croft_bytes_add(croft_bytes_view bytes, croft_int byte, unsigned char *out, croft_u16 *length, croft_u16 capacity);
+void croft_bytes_set(croft_bytes_view bytes, croft_int index, croft_int byte, unsigned char *out, croft_u16 *length,
+                     croft_u16 capacity);
+croft_bool croft_bytes_get_u16(croft_bytes_view bytes, croft_int index, croft_bool big, croft_int *out);
+void croft_bytes_add_u16(croft_bytes_view bytes, croft_int value, croft_bool big, unsigned char *out,
+                         croft_u16 *length, croft_u16 capacity);
 void croft_bytes_slice(croft_bytes_view bytes, croft_int start, croft_int end, unsigned char *out, croft_u16 *length,
                        croft_u16 capacity);
 void croft_bytes_to_text(croft_bytes_view bytes, char *out, croft_u16 *length, croft_u16 capacity);

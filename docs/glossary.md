@@ -178,10 +178,11 @@ How much a string, list or `Bytes` can hold, fixed when the program is
 compiled. A string field, variant field, parameter or result with a `Length`
 constraint holds that many characters. A string the program builds holds as
 many as it can need: a literal is as long as it is, `trim`, `slice` and each
-part of `split` are no longer than the string they come from, a joined
-string is as long as both parts, and a function gives back a string as long
-as the longest it can return. Each part of `split`, and the result of `trim`
-or `slice`, borrows its characters from the string it comes from rather than
+part of `split` or `lines` are no longer than the string they come from, a
+joined string is as long as both parts, `repeat` and `pad_left` as long as
+the `Range` of their count or width allows, and a function gives back a
+string as long as the longest it can return. Each part of `split` or
+`lines`, and the result of `trim` or `slice`, borrows its characters from the string it comes from rather than
 copying them, unless that string can change before the function returns. A
 string with nothing to bound it, such as a parameter with no `Length` or a
 `let` that is `set` again later, holds 32 characters, or the longest
@@ -189,7 +190,8 @@ string with nothing to bound it, such as a parameter with no `Length` or a
 goes is cut short; in a debug build that stops the program and says which
 field it was. `Bytes` are kept the same way: a field, variant field,
 parameter or result with a `Length` holds that many values, a literal holds
-as many as it has, `slice` no more than it came from, `add` one more, `+` as many as both, and
+as many as it has, `slice` and `set` no more than it came from, `add` one
+more, `add_u16` two more, `+` as many as both, and
 `to_bytes` as many as the string has characters. A `Bytes` with nothing to
 bound it holds 64 values, or the longest `Length` on any `Bytes` if that is
 longer.
@@ -325,10 +327,13 @@ an empty set: it never fails, so any error type can pass it up.
 ### Built-ins
 Functions and methods every program has, with no import. Functions: `Some`,
 `None`, `Ok`, `Err`, and the constraints `Range` and `Length`. Strings:
-`length`, `is_empty`, and joining with `+`. Numbers: `to_string`. Lists: `length`, `is_empty`, `first`, `last`, `contains`, `get`,
-`add`, `drop`, `take`, `filter`, `map`, `all`, `any`, `count`, `find`, `sum`,
-`min_by`, `max_by`; a list of entities also has `get`, `contains`, `replace`
-and `remove` by identity. Options: `is_some`, `is_none`, `map`, `unwrap_or`.
+`length`, `is_empty`, and joining with `+`. Numbers: `to_string`. Lists:
+`length`, `is_empty`, `first`, `last`, `contains`, `get`, `index_of`, `add`,
+`drop`, `take`, `reverse`, `filter`, `map`, `all`, `any`, `count`, `find`,
+`sum`, `min_by`, `max_by`, `sort_by`, `sort` for numbers and strings, and
+joining with `+`; a list of entities also has `get`, `contains`, `replace` and
+`remove` by identity. Options: `is_some`, `is_none`, `map`, `unwrap_or`.
+Results: `is_ok`, `is_err`, `map`, `map_err`, `unwrap_or`.
 
 ### Map
 Keys, each with a value, imported with `use { Map } from Std.Collections`:
@@ -343,27 +348,33 @@ type allows, 16 when there is none.
 A sequence of bytes, each from 0 to 255, for file contents, saves and network
 messages. Written as a list of numbers where `Bytes` is expected:
 `let header: Bytes = [0x44, 0x4E, 1]`. It has `length`, `is_empty`, `get`
-(an `Option<Int>`), `add` and `slice`, and joins with `+`:
-`header + [0, 1]`. `Std.Text` turns text into bytes with
+(an `Option<Int>`), `set`, `add` and `slice`, and joins with `+`:
+`header + [0, 1]`. `get_u16` and `add_u16` read and write a number from 0 to
+65535 in two bytes, the low byte first, as the Z80 and 6502 keep them;
+`get_u16_be` and `add_u16_be` put the high byte first, as the 68000 does. `Std.Text` turns text into bytes with
 `to_bytes`, and back with `to_text`. Each `Bytes` is kept in the most values
 it can need, as a string is; see Capacity.
 
 ### Standard context
 A set of built-ins a context imports before using, like any other context:
 `use { trim, split } from Std.Text`. `Std.Text` has `contains`,
-`starts_with`, `ends_with`, `to_upper`, `to_lower`, `trim`, `slice`, `split`,
-`to_int` and `to_bytes` for strings, and `to_text` for bytes. `Std.Numbers`
+`starts_with`, `ends_with`, `index_of`, `to_upper`, `to_lower`, `trim`,
+`slice`, `split`, `lines`, `replace`, `repeat`, `pad_left`, `pad_right`,
+`to_int` and `to_bytes` for strings, `join` for a list of strings, and
+`to_text` for bytes. `Std.Numbers`
 has `Decimal`, `max`, `min` and `abs`. `Std.Collections` has `Map`.
 Each file of a context sees what any of them imports. Standard contexts need
 no arrow in the domain's `contexts`.
 
 Some standard contexts are written in Croft and join the program when it
 imports from them. `Std.Files` has the `Files` port, with `read`, `write`,
-`append`, `exists`, `remove` and `list`, which gives the names in a folder in
-byte order, each folder's ending in `/`, its errors `NotFound`, `NoRoom` and
+`append`, `exists`, `remove`, `list`, which gives the names in a folder in
+byte order, each folder's ending in `/`, `make_folder`, which makes each
+folder on the way, and `copy`, for a file of any size, its errors `NotFound`, `NoRoom` and
 `Unreadable`, the enum `FileError` that includes them, and the `StdioFiles`
 adapter, which uses C's stdio: `Files = "StdioFiles"` in `croft.toml`. Its
-`list` needs POSIX, so it fails with `Unreadable` on machines without it.
+`list` and `make_folder` need POSIX, so they fail with `Unreadable` on
+machines without it.
 `Std.Http` has the `Http` port, with `get`, `post`, `put` and `delete`, each
 giving a `Response` (its `status`, its `headers` as a map with names in
 lower case, and its `body`) or an `HttpError`:

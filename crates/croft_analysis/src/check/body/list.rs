@@ -50,8 +50,29 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             "replace" if entity_of(item).is_some() => {
                 self.fixed(name, arguments, std::slice::from_ref(item), list, span)
             }
+            "index_of" if entity_of(item).is_none() => self.fixed(
+                name,
+                arguments,
+                std::slice::from_ref(item),
+                Type::option(Type::Int),
+                span,
+            ),
+            "join" if *item == Type::String => {
+                let context = self.scope.context;
+                self.checker.check_standard(context, name, span);
+                self.fixed(name, arguments, &[Type::String], Type::String, span)
+            }
             "add" => self.fixed(name, arguments, std::slice::from_ref(item), list, span),
             "drop" | "take" => self.fixed(name, arguments, &[Type::Int], list, span),
+            "reverse" => self.fixed(name, arguments, &[], list, span),
+            // Numbers by size, and strings byte by byte.
+            "sort" if item.is_number() || *item == Type::String => {
+                self.fixed(name, arguments, &[], list, span)
+            }
+            "sort_by" => {
+                self.lambda_returning(name, arguments, item, &Type::Int, span);
+                Some(list)
+            }
             "filter" => {
                 self.lambda_returning(name, arguments, item, &Type::Bool, span);
                 Some(list)

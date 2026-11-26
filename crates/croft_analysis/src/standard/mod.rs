@@ -10,6 +10,13 @@ pub const STANDARD_CONTEXTS: [(&str, &[&str]); 3] = [
         &[
             "contains",
             "ends_with",
+            "index_of",
+            "join",
+            "lines",
+            "pad_left",
+            "pad_right",
+            "repeat",
+            "replace",
             "slice",
             "split",
             "starts_with",
