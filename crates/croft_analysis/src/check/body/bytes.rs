@@ -25,9 +25,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         Type::Bytes
     }
 
-    /// `get` gives the byte at a position, `add` a copy with one more byte on
-    /// the end, and `slice` the bytes from one position up to another.
-    /// `to_text` is imported from `Std.Text`.
+    /// `get` gives the byte at a position, `set` a copy with it changed,
+    /// `add` a copy with one more byte on the end, and `slice` the bytes
+    /// from one position up to another. `get_u16` and `add_u16` read and
+    /// write a number from 0 to 65535 in two bytes, the low byte first, as
+    /// the Z80 and 6502 keep them; `get_u16_be` and `add_u16_be` put the
+    /// high byte first, as the 68000 does. `to_text` is imported from
+    /// `Std.Text`.
     pub(super) fn bytes_method(
         &mut self,
         name: &str,
@@ -38,7 +42,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         match name {
             "get" => self.fixed(name, arguments, &[int], Type::option(Type::Int), span),
-            "add" => self.fixed(name, arguments, &[int], Type::Bytes, span),
+            "add" | "add_u16" | "add_u16_be" => {
+                self.fixed(name, arguments, &[int], Type::Bytes, span)
+            }
+            "get_u16" | "get_u16_be" => {
+                self.fixed(name, arguments, &[int], Type::option(Type::Int), span)
+            }
+            "set" => self.fixed(name, arguments, &[int.clone(), int], Type::Bytes, span),
             "slice" => self.fixed(name, arguments, &[int.clone(), int], Type::Bytes, span),
             "to_text" => self.fixed(name, arguments, &[], Type::String, span),
             _ => None,

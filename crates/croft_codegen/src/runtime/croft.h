@@ -121,6 +121,11 @@ croft_bool croft_bytes_equal(croft_bytes_view a, croft_bytes_view b);
 void croft_bytes_join(croft_bytes_view a, croft_bytes_view b, unsigned char *out, croft_u16 *length, croft_u16 capacity);
 croft_bool croft_bytes_get(croft_bytes_view bytes, croft_int index, croft_int *out);
 void croft_bytes_add(croft_bytes_view bytes, croft_int byte, unsigned char *out, croft_u16 *length, croft_u16 capacity);
+void croft_bytes_set(croft_bytes_view bytes, croft_int index, croft_int byte, unsigned char *out, croft_u16 *length,
+                     croft_u16 capacity);
+croft_bool croft_bytes_get_u16(croft_bytes_view bytes, croft_int index, croft_bool big, croft_int *out);
+void croft_bytes_add_u16(croft_bytes_view bytes, croft_int value, croft_bool big, unsigned char *out,
+                         croft_u16 *length, croft_u16 capacity);
 void croft_bytes_slice(croft_bytes_view bytes, croft_int start, croft_int end, unsigned char *out, croft_u16 *length,
                        croft_u16 capacity);
 void croft_bytes_to_text(croft_bytes_view bytes, char *out, croft_u16 *length, croft_u16 capacity);

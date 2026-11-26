@@ -43,7 +43,17 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
         }
         Type::Bytes => {
             let mut members = fields(&["length", "is_empty"]);
-            members.extend(methods(&["get", "add", "slice", "to_text"]));
+            members.extend(methods(&[
+                "get",
+                "set",
+                "add",
+                "slice",
+                "get_u16",
+                "get_u16_be",
+                "add_u16",
+                "add_u16_be",
+                "to_text",
+            ]));
             members
         }
         Type::List(item) => {
