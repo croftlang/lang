@@ -28,6 +28,7 @@ pub fn size_report(program: &Program, target: &str) -> Result<String, String> {
     out.push_str(&generator.kept_section());
     out.push_str(&generator.frames_section(c));
     out.push_str(&generator.strings_section());
+    out.push_str(&generator.bytes_section());
     out.push_str(&generator.numbers_section());
 
     Ok(out)
@@ -114,6 +115,38 @@ impl<'a> Generator<'a> {
              literals and `Length`s it comes from.\n{sizes}  A string with nothing to bound it, \
              such as a parameter with no `Length`, holds {capacity} characters ({} bytes), \
              {from}.\n",
+            2 + capacity
+        )
+    }
+
+    /// How many values each `Bytes` holds, as for strings. Says nothing for a
+    /// program that uses no `Bytes`.
+    fn bytes_section(&self) -> String {
+        let bounded: Vec<String> = (self.byte_sizes.borrow().iter())
+            .map(i64::to_string)
+            .collect();
+
+        let full = self.used_types.borrow().0.contains(&Type::Bytes);
+
+        if bounded.is_empty() && !full {
+            return String::new();
+        }
+
+        let capacity = self.sizes.bytes_capacity;
+
+        let sizes = if bounded.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "  Bytes kept in sizes of their own hold {} values.\n",
+                bounded.join(", ")
+            )
+        };
+
+        format!(
+            "\nBytes\n  Each `Bytes` is kept in the most values it can need, from the literals \
+             and `Length`s it comes from.\n{sizes}  One with nothing to bound it holds \
+             {capacity} values ({} bytes).\n",
             2 + capacity
         )
     }

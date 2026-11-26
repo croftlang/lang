@@ -6,6 +6,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::Argument;
 
 use super::Writer;
+use crate::types::bounds::is_bytes;
 
 impl<'g, 'a> Writer<'g, 'a> {
     pub fn list_method(
@@ -176,7 +177,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// `[a, b, c]`: a list of exactly these items.
     pub fn list_literal(&mut self, items: &[croft_syntax::ast::Expr], ty: &Type) -> String {
-        if *ty == Type::Bytes {
+        if is_bytes(ty) {
             return self.bytes_literal(items);
         }
 

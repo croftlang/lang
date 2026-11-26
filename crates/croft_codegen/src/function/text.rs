@@ -1,7 +1,9 @@
-//! String fields kept in a `croft_text_N` of their own size: read where
-//! they are, and written with a check, in debug builds, that they fit.
+//! String and `Bytes` fields kept in a `croft_text_N` or `croft_bytes_N` of
+//! their own size: read where they are, and written with a check, in debug
+//! builds, that they fit.
 
 use croft_analysis::types::Resolved;
+use croft_analysis::Type;
 
 use super::Writer;
 
@@ -22,8 +24,23 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.close();
     }
 
+    /// Writes `value`, any `Bytes`, into the field at `place`. Values that
+    /// don't fit are cut short, and stop a debug build.
+    pub fn store_bytes(&mut self, place: &str, value: &str, capacity: i64, label: &str) {
+        self.open(format!(
+            "if (!croft_bytes_copy(CROFT_BYTES_VIEW({value}), CROFT_BYTES_OUT({place})))"
+        ));
+
+        self.line(format!(
+            "CROFT_CHECK(0, \"{label} holds at most {capacity} bytes\");"
+        ));
+
+        self.close();
+    }
+
     /// Writes `value` into field `field` of `owner` at `place`: by
-    /// assignment, or through `store_text` when it is kept in its own size.
+    /// assignment, or through `store_text` or `store_bytes` when it is kept
+    /// in its own size.
     pub fn write_field(&mut self, owner: Option<&Resolved>, place: &str, field: &str, value: &str) {
         if let Some((byte, mask)) = owner.and_then(|owner| self.gen.flag_bit(owner, field)) {
             let flags = format!("{place}.croft_flags[{byte}]");
@@ -35,12 +52,15 @@ impl<'g, 'a> Writer<'g, 'a> {
             return;
         }
 
-        match owner.and_then(|owner| self.gen.text_capacity(owner, field)) {
-            Some(capacity) => {
-                let label = format!("{}: {field}", owner.map_or("", |o| o.name.as_str()));
-                self.store_text(&format!("{place}.{field}"), value, capacity, &label);
+        let label = format!("{}: {field}", owner.map_or("", |o| o.name.as_str()));
+        let target = format!("{place}.{field}");
+
+        match owner.and_then(|owner| self.gen.own_size(owner, field)) {
+            Some(Type::SizedBytes(capacity)) => {
+                self.store_bytes(&target, value, i64::from(capacity), &label);
             }
-            None => self.line(format!("{place}.{field} = {value};")),
+            Some(kept) => self.store_text(&target, value, self.gen.bound(&kept), &label),
+            None => self.line(format!("{target} = {value};")),
         }
     }
 
@@ -52,11 +72,8 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         let place = format!("{place}.{field}");
 
-        match owner.and_then(|owner| self.gen.text_capacity(owner, field)) {
-            Some(capacity) => {
-                let ty = self.gen.text_type(capacity);
-                self.typed(place, &ty)
-            }
+        match owner.and_then(|owner| self.gen.own_size(owner, field)) {
+            Some(kept) => self.typed(place, &kept),
             None => place,
         }
     }

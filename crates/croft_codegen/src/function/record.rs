@@ -65,10 +65,13 @@ impl<'g, 'a> Writer<'g, 'a> {
                 .find(|(f, _)| f == name)
                 .map_or(Type::Unknown, |(_, ty)| ty.clone());
 
-            let kept_in_own_size = owner.and_then(|owner| self.gen.text_capacity(owner, name));
+            let kept_in_own_size = owner.and_then(|owner| self.gen.own_size(owner, name));
 
             let value = match &given.value {
-                // Any string can be written into a field of its own size.
+                // Any string or `Bytes` can be written into a field of its own size.
+                Some(value) if matches!(kept_in_own_size, Some(Type::SizedBytes(_))) => {
+                    self.eval(value, None).0
+                }
                 Some(value) if kept_in_own_size.is_some() => self.view(value),
                 Some(value) if owner.is_none() || self.gen.is_scalar(&field_type) => {
                     self.value(value, &field_type)

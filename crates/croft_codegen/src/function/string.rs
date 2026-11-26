@@ -80,8 +80,19 @@ impl<'g, 'a> Writer<'g, 'a> {
                 temp
             }
             "to_bytes" => {
-                let temp = self.temp(ty);
-                self.line(format!("croft_string_to_bytes({text}, &{temp});"));
+                // As many values as the string has characters, when it has a
+                // bound of its own; a full string can be a longer literal.
+                let held = match bounded {
+                    Type::Text(_) | Type::Borrowed(_) => {
+                        self.gen.bytes_type(self.gen.bound(bounded))
+                    }
+                    _ => Type::Bytes,
+                };
+
+                let temp = self.temp(&held);
+                self.line(format!(
+                    "croft_string_to_bytes({text}, CROFT_BYTES_OUT({temp}));"
+                ));
                 temp
             }
             "split" => {

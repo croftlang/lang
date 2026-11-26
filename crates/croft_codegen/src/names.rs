@@ -83,6 +83,10 @@ impl<'a> Generator<'a> {
             }
             Type::Borrowed(_) => "croft_string_view".to_string(),
             Type::Bytes => "croft_bytes".to_string(),
+            Type::SizedBytes(length) => {
+                self.byte_sizes.borrow_mut().insert(i64::from(*length));
+                format!("croft_bytes_{length}")
+            }
             Type::Unit | Type::Unknown | Type::Port(_) | Type::Repository(_) => {
                 "croft_unit".to_string()
             }
@@ -114,6 +118,9 @@ impl<'a> Generator<'a> {
             }
             Type::Unknown | Type::Port(_) | Type::Repository(_) => Type::Unit,
             Type::Text(length) if i64::from(*length) >= self.sizes.string_capacity => Type::String,
+            Type::SizedBytes(length) if i64::from(*length) >= self.sizes.bytes_capacity => {
+                Type::Bytes
+            }
             other => other.clone(),
         }
     }

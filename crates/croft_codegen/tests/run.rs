@@ -483,6 +483,38 @@ fn sizes_strings_from_where_they_come_from() {
     fs::remove_dir_all(output).ok();
 }
 
+/// `Bytes` kept in the size they can need, through literals, `add`, `slice`,
+/// fields, variants, options, `with`, `set`, and an aggregate saved and found.
+#[test]
+fn keeps_bytes_in_the_size_they_can_need() {
+    run_program("bounded_bytes");
+}
+
+/// A `Bytes` field, parameter or result with a `Length` below the longest is a
+/// `croft_bytes_N`, and one with nothing to bound it a full `croft_bytes`.
+#[test]
+fn sizes_bytes_from_where_they_come_from() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/bounded_bytes");
+    let output = generate(&source, "test", "bounded_bytes_c");
+    let header = fs::read_to_string(output.join("program.h")).expect("program.h");
+
+    assert!(header.contains("    croft_bytes_4 magic;"), "{header}");
+    assert!(
+        header.contains("            croft_bytes_2 token;"),
+        "{header}"
+    );
+    assert!(header.contains("    croft_bytes_3 tag;"), "{header}");
+
+    assert!(header.contains("void Packets_magic(croft_bytes_2 *out);"));
+    assert!(
+        header.contains("void Packets_framed(const croft_bytes_6 *p_payload, croft_bytes_7 *out);")
+    );
+    assert!(header
+        .contains("void Packets_token_of(const Packets_Message *p_given, croft_bytes_2 *out);"));
+    assert!(header.contains("void Packets_body_length(const croft_bytes *p_body, croft_int *out);"));
+    fs::remove_dir_all(output).ok();
+}
+
 #[test]
 fn writes_early_returns_straight_into_the_result() {
     run_program("early_returns");

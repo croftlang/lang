@@ -1,0 +1,5 @@
+[package]
+name = "bounded_bytes"
+
+[target.test]
+main = "Check"

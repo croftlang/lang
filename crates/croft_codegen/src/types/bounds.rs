@@ -1,8 +1,8 @@
-//! How long a string can be. Code generation works out a bound for each
-//! string it builds, from literals, `Length` constraints and the methods that
-//! make one string from another, and keeps it in a `croft_text_N` of just
-//! that size. A string with no bound below the shared size is a full
-//! `croft_string`.
+//! How long a string or a `Bytes` can be. Code generation works out a bound
+//! for each one it builds, from literals, `Length` constraints and the
+//! methods that make one from another, and keeps it in a `croft_text_N` or a
+//! `croft_bytes_N` of just that size. One with no bound below the shared size
+//! is a full `croft_string` or `croft_bytes`.
 
 use croft_analysis::Type;
 
@@ -13,11 +13,17 @@ pub fn is_string(ty: &Type) -> bool {
     matches!(ty, Type::String | Type::Text(_) | Type::Borrowed(_))
 }
 
-/// `ty` with every bounded string a plain `String` again: the type the
-/// checker gave it.
+/// Whether a value of `ty` is `Bytes`, of any size.
+pub fn is_bytes(ty: &Type) -> bool {
+    matches!(ty, Type::Bytes | Type::SizedBytes(_))
+}
+
+/// `ty` with every bounded string a plain `String` again, and every bounded
+/// `Bytes` a plain `Bytes`: the type the checker gave it.
 pub fn unbounded(ty: &Type) -> Type {
     match ty {
         Type::Text(_) | Type::Borrowed(_) => Type::String,
+        Type::SizedBytes(_) => Type::Bytes,
         Type::List(item) => Type::list(unbounded(item)),
         Type::Option(item) => Type::option(unbounded(item)),
         Type::Map(key, value) => Type::map(unbounded(key), unbounded(value)),
@@ -26,10 +32,10 @@ pub fn unbounded(ty: &Type) -> Type {
     }
 }
 
-/// Whether `ty` holds a bounded string anywhere.
+/// Whether `ty` holds a bounded string or `Bytes` anywhere.
 pub fn has_bound(ty: &Type) -> bool {
     match ty {
-        Type::Text(_) | Type::Borrowed(_) => true,
+        Type::Text(_) | Type::Borrowed(_) | Type::SizedBytes(_) => true,
         Type::List(item) | Type::Option(item) => has_bound(item),
         Type::Map(key, value) | Type::Result(key, value) => has_bound(key) || has_bound(value),
         _ => false,
@@ -47,11 +53,22 @@ impl<'a> Generator<'a> {
         Type::Text(length.max(1) as u16)
     }
 
+    /// `Bytes` of at most `length` values: bounded when that is less than
+    /// the shared size. Like a string, it holds at least one.
+    pub fn bytes_type(&self, length: i64) -> Type {
+        if length >= self.sizes.bytes_capacity {
+            return Type::Bytes;
+        }
+
+        Type::SizedBytes(length.max(1) as u16)
+    }
+
     /// `ty` with each string as short as it can be: the type of `None`,
     /// `[]` or `Err(e)`, which hold no string at all.
     pub fn narrowest(&self, ty: &Type) -> Type {
         match ty {
             Type::String | Type::Text(_) => self.text_type(1),
+            Type::Bytes | Type::SizedBytes(_) => self.bytes_type(1),
             Type::List(item) => Type::list(self.narrowest(item)),
             Type::Option(item) => Type::option(self.narrowest(item)),
             Type::Map(key, value) => Type::map(self.narrowest(key), self.narrowest(value)),
@@ -77,16 +94,19 @@ impl<'a> Generator<'a> {
         }
     }
 
-    /// The most characters a string of `ty` holds.
+    /// The most characters a string of `ty` holds, or values a `Bytes` does.
     pub fn bound(&self, ty: &Type) -> i64 {
         match ty {
-            Type::Text(length) | Type::Borrowed(length) => i64::from(*length),
+            Type::Text(length) | Type::Borrowed(length) | Type::SizedBytes(length) => {
+                i64::from(*length)
+            }
+            Type::Bytes => self.sizes.bytes_capacity,
             _ => self.sizes.string_capacity,
         }
     }
 
     /// A type with room for a value of either `a` or `b`, which differ only
-    /// in the bounds of their strings.
+    /// in the bounds of their strings and `Bytes`.
     /// Two borrowed strings give a borrowed string; a borrowed string and
     /// one of its own give one of its own.
     pub fn wider(&self, a: &Type, b: &Type) -> Type {
@@ -94,6 +114,9 @@ impl<'a> Generator<'a> {
             (Type::Borrowed(a), Type::Borrowed(b)) => Type::Borrowed((*a).max(*b)),
             (a, b) if is_string(a) && is_string(b) => {
                 self.text_type(self.bound(a).max(self.bound(b)))
+            }
+            (a, b) if is_bytes(a) && is_bytes(b) => {
+                self.bytes_type(self.bound(a).max(self.bound(b)))
             }
             (Type::List(a), Type::List(b)) => Type::list(self.wider(a, b)),
             (Type::Option(a), Type::Option(b)) => Type::option(self.wider(a, b)),

@@ -103,30 +103,30 @@ croft_bool croft_bytes_take_string(const croft_bytes *in, croft_u16 *at, char *t
     return 1;
 }
 
-croft_bool croft_bytes_put_bytes(croft_bytes *out, const croft_bytes *bytes)
+croft_bool croft_bytes_put_bytes(croft_bytes *out, croft_bytes_view bytes)
 {
     croft_u16 index;
-    if (!croft_bytes_put_length(out, bytes->length) || out->length + bytes->length > CROFT_BYTES_CAPACITY) {
+    if (!croft_bytes_put_length(out, bytes.length) || out->length + bytes.length > CROFT_BYTES_CAPACITY) {
         return 0;
     }
-    for (index = 0; index < bytes->length; index++) {
-        out->items[out->length] = bytes->items[index];
+    for (index = 0; index < bytes.length; index++) {
+        out->items[out->length] = bytes.items[index];
         out->length++;
     }
     return 1;
 }
 
-croft_bool croft_bytes_take_bytes(const croft_bytes *in, croft_u16 *at, croft_bytes *out)
+croft_bool croft_bytes_take_bytes(const croft_bytes *in, croft_u16 *at, unsigned char *items, croft_u16 *length,
+                                  croft_u16 capacity)
 {
     croft_u16 index;
-    if (!croft_bytes_take_length(in, at, &out->length) || out->length > CROFT_BYTES_CAPACITY
-        || *at + out->length > in->length) {
+    if (!croft_bytes_take_length(in, at, length) || *length > capacity || *at + *length > in->length) {
         return 0;
     }
-    for (index = 0; index < out->length; index++) {
-        out->items[index] = in->items[*at + index];
+    for (index = 0; index < *length; index++) {
+        items[index] = in->items[*at + index];
     }
-    *at = (croft_u16) (*at + out->length);
+    *at = (croft_u16) (*at + *length);
     return 1;
 }
 

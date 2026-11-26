@@ -195,7 +195,7 @@ impl<'a> Generator<'a> {
 
         let name = match ty {
             Type::String | Type::Text(_) => "string".to_string(),
-            Type::Bytes => "bytes".to_string(),
+            Type::Bytes | Type::SizedBytes(_) => "bytes".to_string(),
             _ => self.serializer_for(ty),
         };
 
@@ -204,9 +204,9 @@ impl<'a> Generator<'a> {
                 format!("croft_bytes_put_string(out, CROFT_VIEW({place}))"),
                 format!("croft_bytes_take_string(in, at, CROFT_OUT({place}))"),
             ),
-            Type::Bytes => (
-                format!("croft_bytes_put_{name}(out, &{place})"),
-                format!("croft_bytes_take_{name}(in, at, &{place})"),
+            Type::Bytes | Type::SizedBytes(_) => (
+                format!("croft_bytes_put_bytes(out, CROFT_BYTES_VIEW({place}))"),
+                format!("croft_bytes_take_bytes(in, at, CROFT_BYTES_OUT({place}))"),
             ),
             _ => (
                 format!("croft_write_{name}(&{place}, out)"),

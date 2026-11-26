@@ -187,7 +187,12 @@ string with nothing to bound it, such as a parameter with no `Length` or a
 `let` that is `set` again later, holds 32 characters, or the longest
 `Length` in the program if that is longer. A string too long for where it
 goes is cut short; in a debug build that stops the program and says which
-field it was.
+field it was. `Bytes` are kept the same way: a field, variant field,
+parameter or result with a `Length` holds that many values, a literal holds
+as many as it has, `slice` no more than it came from, `add` one more, and
+`to_bytes` as many as the string has characters. A `Bytes` with nothing to
+bound it holds 64 values, or the longest `Length` on any `Bytes` if that is
+longer.
 
 ### Where
 Attaches constraints to a type, on a field, parameter or return type:
@@ -339,8 +344,8 @@ A sequence of bytes, each from 0 to 255, for file contents, saves and network
 messages. Written as a list of numbers where `Bytes` is expected:
 `let header: Bytes = [0x44, 0x4E, 1]`. It has `length`, `is_empty`, `get`
 (an `Option<Int>`), `add` and `slice`. `Std.Text` turns text into bytes with
-`to_bytes`, and back with `to_text`. Every `Bytes` has room for the most any
-`Length` constraint on one allows, 64 when there is none.
+`to_bytes`, and back with `to_text`. Each `Bytes` is kept in the most values
+it can need, as a string is; see Capacity.
 
 ### Standard context
 A set of built-ins a context imports before using, like any other context:

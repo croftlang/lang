@@ -7,7 +7,7 @@ use croft_syntax::ast::{Expr, ExprKind, UnaryOp};
 use super::range::c_number;
 use super::Writer;
 use crate::names::c_string;
-use crate::types::bounds::{is_string, unbounded};
+use crate::types::bounds::{is_bytes, is_string, unbounded};
 use crate::types::constant::{scale, scaled};
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -220,8 +220,9 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// Writes `source`, of type `from`, into `target`, of type `to`, which
-    /// differ at most in the bounds of their strings. A string longer than
-    /// `to` has room for is cut short, and stops a debug build.
+    /// differ at most in the bounds of their strings and `Bytes`. A string or
+    /// `Bytes` longer than `to` has room for is cut short, and stops a debug
+    /// build.
     pub fn copy_into(&mut self, target: &str, source: &str, from: &Type, to: &Type) {
         self.note_result(target, from);
 
@@ -246,6 +247,24 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.line(format!(
                     "CROFT_CHECK(0, \"text is longer than {room} characters\");"
                 ));
+
+                self.close();
+            }
+            (from, to) if is_bytes(from) && is_bytes(to) => {
+                let view = format!("CROFT_BYTES_VIEW({source})");
+                let room = self.gen.bound(to);
+
+                if self.gen.bound(from) <= room {
+                    self.line(format!(
+                        "croft_bytes_copy({view}, CROFT_BYTES_OUT({target}));"
+                    ));
+                    return;
+                }
+
+                self.open(format!(
+                    "if (!croft_bytes_copy({view}, CROFT_BYTES_OUT({target})))"
+                ));
+                self.line(format!("CROFT_CHECK(0, \"bytes hold at most {room}\");"));
 
                 self.close();
             }
@@ -341,8 +360,10 @@ impl<'g, 'a> Writer<'g, 'a> {
             );
         }
 
-        if *ty == Type::Bytes {
-            return format!("croft_bytes_equal(&{left}, &{right})");
+        if is_bytes(ty) {
+            return format!(
+                "croft_bytes_equal(CROFT_BYTES_VIEW({left}), CROFT_BYTES_VIEW({right}))"
+            );
         }
 
         let name = self.gen.equality_for(ty);

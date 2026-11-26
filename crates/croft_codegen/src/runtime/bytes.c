@@ -1,76 +1,100 @@
 
-/* Bytes: a length and up to CROFT_BYTES_CAPACITY values from 0 to 255. */
+/* Bytes: a length and values from 0 to 255, read through a croft_bytes_view
+   and written through CROFT_BYTES_OUT, so any size can be read or written. */
 
-croft_bool croft_bytes_equal(const croft_bytes *a, const croft_bytes *b)
+croft_bytes_view croft_bytes_view_from(const unsigned char *items, croft_u16 length)
+{
+    croft_bytes_view view;
+    view.items = items;
+    view.length = length;
+    return view;
+}
+
+/* Copies as many values as fit, forwards, so out may be where bytes is
+   borrowed from. Gives back whether all of them fitted. */
+croft_bool croft_bytes_copy(croft_bytes_view bytes, unsigned char *out, croft_u16 *length, croft_u16 capacity)
 {
     croft_u16 index;
-    if (a->length != b->length) {
+    croft_u16 count = bytes.length < capacity ? bytes.length : capacity;
+    for (index = 0; index < count; index++) {
+        out[index] = bytes.items[index];
+    }
+    *length = count;
+    return bytes.length <= capacity;
+}
+
+croft_bool croft_bytes_equal(croft_bytes_view a, croft_bytes_view b)
+{
+    croft_u16 index;
+    if (a.length != b.length) {
         return 0;
     }
-    for (index = 0; index < a->length; index++) {
-        if (a->items[index] != b->items[index]) {
+    for (index = 0; index < a.length; index++) {
+        if (a.items[index] != b.items[index]) {
             return 0;
         }
     }
     return 1;
 }
 
-croft_bool croft_bytes_get(const croft_bytes *bytes, croft_int index, croft_int *out)
+croft_bool croft_bytes_get(croft_bytes_view bytes, croft_int index, croft_int *out)
 {
-    if (index < 0 || index >= (croft_int) bytes->length) {
+    if (index < 0 || index >= (croft_int) bytes.length) {
         *out = 0;
         return 0;
     }
-    *out = bytes->items[index];
+    *out = bytes.items[index];
     return 1;
 }
 
-void croft_bytes_add(const croft_bytes *bytes, croft_int byte, croft_bytes *out)
+void croft_bytes_add(croft_bytes_view bytes, croft_int byte, unsigned char *out, croft_u16 *length, croft_u16 capacity)
 {
-    *out = *bytes;
+    croft_bytes_copy(bytes, out, length, capacity);
     CROFT_CHECK(byte >= 0 && byte <= 255, "a byte is from 0 to 255");
-    CROFT_CHECK(out->length < CROFT_BYTES_CAPACITY, "bytes are full");
-    if (out->length < CROFT_BYTES_CAPACITY) {
-        out->items[out->length] = (unsigned char) byte;
-        out->length++;
+    CROFT_CHECK(bytes.length < capacity, "bytes are full");
+    if (bytes.length < capacity) {
+        out[*length] = (unsigned char) byte;
+        (*length)++;
     }
 }
 
-void croft_bytes_slice(const croft_bytes *bytes, croft_int start, croft_int end, croft_bytes *out)
+/* Copies forwards, so out may be where bytes is borrowed from. */
+void croft_bytes_slice(croft_bytes_view bytes, croft_int start, croft_int end, unsigned char *out, croft_u16 *length,
+                       croft_u16 capacity)
 {
     croft_int index;
     if (start < 0) {
         start = 0;
     }
-    if (end > (croft_int) bytes->length) {
-        end = bytes->length;
+    if (end > (croft_int) bytes.length) {
+        end = bytes.length;
     }
-    out->length = 0;
-    for (index = start; index < end; index++) {
-        out->items[out->length] = bytes->items[index];
-        out->length++;
+    *length = 0;
+    for (index = start; index < end && *length < capacity; index++) {
+        out[*length] = bytes.items[index];
+        (*length)++;
     }
 }
 
 /* Each byte becomes one character, up to the string's capacity. */
-void croft_bytes_to_text(const croft_bytes *bytes, char *out, croft_u16 *length, croft_u16 capacity)
+void croft_bytes_to_text(croft_bytes_view bytes, char *out, croft_u16 *length, croft_u16 capacity)
 {
     croft_u16 index;
     *length = 0;
-    for (index = 0; index < bytes->length && *length < capacity; index++) {
-        out[*length] = (char) bytes->items[index];
+    for (index = 0; index < bytes.length && *length < capacity; index++) {
+        out[*length] = (char) bytes.items[index];
         (*length)++;
     }
-    CROFT_CHECK(index == bytes->length, "bytes are longer than a string can hold");
+    CROFT_CHECK(index == bytes.length, "bytes are longer than a string can hold");
 }
 
-void croft_string_to_bytes(croft_string_view text, croft_bytes *out)
+void croft_string_to_bytes(croft_string_view text, unsigned char *out, croft_u16 *length, croft_u16 capacity)
 {
     croft_u16 index;
-    out->length = 0;
-    for (index = 0; index < text.length && out->length < CROFT_BYTES_CAPACITY; index++) {
-        out->items[out->length] = (unsigned char) text.text[index];
-        out->length++;
+    *length = 0;
+    for (index = 0; index < text.length && *length < capacity; index++) {
+        out[*length] = (unsigned char) text.text[index];
+        (*length)++;
     }
     CROFT_CHECK(index == text.length, "text is longer than bytes can hold");
 }

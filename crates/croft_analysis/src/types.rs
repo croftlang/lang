@@ -38,6 +38,9 @@ pub enum Type {
     /// A sequence of bytes, each from 0 to 255: file contents, a save, a
     /// network message.
     Bytes,
+    /// Bytes that hold at most this many values. Only code generation makes
+    /// one, as it does `Text` for a string; the checker sees it as `Bytes`.
+    SizedBytes(u16),
     Unit,
     List(Box<Type>),
     /// Keys, each with a value, such as how many of each item the player holds.
@@ -101,7 +104,7 @@ impl fmt::Display for Type {
             Type::Decimal(places) => write!(f, "Decimal<{places}>"),
             Type::Bool => write!(f, "Bool"),
             Type::String | Type::Text(_) | Type::Borrowed(_) => write!(f, "String"),
-            Type::Bytes => write!(f, "Bytes"),
+            Type::Bytes | Type::SizedBytes(_) => write!(f, "Bytes"),
             Type::Unit => write!(f, "Unit"),
             Type::List(item) => write!(f, "List<{item}>"),
             Type::Map(key, value) => write!(f, "Map<{key}, {value}>"),
