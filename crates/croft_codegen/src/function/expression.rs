@@ -230,7 +230,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// Writes `source`, of type `from`, into `target`, of type `to`, which
     /// differ at most in the bounds of their strings, `Bytes` and lists. A
     /// string, `Bytes` or list longer than `to` has room for is cut short,
-    /// and stops a debug build.
+    /// and stops a checked build.
     pub fn copy_into(&mut self, target: &str, source: &str, from: &Type, to: &Type) {
         self.note_result(target, from);
 
@@ -329,7 +329,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// Copies a list item by item into one of another size, or with items
     /// of other bounds. Items past the room `to` has are left out, and stop
-    /// a debug build.
+    /// a checked build.
     fn copy_list(&mut self, target: &str, source: &str, from: &Type, to: &Type) {
         let (Some(from_item), Some(to_item)) = (list_item(from), list_item(to)) else {
             return;
@@ -365,7 +365,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// A single-value type around `value`, checked against its constraints
-    /// in debug builds: `Score(120)`, or `120` where a `Score` is expected.
+    /// when checks are on: `Score(120)`, or `120` where a `Score` is expected.
     pub fn wrap_single_value(&mut self, value: String, ty: &Type) -> String {
         let temp = self.temp(ty);
 

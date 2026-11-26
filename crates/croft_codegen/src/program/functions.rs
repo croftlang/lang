@@ -140,7 +140,7 @@ impl<'a> Generator<'a> {
             .collect();
 
         if let Some(call) = self.argument_check(&c_name(found), &place, &checked) {
-            writer.debug_call(&call);
+            writer.checked_call(&call);
         }
 
         writer.preconditions(preconditions, &found.name);
@@ -151,7 +151,7 @@ impl<'a> Generator<'a> {
                 self.result_check(&c_name(found), &place, &result, return_constraints)
             {
                 let passed = writer.pass(value.clone(), &result);
-                writer.debug_call(&format!("{check}({passed});"));
+                writer.checked_call(&format!("{check}({passed});"));
             }
         }
 
@@ -162,7 +162,7 @@ impl<'a> Generator<'a> {
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
-    /// `cond or Error` fails with the error; a plain condition is checked in debug builds.
+    /// `cond or Error` fails with the error; a plain condition is checked when checks are on.
     pub fn preconditions(&mut self, preconditions: &[Expr], owner: &str) {
         for precondition in preconditions {
             match &precondition.kind {

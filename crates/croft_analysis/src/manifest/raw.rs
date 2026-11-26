@@ -32,6 +32,7 @@ struct RawTarget {
     native: Vec<Spanned<String>>,
     #[serde(default)]
     adapters: BTreeMap<Spanned<String>, Spanned<String>>,
+    checks: Option<bool>,
 }
 
 pub fn parse(text: &str, source: SourceId) -> Result<Manifest, Diagnostic> {
@@ -65,6 +66,7 @@ pub fn parse(text: &str, source: SourceId) -> Result<Manifest, Diagnostic> {
             .iter()
             .map(|(port, adapter)| (name(port), name(adapter)))
             .collect(),
+        checks: target.checks.unwrap_or(true),
     });
 
     Ok(Manifest {

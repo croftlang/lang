@@ -1,4 +1,4 @@
-//! Testing a value against a `where` constraint, for debug builds.
+//! Testing a value against a `where` constraint, when checks are on.
 
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::Type;

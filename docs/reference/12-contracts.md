@@ -1,6 +1,6 @@
 # Contracts
 
-What code needs and what it promises, read before its body. A precondition with an error is a failure the domain expects: always checked, handled by the caller. A plain precondition is a mistake by the caller: checked in debug builds. where constraints limit parameters and results; a parameter's constraints can follow its type or go in the contract, whichever reads better. Invariants hold after every factory and command, and calls lists the ports a service touches. It is separate from use, which only brings in names from another context. Use them to write each domain rule once, where it applies, to name failures in the domain's words, and to keep bodies simple.
+What code needs and what it promises, read before its body. A precondition with an error is a failure the domain expects: always checked, handled by the caller. A plain precondition is a mistake by the caller: checked while the program runs, unless the target sets `checks = false`. where constraints limit parameters and results; a parameter's constraints can follow its type or go in the contract, whichever reads better. Invariants hold after every factory and command, and calls lists the ports a service touches. It is separate from use, which only brings in names from another context. Use them to write each domain rule once, where it applies, to name failures in the domain's words, and to keep bodies simple.
 
 ```croft
 // expected failure: always checked, the caller handles OutOfStock
@@ -11,7 +11,7 @@ command Add(item: ItemId, price: Price, in_stock: Int) {
     set total = total with { pence: total.pence + price.pence }
 }
 
-// caller's mistake: checked in debug builds
+// caller's mistake: stops the program, unless the target turns checks off
 fn average(numbers: List<Int>): Int {
     !numbers.is_empty
 } = numbers.sum(n -> n) / numbers.length

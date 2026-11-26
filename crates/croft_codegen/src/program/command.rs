@@ -109,7 +109,7 @@ impl<'a> Generator<'a> {
             .collect();
 
         if let Some(call) = self.argument_check(&name, &place, &checked) {
-            writer.debug_call(&call);
+            writer.checked_call(&call);
         }
 
         writer.preconditions(&command.preconditions, &command.name.name);
@@ -174,7 +174,7 @@ impl<'a> Generator<'a> {
             .collect();
 
         if let Some(call) = self.argument_check(&name, &place, &checked) {
-            writer.debug_call(&call);
+            writer.checked_call(&call);
         }
 
         writer.preconditions(&factory.preconditions, &factory.name.name);

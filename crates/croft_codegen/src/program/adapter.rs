@@ -138,7 +138,7 @@ impl<'a> Generator<'a> {
                     .collect();
 
                 if let Some(call) = self.argument_check(&function, &place, &checked) {
-                    writer.debug_call(&call);
+                    writer.checked_call(&call);
                 }
 
                 if let Some(body) = &operation.body {
@@ -147,7 +147,7 @@ impl<'a> Generator<'a> {
                         self.result_check(&function, &place, &result, expected.result_constraints)
                     {
                         let passed = writer.pass(value.clone(), &result);
-                        writer.debug_call(&format!("{check}({passed});"));
+                        writer.checked_call(&format!("{check}({passed});"));
                     }
                 }
 

@@ -74,6 +74,14 @@ impl<'a> Generator<'a> {
             .replace(
                 "#ifndef CROFT_BYTES_CAPACITY\n#define CROFT_BYTES_CAPACITY 64\n#endif",
                 &format!("#define CROFT_BYTES_CAPACITY {}", self.sizes.bytes_capacity),
+            )
+            .replace(
+                "#ifndef CROFT_CHECKS\n#define CROFT_CHECKS\n#endif",
+                if self.checks() {
+                    "#ifndef CROFT_CHECKS\n#define CROFT_CHECKS\n#endif"
+                } else {
+                    "/* Off: the target sets `checks = false`. */"
+                },
             );
 
         let standard_natives = self.standard_natives();
@@ -112,6 +120,14 @@ impl<'a> Generator<'a> {
         files.extend(standard_natives);
 
         Ok(files)
+    }
+
+    /// Whether this target checks constraints while the program runs: on
+    /// unless its `croft.toml` section sets `checks = false`.
+    fn checks(&self) -> bool {
+        (self.program.manifest.as_ref())
+            .and_then(|manifest| manifest.target(&self.target))
+            .is_none_or(|target| target.checks)
     }
 
     /// The C for standard adapters this target binds, kept in `croft_std`

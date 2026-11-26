@@ -1,6 +1,6 @@
 //! Debug-build checks of `where` constraints: on a function's arguments when it
 //! starts, on its result before it returns, and on a value's fields when it
-//! is built. Each check is its own function, compiled only with `CROFT_DEBUG`.
+//! is built. Each check is its own function, compiled only with `CROFT_CHECKS`.
 
 use croft_analysis::types::Resolved;
 use croft_analysis::Type;
@@ -165,7 +165,7 @@ impl<'a> Generator<'a> {
             .push((format!("{signature};"), writer.finish(signature)));
     }
 
-    /// Every check function, for debug builds only.
+    /// Every check function, only when checks are on.
     pub fn check_functions(&self) -> (String, String) {
         let checks = self.checks.borrow();
 
@@ -177,26 +177,26 @@ impl<'a> Generator<'a> {
         let definitions: String = checks.iter().map(|(_, d)| d.as_str()).collect();
 
         (
-            format!("#ifdef CROFT_DEBUG\n{}\n#endif\n\n", prototypes.join("\n")),
-            format!("#ifdef CROFT_DEBUG\n{definitions}#endif\n\n"),
+            format!("#ifdef CROFT_CHECKS\n{}\n#endif\n\n", prototypes.join("\n")),
+            format!("#ifdef CROFT_CHECKS\n{definitions}#endif\n\n"),
         )
     }
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
-    /// A call that only happens in debug builds.
-    pub fn debug_call(&mut self, call: &str) {
-        self.directive("#ifdef CROFT_DEBUG");
+    /// A call that only happens when checks are on.
+    pub fn checked_call(&mut self, call: &str) {
+        self.directive("#ifdef CROFT_CHECKS");
         self.line(call);
         self.directive("#endif");
     }
 
-    /// Checks a value just built against its type's field constraints, in debug builds.
+    /// Checks a value just built against its type's field constraints, when checks are on.
     pub fn check_fields(&mut self, value: &str, ty: &Type) {
         let Type::Named(named) = ty else { return };
 
         if let Some(check) = self.gen.field_check(named) {
-            self.debug_call(&format!("{check}(&{value});"));
+            self.checked_call(&format!("{check}(&{value});"));
         }
     }
 }

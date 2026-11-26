@@ -3,3 +3,8 @@ name = "constraints"
 
 [target.test]
 main = "Start"
+
+# The same program with its constraint checks turned off.
+[target.unchecked]
+main = "Start"
+checks = false

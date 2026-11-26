@@ -21,7 +21,7 @@ enemies: List<Enemy> where Length(0, MAX_ENEMIES), each Alive
 
 // Length also sizes a string: this field holds 12 characters, not 32. So do
 // the strings made from it, such as title.trim() or each part of a split.
-// Longer text is cut short, and a debug build stops and names the field.
+// Longer text is cut short, and the program stops and names the field.
 title: String where Length(1, 12)
 
 // on a whole aggregate, relating its fields
@@ -48,5 +48,5 @@ fn give(mg: Int where Overdose(4000)): Int = mg
 let given = give(5000)
 ```
 
-A value that is only known while the program runs, such as input or something read from a port, is checked when it reaches the constraint.
+A value that is only known while the program runs, such as input or something read from a port, is checked when it reaches the constraint, and a broken one stops the program with a message naming it: `give: mg must satisfy Overdose(4000)`. This happens on every target unless its section of `croft.toml` sets `checks = false`.
 

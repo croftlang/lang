@@ -1,4 +1,4 @@
-//! Tidying the finished C: what a release build uses, and conditions
+//! Tidying the finished C: what a build without checks uses, and conditions
 //! written with one pair of brackets.
 
 /// Whether `line` uses the C name `name`, not just as part of a longer name.
@@ -49,21 +49,21 @@ pub(super) fn tidy_condition(text: &str) -> String {
     text.to_string()
 }
 
-/// The lines a build without `CROFT_DEBUG` compiles.
-pub(super) fn release_lines(lines: &[String]) -> Vec<&String> {
-    let mut in_debug = false;
-    let mut release = Vec::new();
+/// The lines a build without `CROFT_CHECKS` compiles.
+pub(super) fn unchecked_lines(lines: &[String]) -> Vec<&String> {
+    let mut in_checks = false;
+    let mut unchecked = Vec::new();
 
     for line in lines {
         match line.trim() {
-            "#ifdef CROFT_DEBUG" => in_debug = true,
-            "#endif" if in_debug => in_debug = false,
-            _ if !in_debug => release.push(line),
+            "#ifdef CROFT_CHECKS" => in_checks = true,
+            "#endif" if in_checks => in_checks = false,
+            _ if !in_checks => unchecked.push(line),
             _ => {}
         }
     }
 
-    release
+    unchecked
 }
 
 /// Whether `line` only writes to `name`: `name = ...` or `name.field = ...`.

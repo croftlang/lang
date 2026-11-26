@@ -105,16 +105,7 @@ pub fn run_program_at(source: &Path, name: &str) {
 
     let output = generate(source, "test", name);
 
-    let built = compile(
-        &output,
-        &[
-            "-DCROFT_DEBUG",
-            "croft_runtime.c",
-            "program.c",
-            "-o",
-            "program",
-        ],
-    );
+    let built = compile(&output, &["croft_runtime.c", "program.c", "-o", "program"]);
 
     assert!(
         built.status.success(),

@@ -187,8 +187,8 @@ copying them, unless that string can change before the function returns. A
 string with nothing to bound it, such as a parameter with no `Length` or a
 `let` that is `set` again later, holds 32 characters, or the longest
 `Length` in the program if that is longer. A string too long for where it
-goes is cut short; in a debug build that stops the program and says which
-field it was. `Bytes` are kept the same way: a field, variant field,
+goes is cut short; unless the target sets `checks = false`, that stops the
+program and says which field it was. `Bytes` are kept the same way: a field, variant field,
 parameter or result with a `Length` holds that many values, a literal holds
 as many as it has, `slice` and `set` no more than it came from, `add` one
 more, `add_u16` two more, `+` as many as both, and
@@ -223,8 +223,8 @@ messages shown to the customer are not.
 A condition in a contract that must hold for the code to run. With an error,
 `delivery.transport_status != Claimed or AlreadyClaimed`, it is a failure the domain expects:
 always checked, and handled by the caller like any other failure. Without
-one, `!numbers.is_empty`, it is a mistake by the caller: checked in debug
-builds, which stop with a message.
+one, `!numbers.is_empty`, it is a mistake by the caller: checked while the
+program runs, which stops with a message.
 
 ### Contract
 What a piece of code needs and what it promises, written before its body:
@@ -233,8 +233,10 @@ signature and `=`; the `where` constraints on its parameters and result, which
 a parameter can have after its type or in the braces (`deadline where
 Range(0, 3650)`); and, for
 an aggregate, its invariants. The braces are left out when there is nothing
-to say. Debug builds check every `where` constraint as the program runs, and
-stop with a message naming the constraint that broke. A contract states domain
+to say. The compiler checks every `where` constraint whose value it knows, and
+reports a broken one as an error; the rest are checked as the program runs,
+which stops with a message naming the constraint that broke, unless the
+target sets `checks = false`. A contract states domain
 rules once, where they apply, names
 failures in the ubiquitous language, keeps bodies simple, and tells the
 compiler how much memory data needs.
