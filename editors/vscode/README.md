@@ -12,6 +12,9 @@ cargo install --path crates/croft_cli
 
 If `croft` is not on your PATH, set `croft.server.path` to it in your settings.
 
+Croft files show the Croft mark in the explorer and on editor tabs, from
+`icons/`, unless your file icon theme gives them an icon of its own.
+
 The grammar is `syntaxes/croft.tmLanguage.json`, a TextMate grammar. Editors that
 read TextMate grammars (Sublime Text, JetBrains IDEs through TextMate bundles,
 and Shiki on the web) can use the same file.

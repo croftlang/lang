@@ -1,13 +1,6 @@
-```
-    )
-  _||_____
-  /  \\\\\\\\
-/____\\\\\\\\\
-| [] |  _  | 
-|____|_| |_|
-```
+<img src="./docs/assets/croft-banner.svg" alt="Croft" width="100%">
 
-# Croft
+## Introduction 
 
 Croft is a domain language, declarative structure, imperative behaviour. The
 domain model is the program: you write it with domain-driven design's building
