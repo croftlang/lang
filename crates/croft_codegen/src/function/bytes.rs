@@ -34,6 +34,12 @@ impl<'g, 'a> Writer<'g, 'a> {
             self.line(format!("{bytes}.items[{index}] = (unsigned char) {value};"));
         }
 
+        // `[]` still has room for one value. Setting it keeps gcc from
+        // warning that a view of it reads values never written.
+        if values.is_empty() {
+            self.line(format!("{bytes}.items[0] = 0;"));
+        }
+
         bytes
     }
 
