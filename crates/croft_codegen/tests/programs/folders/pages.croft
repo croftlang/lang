@@ -1,0 +1,25 @@
+// Lists the folder named on the command line, printing each name in order,
+// through Std.Files and its StdioFiles adapter.
+context Pages {
+    publish { Show }
+
+    use { Files, FileError } from Std.Files
+
+    service Show(): Result<Unit, FileError> {
+        calls Files, Console, Arguments
+    } = {
+        let folder = arguments.all().first.unwrap_or(".")
+        let names = files.list(folder)?
+        loop (let index where Range(0, 15)) {
+            match names.get(index) {
+                Some(name) -> console.print(name)
+                None -> Unit
+            }
+        }
+    }
+}
+
+domain Program {
+    contexts { Pages }
+    use { Show } from Pages
+} = Show()?

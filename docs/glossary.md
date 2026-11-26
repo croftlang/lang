@@ -359,9 +359,11 @@ no arrow in the domain's `contexts`.
 
 Some standard contexts are written in Croft and join the program when it
 imports from them. `Std.Files` has the `Files` port, with `read`, `write`,
-`append`, `exists` and `remove`, its errors `NotFound`, `NoRoom` and
+`append`, `exists`, `remove` and `list`, which gives the names in a folder in
+byte order, each folder's ending in `/`, its errors `NotFound`, `NoRoom` and
 `Unreadable`, the enum `FileError` that includes them, and the `StdioFiles`
-adapter, which uses C's stdio: `Files = "StdioFiles"` in `croft.toml`.
+adapter, which uses C's stdio: `Files = "StdioFiles"` in `croft.toml`. Its
+`list` needs POSIX, so it fails with `Unreadable` on machines without it.
 `Std.Http` has the `Http` port, with `get`, `post`, `put` and `delete`, each
 giving a `Response` (its `status`, its `headers` as a map with names in
 lower case, and its `body`) or an `HttpError`:

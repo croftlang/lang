@@ -82,9 +82,20 @@ impl<'g, 'a> Writer<'g, 'a> {
             "get" => {
                 let position = first(self, &Type::Int);
 
-                self.line(format!(
-                    "{temp}.some = {position} >= 0 && {position} < (croft_int) {list}.length;"
-                ));
+                // An index known not to be negative, such as a counter kept
+                // in an unsigned byte, needs no test that it is: gcc warns
+                // that one is always true.
+                let never_negative = (arguments.first())
+                    .and_then(|argument| self.range_of(&argument.value))
+                    .is_some_and(|range| range.low >= 0);
+
+                let test = if never_negative {
+                    format!("{position} < (croft_int) {list}.length")
+                } else {
+                    format!("{position} >= 0 && {position} < (croft_int) {list}.length")
+                };
+
+                self.line(format!("{temp}.some = {test};"));
 
                 self.line(format!(
                     "if ({temp}.some) {temp}.value = {list}.items[{position}];"
