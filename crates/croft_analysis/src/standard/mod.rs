@@ -1,7 +1,7 @@
-//! Built-in ports every target supplies, and the standard contexts:
-//! built-in names a context imports before using,
+//! The standard contexts: built-in names a context imports before using,
 //! such as `use { trim, split } from Std.Text`. The core types, list and
-//! option methods, `Range` and `Length` need no import.
+//! option methods, `Range` and `Length` need no import, and nor do the names
+//! of `Std.Storage` and `Std.Console`.
 
 /// Each standard context and the names it provides.
 pub const STANDARD_CONTEXTS: [(&str, &[&str]); 3] = [
@@ -41,21 +41,17 @@ pub fn standard_context_of(name: &str) -> Option<&'static str> {
         .map(|(context, _)| *context)
 }
 
-/// Ports every target supplies, so a service can call them with no adapter
-/// named in `croft.toml`: `Arguments` reads the command line and `Console`
-/// prints a line. A port the program declares with the same name replaces it.
-pub const BUILTIN_PORTS: [&str; 2] = ["Arguments", "Console"];
-
-pub fn is_builtin_port(name: &str) -> bool {
-    BUILTIN_PORTS.contains(&name)
-}
+/// The standard context every program has, whose names need no import:
+/// the `Console` and `Arguments` ports, which every target supplies.
+pub const CONSOLE_CONTEXT: &str = "Std.Console";
 
 /// Standard contexts written in Croft, each with the name it is imported by.
 /// They join the program only when something imports from them.
-pub const STANDARD_SOURCES: [(&str, &str); 3] = [
+pub const STANDARD_SOURCES: [(&str, &str); 4] = [
     ("Std.Files", include_str!("files.croft")),
     ("Std.Http", include_str!("http.croft")),
     (STORAGE_CONTEXT, include_str!("storage.croft")),
+    (CONSOLE_CONTEXT, include_str!("console.croft")),
 ];
 
 /// The standard context every program with a repository has, whose names

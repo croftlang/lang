@@ -4,7 +4,7 @@
 use croft_syntax::ast::{ContextItem, File};
 use croft_syntax::{parse, SourceId};
 
-use super::{standard_source, STANDARD_SOURCES, STORAGE_CONTEXT};
+use super::{standard_source, CONSOLE_CONTEXT, STANDARD_SOURCES, STORAGE_CONTEXT};
 
 /// The source id of a standard context: counting down from the top, so no
 /// project file has one, and each context's expressions are told apart.
@@ -16,12 +16,13 @@ pub fn standard_source_id(context: &str) -> SourceId {
     SourceId(u32::MAX - index.unwrap_or(0) as u32)
 }
 
-/// Adds the standard contexts written in Croft that the program needs: those
-/// any file imports from, `Std.Storage` when there is a repository, and the
+/// Adds the standard contexts written in Croft that the program needs:
+/// `Std.Console` always, those any file imports from, `Std.Storage` when
+/// there is a repository, and the
 /// context of any standard adapter croft.toml binds, such as `Std.Files` for
 /// `StdioFiles`. `FileStorage` saves through `Files`, so it brings both.
 pub fn add_standard_sources(files: &mut Vec<File>, bound: &[String]) {
-    let mut imported: Vec<String> = Vec::new();
+    let mut imported: Vec<String> = vec![CONSOLE_CONTEXT.to_string()];
 
     let has_repository = (files
         .iter()

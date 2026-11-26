@@ -106,6 +106,7 @@ pub fn instance_file(request: &Request, files: &[File], source: SourceId) -> Opt
 
     Some(File {
         contexts: vec![ContextDecl {
+            doc: Vec::new(),
             name: Identifier {
                 name: request.context.clone(),
                 span: match &item {

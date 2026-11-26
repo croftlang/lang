@@ -7,6 +7,7 @@ use super::Context;
 impl Context {
     pub(super) fn new(name: Identifier) -> Context {
         Context {
+            doc: Vec::new(),
             name,
             publish: Vec::new(),
             uses: Vec::new(),
@@ -78,6 +79,7 @@ impl Context {
     pub(super) fn from_domain(domain: &DomainDecl) -> Context {
         let mut context = Context::new(domain.name.clone());
         context.is_domain = true;
+        context.doc = domain.doc.clone();
         context.uses = domain.uses.clone();
 
         context.functions.push(FunctionDecl {

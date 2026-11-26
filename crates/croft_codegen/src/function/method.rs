@@ -1,6 +1,7 @@
 //! Method calls: port operations through the target's adapter, repositories,
 //! and the built-in methods of numbers and options.
 
+use croft_analysis::standard::CONSOLE_CONTEXT;
 use croft_analysis::types::Resolved;
 use croft_analysis::Type;
 use croft_syntax::ast::{Argument, Expr, ExprKind};
@@ -94,7 +95,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         ty: &Type,
         into: Into<'_>,
     ) -> String {
-        if port.context.is_empty() {
+        // Every target supplies `Std.Console`'s ports, so no adapter is bound.
+        if port.context == CONSOLE_CONTEXT {
             return self.builtin_port_call(&port.name, arguments, ty);
         }
 
@@ -115,7 +117,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         )
     }
 
-    /// An operation on a built-in port, which the runtime supplies on every target.
+    /// An operation of `Console` or `Arguments`, which the runtime supplies on every target.
     fn builtin_port_call(&mut self, port: &str, arguments: &[Argument], ty: &Type) -> String {
         if port == "Console" {
             let passed = self.pass_all(arguments, &[("text".to_string(), Type::String)]);

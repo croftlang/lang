@@ -1,6 +1,6 @@
 # Ports
 
-What the domain needs from the outside world, by signature only: never how it is done. An operation with no return type gives back Unit. `Arguments` and `Console` are built in: every target supplies them, so dn.toml never names an adapter for them.
+What the domain needs from the outside world, by signature only: never how it is done. An operation with no return type gives back Unit. `Arguments` and `Console` are declared in Std.Console, which every program has without an import: every target supplies them, so dn.toml never names an adapter for them. A port of the program's own with the same name replaces one.
 
 ```croft
 port Screen {

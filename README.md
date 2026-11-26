@@ -1,10 +1,10 @@
-<img src="./docs/assets/croft-banner.svg" alt="Croft" width="100%">
+<img src="./branding/banner.png" alt="Croft" width="100%">
 
 ![CI](https://github.com/croftlang/lang/actions/workflows/ci.yml/badge.svg)
 
 ## Introduction 
 
-Croft is a domain language, declarative structure, imperative behaviour. The
+Croft is an experimental domain language, declarative structure, imperative behaviour. The
 domain model is the program: you write it with domain-driven design's building
 blocks (contexts, values, entities, aggregates, factories, commands, events, ports and
 adapters) and the compiler checks the constraints you attach to them. Croft is

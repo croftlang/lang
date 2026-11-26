@@ -182,3 +182,34 @@ fn keeps_in_storage_only_finds_saves_and_removes() {
         vec!["4: `Storage` can't provide `Shelves.empty`, so target `test` needs an adapter written for `Shelves`"]
     );
 }
+
+#[test]
+fn needs_no_adapter_for_the_standard_console() {
+    let source = "context Game {\n\
+        service Main(): Unit {\n calls Console\n} = console.print(\"hi\")\n}";
+
+    assert_eq!(check_source(source, ""), Vec::<String>::new());
+
+    assert_eq!(
+        check_source(source, "Console = \"Mine\"\n"),
+        vec!["8: `Console` is built in, so it needs no adapter"]
+    );
+}
+
+#[test]
+fn a_port_of_the_programs_own_replaces_the_standard_one() {
+    let source = "context Game {\n\
+        port Console {\n fn beep(): Unit\n}\n\
+        adapter Beeper for Console = {\n fn beep() = Unit\n}\n\
+        service Main(): Unit {\n calls Console\n} = console.beep()\n}";
+
+    assert_eq!(
+        check_source(source, "Console = \"Beeper\"\n"),
+        Vec::<String>::new()
+    );
+
+    assert_eq!(
+        check_source(source, ""),
+        vec!["4: target `test` has no adapter for port `Console`"]
+    );
+}

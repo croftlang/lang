@@ -144,6 +144,10 @@ fn check_round(files: Vec<File>, manifest: Option<Manifest>) -> (Analysis, Vec<R
     let mut seen = std::collections::HashSet::new();
     (facts.members)
         .retain(|m| seen.insert((m.span.source.0, m.span.line, m.span.column, m.name.clone())));
+
+    let mut seen = std::collections::HashSet::new();
+    (facts.builtins).retain(|b| seen.insert((b.span.source.0, b.span.line, b.span.column)));
+
     program.facts = facts;
 
     let mut diagnostics = errors;

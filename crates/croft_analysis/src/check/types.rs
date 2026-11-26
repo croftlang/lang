@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use croft_syntax::ast::{Field, Parameter, TypeExpr};
 
 use super::{Checker, Scope};
+use crate::facts::BuiltinName;
 use crate::types::MAX_PLACES;
 
 const BUILTIN_TYPES: [(&str, usize); 11] = [
@@ -52,6 +53,11 @@ impl<'a> Checker<'a> {
         }
 
         if let Some((_, expected)) = BUILTIN_TYPES.iter().find(|(builtin, _)| *builtin == name) {
+            self.facts.builtins.push(BuiltinName {
+                span,
+                name: name.clone(),
+            });
+
             if *expected != found {
                 let message = format!("`{name}` takes {expected} type arguments, found {found}");
                 self.error(message, span);

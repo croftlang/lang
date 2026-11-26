@@ -23,6 +23,9 @@ pub struct Program {
 
 #[derive(Debug)]
 pub struct Context {
+    /// The doc comment above the part that publishes, or else above the
+    /// first part that has one.
+    pub doc: Vec<String>,
     pub name: Identifier,
     pub publish: Vec<Path>,
     pub uses: Vec<UseDecl>,
@@ -59,6 +62,14 @@ impl Program {
                     .contexts
                     .entry(name)
                     .or_insert_with(|| Context::new(part.name.clone()));
+
+                // The part that publishes is the context's front door, so
+                // its comment is the context's doc. Others describe a file.
+                let publishes = (part.items.iter()).any(|i| matches!(i, ContextItem::Publish(_)));
+
+                if !part.doc.is_empty() && (publishes || context.doc.is_empty()) {
+                    context.doc = part.doc;
+                }
 
                 context.add_items(part.items);
             }

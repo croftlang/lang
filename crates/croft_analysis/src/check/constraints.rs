@@ -3,6 +3,7 @@
 use croft_syntax::ast::{ConstraintUse, TypeExpr};
 
 use super::{Checker, Scope};
+use crate::facts::BuiltinName;
 use crate::symbols::SymbolKind;
 
 /// How many arguments each built-in constraint takes, after the value it checks.
@@ -44,6 +45,11 @@ impl<'a> Checker<'a> {
                     .iter()
                     .find(|(b, _)| *b == name)
                     .unwrap();
+
+                self.facts.builtins.push(BuiltinName {
+                    span: used.name.span(),
+                    name: name.clone(),
+                });
 
                 counts.to_vec()
             }

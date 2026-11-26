@@ -51,6 +51,16 @@ pub struct Facts {
     /// Each field, operation or method named after a value, such as the
     /// `player` in `room.player`, and the field names in records, for editors.
     pub members: Vec<Member>,
+    /// Each built-in type, function or constraint named, such as the `Int`
+    /// and the `Range` in `Int where Range(1, 9)`, for editors.
+    pub builtins: Vec<BuiltinName>,
+}
+
+/// A built-in type, function or constraint, where it is named.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BuiltinName {
+    pub span: Span,
+    pub name: String,
 }
 
 /// A name as written, such as the `Room` in `Room.Error`, and what it names.

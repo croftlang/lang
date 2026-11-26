@@ -1,9 +1,12 @@
 //! What is under the cursor, what to show on hover, and where it is declared.
 
+use croft_analysis::standard::{standard_context_of, standard_names};
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::{Resolved, Type};
-use croft_analysis::{Context, LocalName, Member, MemberKind, Reference};
-use croft_syntax::ast::{Field, Identifier};
+use croft_analysis::{
+    built_in_doc, BuiltinName, Context, LocalName, Member, MemberKind, Reference,
+};
+use croft_syntax::ast::{DomainDecl, Field, Identifier};
 use croft_syntax::{SourceId, Span};
 
 use super::session::ProjectState;
@@ -21,6 +24,11 @@ pub enum Found<'a> {
     Declaration(Resolved, Span),
     /// The name of a field or operation where it is declared.
     MemberDeclaration(DeclaredMember<'a>),
+    /// A context's name: in `use { ... } from Greeter`, the domain's
+    /// `contexts`, or `context Greeter` itself.
+    Context(String, Span),
+    /// A built-in type, function or constraint, such as `Int`, `Range` or `max`.
+    Builtin(&'a BuiltinName),
 }
 
 /// A field or operation as declared: `x` in `value Position { x: Int }`.
@@ -117,6 +125,8 @@ impl Found<'_> {
             Found::MemberDeclaration(member) => {
                 (member.name.span, member.name.name.chars().count())
             }
+            Found::Context(name, span) => (*span, name.chars().count()),
+            Found::Builtin(builtin) => (builtin.span, builtin.name.chars().count()),
         }
     }
 }
@@ -141,6 +151,10 @@ pub fn find_at(state: &ProjectState, id: SourceId, line: u32, column: u32) -> Op
         return Some(Found::Reference(reference));
     }
 
+    if let Some(builtin) = facts.builtins.iter().find(|b| at(b.span, &b.name)) {
+        return Some(Found::Builtin(builtin));
+    }
+
     if let Some(member) = facts.members.iter().find(|m| at(m.span, &m.name)) {
         return Some(Found::Member(member));
     }
@@ -152,6 +166,12 @@ pub fn find_at(state: &ProjectState, id: SourceId, line: u32, column: u32) -> Op
     for (context, table) in &state.analysis.symbols {
         for (name, symbol) in &table.symbols {
             if at(symbol.span, last_segment(name)) {
+                // The domain's body is checked as a service named after it,
+                // but its name is the domain's.
+                if is_domain(state, context) && name == context {
+                    return Some(Found::Context(name.clone(), symbol.span));
+                }
+
                 let target = Resolved {
                     context: context.clone(),
                     name: name.clone(),
@@ -165,9 +185,37 @@ pub fn find_at(state: &ProjectState, id: SourceId, line: u32, column: u32) -> Op
 
     let contexts = state.analysis.program.contexts.values();
 
-    (contexts.flat_map(declared_members))
+    let member = (contexts.flat_map(declared_members))
         .find(|m| at(m.name.span, &m.name.name))
-        .map(Found::MemberDeclaration)
+        .map(Found::MemberDeclaration);
+
+    member.or_else(|| {
+        let (name, span) = context_names(state).find(|(name, span)| at(*span, name))?;
+        Some(Found::Context(name, span))
+    })
+}
+
+fn is_domain(state: &ProjectState, context: &str) -> bool {
+    let contexts = &state.analysis.program.contexts;
+    contexts.get(context).is_some_and(|c| c.is_domain)
+}
+
+/// Each place a context is named, and the name as written.
+fn context_names(state: &ProjectState) -> impl Iterator<Item = (String, Span)> + '_ {
+    let program = &state.analysis.program;
+    let declared = (program.contexts.values()).map(|c| (c.name.name.clone(), c.name.span));
+
+    let used = (program.contexts.values())
+        .flat_map(|c| &c.uses)
+        .map(|use_decl| (use_decl.from.text(), use_decl.from.span()));
+
+    let listed = (program.domains.iter()).flat_map(|domain| {
+        let arrows = (domain.relations.iter()).flat_map(|(from, to)| [from, to]);
+
+        (domain.contexts.iter().chain(arrows)).map(|name| (name.name.clone(), name.span))
+    });
+
+    declared.chain(used).chain(listed)
 }
 
 /// Where a declaration's name is written. `written` is the name as used:
@@ -217,6 +265,12 @@ pub fn definition(state: &ProjectState, found: &Found) -> Option<(Span, usize)> 
         Found::MemberDeclaration(member) => {
             Some((member.name.span, member.name.name.chars().count()))
         }
+        Found::Context(name, _) => {
+            let context = state.analysis.program.contexts.get(name)?;
+            Some((context.name.span, name.chars().count()))
+        }
+        // Written into the compiler, with no declaration to go to.
+        Found::Builtin(_) => None,
     }
 }
 
@@ -272,6 +326,8 @@ pub fn hover(state: &ProjectState, found: &Found) -> Option<String> {
 
             return Some(describe_member(state, written, &of, false));
         }
+        Found::Context(name, _) => return describe_context(state, name),
+        Found::Builtin(builtin) => return describe_builtin(&builtin.name),
     };
 
     describe(state, target, written)
@@ -367,6 +423,119 @@ fn describe(state: &ProjectState, target: &Resolved, written: &str) -> Option<St
     markdown.push_str(&format!("\n\n*{what} in `{owner}`*"));
 
     Some(markdown)
+}
+
+/// A built-in type, function or constraint, which has no declaration to show.
+fn describe_builtin(name: &str) -> Option<String> {
+    let (written, doc) = built_in_doc(name)?;
+
+    let what = match standard_context_of(name) {
+        Some(context) => format!("From `{context}`"),
+        None => "Built in: it needs no import".to_string(),
+    };
+
+    Some(format!("```croft\n{written}\n```\n\n{doc}\n\n*{what}*"))
+}
+
+/// A context: what it publishes, or what a standard context provides.
+fn describe_context(state: &ProjectState, name: &str) -> Option<String> {
+    let program = &state.analysis.program;
+
+    let (names, doc, what) = match program.contexts.get(name) {
+        Some(context) => {
+            let names: Vec<String> = context.publish.iter().map(|path| path.text()).collect();
+
+            let what = if context.is_standard {
+                "A standard context"
+            } else if context.is_domain {
+                "The domain"
+            } else {
+                "A context"
+            };
+
+            (names, context.doc.join("\n"), what)
+        }
+        None => {
+            let names = (standard_names(name)?.iter())
+                .map(|n| n.to_string())
+                .collect();
+
+            (names, String::new(), "A standard context")
+        }
+    };
+
+    let domain = (program.domains.first()).filter(|d| d.name.name == name);
+
+    let header = match domain {
+        Some(domain) => domain_outline(domain),
+        None if names.is_empty() => format!("context {name}"),
+        None => format!(
+            "context {name} {{\n    publish {{ {} }}\n}}",
+            names.join(", ")
+        ),
+    };
+
+    let mut markdown = format!("```croft\n{header}\n```");
+
+    if !doc.is_empty() {
+        markdown.push_str(&format!("\n\n{doc}"));
+    }
+
+    markdown.push_str(&format!("\n\n*{what}*"));
+
+    let users: Vec<&str> = (program.contexts.values())
+        .filter(|c| !c.is_domain && c.uses.iter().any(|u| u.from.text() == name))
+        .map(|c| c.name.name.as_str())
+        .collect();
+
+    if !users.is_empty() {
+        let users: Vec<String> = users.iter().map(|u| format!("`{u}`")).collect();
+        markdown.push_str(&format!("\n\nUsed by {}", users.join(", ")));
+    }
+
+    Some(markdown)
+}
+
+/// A domain as it is declared, without its body: its context map, what it
+/// uses and the ports it calls.
+fn domain_outline(domain: &DomainDecl) -> String {
+    let mut lines = vec![format!("domain {} {{", domain.name.name)];
+    let arrows = domain.relations.iter().flat_map(|(from, to)| [from, to]);
+    let in_arrows: Vec<&str> = arrows.map(|name| name.name.as_str()).collect();
+
+    lines.push("    contexts {".to_string());
+
+    for (from, to) in &domain.relations {
+        lines.push(format!("        {} -> {}", from.name, to.name));
+    }
+
+    let mut alone: Vec<&str> = (domain.contexts.iter())
+        .map(|name| name.name.as_str())
+        .filter(|name| !in_arrows.contains(name))
+        .collect();
+
+    alone.dedup();
+    lines.extend(alone.iter().map(|name| format!("        {name}")));
+    lines.push("    }".to_string());
+
+    for use_decl in &domain.uses {
+        let names: Vec<String> = use_decl.names.iter().map(|path| path.text()).collect();
+
+        lines.push(format!(
+            "    use {{ {} }} from {}",
+            names.join(", "),
+            use_decl.from.text()
+        ));
+    }
+
+    if !domain.calls.is_empty() {
+        let calls: Vec<String> = domain.calls.iter().map(|path| path.text()).collect();
+        lines.push(format!("    calls {}", calls.join(", ")));
+    }
+
+    lines.push("}".to_string());
+
+    lines.join("\n")
 }
 
 fn capitalize(text: &str) -> String {

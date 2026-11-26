@@ -282,3 +282,189 @@ fn completes_names_in_scope() {
         assert!(offered.iter().any(|o| o == name), "{name} in {offered:?}");
     }
 }
+
+#[test]
+fn a_context_shows_what_it_publishes_and_goes_to_its_declaration() {
+    let (session, path) = checked("logistics.croft", None);
+    let state = session.project_for(&path).expect("checked");
+
+    let hover = hover_at(state, &path, "from Shipping", "Shipping");
+    assert!(
+        hover.starts_with("```croft\ncontext Shipping {\n"),
+        "{hover}"
+    );
+    assert!(hover.contains("SetUpBooking"), "{hover}");
+    assert!(hover.contains("*A context*"), "{hover}");
+    assert!(
+        hover.contains("Shipping: booking cargo, routing it"),
+        "{hover}"
+    );
+
+    let hover = hover_at(state, &path, "Routing -> Shipping", "Routing");
+    assert!(hover.contains("context Routing"), "{hover}");
+    assert!(hover.contains("Used by `Shipping`"), "{hover}");
+
+    let file = definition_file(state, &path, "from Shipping", "Shipping");
+    assert!(file.starts_with(logistics().canonicalize().unwrap().join("shipping")));
+}
+
+#[test]
+fn a_built_in_port_is_shown_as_if_declared() {
+    let text = std::fs::read_to_string(logistics().join("logistics.croft")).unwrap();
+
+    let text = text
+        .replace(
+            "} from Shipping\n",
+            "} from Shipping\n\n    calls Console\n",
+        )
+        .replace(
+            "    Track(SAMPLE_CARGO)?\n",
+            "    Track(SAMPLE_CARGO)?\n    console.print(\"done\")\n",
+        );
+
+    let (session, path) = checked("logistics.croft", Some(&text));
+    let state = session.project_for(&path).expect("checked");
+
+    let hover = hover_at(state, &path, "calls Console", "Console");
+
+    assert!(
+        hover.contains("port Console {\n    fn print(text: String): Unit\n}"),
+        "{hover}"
+    );
+
+    assert!(
+        hover.contains("Text for whoever runs the program."),
+        "{hover}"
+    );
+    assert!(hover.contains("in `Std.Console`*"), "{hover}");
+
+    let file = definition_file(state, &path, "calls Console", "Console");
+    assert!(file.ends_with("Std.Console.croft"), "{}", file.display());
+
+    let hover = hover_at(state, &path, "console.print", "print");
+    assert!(hover.contains("fn print(text: String): Unit"), "{hover}");
+    assert!(
+        hover.contains("Prints the text and starts a new line."),
+        "{hover}"
+    );
+
+    let hover = hover_at(state, &path, "console.print", "console");
+    assert!(
+        hover.contains("Text for whoever runs the program."),
+        "{hover}"
+    );
+}
+
+#[test]
+fn a_domain_is_shown_as_the_domain() {
+    let (session, path) = checked("logistics.croft", None);
+    let state = session.project_for(&path).expect("checked");
+    let hover = hover_at(state, &path, "domain Logistics", "Logistics");
+
+    assert!(
+        hover.starts_with(
+            "```croft\ndomain Logistics {\n    contexts {\n        Routing -> Shipping\n"
+        ),
+        "{hover}"
+    );
+
+    assert!(hover.contains("    use { SetUpBooking,"), "{hover}");
+    assert!(
+        hover.contains("A shipping company's cargo system"),
+        "{hover}"
+    );
+    assert!(hover.contains("*The domain*"), "{hover}");
+    assert!(!hover.contains("service"), "{hover}");
+}
+
+#[test]
+fn a_built_in_constraint_or_function_says_what_it_does() {
+    let (session, path) = checked("routing/routing.croft", None);
+    let state = session.project_for(&path).expect("checked");
+
+    let hover = hover_at(state, &path, "voyage: String where Length(4)", "Length");
+    assert!(
+        hover.contains("constraint Length(items: String or List<T>, low: Int, high: Int)"),
+        "{hover}"
+    );
+    assert!(
+        hover.contains("with one argument, means exactly 4"),
+        "{hover}"
+    );
+    assert!(hover.contains("*Built in: it needs no import*"), "{hover}");
+
+    let hover = hover_at(
+        state,
+        &path,
+        "departs: Int where Range(0, MAX_DAY)",
+        "Range",
+    );
+    assert!(
+        hover.contains("constraint Range(number: Int, low: Int, high: Int)"),
+        "{hover}"
+    );
+
+    let hover = hover_at(state, &path, "-> Some(Path", "Some(Path");
+    assert!(hover.contains("fn Some(value: T): Option<T>"), "{hover}");
+
+    let found = found_at(state, &path, "departs: Int where Range", "Range").expect("found");
+    assert!(lookup::definition(state, &found).is_none());
+}
+
+#[test]
+fn a_core_type_says_what_it_is() {
+    let (session, path) = checked("routing/routing.croft", None);
+    let state = session.project_for(&path).expect("checked");
+
+    let hover = hover_at(state, &path, "voyage: String where Length(4)", "String");
+    assert!(hover.starts_with("```croft\nString\n```"), "{hover}");
+    assert!(
+        hover.contains("A string with a `Length` holds that many"),
+        "{hover}"
+    );
+    assert!(hover.contains("*Built in: it needs no import*"), "{hover}");
+
+    let hover = hover_at(state, &path, "departs: Int where Range", "Int");
+    assert!(
+        hover.contains("A whole number of at least 32 bits."),
+        "{hover}"
+    );
+
+    let hover = hover_at(state, &path, "edges: List<Edge>", "List");
+    assert!(hover.starts_with("```croft\nList<T>\n```"), "{hover}");
+
+    let line = "fn find_path(start: String, end: String, deadline: Int): Option<Path>";
+    let hover = hover_at(state, &path, line, "Option");
+    assert!(hover.contains("`Some(value)` or `None`"), "{hover}");
+
+    // The type an argument names is still its own declaration.
+    let hover = hover_at(state, &path, "edges: List<Edge>", "Edge>");
+    assert!(hover.contains("value Edge {"), "{hover}");
+}
+
+#[test]
+fn some_and_none_in_a_match_say_what_they_are() {
+    let (session, path) = checked("routing/routing.croft", None);
+    let state = session.project_for(&path).expect("checked");
+
+    // The pattern, then the call after the arrow.
+    let hover = hover_at(state, &path, "Some(edge) -> Some(Path", "Some(edge)");
+    assert!(hover.contains("fn Some(value: T): Option<T>"), "{hover}");
+
+    let hover = hover_at(state, &path, "Some(edge) -> Some(Path", "Some(Path");
+    assert!(hover.contains("fn Some(value: T): Option<T>"), "{hover}");
+
+    // `None -> None`: the pattern, then the value.
+    let file = state.file_at(&path).expect("open");
+
+    let (index, line) = (file.text.lines().enumerate())
+        .find(|(_, l)| l.trim() == "None -> None")
+        .expect("the line");
+
+    for column in [line.find("None"), line.rfind("None")] {
+        let column = column.expect("None") as u32 + 2;
+        let found = lookup::find_at(state, file.id, index as u32 + 1, column).expect("found");
+        let hover = lookup::hover(state, &found).expect("a hover");
+        assert!(hover.contains("An `Option` that holds nothing."), "{hover}");
+    }
+}

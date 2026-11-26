@@ -33,6 +33,7 @@ impl Parser {
     }
 
     fn parse_context(&mut self) -> ParseResult<ContextDecl> {
+        let doc = self.doc();
         self.expect_keyword(Keyword::Context)?;
 
         let name = self.expect_identifier()?;
@@ -58,7 +59,7 @@ impl Parser {
             self.advance();
         }
 
-        Ok(ContextDecl { name, items })
+        Ok(ContextDecl { doc, name, items })
     }
 
     fn parse_context_item(&mut self, braced: bool) -> ParseResult<ContextItem> {

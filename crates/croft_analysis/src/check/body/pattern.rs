@@ -128,11 +128,27 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     /// Notes what a pattern's variant refers to, for editors: the error it
     /// stands for, or the enum that declares it.
     fn note_pattern(&mut self, subject: &Type, pattern: &Pattern) {
+        let written = pattern.path.last();
+
+        let built_in = match subject {
+            Type::Option(_) => ["Some", "None"].contains(&written.name.as_str()),
+            Type::Result(..) => ["Ok", "Err"].contains(&written.name.as_str()),
+            _ => false,
+        };
+
+        if built_in {
+            self.checker.facts.builtins.push(crate::facts::BuiltinName {
+                span: written.span,
+                name: written.name.clone(),
+            });
+
+            return;
+        }
+
         let Type::Named(named) = subject else {
             return;
         };
 
-        let written = pattern.path.last();
         let variants = self.checker.variants_of(named);
 
         let Some(variant) = variants.into_iter().find(|v| v.name == written.name) else {
