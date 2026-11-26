@@ -58,6 +58,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
                 self.check_arguments(arguments, &parameters, &name, span, false);
 
+                let constraints = Self::field_constraints(variant.fields);
+                let variant_name = path.last().name.clone();
+                self.check_known_arguments(arguments, &constraints, &variant.scope, &variant_name);
+
                 if let Type::Named(owner) = &ty {
                     self.note(
                         Some(id),
@@ -99,6 +103,15 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 Some(inner) => {
                     let parameters = [("value".to_string(), inner)];
                     self.check_arguments(arguments, &parameters, &name, span, false);
+
+                    let owner = self.checker.scope_of(&found);
+                    let fields = (owner.context.values.iter())
+                        .find(|value| value.name.name == found.name)
+                        .map_or(&[][..], |value| value.fields.as_slice());
+
+                    let constraints = Self::field_constraints(fields);
+                    self.check_known_arguments(arguments, &constraints, &owner, &found.name);
+
                     Type::Named(found)
                 }
                 None => {
@@ -169,6 +182,16 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         self.check_arguments(arguments, &parameters, factory, span, true);
 
+        if let Some(declared) = declared {
+            self.check_known_contract(declared, &scope, arguments, factory, span);
+        }
+
+        let declared = declared
+            .and_then(|f| f.parameters.as_deref())
+            .unwrap_or(&[]);
+        let constraints = Self::parameter_constraints(declared);
+        self.check_known_arguments(arguments, &constraints, &scope, factory);
+
         let made = self
             .checker
             .lookup(&found.context, aggregate)
@@ -212,11 +235,25 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             (function.and_then(|f| f.parameters.as_deref()), result)
         };
 
-        let parameters: Vec<(String, Type)> = (parameters.unwrap_or(&[]).iter())
+        let declared = parameters.unwrap_or(&[]);
+
+        let parameters: Vec<(String, Type)> = (declared.iter())
             .map(|p| (p.name.name.clone(), self.checker.parameter_type(&scope, p)))
             .collect();
 
         self.check_arguments(arguments, &parameters, &found.name, span, false);
+        let constraints = Self::parameter_constraints(declared);
+        self.check_known_arguments(arguments, &constraints, &scope, &found.name);
+
+        if matches!(found.kind, SymbolKind::Function | SymbolKind::Translation) {
+            self.check_known_result(found, arguments, span);
+        }
+
+        let function = (scope.context.functions.iter()).find(|f| f.name.name == found.name);
+
+        if let (Some(function), false) = (function, found.kind == SymbolKind::Constraint) {
+            self.check_known_contract(function, &scope, arguments, &found.name, span);
+        }
 
         result
     }

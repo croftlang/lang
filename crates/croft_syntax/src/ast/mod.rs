@@ -71,6 +71,92 @@ pub struct ConstraintUse {
     pub each: bool,
     pub name: Path,
     pub arguments: Vec<Expr>,
+    /// The error after `or`: `where Overdose(4000) or Overdosed`. A broken
+    /// constraint with one fails the call with it; one without is a mistake.
+    pub error: Option<Expr>,
+}
+
+impl ConstraintUse {
+    /// The constraint as written, for messages: `Range(1, 50)` or `each Alive`.
+    pub fn text(&self) -> String {
+        let name = self.name.text();
+        let arguments: Vec<String> = self.arguments.iter().map(Expr::text).collect();
+
+        let call = if arguments.is_empty() {
+            name
+        } else {
+            format!("{name}({})", arguments.join(", "))
+        };
+
+        if self.each {
+            format!("each {call}")
+        } else {
+            call
+        }
+    }
+}
+
+impl Expr {
+    /// The expression as written, for messages: `MAX_ENEMIES - 1` or
+    /// `!numbers.is_empty`. Blocks, matches and the like are `...`.
+    pub fn text(&self) -> String {
+        let list = |values: &mut dyn Iterator<Item = &Expr>| {
+            values.map(Expr::text).collect::<Vec<_>>().join(", ")
+        };
+
+        match &self.kind {
+            ExprKind::Int(number) => number.to_string(),
+            ExprKind::Float(text) => text.clone(),
+            ExprKind::String(text) => format!("{text:?}"),
+            ExprKind::Bool(value) => value.to_string(),
+            ExprKind::Name(name) => name.clone(),
+            ExprKind::Field(receiver, field) => format!("{}.{}", receiver.text(), field.name),
+            ExprKind::Call(callee, arguments) => {
+                let arguments: Vec<String> = (arguments.iter())
+                    .map(|argument| match &argument.name {
+                        Some(name) => format!("{}: {}", name.name, argument.value.text()),
+                        None => argument.value.text(),
+                    })
+                    .collect();
+
+                format!("{}({})", callee.text(), arguments.join(", "))
+            }
+            ExprKind::List(items) => format!("[{}]", list(&mut items.iter())),
+            ExprKind::Unary(UnaryOp::Not, inner) => format!("!{}", inner.text()),
+            ExprKind::Unary(UnaryOp::Negate, inner) => format!("-{}", inner.text()),
+            ExprKind::Unary(UnaryOp::BitNot, inner) => format!("~{}", inner.text()),
+            ExprKind::Binary(op, left, right) => {
+                format!("{} {} {}", left.text(), op.symbol(), right.text())
+            }
+            _ => "...".to_string(),
+        }
+    }
+}
+
+impl BinaryOp {
+    /// The operator as written: `+`, `<=`, `&&`.
+    pub fn symbol(&self) -> &'static str {
+        match self {
+            BinaryOp::Add => "+",
+            BinaryOp::Subtract => "-",
+            BinaryOp::Multiply => "*",
+            BinaryOp::Divide => "/",
+            BinaryOp::Remainder => "%",
+            BinaryOp::Equal => "==",
+            BinaryOp::NotEqual => "!=",
+            BinaryOp::Less => "<",
+            BinaryOp::LessEqual => "<=",
+            BinaryOp::Greater => ">",
+            BinaryOp::GreaterEqual => ">=",
+            BinaryOp::And => "&&",
+            BinaryOp::Or => "||",
+            BinaryOp::BitAnd => "&",
+            BinaryOp::BitOr => "|",
+            BinaryOp::BitXor => "^",
+            BinaryOp::ShiftLeft => "<<",
+            BinaryOp::ShiftRight => ">>",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -71,7 +71,13 @@ typedef struct {
 /* Stops the program when a contract is broken. */
 void croft_fail(const char *message);
 
-#ifdef CROFT_DEBUG
+/* Whether the constraints the compiler could not work out are checked while
+   the program runs. Croft writes this from the target's `checks` setting. */
+#ifndef CROFT_CHECKS
+#define CROFT_CHECKS
+#endif
+
+#ifdef CROFT_CHECKS
 #define CROFT_CHECK(condition, message) if (!(condition)) croft_fail(message)
 #else
 /* Not worked out, but still a use of what it names, for the compiler. */
@@ -79,8 +85,8 @@ void croft_fail(const char *message);
 #endif
 
 /* A parameter whose Range fits a smaller type is passed in that type, but as
-   a croft_int in debug builds, so its check sees the number as it was given. */
-#ifdef CROFT_DEBUG
+   a croft_int when checks are on, so its check sees the number as it was given. */
+#ifdef CROFT_CHECKS
 #define CROFT_RANGED(type) croft_int
 #else
 #define CROFT_RANGED(type) type

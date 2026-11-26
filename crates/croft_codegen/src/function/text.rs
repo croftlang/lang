@@ -1,6 +1,6 @@
 //! String and `Bytes` fields kept in a `croft_text_N` or `croft_bytes_N` of
-//! their own size: read where they are, and written with a check, in debug
-//! builds, that they fit.
+//! their own size: read where they are, and written with a check, when checks
+//! are on, that they fit.
 
 use croft_analysis::types::Resolved;
 use croft_analysis::Type;
@@ -9,7 +9,7 @@ use super::Writer;
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// Writes `value`, any string, into the field at `place`. Text that
-    /// doesn't fit is cut short, and stops a debug build.
+    /// doesn't fit is cut short, and stops a checked build.
     pub fn store_text(&mut self, place: &str, value: &str, capacity: i64, label: &str) {
         let value = self.view_of(value);
 
@@ -25,7 +25,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// Writes `value`, any `Bytes`, into the field at `place`. Values that
-    /// don't fit are cut short, and stop a debug build.
+    /// don't fit are cut short, and stop a checked build.
     pub fn store_bytes(&mut self, place: &str, value: &str, capacity: i64, label: &str) {
         self.open(format!(
             "if (!croft_bytes_copy(CROFT_BYTES_VIEW({value}), CROFT_BYTES_OUT({place})))"

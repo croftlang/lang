@@ -2,6 +2,7 @@
 
 use croft_syntax::ast::{ConstraintDecl, FunctionDecl, FunctionKind, PolicyDecl};
 
+use super::constraints::ConstraintPlace;
 use super::{Checker, Scope};
 use crate::symbols::SymbolKind;
 
@@ -12,7 +13,9 @@ impl<'a> Checker<'a> {
         let span = name.span;
 
         match &function.parameters {
-            Some(parameters) => self.check_parameters(scope, parameters, false),
+            Some(parameters) => {
+                self.check_parameters(scope, parameters, false, ConstraintPlace::Parameter)
+            }
             None if function.kind != FunctionKind::Command => {
                 self.error(
                     format!("`{}` needs brackets, even with no parameters", name.name),
@@ -34,7 +37,8 @@ impl<'a> Checker<'a> {
             }
             (Some(ty), _) => {
                 self.check_type(scope, ty, false);
-                self.check_constraints(scope, &function.return_constraints, Some(ty));
+                let place = ConstraintPlace::Result;
+                self.check_constraints(scope, &function.return_constraints, Some(ty), place);
             }
             (None, _) => {}
         }
@@ -69,6 +73,11 @@ impl<'a> Checker<'a> {
             self.error(message, constraint.name.span);
         }
 
-        self.check_parameters(scope, &constraint.parameters, true);
+        self.check_parameters(
+            scope,
+            &constraint.parameters,
+            true,
+            ConstraintPlace::Declaration,
+        );
     }
 }

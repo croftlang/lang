@@ -340,7 +340,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// Writes the items of `[a, b, c]` straight into `list`, a list of type
-    /// `ty`, stopping a debug build when there are more than it holds.
+    /// `ty`, stopping a checked build when there are more than it holds.
     pub fn fill_list(&mut self, list: &str, items: &[croft_syntax::ast::Expr], ty: &Type) {
         let Some(item) = list_item(ty) else {
             return;

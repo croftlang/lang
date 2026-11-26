@@ -54,6 +54,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
         }
 
+        let place = crate::check::constraints::ConstraintPlace::LoopCounter;
+        self.checker
+            .reject_constraint_errors(&counter.constraints, place);
+
         self.bind(
             &counter.name.name,
             Type::Int,

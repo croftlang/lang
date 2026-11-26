@@ -1,6 +1,6 @@
 //! Writing lines with indentation, and the finished function.
 
-use super::unused::{is_write_to, mentions, release_lines, tidy_condition};
+use super::unused::{is_write_to, mentions, tidy_condition, unchecked_lines};
 use super::Writer;
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -16,7 +16,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.depth += 1;
     }
 
-    /// A preprocessor line, such as `#ifdef CROFT_DEBUG`, at the start of the line.
+    /// A preprocessor line, such as `#ifdef CROFT_CHECKS`, at the start of the line.
     pub fn directive(&mut self, text: &str) {
         self.lines.push(text.to_string());
     }
@@ -66,11 +66,11 @@ impl<'g, 'a> Writer<'g, 'a> {
             out.push('\n');
         }
 
-        // A parameter only used in debug-build lines is still unused otherwise.
-        let release: Vec<&String> = release_lines(&self.lines);
+        // A parameter only used in checked lines is still unused otherwise.
+        let unchecked: Vec<&String> = unchecked_lines(&self.lines);
 
         for parameter in &self.parameters {
-            if !release.iter().any(|line| mentions(line, parameter)) {
+            if !unchecked.iter().any(|line| mentions(line, parameter)) {
                 out.push_str(&format!("    (void) {parameter};\n"));
             }
         }
@@ -80,8 +80,8 @@ impl<'g, 'a> Writer<'g, 'a> {
             out.push('\n');
         }
 
-        // A variable a release build only writes to, such as a value built
-        // just to be checked in debug builds, is marked as used.
+        // A variable a build without checks only writes to, such as a value built
+        // just to be checked when checks are on, is marked as used.
         for declaration in &declarations {
             let name = declaration
                 .trim_end_matches(';')
@@ -89,7 +89,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 .next()
                 .unwrap_or_default();
 
-            if release
+            if unchecked
                 .iter()
                 .all(|line| !mentions(line, name) || is_write_to(line, name))
             {

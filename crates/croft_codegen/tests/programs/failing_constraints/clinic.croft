@@ -1,0 +1,41 @@
+// Constraints with `or`: breaking one fails the call with its error, which
+// the caller handles like any other.
+context Clinic
+
+error WrongAnswer
+error Overdosed
+error OddDose
+
+constraint Overdose(mg: Int, max: Int) = mg <= max
+constraint Even(number: Int) = number % 2 == 0
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn give(mg: Int where Overdose(4000) or Overdosed): Result<Int, Overdosed> = mg
+
+// The same constraint, written in the contract.
+fn give_later(mg: Int): Result<Int, Overdosed> {
+    mg where Overdose(4000) or Overdosed
+} = mg
+
+fn split(doses: List<Int> where each Even or OddDose): Result<Int, OddDose> = doses.length
+
+fn dose_of(mg: Int): Int = mg * 2
+
+service Check(): Result<Unit, WrongAnswer> = {
+    check(give(dose_of(1000)).unwrap_or(0) == 2000)?
+    check(give(dose_of(2500)).is_err)?
+    check(give_later(dose_of(2500)).is_err)?
+    check(split([2, 4]).unwrap_or(0) == 2)?
+    check(split([2, 3]).is_err)?
+    let refused = match give(dose_of(2500)) {
+        Ok(_) -> false
+        Err(e) -> e == Overdosed
+    }
+    check(refused)
+}

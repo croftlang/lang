@@ -57,7 +57,7 @@ pub fn instance_file(request: &Request, files: &[File], source: SourceId) -> Opt
                 substitute(&mut field.ty);
 
                 for constraint in &mut field.constraints {
-                    for argument in &mut constraint.arguments {
+                    for argument in constraint.arguments.iter_mut().chain(&mut constraint.error) {
                         renumber(argument, source, &mut next, &substitute);
                     }
                 }
@@ -75,7 +75,7 @@ pub fn instance_file(request: &Request, files: &[File], source: SourceId) -> Opt
                 parameter.types.iter_mut().for_each(substitute);
 
                 for constraint in &mut parameter.constraints {
-                    for argument in &mut constraint.arguments {
+                    for argument in constraint.arguments.iter_mut().chain(&mut constraint.error) {
                         renumber(argument, source, &mut next, &substitute);
                     }
                 }
@@ -86,7 +86,7 @@ pub fn instance_file(request: &Request, files: &[File], source: SourceId) -> Opt
             }
 
             for constraint in &mut function.return_constraints {
-                for argument in &mut constraint.arguments {
+                for argument in constraint.arguments.iter_mut().chain(&mut constraint.error) {
                     renumber(argument, source, &mut next, &substitute);
                 }
             }

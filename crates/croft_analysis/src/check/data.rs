@@ -6,6 +6,7 @@ use croft_syntax::ast::{
     EnumDecl, Expr, ExprKind, Identifier, IdentityDecl, Invariant, Path, ValueDecl,
 };
 
+use super::constraints::ConstraintPlace;
 use super::{Checker, Scope};
 use crate::program::{identifies, Context};
 use crate::symbols::SymbolKind;
@@ -71,7 +72,8 @@ impl<'a> Checker<'a> {
             self.error(message, identity.ty.path.span());
         }
 
-        self.check_constraints(scope, &identity.constraints, Some(&identity.ty));
+        let place = ConstraintPlace::Identity;
+        self.check_constraints(scope, &identity.constraints, Some(&identity.ty), place);
         self.check_identity_owner(scope, identity);
     }
 

@@ -115,7 +115,18 @@ impl<'a> Checker<'a> {
         }
 
         for precondition in &function.preconditions {
-            body.check_precondition(precondition);
+            body.check_contract_line(precondition);
+        }
+
+        // A parameter's constraint with `or` fails the call with its error.
+        for parameter in function.parameters.iter().flatten() {
+            for error in parameter
+                .constraints
+                .iter()
+                .filter_map(|c| c.error.as_ref())
+            {
+                body.check_failure(error);
+            }
         }
 
         match (&function.body, kind, &result) {

@@ -56,7 +56,7 @@ fn reads_rules_on_fields_and_parameters() {
 }
 
 #[test]
-fn reads_a_contract_with_preconditions_and_uses() {
+fn reads_a_contract_with_constraints_and_calls() {
     let source = "context Dungeon {\n    service Play(id: RoomId): Unit {\n        calls Keyboard, Screen\n        \
                   id > 0 or NotFound\n    } = Unit\n}";
     let file = parse_ok(source);

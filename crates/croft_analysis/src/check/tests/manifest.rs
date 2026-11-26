@@ -213,3 +213,14 @@ fn a_port_of_the_programs_own_replaces_the_standard_one() {
         vec!["4: target `test` has no adapter for port `Console`"]
     );
 }
+
+#[test]
+fn a_target_checks_constraints_unless_it_turns_them_off() {
+    let text =
+        "[package]\nname = \"game\"\n\n[target.desktop]\n\n[target.spectrum_48k]\nchecks = false\n";
+
+    let manifest = Manifest::parse(text, SourceId(1)).unwrap();
+
+    assert!(manifest.target("desktop").unwrap().checks);
+    assert!(!manifest.target("spectrum_48k").unwrap().checks);
+}

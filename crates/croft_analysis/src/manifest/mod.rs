@@ -27,6 +27,10 @@ pub struct TargetConfig {
     pub native: Vec<Identifier>,
     /// Each port, and the adapter that fills it on this target.
     pub adapters: Vec<(Identifier, Identifier)>,
+    /// Whether the program checks, while it runs, the constraints the compiler
+    /// could not work out, and stops when one is broken. On unless the target
+    /// sets `checks = false`.
+    pub checks: bool,
 }
 
 impl Manifest {

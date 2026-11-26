@@ -16,6 +16,7 @@ mod failure;
 mod field;
 mod generic_call;
 mod issue;
+mod known_constraints;
 mod list;
 mod map;
 mod method;
@@ -64,6 +65,9 @@ pub(super) struct Local {
     pub(super) settable: bool,
     /// Where the name is bound, when it is written in the source.
     pub(super) defined: Option<Span>,
+    /// Its value, when that is known when the program is compiled and nothing
+    /// can change it, so constraints on where it goes can be worked out.
+    pub(super) known: Option<crate::check::known::Known>,
 }
 
 pub(super) struct BodyChecker<'c, 'a> {
@@ -76,6 +80,8 @@ pub(super) struct BodyChecker<'c, 'a> {
     result: Type,
     /// What `?` and `or` may fail with. `None` when the body cannot fail.
     error: Option<Type>,
+    /// Every name a `set` in the body changes, so their values are not taken as known.
+    changed: std::collections::HashSet<String>,
 }
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
@@ -100,6 +106,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             loops: 0,
             result,
             error,
+            changed: std::collections::HashSet::new(),
         }
     }
 
@@ -120,6 +127,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             ty,
             settable,
             defined,
+            known: None,
         };
 
         scope.insert(name.to_string(), local);

@@ -113,7 +113,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// A shift. Left shifts go through `unsigned long`, so shifting a negative
     /// number is defined in C. An amount that is not a constant is checked in
-    /// debug builds, since C leaves shifting by too much undefined.
+    /// checked builds, since C leaves shifting by too much undefined.
     fn shift(&mut self, is_left: bool, left: &Expr, right: &Expr) -> String {
         let value = self.value(left, &Type::Int);
         let constant = evaluate(self.gen.program, &self.gen.model, &self.context, right);

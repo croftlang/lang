@@ -8,6 +8,8 @@ use crate::types::Type;
 impl<'c, 'a> BodyChecker<'c, 'a> {
     /// A block's type is its last line's, or `Unit` when that line is a step.
     pub(super) fn block(&mut self, statements: &[Statement], expected: Option<&Type>) -> Type {
+        super::known_constraints::changed_names(statements, &mut self.changed);
+
         self.nested(|body| {
             let mut result = Type::Unit;
 
@@ -54,6 +56,22 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         let settable = matches!(self.kind, BodyKind::Service);
         self.bind(&name.name, ty, settable, Some(name.span));
+
+        // A service's `let` can be changed with `set`, so its value is only
+        // known when nothing in the body changes it.
+        if settable && self.changed.contains(&name.name) {
+            return Type::Unit;
+        }
+
+        let known = self.known_local_value(value);
+
+        if let Some(local) = self
+            .locals
+            .last_mut()
+            .and_then(|scope| scope.get_mut(&name.name))
+        {
+            local.known = known;
+        }
 
         Type::Unit
     }

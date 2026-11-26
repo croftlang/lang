@@ -231,7 +231,6 @@ fn saves_and_finds_aggregates_in_files() {
     let built = compile(
         &output,
         &[
-            "-DCROFT_DEBUG",
             "croft_runtime.c",
             "croft_files.c",
             "program.c",
@@ -288,7 +287,7 @@ fn makes_aggregates_through_factories() {
 /// Each broken constraint stops a debug build with a message naming it, and a
 /// release build doesn't check.
 #[test]
-fn checks_rules_in_debug_builds() {
+fn checks_rules_in_every_build_by_default() {
     if !has_c_compiler() {
         return;
     }
@@ -296,33 +295,34 @@ fn checks_rules_in_debug_builds() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/constraints");
     let output = generate(&source, "test", "constraints");
 
-    let debug = compile(
-        &output,
-        &[
-            "-DCROFT_DEBUG",
-            "croft_runtime.c",
-            "program.c",
-            "-o",
-            "debug",
-        ],
+    // No flags: a build checks its constraints unless its target turns them off.
+    let checked = compile(&output, &["croft_runtime.c", "program.c", "-o", "checked"]);
+
+    assert!(
+        checked.status.success(),
+        "{}",
+        String::from_utf8_lossy(&checked.stderr)
+    );
+
+    let unchecked_output = generate(&source, "unchecked", "constraints");
+    let unchecked = compile(
+        &unchecked_output,
+        &["croft_runtime.c", "program.c", "-o", "unchecked"],
     );
 
     assert!(
-        debug.status.success(),
+        unchecked.status.success(),
         "{}",
-        String::from_utf8_lossy(&debug.stderr)
-    );
-
-    let release = compile(&output, &["croft_runtime.c", "program.c", "-o", "release"]);
-
-    assert!(
-        release.status.success(),
-        "{}",
-        String::from_utf8_lossy(&release.stderr)
+        String::from_utf8_lossy(&unchecked.stderr)
     );
 
     let run = |program: &str, argument: &str| {
-        let ran = std::process::Command::new(output.join(program))
+        let folder = if program == "unchecked" {
+            &unchecked_output
+        } else {
+            &output
+        };
+        let ran = std::process::Command::new(folder.join(program))
             .arg(argument)
             .output()
             .expect("it runs");
@@ -333,10 +333,10 @@ fn checks_rules_in_debug_builds() {
         )
     };
 
-    assert_eq!(run("debug", "none"), (Some(0), String::new()));
+    assert_eq!(run("checked", "none"), (Some(0), String::new()));
 
     assert_eq!(
-        run("debug", "argument"),
+        run("checked", "argument"),
         (
             Some(1),
             "heal: amount must satisfy Range(1, 50)".to_string()
@@ -344,12 +344,12 @@ fn checks_rules_in_debug_builds() {
     );
 
     assert_eq!(
-        run("debug", "result"),
+        run("checked", "result"),
         (Some(1), "half: the result must satisfy Even".to_string())
     );
 
     assert_eq!(
-        run("debug", "field"),
+        run("checked", "field"),
         (
             Some(1),
             "Dose: amount must satisfy Range(1, 50)".to_string()
@@ -357,12 +357,17 @@ fn checks_rules_in_debug_builds() {
     );
 
     assert_eq!(
-        run("debug", "each"),
+        run("checked", "each"),
         (Some(1), "count: numbers must satisfy each Even".to_string())
     );
 
     assert_eq!(
-        run("debug", "score"),
+        run("checked", "contract"),
+        (Some(1), "move_bed: from != to must hold".to_string())
+    );
+
+    assert_eq!(
+        run("checked", "score"),
         (
             Some(1),
             "Score: value must satisfy Range(0, 999)".to_string()
@@ -370,7 +375,7 @@ fn checks_rules_in_debug_builds() {
     );
 
     assert_eq!(
-        run("debug", "pay"),
+        run("checked", "pay"),
         (
             Some(1),
             "pay: amount must satisfy Range(0.01, 99.99)".to_string()
@@ -378,12 +383,12 @@ fn checks_rules_in_debug_builds() {
     );
 
     assert_eq!(
-        run("debug", "shift"),
+        run("checked", "shift"),
         (Some(1), "shift by less than 0 or more than 31".to_string())
     );
 
     assert_eq!(
-        run("debug", "name"),
+        run("checked", "name"),
         (
             Some(1),
             "Patient: name is longer than 8 characters".to_string()
@@ -391,16 +396,17 @@ fn checks_rules_in_debug_builds() {
     );
 
     assert_eq!(
-        run("debug", "join"),
+        run("checked", "join"),
         (
             Some(1),
             "joined text is longer than a string can hold".to_string()
         )
     );
 
-    assert_eq!(run("release", "argument"), (Some(0), String::new()));
-    assert_eq!(run("release", "name"), (Some(0), String::new()));
+    assert_eq!(run("unchecked", "argument"), (Some(0), String::new()));
+    assert_eq!(run("unchecked", "name"), (Some(0), String::new()));
     fs::remove_dir_all(output).ok();
+    fs::remove_dir_all(unchecked_output).ok();
 }
 
 #[test]
@@ -751,4 +757,36 @@ fn runs_more_list_methods() {
 #[test]
 fn runs_result_methods() {
     run_program("results");
+}
+
+/// A parameter's constraint with `or` fails the call with its error, with
+/// checks on and with the target's checks turned off.
+#[test]
+fn fails_with_a_constraints_error() {
+    run_program("failing_constraints");
+
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/failing_constraints");
+    let output = generate(&source, "unchecked", "failing_constraints_unchecked");
+    let built = compile(&output, &["croft_runtime.c", "program.c", "-o", "program"]);
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    let ran = std::process::Command::new(output.join("program"))
+        .output()
+        .expect("it runs");
+
+    assert!(
+        ran.status.success(),
+        "a check failed: {}",
+        String::from_utf8_lossy(&ran.stdout)
+    );
+    fs::remove_dir_all(output).ok();
 }

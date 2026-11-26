@@ -40,6 +40,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             let kind = crate::facts::MemberKind::Field;
             self.note_member(name, ty, &field_type, kind, defined);
 
+            if let Type::Named(named) = ty {
+                self.check_known_field(named, given);
+            }
+
             match &given.value {
                 Some(value) => {
                     self.expect(value, &field_type);

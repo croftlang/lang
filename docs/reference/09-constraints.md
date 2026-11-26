@@ -21,7 +21,7 @@ enemies: List<Enemy> where Length(0, MAX_ENEMIES), each Alive
 
 // Length also sizes a string: this field holds 12 characters, not 32. So do
 // the strings made from it, such as title.trim() or each part of a split.
-// Longer text is cut short, and a debug build stops and names the field.
+// Longer text is cut short, and the program stops and names the field.
 title: String where Length(1, 12)
 
 // on a whole aggregate, relating its fields
@@ -34,3 +34,32 @@ aggregate Room {
 // on a parameter
 command Heal(amount: Int where Range(1, 50)) { ... }
 ```
+
+## When constraints are checked
+
+The compiler works out every constraint it can. Wherever a value is known when the program is compiled, a broken constraint is an error from `croft check`, and editors show it as you type. A value is known when it is a literal, a constant, a list of known values, arithmetic or `.length` on them, a `let` name that nothing in the body changes with `set`, or what a function or translation gives back for known arguments. This holds for arguments to functions, services, commands and factories, for fields in records and `with`, for single values, for enum variants, and for the result of a function.
+
+```croft
+constraint Overdose(mg: Int, max: Int) = mg <= max
+
+fn give(mg: Int where Overdose(4000)): Int = mg
+
+// error: `give` is given `5000` for `mg`, which breaks `Overdose(4000)`
+let given = give(5000)
+```
+
+A value that is only known while the program runs, such as input or something read from a port, is checked when it reaches the constraint, and a broken one stops the program with a message naming it: `give: mg must satisfy Overdose(4000)`. This happens on every target unless its section of `croft.toml` sets `checks = false`.
+
+## Failing with an error
+
+A constraint on a parameter can end with `or` and an error. Breaking it is then not a mistake but a failure the domain expects: the call fails with that error, which the caller handles like any other, so `croft check` accepts a call it knows will fail. It is always checked, whatever the target's `checks` setting. Only a parameter's constraint, inline or in the contract, can have `or`; a field, single value, result or loop counter has nowhere to fail, so its constraints must hold.
+
+```croft
+error Overdosed
+
+fn give(mg: Int where Overdose(4000) or Overdosed): Result<Int, Overdosed> = mg
+
+// compiles; fails with Overdosed
+let given = give(5000)?
+```
+
