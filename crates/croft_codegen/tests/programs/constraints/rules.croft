@@ -1,7 +1,9 @@
 // Breaks one constraint, chosen by the command-line argument, so the test can see
-// each kind of check stop a debug build.
+// each kind of check stop a debug build. Each value depends on the arguments, so
+// it is only known while running; a value known when compiling is an error then.
 context Clinic {
     use { Decimal } from Std.Numbers
+    use { trim } from Std.Text
 
     constraint Even(number: Int) = number % 2 == 0
 
@@ -32,25 +34,25 @@ context Clinic {
     } = {
         let chosen = arguments.all()
         if chosen.contains("argument") {
-            let healed = heal(70)
+            let healed = heal(chosen.length * 70)
         }
         if chosen.contains("result") {
-            let halved = half(6)
+            let halved = half(chosen.length * 4 + 2)
         }
         if chosen.contains("field") {
-            let dose = Dose { amount: 70 }
+            let dose = Dose { amount: chosen.length * 70 }
         }
         if chosen.contains("each") {
-            let counted = count([2, 3])
+            let counted = count([2, chosen.length * 2 + 1])
         }
         if chosen.contains("score") {
             let score = Score(chosen.length * 5000)
         }
         if chosen.contains("pay") {
-            let paid = pay(120)
+            let paid = pay(chosen.length * 120)
         }
         if chosen.contains("name") {
-            let patient = Patient { name: "Bartholomew" }
+            let patient = Patient { name: "Bartholomew".trim() }
         }
         if chosen.contains("join") {
             let joined = "a sentence of twenty " + "and another of twenty"

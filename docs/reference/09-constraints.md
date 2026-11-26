@@ -34,3 +34,19 @@ aggregate Room {
 // on a parameter
 command Heal(amount: Int where Range(1, 50)) { ... }
 ```
+
+## When constraints are checked
+
+The compiler works out every constraint it can. Wherever a value is known when the program is compiled, a broken constraint is an error from `croft check`, and editors show it as you type. A value is known when it is a literal, a constant, a list of known values, arithmetic or `.length` on them, a `let` name that nothing in the body changes with `set`, or what a function or translation gives back for known arguments. This holds for arguments to functions, services, commands and factories, for fields in records and `with`, for single values, for enum variants, and for the result of a function.
+
+```croft
+constraint Overdose(mg: Int, max: Int) = mg <= max
+
+fn give(mg: Int where Overdose(4000)): Int = mg
+
+// error: `give` is given `5000` for `mg`, which breaks `Overdose(4000)`
+let given = give(5000)
+```
+
+A value that is only known while the program runs, such as input or something read from a port, is checked when it reaches the constraint.
+

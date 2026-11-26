@@ -73,6 +73,54 @@ pub struct ConstraintUse {
     pub arguments: Vec<Expr>,
 }
 
+impl ConstraintUse {
+    /// The constraint as written, for messages: `Range(1, 50)` or `each Alive`.
+    pub fn text(&self) -> String {
+        let name = self.name.text();
+        let arguments: Vec<String> = self.arguments.iter().map(argument_text).collect();
+
+        let call = if arguments.is_empty() {
+            name
+        } else {
+            format!("{name}({})", arguments.join(", "))
+        };
+
+        if self.each {
+            format!("each {call}")
+        } else {
+            call
+        }
+    }
+}
+
+/// A constraint's argument as written, such as `MAX_ENEMIES - 1`.
+fn argument_text(value: &Expr) -> String {
+    match &value.kind {
+        ExprKind::Int(number) => number.to_string(),
+        ExprKind::Float(text) => text.clone(),
+        ExprKind::Name(name) => name.clone(),
+        ExprKind::Unary(UnaryOp::Negate, inner) => format!("-{}", argument_text(inner)),
+        ExprKind::Unary(UnaryOp::BitNot, inner) => format!("~{}", argument_text(inner)),
+        ExprKind::Binary(op, left, right) => {
+            let symbol = match op {
+                BinaryOp::Add => "+",
+                BinaryOp::Subtract => "-",
+                BinaryOp::Multiply => "*",
+                BinaryOp::Divide => "/",
+                BinaryOp::BitAnd => "&",
+                BinaryOp::BitOr => "|",
+                BinaryOp::BitXor => "^",
+                BinaryOp::ShiftLeft => "<<",
+                BinaryOp::ShiftRight => ">>",
+                _ => "?",
+            };
+
+            format!("{} {symbol} {}", argument_text(left), argument_text(right))
+        }
+        _ => "...".to_string(),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
     pub doc: Vec<String>,

@@ -20,7 +20,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         constraint: &ConstraintUse,
         what: &str,
     ) {
-        let message = c_string(&format!("{what} must satisfy {}", describe(constraint)));
+        let message = c_string(&format!("{what} must satisfy {}", constraint.text()));
 
         if constraint.each {
             let Some(item) = list_item(ty) else { return };
@@ -120,56 +120,5 @@ fn literal(number: i64, original: &croft_syntax::ast::Expr) -> croft_syntax::ast
         kind: croft_syntax::ast::ExprKind::Int(number),
         span: original.span,
         id: original.id,
-    }
-}
-
-/// `Range(1, 50)` or `each Alive`, as written, for messages.
-fn describe(constraint: &ConstraintUse) -> String {
-    let name = constraint.name.text();
-    let arguments: Vec<String> = constraint.arguments.iter().map(describe_argument).collect();
-
-    let call = if arguments.is_empty() {
-        name
-    } else {
-        format!("{name}({})", arguments.join(", "))
-    };
-
-    if constraint.each {
-        format!("each {call}")
-    } else {
-        call
-    }
-}
-
-fn describe_argument(value: &croft_syntax::ast::Expr) -> String {
-    use croft_syntax::ast::{BinaryOp, ExprKind, UnaryOp};
-
-    match &value.kind {
-        ExprKind::Int(number) => number.to_string(),
-        ExprKind::Float(text) => text.clone(),
-        ExprKind::Name(name) => name.clone(),
-        ExprKind::Unary(UnaryOp::Negate, inner) => format!("-{}", describe_argument(inner)),
-        ExprKind::Unary(UnaryOp::BitNot, inner) => format!("~{}", describe_argument(inner)),
-        ExprKind::Binary(op, left, right) => {
-            let symbol = match op {
-                BinaryOp::Add => "+",
-                BinaryOp::Subtract => "-",
-                BinaryOp::Multiply => "*",
-                BinaryOp::Divide => "/",
-                BinaryOp::BitAnd => "&",
-                BinaryOp::BitOr => "|",
-                BinaryOp::BitXor => "^",
-                BinaryOp::ShiftLeft => "<<",
-                BinaryOp::ShiftRight => ">>",
-                _ => "?",
-            };
-
-            format!(
-                "{} {symbol} {}",
-                describe_argument(left),
-                describe_argument(right)
-            )
-        }
-        _ => "...".to_string(),
     }
 }
