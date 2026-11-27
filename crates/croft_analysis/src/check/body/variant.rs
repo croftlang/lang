@@ -7,6 +7,7 @@ use crate::check::variant::Variant;
 use crate::symbols::SymbolKind;
 use crate::types::Type;
 
+/// The kinds of declaration whose variants a name can refer to.
 const ENUM_KINDS: [SymbolKind; 3] = [SymbolKind::Enum, SymbolKind::ErrorSet, SymbolKind::Error];
 
 impl<'c, 'a> BodyChecker<'c, 'a> {

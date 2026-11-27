@@ -1,25 +1,42 @@
 //! Putting the program together: the runtime, a header with every type and
 //! prototype, and one C file with every function.
 
+/// Adapters and their state.
 mod adapter;
+/// The built-in `Storage` adapters.
 mod builtin_storage;
+/// Commands and factories.
 mod command;
+/// Constants and adapters' starting values.
 mod constant;
+/// Debug-build constraint checks.
 mod constraints;
+/// Equality functions.
 mod equality;
+/// Events and policies.
 mod events;
+/// Functions, translations, services and constraints.
 mod functions;
+/// Saved value sizes and layout hashes.
 mod layout;
+/// Facts about declarations that generated code needs.
 mod lookup;
+/// The C `main` function.
 mod main;
+/// Repositories.
 mod repository;
+/// The runtime functions a program calls.
 mod runtime;
+/// Turning values into bytes and back.
 mod serialize;
+/// Parameters and C signatures.
 mod signature;
 
 use crate::{GeneratedFile, Generator};
 
+/// The runtime header, `croft.h`.
 const RUNTIME_HEADER: &str = include_str!("../runtime/croft.h");
+/// The runtime's C source, before unused functions are left out.
 const RUNTIME_SOURCE: &str = concat!(
     include_str!("../runtime/croft_runtime.c"),
     include_str!("../runtime/decimal.c"),
@@ -28,6 +45,8 @@ const RUNTIME_SOURCE: &str = concat!(
 );
 
 impl<'a> Generator<'a> {
+    /// Every generated file: the header, the program's C file and the C
+    /// for any standard adapters the target binds.
     pub fn generate(&self) -> Result<Vec<GeneratedFile>, String> {
         self.settle_results();
 
@@ -151,6 +170,7 @@ impl<'a> Generator<'a> {
             .collect()
     }
 
+    /// The prototype of each native function the adapters call, once each.
     fn native_prototypes(&self) -> String {
         let mut natives = self.natives.borrow().clone();
         natives.sort();

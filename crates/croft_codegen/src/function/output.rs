@@ -4,6 +4,7 @@ use super::unused::{is_write_to, mentions, tidy_condition, unchecked_lines};
 use super::Writer;
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// Writes one line at the current indentation.
     pub fn line(&mut self, text: impl AsRef<str>) {
         let text = tidy_condition(text.as_ref());
         self.lines
@@ -21,20 +22,23 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.lines.push(text.to_string());
     }
 
+    /// Writes `}` and ends the indentation `open` began.
     pub fn close(&mut self) {
         self.depth -= 1;
         self.line("}");
     }
 
-    /// Lines written since `mark`, taken out so they can be placed elsewhere.
+    /// How many lines are written so far, for `take_since`.
     pub fn mark(&self) -> usize {
         self.lines.len()
     }
 
+    /// Lines written since `mark`, taken out so they can be placed elsewhere.
     pub fn take_since(&mut self, mark: usize) -> Vec<String> {
         self.lines.split_off(mark)
     }
 
+    /// Writes lines taken out by `take_since` back, one level further in.
     pub fn put_back(&mut self, lines: Vec<String>) {
         for line in lines {
             self.lines.push(format!("    {line}"));

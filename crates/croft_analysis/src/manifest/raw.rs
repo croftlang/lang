@@ -9,6 +9,7 @@ use toml::Spanned;
 
 use super::{span_at, Manifest, TargetConfig};
 
+/// `croft.toml` as written, before it is turned into a `Manifest`.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawManifest {
@@ -17,6 +18,7 @@ struct RawManifest {
     target: BTreeMap<Spanned<String>, RawTarget>,
 }
 
+/// The `[package]` table.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawPackage {
@@ -24,6 +26,7 @@ struct RawPackage {
     version: Option<String>,
 }
 
+/// One `[target.<name>]` table, as written.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawTarget {
@@ -35,6 +38,7 @@ struct RawTarget {
     checks: Option<bool>,
 }
 
+/// Reads `croft.toml` into a `Manifest`, keeping where each name was written.
 pub fn parse(text: &str, source: SourceId) -> Result<Manifest, Diagnostic> {
     let raw: RawManifest = toml::from_str(text).map_err(|error| {
         let span = span_at(text, error.span().map_or(0, |range| range.start), source);

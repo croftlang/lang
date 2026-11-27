@@ -10,6 +10,8 @@ use std::collections::BTreeMap;
 
 use croft_syntax::ast::*;
 
+/// The whole program: every context with its parts merged, the domain, the
+/// project file, and what checking learned.
 #[derive(Debug, Default)]
 pub struct Program {
     pub contexts: BTreeMap<String, Context>,
@@ -21,6 +23,7 @@ pub struct Program {
     pub facts: crate::facts::Facts,
 }
 
+/// One context, with the declarations from every file's part of it.
 #[derive(Debug)]
 pub struct Context {
     /// The doc comment above the part that publishes, or else above the
@@ -49,6 +52,8 @@ pub struct Context {
 }
 
 impl Program {
+    /// Merges the parsed files into one program, joining the parts of each
+    /// context and aggregate.
     pub fn from_files(files: Vec<File>) -> Program {
         let mut program = Program::default();
 
@@ -63,7 +68,7 @@ impl Program {
                     .entry(name)
                     .or_insert_with(|| Context::new(part.name.clone()));
 
-                // The part that publishes is the context's front door, so
+                // The part that publishes says what other contexts see, so
                 // its comment is the context's doc. Others describe a file.
                 let publishes = (part.items.iter()).any(|i| matches!(i, ContextItem::Publish(_)));
 
@@ -117,6 +122,7 @@ impl Context {
     }
 }
 
+/// The identity in `identities` declared for an aggregate, or for an entity inside it.
 fn identity_for<'a>(
     identities: &'a [IdentityDecl],
     aggregate: &str,
@@ -140,6 +146,7 @@ pub fn identifies(owner: &Path, aggregate: &str, entity: Option<&str>) -> bool {
     }
 }
 
+/// Marks which of `fields` hold `identity`: those whose type is that identity.
 fn mark_fields(fields: &mut [Field], identity: &IdentityDecl) {
     for field in fields {
         let path = &field.ty.path.segments;

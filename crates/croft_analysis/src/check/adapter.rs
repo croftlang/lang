@@ -77,6 +77,8 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// An adapter operation takes as many parameters as the port's operation,
+    /// `wanted`, and has a body.
     fn check_adapter_operation(&mut self, operation: &FunctionDecl, wanted: usize, port: &str) {
         let name = &operation.name;
         let found = operation.parameters.as_ref().map_or(0, Vec::len);

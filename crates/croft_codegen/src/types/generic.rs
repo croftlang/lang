@@ -6,6 +6,8 @@ use super::define::struct_definition;
 use crate::Generator;
 
 impl<'a> Generator<'a> {
+    /// The C struct for a list, map, option or result type, or nothing for
+    /// any other type.
     pub fn generic_definition(&self, ty: &Type) -> String {
         let name = self.c_type(ty);
 

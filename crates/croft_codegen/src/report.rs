@@ -94,6 +94,8 @@ impl<'a> Generator<'a> {
         out
     }
 
+    /// How many characters each string holds, and what set the size of one
+    /// with nothing to bound it.
     fn strings_section(&self) -> String {
         let capacity = self.sizes.string_capacity;
 
@@ -282,10 +284,12 @@ fn frames(c: &str, size: impl Fn(&str) -> Option<i64>) -> Vec<(String, i64)> {
     frames
 }
 
+/// Tests for working out function frame sizes.
 #[cfg(test)]
 mod tests {
     use super::frames;
 
+    /// Each function's frame is the sum of the variables declared at its top.
     #[test]
     fn adds_up_the_variables_at_the_top_of_each_function() {
         let c = "void Shop_open(croft_u8 p_day, croft_bool *out)\n{\n    croft_int t;\n    croft_u8 t_2;\n\n    t = 1;\n}\n\n\

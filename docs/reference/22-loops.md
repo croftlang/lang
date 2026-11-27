@@ -5,11 +5,11 @@ Services and adapters can repeat a block; domain bodies can't, and iterate with 
 ```croft
 // Plays turn after turn until the player quits or a turn fails.
 service PlayGame(): Result<Unit, GameError> {
-    calls Keyboard, Screen
+    calls { Keyboard, Screen }
 } = {
     let room_id = FIRST_ROOM
     loop {
-        if keyboard.quit_pressed() {
+        if Keyboard.quit_pressed() {
             break
         }
         set room_id = PlayTurn(room_id)?
@@ -18,6 +18,6 @@ service PlayGame(): Result<Unit, GameError> {
 
 // runs 24 times: rows 0 to 23
 loop (let row where Range(0, 23)) {
-    screen.draw_text("", Position { x: 0, y: row * 8 })
+    Screen.draw_text("", Position { x: 0, y: row * 8 })
 }
 ```

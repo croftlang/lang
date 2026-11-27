@@ -1,3 +1,5 @@
+//! Parser tests, and the helpers they share.
+
 mod declarations;
 mod expressions;
 mod fixtures;
@@ -5,6 +7,7 @@ mod fixtures;
 use crate::ast::{ContextDecl, ContextItem, Expr, File, Statement};
 use crate::span::SourceId;
 
+/// Parses `source`, panicking with the error if it fails.
 fn parse_ok(source: &str) -> File {
     match super::parse(source, SourceId(0)) {
         Ok(file) => file,
@@ -15,12 +18,14 @@ fn parse_ok(source: &str) -> File {
     }
 }
 
+/// The message of the error `source` fails to parse with.
 fn parse_error(source: &str) -> String {
     super::parse(source, SourceId(0))
         .expect_err("expected a parse error")
         .message
 }
 
+/// The one context in `file`.
 fn only_context(file: &File) -> &ContextDecl {
     match file.contexts.as_slice() {
         [context] => context,

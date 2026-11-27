@@ -1,7 +1,11 @@
+//! Ports, adapters, repositories, and what contexts publish and use.
+
 use super::{assert_error, dungeon, errors};
 
+/// A `Screen` port with two operations.
 const SCREEN: &str = "port Screen {\n fn clear(): Unit\n fn draw(at: Position): Unit\n}";
 
+/// The dungeon with `SCREEN` and a `TestScreen` adapter holding `operations`.
 fn with_adapter(operations: &str) -> String {
     dungeon(&format!(
         "{SCREEN}\nadapter TestScreen for Screen = {{\n{operations}\n}}"
@@ -46,7 +50,7 @@ fn checks_ports_only_declare_operations() {
 #[test]
 fn checks_services_use_ports() {
     let source = dungeon(&format!(
-        "{SCREEN}\nservice Play(): Unit {{\n calls Screen, Position\n}} = Unit"
+        "{SCREEN}\nservice Play(): Unit {{\n calls {{ Screen, Position }}\n}} = Unit"
     ));
 
     assert_error(
@@ -55,7 +59,7 @@ fn checks_services_use_ports() {
     );
 
     assert_error(
-        &dungeon("fn f(): Int {\n calls Screen\n} = 3"),
+        &dungeon("fn f(): Int {\n calls { Screen }\n} = 3"),
         "only a service can call ports",
     );
 }
@@ -78,6 +82,8 @@ fn checks_publish_and_use() {
     );
 }
 
+/// The dungeon with a `Rooms` repository declaring `operations`, and `extra`
+/// beside it.
 fn with_repository(operations: &str, extra: &str) -> String {
     dungeon(&format!(
         "aggregate Room {{\n id: RoomId\n error NotFound\n }}\n\
@@ -118,14 +124,14 @@ fn calls_only_what_a_repository_declares() {
     let find = "fn find(id: RoomId): Result<Option<Room>, StorageError>";
 
     let service = |body: &str| {
-        format!("service Look(): Result<Unit, StorageError> {{\n calls Rooms\n}} = {{\n{body}\n}}")
+        format!("service Look(): Result<Unit, StorageError> {{\n calls {{ Rooms }}\n}} = {{\n{body}\n}}")
     };
 
-    let found = service("let room = rooms.find(1)?\nOk(Unit)");
+    let found = service("let room = Rooms.find(1)?\nOk(Unit)");
     assert_eq!(errors(&with_repository(find, &found)), Vec::<String>::new());
 
     assert_error(
-        &with_repository(find, &service("rooms.save(Room { id: 1 })")),
+        &with_repository(find, &service("Rooms.save(Room { id: 1 })")),
         "repository `Rooms` has no operation `save`; it has `find`",
     );
 }
@@ -137,7 +143,7 @@ fn issues_on_an_identity_only_with_a_find_and_a_save() {
             "aggregate Room {{\n id: RoomId\n lit: Bool\n error NotFound\n command Light = {{\n set lit = true\n }}\n }}\n\
              enum Lookup {{\n include Room.NotFound\n include StorageError\n }}\n\
              repository Rooms for Room {{\n{find}\n fn save(room: Room): Result<Unit, StorageError>\n}}\n\
-             service Light(): Result<Unit, Room.Error> {{\n calls Rooms\n}} = issue Light on Room(1)"
+             service Light(): Result<Unit, Room.Error> {{\n calls {{ Rooms }}\n}} = issue Light on Room(1)"
         ))
     };
 

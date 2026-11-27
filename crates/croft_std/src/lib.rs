@@ -10,6 +10,7 @@
 pub struct Context {
     /// The name it is imported by, such as `Std.Files`.
     pub name: &'static str,
+    /// Its Croft source.
     pub source: &'static str,
     /// Its adapters whose native functions are C kept here. An adapter whose
     /// C code generation writes, such as `MemoryStorage`, is not listed.
@@ -18,9 +19,11 @@ pub struct Context {
 
 /// An adapter of a standard context, and the C that holds its native functions.
 pub struct Adapter {
+    /// Its name, such as `StdioFiles`.
     pub name: &'static str,
     /// The file its C is written to, beside `program.c`, such as `croft_files.c`.
     pub file: &'static str,
+    /// The C source of its native functions.
     pub c: &'static str,
     /// What a program using it is linked with, such as `-lcurl`.
     pub links: &'static [&'static str],
@@ -83,6 +86,7 @@ pub fn links_for(file: &str) -> &'static [&'static str] {
         .map_or(&[], |adapter| adapter.links)
 }
 
+/// Tests that the standard contexts and their C agree.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,6 +148,7 @@ mod tests {
         }
     }
 
+    /// Adapters with C kept here are found by name, with what they link with.
     #[test]
     fn finds_adapters_and_what_they_link_with() {
         assert_eq!(

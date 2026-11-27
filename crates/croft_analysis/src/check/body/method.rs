@@ -9,6 +9,7 @@ use crate::symbols::SymbolKind;
 use crate::types::{Resolved, Type};
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
+    /// The type of a method call, chosen by the receiver's type.
     pub(super) fn method(
         &mut self,
         receiver: &Type,
@@ -91,7 +92,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     }
 }
 
-/// Is this a list of entities, which are looked up by identity?
+/// The entity a list holds, when its items are entities, which are looked up by identity.
 pub(super) fn entity_of(item: &Type) -> Option<&Resolved> {
     item.named(&[SymbolKind::Entity])
 }

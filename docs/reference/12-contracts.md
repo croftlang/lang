@@ -1,6 +1,6 @@
 # Contracts
 
-What code needs and what it promises, read before its body. Its constraints can follow a parameter's type or go in the contract, whichever reads better, and a line of the contract such as `from != to` is a constraint without a name. A constraint without `or` is a mistake by the caller if broken: an error from `croft check` when the values it reads are known, and otherwise a stop while the program runs, unless the target sets `checks = false`. A constraint with `or` is a failure the domain expects: always checked, it fails the call with its error, which the caller handles. Only a parameter's constraint or a contract line can have `or`; a field or result has nowhere to fail, so its constraints must hold. Invariants hold after every factory and command, and calls lists the ports a service touches. It is separate from use, which only brings in names from another context. Use them to write each domain rule once, where it applies, to name failures in the domain's words, and to keep bodies simple.
+What code needs and what it promises, read before its body. Its constraints can follow a parameter's type or go in the contract, whichever reads better, and a line of the contract such as `from != to` is a constraint without a name. A constraint without `or` is a mistake by the caller if broken: an error from `croft check` when the values it reads are known, and otherwise a stop while the program runs, unless the target sets `checks = false`. A constraint with `or` is a failure the domain expects: always checked, it fails the call with its error, which the caller handles. Only a parameter's constraint or a contract line can have `or`; a field or result has nowhere to fail, so its constraints must hold. Invariants hold after every factory and command, and calls lists the ports a service touches. The body calls each port by the name calls gives it. Like use, calls can bring a port in from another context and give it an alias with `as`; use only brings in names, while calls also lets the body call them. Use them to write each domain rule once, where it applies, to name failures in the domain's words, and to keep bodies simple.
 
 ```croft
 // expected failure: always checked, the caller handles OutOfStock
@@ -33,8 +33,13 @@ aggregate Basket {
     invariant Affordable or Overdrawn
 }
 
-// the only ports this service can touch
+// the only ports this service can touch, called as `Screen.clear()` and `Rooms.find(id)`
 service PlayTurn(room_id: RoomId, pressed: Option<Key>): Result<Unit, GameError> {
-    calls Screen, Rooms
+    calls { Screen, Rooms }
 } = ...
+
+// a port from another context, with an alias: `keys.pressed()`
+service ReadKey(): Option<Key> {
+    calls { Keyboard as keys } from Dungeon
+} = keys.pressed()
 ```

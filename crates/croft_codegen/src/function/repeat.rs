@@ -8,6 +8,7 @@ use super::Writer;
 use crate::types::width::width_for;
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// `loop { ... }`, with a counter when it has one.
     pub fn repeat(&mut self, counter: Option<&LoopCounter>, block: &Expr) -> String {
         let ExprKind::Block(statements) = &block.kind else {
             return "0".to_string();

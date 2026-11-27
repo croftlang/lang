@@ -1,13 +1,16 @@
+//! Checking `croft.toml`: what each target runs, its adapters and its storage.
+
 use croft_syntax::{parse, SourceId};
 
 use crate::manifest::Manifest;
 
+/// A context with two ports, an adapter for each, and two services.
 const GAME: &str = "context Game {\n\
     port Screen {\n fn clear(): Unit\n}\n\
     port Clock {\n fn tick(): Unit\n}\n\
     adapter TestScreen for Screen = {\n fn clear() = Unit\n}\n\
     adapter TestClock for Clock = {\n fn tick() = Unit\n}\n\
-    service Main(): Unit {\n calls Screen\n} = Unit\n\
+    service Main(): Unit {\n calls { Screen }\n} = Unit\n\
     service Turn(count: Int): Unit = Unit\n}";
 
 /// Checks the game with a `croft.toml`, giving each error with its line in the file.
@@ -92,17 +95,21 @@ fn reports_unknown_keys_in_the_file() {
     );
 }
 
+/// A context with a repository, and a `Main` service that saves through it.
 const SHOP: &str = "context Shop {\n\
     identity ShelfId for Shelf: Int where Range(1, 9)\n\
     aggregate Shelf {\n id: ShelfId\n error NotFound\n factory Open(id: ShelfId) = Shelf { id }\n }\n\
     enum ShopError {\n include Shelf.Error\n include StorageError\n }\n\
     repository Shelves for Shelf\n\
-    service Main(): Result<Unit, ShopError> {\n calls Shelves\n} = shelves.save(Shelf.Open(id: 1)?)\n}";
+    service Main(): Result<Unit, ShopError> {\n calls { Shelves }\n} = Shelves.save(Shelf.Open(id: 1)?)\n}";
 
+/// Checks `SHOP` with `adapters` bound on its test target.
 fn check_shop(adapters: &str) -> Vec<String> {
     check_source(SHOP, adapters)
 }
 
+/// Checks `source` with a `croft.toml` whose test target runs `Main` and
+/// binds `adapters`.
 fn check_source(source: &str, adapters: &str) -> Vec<String> {
     let text = toml(&format!(
         "[target.test]\nmain = \"Main\"\n\n[target.test.adapters]\n{adapters}"
@@ -159,7 +166,7 @@ fn keeps_in_storage_only_finds_saves_and_removes() {
              aggregate Shelf {{\n id: ShelfId\n error NotFound\n }}\n\
              enum Lookup {{\n include Shelf.NotFound\n include StorageError\n }}\n\
              repository Shelves for Shelf {{\n{operations}\n}}\n\
-             service Main(): Result<Unit, StorageError> {{\n calls Shelves\n}} = Ok(Unit)\n}}"
+             service Main(): Result<Unit, StorageError> {{\n calls {{ Shelves }}\n}} = Ok(Unit)\n}}"
         )
     };
 
@@ -186,7 +193,7 @@ fn keeps_in_storage_only_finds_saves_and_removes() {
 #[test]
 fn needs_no_adapter_for_the_standard_console() {
     let source = "context Game {\n\
-        service Main(): Unit {\n calls Console\n} = console.print(\"hi\")\n}";
+        service Main(): Unit {\n calls { Console }\n} = Console.print(\"hi\")\n}";
 
     assert_eq!(check_source(source, ""), Vec::<String>::new());
 
@@ -201,7 +208,7 @@ fn a_port_of_the_programs_own_replaces_the_standard_one() {
     let source = "context Game {\n\
         port Console {\n fn beep(): Unit\n}\n\
         adapter Beeper for Console = {\n fn beep() = Unit\n}\n\
-        service Main(): Unit {\n calls Console\n} = console.beep()\n}";
+        service Main(): Unit {\n calls { Console }\n} = Console.beep()\n}";
 
     assert_eq!(
         check_source(source, "Console = \"Beeper\"\n"),

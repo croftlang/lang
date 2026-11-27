@@ -734,13 +734,24 @@
   {
     "type": "calls_clause",
     "named": true,
-    "fields": {},
+    "fields": {
+      "from": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "path",
+            "named": true
+          }
+        ]
+      }
+    },
     "children": {
-      "multiple": true,
+      "multiple": false,
       "required": true,
       "types": [
         {
-          "type": "path",
+          "type": "import_list",
           "named": true
         }
       ]
@@ -2507,6 +2518,47 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "import_list",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "imported_name",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "imported_name",
+    "named": true,
+    "fields": {
+      "alias": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "path",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -4623,7 +4675,7 @@
       "required": true,
       "types": [
         {
-          "type": "path_list",
+          "type": "import_list",
           "named": true
         }
       ]
@@ -4940,6 +4992,10 @@
   },
   {
     "type": "aggregate",
+    "named": false
+  },
+  {
+    "type": "as",
     "named": false
   },
   {

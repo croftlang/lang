@@ -18,14 +18,16 @@ use super::lookup::{self, declared_members};
 use super::session::ProjectState;
 
 /// Words with a meaning in one place only, which the lexer leaves as names.
-const CONTEXTUAL_WORDS: [&str; 9] = [
-    "from", "on", "for", "in", "when", "include", "contexts", "start", "target",
+const CONTEXTUAL_WORDS: [&str; 10] = [
+    "from", "as", "on", "for", "in", "when", "include", "contexts", "start", "target",
 ];
 
+/// The built-in types, offered anywhere.
 const BUILT_IN_TYPES: [&str; 11] = [
     "Int", "Float", "Decimal", "Bool", "String", "Bytes", "Unit", "List", "Map", "Option", "Result",
 ];
 
+/// The built-in functions and constraints, offered anywhere.
 const BUILT_IN_FUNCTIONS: [&str; 8] = ["Some", "Ok", "Err", "max", "min", "abs", "Range", "Length"];
 
 /// What to offer at `line` and `column` of a file whose text is now `text`.
@@ -73,10 +75,12 @@ pub fn complete(
     }
 }
 
+/// Whether `c` can be part of a name.
 fn is_word_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 
+/// Whether a name starts with a capital, as a type's name does.
 fn is_type_name(name: &str) -> bool {
     name.starts_with(|c: char| c.is_ascii_uppercase())
 }
@@ -100,6 +104,7 @@ enum Target {
     Declaration(Resolved),
 }
 
+/// What the names in `chain`, written before a `.` at `at`, refer to.
 fn target(
     state: &ProjectState,
     model: &Model,
@@ -110,7 +115,15 @@ fn target(
     let facts = &state.analysis.program.facts;
     let first = chain[0];
 
-    let mut found = if is_type_name(first) {
+    // A port or repository in `calls`, such as `Screen`, or its alias, is a
+    // value for the whole body, whatever its case.
+    let handle = (facts.locals.iter())
+        .find(|l| l.name == first && l.defined.is_none() && l.span.source == at.source)
+        .map(|local| local.ty.clone());
+
+    let mut found = if let Some(handle) = handle {
+        handle
+    } else if is_type_name(first) {
         // The longest run of type names that names a declaration, as in `Room.Error`.
         let names = chain.iter().take_while(|name| is_type_name(name)).count();
 
@@ -136,15 +149,6 @@ fn target(
             .max_by_key(|local| (local.span.line, local.span.column))
             .map(|local| local.ty.clone());
 
-        // A `calls` handle, such as `screen`, is there for the whole body.
-        let handle = || {
-            (facts.locals.iter())
-                .find(|l| l.name == first && l.defined.is_none() && l.span.source == at.source)
-                .map(|local| local.ty.clone())
-        };
-
-        let local = local.or_else(handle);
-
         let own_field = || {
             (facts.members.iter())
                 .find(|m| {
@@ -163,6 +167,7 @@ fn target(
     Some(Target::Value(found))
 }
 
+/// A path made of `names`, with no place in a file.
 fn path(names: &[&str]) -> Path {
     let segments = names
         .iter()
@@ -361,7 +366,7 @@ fn in_scope(
     for local in &facts.locals {
         let span = local.span;
 
-        // A `calls` handle, such as `screen`, may first be used further down.
+        // A port in `calls`, such as `Screen`, may first be used further down.
         let last = match local.defined {
             Some(_) => line,
             None => end.unwrap_or(u32::MAX),
@@ -428,11 +433,18 @@ fn in_scope(
     // Names brought in with `use`.
     if let Some(declared) = state.analysis.program.contexts.get(context) {
         for name in declared.uses.iter().flat_map(|u| &u.names) {
-            let Some(target) = model.resolve(context, None, name) else {
+            let written = match &name.alias {
+                Some(alias) => Path {
+                    segments: vec![alias.clone()],
+                },
+                None => name.path.clone(),
+            };
+
+            let Some(target) = model.resolve(context, None, &written) else {
                 continue;
             };
 
-            let written = name.segments.last().map_or("", |s| s.name.as_str());
+            let written = written.last().name.as_str();
 
             if !items.iter().any(|item| item.label == written) {
                 items.push(declaration_item(state, written, &target, 2));
@@ -461,12 +473,14 @@ fn in_scope(
     items
 }
 
+/// Every keyword and contextual word.
 fn keywords() -> Vec<CompletionItem> {
     (Keyword::words().chain(CONTEXTUAL_WORDS))
         .map(|word| item(word, CompletionItemKind::KEYWORD, "keyword", "", 4))
         .collect()
 }
 
+/// An item for a declaration, with its hover text as documentation.
 fn declaration_item(
     state: &ProjectState,
     written: &str,
@@ -479,6 +493,7 @@ fn declaration_item(
     item(written, kind, target.kind.describe(), &doc, rank)
 }
 
+/// The kind of item an editor shows for a kind of declaration.
 fn completion_kind(kind: SymbolKind) -> CompletionItemKind {
     use SymbolKind::*;
 

@@ -7,6 +7,7 @@ use crate::facts::MemberKind;
 use crate::types::{Resolved, Type};
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
+    /// A call to a port operation, checked against its signature.
     pub(super) fn port_operation(
         &mut self,
         port: &Resolved,

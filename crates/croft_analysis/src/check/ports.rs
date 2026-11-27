@@ -21,8 +21,8 @@ impl<'a> Checker<'a> {
                 .iter()
                 .flat_map(|function| &function.calls);
 
-            for path in services {
-                let Some(found) = self.resolve(&scope, path) else {
+            for called in services {
+                let Some(found) = self.find_called(&scope, called) else {
                     continue;
                 };
 

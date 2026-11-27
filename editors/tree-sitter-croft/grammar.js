@@ -59,6 +59,9 @@ module.exports = grammar({
     [$._expression, $.record_expression],
     // `where Range(0, 9), next: Int`: another constraint, or the next field.
     [$.where_clause],
+    // `calls { Screen }` then `from != to` on the next line: the context the
+    // ports come from, or a contract line about a parameter called `from`.
+    [$.calls_clause],
   ],
 
   rules: {
@@ -102,13 +105,18 @@ module.exports = grammar({
     publish_declaration: $ => seq('publish', $.path_list),
 
     // `use { EnemyId, Room.EnemyDefeated } from Dungeon`
-    use_declaration: $ => seq('use', $.path_list, 'from', field('from', $.path)),
+    use_declaration: $ => seq('use', $.import_list, 'from', field('from', $.path)),
+
+    // `{ Keyboard, Screen as screen }`: the names a `use` or `calls` brings in.
+    import_list: $ => seq('{', repeat(seq($.imported_name, optional(','))), '}'),
+
+    imported_name: $ => seq($.path, optional(seq('as', field('alias', $.identifier)))),
 
     path_list: $ => seq('{', repeat(seq($.path, optional(','))), '}'),
 
     path: $ => prec.right(seq($._name, repeat(seq('.', $._name)))),
 
-    // `domain Game { contexts { ... } use { ... } from X  calls Screen } = { ... }`
+    // `domain Game { contexts { ... } use { ... } from X  calls { Screen } } = { ... }`
     domain_declaration: $ => prec.right(seq(
       'domain',
       field('name', $._type_name),
@@ -292,7 +300,12 @@ module.exports = grammar({
     // `damage where Range(1, 20)`, in a contract.
     parameter_constraint: $ => seq(field('name', $._name), field('constraints', $.where_clause)),
 
-    calls_clause: $ => prec.right(seq('calls', $.path, repeat(seq(',', $.path)))),
+    // `calls { Keyboard as keyboard } from Dungeon`, or without `from` for a port already in scope.
+    calls_clause: $ => seq(
+      'calls',
+      $.import_list,
+      optional(seq('from', field('from', $.path))),
+    ),
 
     // `policy DropLoot when Room.EnemyDefeated { ... }`
     policy_declaration: $ => seq(
@@ -534,7 +547,14 @@ module.exports = grammar({
     // Names and literals.
 
     // A name. `event` and `error` are names too, outside their declarations.
-    _name: $ => choice($.identifier, alias('event', $.identifier), alias('error', $.identifier)),
+    // `from` is a keyword only after `use { ... }` and `calls { ... }`; elsewhere,
+    // such as a parameter called `from`, it is a name.
+    _name: $ => choice(
+      $.identifier,
+      alias('event', $.identifier),
+      alias('error', $.identifier),
+      alias('from', $.identifier),
+    ),
 
     _type_name: $ => typeName($),
 

@@ -7,15 +7,15 @@ context Site {
     use { join } from Std.Text
 
     service Build(): Result<Unit, FileError> {
-        calls Files, Console, Arguments
+        calls { Files, Console, Arguments }
     } = {
-        let source = arguments.all().first.unwrap_or("big.bin")
-        files.make_folder("site/blog/posts")?
+        let source = Arguments.all().first.unwrap_or("big.bin")
+        Files.make_folder("site/blog/posts")?
         // Already there, so left as it is.
-        files.make_folder("site/blog")?
-        files.copy(source, "site/blog/big.bin")?
-        let names = files.list("site/blog")?
-        console.print(names.join(","))
+        Files.make_folder("site/blog")?
+        Files.copy(source, "site/blog/big.bin")?
+        let names = Files.list("site/blog")?
+        Console.print(names.join(","))
     }
 }
 

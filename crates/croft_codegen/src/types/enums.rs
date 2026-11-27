@@ -7,6 +7,7 @@ use crate::names::c_name;
 use crate::Generator;
 
 impl<'a> Generator<'a> {
+    /// The C definition of an enum and a `#define` for each variant's tag.
     pub(super) fn enum_definition(&self, named: &Resolved) -> String {
         let name = c_name(named);
         let variants = self.variants(named);

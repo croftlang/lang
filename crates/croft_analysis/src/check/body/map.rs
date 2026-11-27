@@ -32,6 +32,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         Type::map(key.unwrap_or(Type::Unknown), value.unwrap_or(Type::Unknown))
     }
 
+    /// The type of a map key or value: checked against `known` when that is
+    /// known, otherwise its own.
     fn typed_entry(&mut self, value: &Expr, known: Option<Type>) -> Type {
         match known.filter(|ty| !ty.is_unknown()) {
             Some(ty) => {

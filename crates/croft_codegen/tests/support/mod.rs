@@ -17,6 +17,7 @@ pub const FLAGS: [&str; 7] = [
     "-O2",
 ];
 
+/// Every source file in a folder and the folders inside it, sorted by path.
 pub fn source_files(folder: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
 
@@ -71,6 +72,7 @@ pub fn generate(folder: &Path, target: &str, name: &str) -> PathBuf {
     output
 }
 
+/// Whether a C compiler named `cc` is installed.
 pub fn has_c_compiler() -> bool {
     Command::new("cc")
         .arg("--version")
@@ -78,6 +80,7 @@ pub fn has_c_compiler() -> bool {
         .is_ok_and(|o| o.status.success())
 }
 
+/// Runs `cc` in a folder with the strict C89 flags and the given arguments.
 pub fn compile(folder: &Path, extra: &[&str]) -> std::process::Output {
     Command::new("cc")
         .args(FLAGS)
@@ -87,6 +90,7 @@ pub fn compile(folder: &Path, extra: &[&str]) -> std::process::Output {
         .expect("the C compiler runs")
 }
 
+/// Builds and runs the program of that name in `tests/programs`.
 pub fn run_program(name: &str) {
     run_program_at(
         &Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -96,7 +100,7 @@ pub fn run_program(name: &str) {
     );
 }
 
-/// Builds a program for the `test` target with every native file it names, and runs it.
+/// Builds a program for the `test` target and runs it, failing if it exits with an error.
 pub fn run_program_at(source: &Path, name: &str) {
     if !has_c_compiler() {
         eprintln!("skipping {name}: no C compiler named `cc`");

@@ -9,6 +9,7 @@ use croft_analysis::{Facts, Model, Program, Type};
 
 use crate::types::sizes::Sizes;
 
+/// Generates the C for one program on one target.
 pub struct Generator<'a> {
     pub(crate) program: &'a Program,
     pub(crate) model: Model<'a>,
@@ -44,6 +45,7 @@ pub struct Generator<'a> {
 }
 
 impl<'a> Generator<'a> {
+    /// Reads the target's port bindings from `croft.toml` and finds what runs first.
     pub fn new(program: &'a Program, target: &str) -> Result<Generator<'a>, String> {
         let model = Model::new(program);
 
@@ -128,8 +130,8 @@ impl<'a> Generator<'a> {
         Ok(generator)
     }
 
-    /// Every `Bytes` must hold a whole saved aggregate, and every string a
-    /// file name such as `rooms12.dat`.
+    /// Makes every `Bytes` big enough to hold a whole saved aggregate, and
+    /// every string a file name such as `rooms12.dat`.
     fn make_room_for_storage(&mut self) {
         let mut largest = 0;
 
@@ -160,6 +162,7 @@ pub(crate) struct SavedState {
 }
 
 impl<'a> Generator<'a> {
+    /// Copies what writing functions has added so far.
     pub(crate) fn save_state(&self) -> SavedState {
         SavedState {
             serialized: self.serialized.borrow().clone(),
@@ -173,6 +176,7 @@ impl<'a> Generator<'a> {
         }
     }
 
+    /// Puts back what `save_state` copied.
     pub(crate) fn restore_state(&self, saved: &SavedState) {
         *self.serialized.borrow_mut() = saved.serialized.clone();
         *self.used_types.borrow_mut() = saved.used_types.clone();

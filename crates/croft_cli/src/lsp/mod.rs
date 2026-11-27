@@ -1,5 +1,6 @@
 //! `croft lsp`: a language server, so editors can show errors as you type, what
-//! a name is on hover, and where it is declared, and can format a file.
+//! a name is on hover, where it is declared and what can be typed next, and
+//! can format a file.
 //!
 //! It speaks the language server protocol over stdin and stdout. A change
 //! to a file checks its project again, with the files open in the editor
@@ -42,6 +43,7 @@ use self::position::{
 use self::session::{ProjectState, Session};
 use croft_syntax::SourceId;
 
+/// Runs the language server until the editor shuts it down.
 pub fn run() -> Result<(), String> {
     let (connection, io_threads) = Connection::stdio();
 
@@ -80,6 +82,7 @@ pub fn run() -> Result<(), String> {
     Ok(())
 }
 
+/// The first workspace folder the editor opened, if any.
 fn workspace_root(params: &InitializeParams) -> Option<std::path::PathBuf> {
     let folder = params.workspace_folders.as_ref()?.first()?;
     uri_to_path(&folder.uri)
@@ -88,6 +91,7 @@ fn workspace_root(params: &InitializeParams) -> Option<std::path::PathBuf> {
 /// How long typing must pause before the files changed are checked.
 const PAUSE: Duration = Duration::from_millis(150);
 
+/// The connection to the editor, and what is known about its files.
 struct Server<'a> {
     connection: &'a Connection,
     session: Session,
@@ -96,6 +100,8 @@ struct Server<'a> {
 }
 
 impl Server<'_> {
+    /// Handles messages until the editor shuts the server down, checking
+    /// changed files whenever typing pauses.
     fn serve(&mut self) -> Result<(), String> {
         loop {
             let message = if self.changed.is_empty() {
@@ -143,6 +149,7 @@ impl Server<'_> {
         }
     }
 
+    /// Answers one request from the editor.
     fn request(&mut self, request: Request) {
         let id = request.id.clone();
 
@@ -170,10 +177,12 @@ impl Server<'_> {
         self.reply(response);
     }
 
+    /// Sends a response to the editor.
     fn reply(&self, response: Response) {
         let _ = self.connection.sender.send(Message::Response(response));
     }
 
+    /// Records a file opened, changed, saved or closed in the editor.
     fn notification(&mut self, notification: Notification) {
         let method = notification.method.clone();
 
@@ -280,6 +289,7 @@ impl Server<'_> {
         Some((state, found, text))
     }
 
+    /// What the name under the cursor is, in Markdown.
     fn hover(&self, at: &TextDocumentPositionParams) -> Option<Hover> {
         let (state, found, text) = self.at(at)?;
         let markdown = lookup::hover(state, &found)?;
@@ -294,6 +304,7 @@ impl Server<'_> {
         })
     }
 
+    /// Where the name under the cursor is declared.
     fn definition(&self, at: &TextDocumentPositionParams) -> Option<GotoDefinitionResponse> {
         let (state, found, _) = self.at(at)?;
         let (span, length) = lookup::definition(state, &found)?;
@@ -310,6 +321,7 @@ impl Server<'_> {
         Some(GotoDefinitionResponse::Scalar(Location::new(uri, range)))
     }
 
+    /// What can be typed at the cursor.
     fn complete(&self, at: &TextDocumentPositionParams) -> Option<CompletionResponse> {
         let path = uri_to_path(&at.text_document.uri)?;
         let (state, id, checked) = self.file(&path)?;
@@ -351,6 +363,7 @@ impl Server<'_> {
     }
 }
 
+/// The parameters of a request, or why they could not be read.
 fn params<P: serde::de::DeserializeOwned>(request: Request) -> Result<P, String> {
     let method = request.method.clone();
 
@@ -361,6 +374,7 @@ fn params<P: serde::de::DeserializeOwned>(request: Request) -> Result<P, String>
     Ok(params)
 }
 
+/// The parameters of a notification, if they can be read.
 fn notification_params<N: lsp_types::notification::Notification>(
     notification: Notification,
 ) -> Option<N::Params> {

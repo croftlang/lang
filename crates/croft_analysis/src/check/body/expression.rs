@@ -52,6 +52,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         self.checker.references.get_mut().push(reference);
     }
 
+    /// The type of an expression, by its kind. `expr` records it.
     fn expr_kind(&mut self, value: &Expr, expected: Option<&Type>) -> Type {
         let span = value.span;
 
@@ -98,6 +99,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
+    /// `!` takes a `Bool`, and `-` a number.
     pub(super) fn unary(&mut self, op: UnaryOp, operand: &Expr, expected: Option<&Type>) -> Type {
         match op {
             UnaryOp::Not => {
@@ -120,6 +122,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
+    /// The type of a binary operator's result, after checking both sides.
     pub(super) fn binary(&mut self, op: BinaryOp, left: &Expr, right: &Expr) -> Type {
         use BinaryOp::*;
 
@@ -219,6 +222,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     }
 }
 
+/// Whether an expression is a list literal, such as `[1, 2]`.
 fn is_list_literal(value: &Expr) -> bool {
     matches!(value.kind, ExprKind::List(_))
 }

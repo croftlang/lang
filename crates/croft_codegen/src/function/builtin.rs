@@ -7,6 +7,7 @@ use super::{Into, Writer};
 use crate::types::bounds::{is_string, unbounded};
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// A call to a built-in function such as `max` or `Some`.
     pub fn builtin(
         &mut self,
         name: &str,

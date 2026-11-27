@@ -7,6 +7,8 @@ use super::{Checker, Scope};
 use crate::program::Context;
 
 impl<'a> Checker<'a> {
+    /// Checks an aggregate's fields, identity, entities, invariants, errors,
+    /// events, commands and factories.
     pub(super) fn check_aggregate(&mut self, context: &'a Context, aggregate: &'a AggregateDecl) {
         let scope = Scope {
             context,

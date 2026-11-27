@@ -44,6 +44,8 @@ impl ConstraintPlace {
 }
 
 impl<'a> Checker<'a> {
+    /// Checks the constraints of a `where` clause: `each` only on a list, and
+    /// `or Error` only where `place` allows it.
     pub(super) fn check_constraints(
         &mut self,
         scope: &Scope,
@@ -131,6 +133,8 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// How many parameters the constraint `name` in `context` declares, or 0
+    /// when there is no such constraint.
     fn constraint_parameter_count(&self, context: &str, name: &str) -> usize {
         let constraints = &self.program.contexts[context].constraints;
 

@@ -131,10 +131,13 @@ impl Found<'_> {
     }
 }
 
+/// The last part of a dotted name: `Enemy` in `Room.Enemy`.
 fn last_segment(name: &str) -> &str {
     name.rsplit('.').next().unwrap_or(name)
 }
 
+/// Whether a name `length` characters long, written at `span`, covers
+/// `line` and `column` of the file `id`.
 fn covers(span: Span, length: usize, id: SourceId, line: u32, column: u32) -> bool {
     span.source == id
         && span.line == line
@@ -195,6 +198,7 @@ pub fn find_at(state: &ProjectState, id: SourceId, line: u32, column: u32) -> Op
     })
 }
 
+/// Whether `context` is the domain.
 fn is_domain(state: &ProjectState, context: &str) -> bool {
     let contexts = &state.analysis.program.contexts;
     contexts.get(context).is_some_and(|c| c.is_domain)
@@ -251,7 +255,7 @@ pub fn definition(state: &ProjectState, found: &Found) -> Option<(Span, usize)> 
         }
         Found::Local(local) => match (&local.defined, &local.ty) {
             (Some(span), _) => Some((*span, local.name.chars().count())),
-            // `screen` in a service that `calls Screen` goes to the port.
+            // `Screen` in a body that `calls { Screen }` goes to the port.
             (None, Type::Port(port) | Type::Repository(port)) => {
                 let span = declaration_span(state, port, last_segment(&port.name))?;
                 Some((span, last_segment(&port.name).chars().count()))
@@ -333,8 +337,8 @@ pub fn hover(state: &ProjectState, found: &Found) -> Option<String> {
     describe(state, target, written)
 }
 
-/// Is a value of this type one the language provides, whose methods are
-/// not operations of a port?
+/// Whether a value of this type is one the language provides, whose methods
+/// are not operations of a port.
 fn built_in(receiver: &Type) -> bool {
     !matches!(receiver, Type::Port(_) | Type::Repository(_))
 }
@@ -519,7 +523,7 @@ fn domain_outline(domain: &DomainDecl) -> String {
     lines.push("    }".to_string());
 
     for use_decl in &domain.uses {
-        let names: Vec<String> = use_decl.names.iter().map(|path| path.text()).collect();
+        let names: Vec<String> = use_decl.names.iter().map(|name| name.text()).collect();
 
         lines.push(format!(
             "    use {{ {} }} from {}",
@@ -528,9 +532,21 @@ fn domain_outline(domain: &DomainDecl) -> String {
         ));
     }
 
-    if !domain.calls.is_empty() {
-        let calls: Vec<String> = domain.calls.iter().map(|path| path.text()).collect();
-        lines.push(format!("    calls {}", calls.join(", ")));
+    // One `calls` line for each context the ports come from, in the order written.
+    let mut calls: Vec<(Option<String>, Vec<String>)> = Vec::new();
+
+    for called in &domain.calls {
+        let from = called.from.as_ref().map(|path| path.text());
+
+        match calls.iter_mut().find(|(listed, _)| *listed == from) {
+            Some((_, names)) => names.push(called.name.text()),
+            None => calls.push((from, vec![called.name.text()])),
+        }
+    }
+
+    for (from, names) in calls {
+        let from = from.map(|from| format!(" from {from}")).unwrap_or_default();
+        lines.push(format!("    calls {{ {} }}{from}", names.join(", ")));
     }
 
     lines.push("}".to_string());
@@ -538,6 +554,7 @@ fn domain_outline(domain: &DomainDecl) -> String {
     lines.join("\n")
 }
 
+/// The text with its first letter in capitals.
 fn capitalize(text: &str) -> String {
     let mut chars = text.chars();
 
@@ -711,6 +728,7 @@ fn signature(line: &str, kind: SymbolKind) -> String {
     line.to_string()
 }
 
+/// Tests for how declarations are shown on hover.
 #[cfg(test)]
 mod tests {
     use super::*;

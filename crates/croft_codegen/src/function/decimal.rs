@@ -8,6 +8,7 @@ use super::Writer;
 use crate::types::constant::scale;
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// `left op right` on two `Decimal`s.
     pub(super) fn decimal_arithmetic(
         &mut self,
         op: BinaryOp,

@@ -1,3 +1,5 @@
+//! Declarations at context level, and the domain.
+
 use super::{
     AdapterDecl, ConstraintUse, Expr, Field, FunctionDecl, Identifier, Parameter, Path, PolicyDecl,
     PortDecl, RepositoryDecl, TypeExpr,
@@ -11,6 +13,7 @@ pub struct ContextDecl {
     pub items: Vec<ContextItem>,
 }
 
+/// One declaration inside a context.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ContextItem {
     Publish(Vec<Path>),
@@ -29,11 +32,50 @@ pub enum ContextItem {
     Repository(RepositoryDecl),
 }
 
+/// `use { Edge, Path } from Routing`: names imported from another context.
 #[derive(Debug, Clone, PartialEq)]
 pub struct UseDecl {
-    pub names: Vec<Path>,
+    pub names: Vec<ImportedName>,
     /// A context, or a standard context such as `Std.Text`.
     pub from: Path,
+}
+
+/// A name brought in by `use` or `calls`: `Keyboard`, or `Keyboard as keyboard`
+/// to call it something else here.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportedName {
+    /// The name as the other context declares it.
+    pub path: Path,
+    /// The name after `as`, which replaces the declared one.
+    pub alias: Option<Identifier>,
+}
+
+impl ImportedName {
+    /// The name it goes by here: the alias, or the declared name.
+    pub fn local_name(&self) -> String {
+        match &self.alias {
+            Some(alias) => alias.name.clone(),
+            None => self.path.text(),
+        }
+    }
+
+    /// As written: `Keyboard`, or `Keyboard as keyboard`.
+    pub fn text(&self) -> String {
+        match &self.alias {
+            Some(alias) => format!("{} as {}", self.path.text(), alias.name),
+            None => self.path.text(),
+        }
+    }
+}
+
+/// A port or repository a service or domain may call, from `calls { ... }`,
+/// with the context it comes from when that is written after `from`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CalledPort {
+    pub name: ImportedName,
+    /// A context, or a standard context such as `Std.Http`. Left out for a
+    /// port the code can already see.
+    pub from: Option<Path>,
 }
 
 /// A value or an entity: named fields with optional invariants.
@@ -89,6 +131,7 @@ pub struct EnumDecl {
     pub variants: Vec<RecordDecl>,
 }
 
+/// `const MAX_ENEMIES: Int = 16`
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConstDecl {
     pub doc: Vec<String>,
@@ -108,6 +151,7 @@ pub struct IdentityDecl {
     pub constraints: Vec<ConstraintUse>,
 }
 
+/// `constraint Alive(enemy: Room.Enemy) = enemy.hit_points > 0`
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConstraintDecl {
     pub doc: Vec<String>,
@@ -130,6 +174,6 @@ pub struct DomainDecl {
     /// What it imports from contexts with `use { ... } from`.
     pub uses: Vec<UseDecl>,
     /// The ports the body calls, as a service lists them.
-    pub calls: Vec<Path>,
+    pub calls: Vec<CalledPort>,
     pub body: Expr,
 }

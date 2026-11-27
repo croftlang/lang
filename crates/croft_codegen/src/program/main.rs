@@ -1,5 +1,5 @@
 //! `main`: sets up the program, runs the domain (or the target's `main`
-//! service), and handles the events it raised. If it fails, the program
+//! service), and hands the events it raised to policies. If it fails, the program
 //! prints the error's name and stops with exit code 1.
 
 use croft_analysis::Type;
@@ -8,6 +8,8 @@ use crate::names::{c_name, c_string, error_code};
 use crate::Generator;
 
 impl<'a> Generator<'a> {
+    /// The C `main`: stores the arguments, runs `croft_init`, then what runs
+    /// first, and hands out the events it raised.
     pub fn main_function(&self) -> String {
         let context = &self.program.contexts[&self.start.context];
 

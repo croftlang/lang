@@ -1,4 +1,4 @@
-//! Literals, names, lambdas, arguments, and the `issue`, `emit` and `native` forms.
+//! Literals, names, lambdas, brackets, and the `issue`, `emit` and `native` forms.
 
 use super::{ParseResult, Parser};
 use crate::ast::{Expr, ExprKind, Issue};
@@ -6,6 +6,8 @@ use crate::keyword::Keyword;
 use crate::token::TokenKind;
 
 impl Parser {
+    /// What a postfix expression starts with: a literal, a name, a lambda, an
+    /// expression in brackets, a block, or a form that starts with a keyword.
     pub(super) fn parse_primary(&mut self) -> ParseResult<Expr> {
         let span = self.span();
 
@@ -60,6 +62,7 @@ impl Parser {
         Ok(self.make_expr(kind, span))
     }
 
+    /// Reads the literal's token and gives back `kind`.
     fn literal(&mut self, kind: ExprKind) -> ExprKind {
         self.advance();
         kind

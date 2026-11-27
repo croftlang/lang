@@ -4,6 +4,7 @@ use croft_syntax::Diagnostic;
 
 use crate::project::Project;
 
+/// Prints each diagnostic, then how many there were.
 pub fn print_diagnostics(project: &Project, diagnostics: &[Diagnostic]) {
     for diagnostic in diagnostics {
         eprintln!("{}", format_diagnostic(project, diagnostic));
@@ -13,6 +14,8 @@ pub fn print_diagnostics(project: &Project, diagnostics: &[Diagnostic]) {
     eprintln!("\n{count} error{} found", if count == 1 { "" } else { "s" });
 }
 
+/// A diagnostic as `file:line:column: error: message`, followed by its
+/// source line with a `^` under the column.
 fn format_diagnostic(project: &Project, diagnostic: &Diagnostic) -> String {
     let span = diagnostic.span;
 

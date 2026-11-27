@@ -11,6 +11,8 @@ use crate::facts::Meaning;
 use crate::types::{Resolved, Type};
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
+    /// A call to a generic function: works out its type arguments, then calls
+    /// the instance for them.
     pub(super) fn call_generic(
         &mut self,
         id: ExprId,

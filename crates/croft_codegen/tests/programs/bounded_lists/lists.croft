@@ -73,7 +73,7 @@ fn joined(first: List<Int> where Length(0, 2)): List<Int> = first + [7, 8, 9]
 fn words(line: String where Length(0, 9)): List<String> = line.split(" ")
 
 service Check(): Result<Unit, Failure> {
-    calls Packs
+    calls { Packs }
 } = {
     let kit = Kit { items: starter(), weights: [3, 9] }
     check(kit.items == [Item.Rope, Item.Lamp] && kit.weights.get(1) == Some(9))?
@@ -99,8 +99,8 @@ service Check(): Result<Unit, Failure> {
     check(log == [0, 1, 2, 3, 1, 2, 3] && log.reverse().first == Some(3))?
     // Saved and found again, in a field of its own size.
     let pack = Pack.Open(id: 3)?
-    packs.save(pack)?
+    Packs.save(pack)?
     issue Carry(item: Item.Lamp) on Pack(3)?
-    let found = packs.find(3)?
+    let found = Packs.find(3)?
     check(found.carrying == [Item.Rope, Item.Lamp])
 }

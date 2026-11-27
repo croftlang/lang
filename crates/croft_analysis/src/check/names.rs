@@ -7,6 +7,7 @@ use super::types::is_builtin_type;
 use super::{Checker, Context};
 use crate::naming::{is_pascal_case, is_snake_case, is_upper_snake_case};
 
+/// A naming convention a name must follow.
 #[derive(Clone, Copy)]
 enum Case {
     Pascal,
@@ -15,6 +16,7 @@ enum Case {
 }
 
 impl<'a> Checker<'a> {
+    /// Reports `name` when it is not in `case`. `what` says what it names.
     fn expect_case(&mut self, name: &Identifier, case: Case, what: &str) {
         // An instance, such as `first<Int>`, is named after its template,
         // which was checked as written.
@@ -36,12 +38,14 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Field names are in snake_case.
     fn expect_fields_case(&mut self, fields: &[Field]) {
         for field in fields {
             self.expect_case(&field.name, Case::Snake, "field");
         }
     }
 
+    /// Error and event names are in PascalCase, and their fields in snake_case.
     fn expect_records_case(&mut self, records: &[RecordDecl], what: &str) {
         for record in records {
             self.expect_case(&record.name, Case::Pascal, what);
@@ -68,6 +72,7 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Every name a context declares is in the case its kind uses.
     pub(super) fn check_names(&mut self, context: &Context) {
         self.check_builtin_names(context);
         self.expect_case(&context.name, Case::Pascal, "context");

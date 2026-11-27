@@ -11,6 +11,7 @@ use crate::symbols::SymbolKind;
 use crate::types::{Resolved, Type};
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
+    /// The type of a call: a method, a declaration, a variant or a built-in function.
     pub(super) fn call(
         &mut self,
         id: ExprId,
@@ -20,6 +21,22 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         expected: Option<&Type>,
     ) -> Type {
         if let ExprKind::Field(receiver, method) = &callee.kind {
+            if let ExprKind::Name(name) = &receiver.kind {
+                if self.local(name).is_none() {
+                    if let Some(called) = self.called_port_name(name) {
+                        let message =
+                            format!("cannot find `{name}` here: `calls` names it `{called}`");
+                        self.error(message, receiver.span);
+
+                        for argument in arguments {
+                            self.expr(&argument.value, None);
+                        }
+
+                        return Type::Unknown;
+                    }
+                }
+            }
+
             if self.as_type_path(callee).is_none() {
                 let receiver = self.expr(receiver, None);
                 self.note(Some(id), Meaning::Method);

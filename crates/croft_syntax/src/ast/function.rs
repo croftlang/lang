@@ -1,7 +1,8 @@
 //! Declarations with behaviour, and the boundary with the outside world.
 
-use super::{ConstraintUse, Expr, Field, Identifier, Parameter, Path, TypeExpr};
+use super::{CalledPort, ConstraintUse, Expr, Field, Identifier, Parameter, Path, TypeExpr};
 
+/// Which kind of declaration a `FunctionDecl` is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FunctionKind {
     Function,
@@ -10,6 +11,7 @@ pub enum FunctionKind {
     Command,
     /// Makes a new aggregate: `factory Book(...) = Cargo { ... }`.
     Factory,
+    /// An operation of a port, adapter or repository, written with `fn`.
     Operation,
     /// The body of a `domain`, which runs first.
     Domain,
@@ -27,12 +29,14 @@ pub struct FunctionDecl {
     pub parameters: Option<Vec<Parameter>>,
     pub return_type: Option<TypeExpr>,
     pub return_constraints: Vec<ConstraintUse>,
+    /// The contract lines, such as `from != to`: constraints without a name.
     pub preconditions: Vec<Expr>,
-    /// The ports a service or domain calls: `calls Screen, Keyboard`.
-    pub calls: Vec<Path>,
+    /// The ports a service or domain calls: `calls { Screen, Keyboard }`.
+    pub calls: Vec<CalledPort>,
     pub body: Option<Expr>,
 }
 
+/// `policy DropLootOnDefeat when Room.EnemyDefeated { ... }`
 #[derive(Debug, Clone, PartialEq)]
 pub struct PolicyDecl {
     pub doc: Vec<String>,
@@ -41,6 +45,7 @@ pub struct PolicyDecl {
     pub body: Expr,
 }
 
+/// `port Screen { fn clear() }`: what the domain needs, by signature only.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PortDecl {
     pub doc: Vec<String>,
@@ -59,7 +64,7 @@ pub struct AdapterDecl {
 }
 
 /// `repository Rooms for Room`, or `repository Rooms for Room { fn ... }`
-/// with operations of its own. Where it saves is chosen in croft.toml.
+/// with operations of its own. Where it saves is chosen in `croft.toml`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RepositoryDecl {
     pub doc: Vec<String>,

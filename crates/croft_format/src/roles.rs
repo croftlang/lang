@@ -7,6 +7,7 @@ use croft_syntax::token::{Token, TokenKind};
 /// The part a token plays, where its kind alone does not say.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Role {
+    /// Its kind alone says what it does.
     Plain,
     /// `<`, `>` or `>>` around type arguments, as in `List<List<Int>>`.
     TypeBracket,
@@ -131,6 +132,8 @@ fn closing_bracket(tokens: &[Token], open: usize) -> Option<usize> {
     None
 }
 
+/// Marks the `<` at `open`, its closing bracket and the brackets of any
+/// nested type arguments as `TypeBracket`.
 fn mark_type_arguments(tokens: &[Token], open: usize, roles: &mut [Role]) {
     let Some(close) = closing_bracket(tokens, open) else {
         return;

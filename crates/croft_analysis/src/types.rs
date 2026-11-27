@@ -18,6 +18,7 @@ pub struct Resolved {
     pub kind: SymbolKind,
 }
 
+/// The type of an expression, as checking and code generation see it.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     Int,
@@ -54,35 +55,41 @@ pub enum Type {
     Named(Resolved),
     /// One of several errors, such as what loading, changing and saving can fail with.
     Errors(Vec<Type>),
-    /// What a service holds for a port it uses, such as `keyboard`.
+    /// A port a service calls, by the name `calls` gives it, such as `Keyboard`.
     Port(Resolved),
-    /// What a service holds for a repository it uses, such as `rooms`.
+    /// A repository a service calls, by the name `calls` gives it, such as `Rooms`.
     Repository(Resolved),
     /// Not known: after an error has been reported, or the item type of `None`.
     Unknown,
 }
 
 impl Type {
+    /// A `List` of `item`.
     pub fn list(item: Type) -> Type {
         Type::List(Box::new(item))
     }
 
+    /// A `Map` from `key` to `value`.
     pub fn map(key: Type, value: Type) -> Type {
         Type::Map(Box::new(key), Box::new(value))
     }
 
+    /// An `Option` of `item`.
     pub fn option(item: Type) -> Type {
         Type::Option(Box::new(item))
     }
 
+    /// A `Result` that is `value` on success and `error` on failure.
     pub fn result(value: Type, error: Type) -> Type {
         Type::Result(Box::new(value), Box::new(error))
     }
 
+    /// Whether the type is not known.
     pub fn is_unknown(&self) -> bool {
         matches!(self, Type::Unknown)
     }
 
+    /// Whether the type is a number, or not known.
     pub fn is_number(&self) -> bool {
         matches!(
             self,

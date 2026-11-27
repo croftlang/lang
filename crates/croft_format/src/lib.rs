@@ -76,6 +76,7 @@ fn check_same_program(before: &TokenizedSource, formatted: &str) -> Result<(), D
     Ok(())
 }
 
+/// The error for formatting that would change the program, at `span`.
 fn changed(span: Span) -> Diagnostic {
     Diagnostic::new(
         "formatting would change what this file means, so it was left alone; \

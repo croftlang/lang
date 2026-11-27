@@ -13,6 +13,7 @@ use std::process::ExitCode;
 use crate::diagnostics::print_diagnostics;
 use crate::project::Project;
 
+/// The help text, listing every command.
 const USAGE: &str = "\
 croft - a domain language that compiles to portable C
 
@@ -32,6 +33,7 @@ Usage:
     croft version           Show the version
 ";
 
+/// Runs the command named by the first argument.
 fn main() -> ExitCode {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
 
@@ -95,6 +97,7 @@ fn parse_path(arguments: &[String]) -> Result<(PathBuf, Vec<String>), String> {
     Ok((path.unwrap_or_else(|| PathBuf::from(".")), flags))
 }
 
+/// Fails on the first flag, for a command that takes none.
 fn reject_flags(flags: &[String]) -> Result<(), String> {
     match flags.first() {
         Some(flag) => Err(format!("unknown option `{flag}`")),
@@ -102,6 +105,8 @@ fn reject_flags(flags: &[String]) -> Result<(), String> {
     }
 }
 
+/// Loads and checks the project at `path`. Prints any diagnostics and
+/// fails with an empty message, so nothing more is printed.
 pub(crate) fn load_and_check(path: &Path) -> Result<(Project, croft_analysis::Program), String> {
     let project = Project::load(path)?;
 
@@ -114,6 +119,7 @@ pub(crate) fn load_and_check(path: &Path) -> Result<(Project, croft_analysis::Pr
     }
 }
 
+/// `croft check`: checks a project and says how many files and contexts it has.
 fn check(path: &Path) -> Result<(), String> {
     let (project, program) = load_and_check(path)?;
 
@@ -139,6 +145,7 @@ fn check(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// The ending for a count of things: `s`, unless `count` is 1.
 fn plural(count: usize) -> &'static str {
     if count == 1 {
         ""

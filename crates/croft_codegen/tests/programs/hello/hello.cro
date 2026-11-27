@@ -9,5 +9,5 @@ context Hello {
 domain Program {
     contexts { Hello }
     use { add } from Hello
-    calls Console
-} = console.print(add(2, 3).to_string())
+    calls { Console }
+} = Console.print(add(2, 3).to_string())

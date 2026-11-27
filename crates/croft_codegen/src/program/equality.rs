@@ -80,6 +80,7 @@ impl<'a> Generator<'a> {
         out
     }
 
+    /// The body of the function that compares two values of `ty`.
     fn equality_body(&self, ty: &Type) -> String {
         match ty {
             Type::List(item) | Type::SizedList(item, _) => {
@@ -164,6 +165,9 @@ impl<'a> Generator<'a> {
         }
     }
 
+    /// A C expression that is true when `a` and `b`, two values of `ty`, are
+    /// equal: `==` for numbers, a runtime call for strings and bytes, and an
+    /// equality function for anything else.
     fn compare(&self, a: &str, b: &str, ty: &Type) -> String {
         if self.is_scalar(ty) {
             return format!("({a} == {b})");

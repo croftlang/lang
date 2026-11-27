@@ -29,6 +29,7 @@ impl Parser {
         Ok(self.make_expr(ExprKind::Block(statements), span))
     }
 
+    /// A `let`, a `set`, or an expression.
     fn parse_statement(&mut self) -> ParseResult<Statement> {
         let keyword = self.peek().kind.clone();
 

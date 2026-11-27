@@ -4,11 +4,13 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use croft_syntax::ast::DomainDecl;
+use croft_syntax::ast::{DomainDecl, Path};
 
 use super::Checker;
 
 impl<'a> Checker<'a> {
+    /// There is one domain, not named after a context. Its `contexts` lists
+    /// every context, and it uses only contexts it lists.
     pub(super) fn check_domain(&mut self) {
         let Some((domain, others)) = self.program.domains.split_first() else {
             return;
@@ -58,22 +60,27 @@ impl<'a> Checker<'a> {
             self.error(message, domain.name.span);
         }
 
-        for use_decl in &domain.uses {
-            if self.is_context(&use_decl.from.text())
-                && !listed.contains(use_decl.from.text().as_str())
-            {
+        for from in domain.uses.iter().map(|use_decl| &use_decl.from).chain(
+            domain
+                .calls
+                .iter()
+                .filter_map(|called| called.from.as_ref()),
+        ) {
+            if self.is_context(&from.text()) && !listed.contains(from.text().as_str()) {
                 let message = format!(
                     "domain `{}` can only use contexts it lists in `contexts`",
                     domain.name.name
                 );
 
-                self.error(message, use_decl.from.span());
+                self.error(message, from.span());
             }
         }
 
         self.check_relations(domain);
     }
 
+    /// Whether `name` is a context the program declares, rather than the domain
+    /// or a standard context.
     fn is_context(&self, name: &str) -> bool {
         self.program
             .contexts
@@ -105,17 +112,23 @@ impl<'a> Checker<'a> {
             self.error(message, domain.name.span);
         }
 
-        let uses: Vec<_> = (self.program.contexts.values())
+        // Where each context imports from: its `use`s, and the `from` of
+        // each port its services call.
+        let imports: Vec<(String, &Path)> = (self.program.contexts.values())
             .filter(|c| !c.is_domain)
             .flat_map(|c| {
-                c.uses
-                    .iter()
-                    .map(move |use_decl| (c.name.name.clone(), use_decl))
+                let uses = c.uses.iter().map(|use_decl| &use_decl.from);
+                let calls = (c.functions.iter())
+                    .flat_map(|function| &function.calls)
+                    .filter_map(|called| called.from.as_ref());
+
+                uses.chain(calls)
+                    .map(move |from| (c.name.name.clone(), from))
             })
             .collect();
 
-        for (context, use_decl) in uses {
-            let from = use_decl.from.text();
+        for (context, from_path) in imports {
+            let from = from_path.text();
             let from = from.as_str();
 
             let allowed = upstream
@@ -125,7 +138,7 @@ impl<'a> Checker<'a> {
             if self.is_context(from) && !allowed {
                 let message =
                     format!("`{context}` uses `{from}`, so `contexts` needs `{from} -> {context}`");
-                self.error(message, use_decl.from.span());
+                self.error(message, from_path.span());
             }
         }
     }
@@ -133,6 +146,8 @@ impl<'a> Checker<'a> {
 
 /// A context the arrows lead back to, if any do.
 fn first_in_cycle<'n>(upstream: &BTreeMap<&'n str, BTreeSet<&'n str>>) -> Option<&'n str> {
+    /// Follows the arrows upstream from `node`, giving back the first context
+    /// reached twice on the current path.
     fn visit<'n>(
         node: &'n str,
         upstream: &BTreeMap<&'n str, BTreeSet<&'n str>>,

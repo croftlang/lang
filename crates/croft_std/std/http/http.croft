@@ -1,6 +1,6 @@
 // Std.Http: requests to web servers. A program imports what it needs with
-// `use { Http, Response, HttpError } from Std.Http`, lists `Http` in `calls`,
-// and names an adapter for it in croft.toml: `CurlHttp` on machines with
+// `use { Http, Response, HttpError } from Std.Http`, lists it in its contract
+// with `calls { Http }`, and names an adapter for it in croft.toml: `CurlHttp` on machines with
 // libcurl, linked with `-lcurl`, or one of its own.
 context Http {
     publish { Http, Response, HttpError, Unreachable, TimedOut, TooLarge, CurlHttp }

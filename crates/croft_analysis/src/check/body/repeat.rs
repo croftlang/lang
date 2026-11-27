@@ -7,6 +7,7 @@ use super::{BodyChecker, BodyKind};
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
+    /// `loop`, in services and adapters only, with an optional counter.
     pub(super) fn check_loop(
         &mut self,
         counter: Option<&LoopCounter>,
@@ -66,6 +67,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         );
     }
 
+    /// `break` is only allowed inside a loop.
     pub(super) fn check_break(&mut self, span: Span) -> Type {
         if self.loops == 0 {
             self.error("`break` can only be used inside a loop", span);

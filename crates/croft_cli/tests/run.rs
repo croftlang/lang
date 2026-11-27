@@ -6,6 +6,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
+/// A `croft.toml` with one target, `desktop`.
 const MANIFEST: &str = "\
 [package]
 name = \"greeting\"
@@ -13,6 +14,7 @@ name = \"greeting\"
 [target.desktop]
 ";
 
+/// A domain that prints a greeting through `Console`.
 const HELLO: &str = "\
 context Greeter {
   publish { greet }
@@ -25,9 +27,9 @@ context Greeter {
 domain Application {
   contexts { Greeter }
   use { greet } from Greeter
-  calls Console
+  calls { Console }
 } = {
-  console.print(greet())
+  Console.print(greet())
 }
 ";
 
@@ -49,6 +51,7 @@ domain Market {
 }
 ";
 
+/// Whether a C compiler named `cc` is installed.
 fn has_c_compiler() -> bool {
     Command::new("cc")
         .arg("--version")
@@ -66,6 +69,7 @@ fn project(name: &str, source: &str) -> PathBuf {
     folder
 }
 
+/// Runs `croft run` on a folder with the given arguments, with `CC` unset.
 fn croft_run(folder: &PathBuf, arguments: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_croft"))
         .arg("run")

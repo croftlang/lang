@@ -87,11 +87,13 @@ repository Rooms for Room
   (context_declaration
     (type_identifier)
     (use_declaration
-      (path_list
-        (path
-          (identifier))
-        (path
-          (identifier)))
+      (import_list
+        (imported_name
+          (path
+            (identifier)))
+        (imported_name
+          (path
+            (identifier))))
       (path
         (identifier)))
     (port_declaration
@@ -143,7 +145,7 @@ domain Game {
         Dungeon -> Scoring
         Shop
     }
-    calls Screen, Keyboard
+    calls { Screen, Keyboard }
 } = {
     SetUpRooms()?
 }
@@ -160,10 +162,13 @@ domain Game {
       (context_relation
         (type_identifier)))
     (calls_clause
-      (path
-        (identifier))
-      (path
-        (identifier)))
+      (import_list
+        (imported_name
+          (path
+            (identifier)))
+        (imported_name
+          (path
+            (identifier)))))
     (block
       (try_expression
         (call_expression
@@ -343,3 +348,70 @@ fn give(mg: Int where Overdose(4000) or Overdosed): Result<Int, Overdosed> {
           (identifier)
           (integer)))
       (identifier))))
+
+================================================================================
+Calls and use with names given by as
+================================================================================
+
+context Arcade {
+    use { Room.EnemyDefeated as Defeated } from Dungeon
+
+    service Play(from: Int, to: Int) {
+        calls { Keyboard as keys, Screen } from Dungeon
+        calls { Console }
+        from != to
+    } = Console.print("go")
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (declaration_list
+      (use_declaration
+        (import_list
+          (imported_name
+            (path
+              (identifier)
+              (identifier))
+            (identifier)))
+        (path
+          (identifier)))
+      (function_declaration
+        (identifier)
+        (parameters
+          (parameter
+            (identifier)
+            (type
+              (type_identifier)))
+          (parameter
+            (identifier)
+            (type
+              (type_identifier))))
+        (contract
+          (calls_clause
+            (import_list
+              (imported_name
+                (path
+                  (identifier))
+                (identifier))
+              (imported_name
+                (path
+                  (identifier))))
+            (path
+              (identifier)))
+          (calls_clause
+            (import_list
+              (imported_name
+                (path
+                  (identifier)))))
+          (binary_expression
+            (identifier)
+            (identifier)))
+        (call_expression
+          (field_expression
+            (identifier)
+            (field_identifier))
+          (arguments
+            (string)))))))

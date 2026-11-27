@@ -125,17 +125,23 @@ fn function_name(line: &str) -> Option<&str> {
     (!name.is_empty()).then_some(name)
 }
 
+/// Whether a line is blank or part of a `/* */` comment.
 fn is_comment_or_blank(line: &str) -> bool {
     let line = line.trim_start();
     line.is_empty() || line.starts_with("/*") || line.starts_with('*')
 }
 
+/// Tests for leaving out runtime functions the program never calls.
 #[cfg(test)]
 mod tests {
     use super::trim_runtime;
 
+    /// A small runtime: one function used directly, one through it, and one
+    /// never called.
     const RUNTIME: &str = "#include \"croft.h\"\n\n/* Used by both. */\nstatic int helper(void)\n{\n    return 1;\n}\n\nint croft_used(void)\n{\n    return helper();\n}\n\n/* Never called. */\nint croft_unused(void)\n{\n    return 2;\n}\n";
 
+    /// The runtime keeps what the program calls, directly or not, and drops
+    /// the rest with its comment.
     #[test]
     fn keeps_only_what_the_program_reaches() {
         let trimmed = trim_runtime(RUNTIME, "x = croft_used();");

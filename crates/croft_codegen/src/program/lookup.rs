@@ -44,6 +44,7 @@ impl<'a> Generator<'a> {
         self.lower_parameters(&found.context, None, parameters.unwrap_or(&[]))
     }
 
+    /// Parameters of a port operation, each bounded by its `Length`.
     pub fn operation_parameters(&self, port: &Resolved, operation: &str) -> Vec<(String, Type)> {
         let operations = self.model.operations_of(port);
         let operation = operations.into_iter().find(|op| op.name == operation);
@@ -55,6 +56,7 @@ impl<'a> Generator<'a> {
             .collect()
     }
 
+    /// Parameters of an aggregate's command.
     pub fn command_parameters(&self, aggregate: &Resolved, command: &str) -> Vec<(String, Type)> {
         let context = &self.program.contexts[&aggregate.context];
 
@@ -69,6 +71,7 @@ impl<'a> Generator<'a> {
         self.lower_parameters(&aggregate.context, Some(&aggregate.name), parameters)
     }
 
+    /// Parameters of an aggregate's factory.
     pub fn factory_parameters(&self, aggregate: &Resolved, factory: &str) -> Vec<(String, Type)> {
         let context = &self.program.contexts[&aggregate.context];
 

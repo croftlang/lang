@@ -6,6 +6,8 @@ use super::BodyChecker;
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
+    /// The type of a built-in method on an `Option` of `item`, or `None` if
+    /// `name` isn't one.
     pub(super) fn option_method(
         &mut self,
         item: &Type,
@@ -38,7 +40,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
-    /// The single lambda argument of a list or option method, called with `item`.
+    /// The single lambda argument of a list or option method, whose parameter is an `item`.
     pub(super) fn lambda_argument(
         &mut self,
         name: &str,

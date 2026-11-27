@@ -278,6 +278,7 @@ pub(super) fn changed_names(statements: &[Statement], changed: &mut HashSet<Stri
     }
 }
 
+/// Adds every name a `set` inside `value` changes to `changed`.
 fn changed_in(value: &Expr, changed: &mut HashSet<String>) {
     let mut each = |inner: &Expr| changed_in(inner, changed);
 

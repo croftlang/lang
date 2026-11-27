@@ -7,6 +7,7 @@ mod assign;
 mod behaviour;
 mod body;
 mod boundary;
+mod calls;
 mod constraints;
 mod data;
 mod declared;
@@ -49,6 +50,7 @@ pub(crate) use resolve::{Resolved, Scope};
 
 pub use rounds::{analyze, check, Analysis};
 
+/// Checks a program's declarations and bodies, collecting errors and what it learns.
 pub(crate) struct Checker<'a> {
     program: &'a Program,
     tables: HashMap<String, SymbolTable>,
@@ -67,10 +69,13 @@ impl<'a> Checker<'a> {
         self.facts.meanings.insert(id, meaning);
     }
 
+    /// Reports an error at `span`.
     fn error(&mut self, message: impl Into<String>, span: Span) {
         self.errors.push(Diagnostic::new(message, span));
     }
 
+    /// Checks every declaration in a context. Generic templates are checked
+    /// only through their instances.
     fn check_context(&mut self, context: &'a Context) {
         let scope = Scope {
             context,

@@ -8,6 +8,8 @@ use crate::facts::{Meaning, MemberKind};
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
+    /// The type of a bare name: a local name, a field of the command's aggregate
+    /// or the adapter, `Unit`, `None`, or a declaration.
     pub(super) fn name(
         &mut self,
         id: Option<ExprId>,
@@ -56,6 +58,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         if let Some(ty) = self.type_path(id, &path, expected) {
             return ty;
+        }
+
+        if let Some(called) = self.called_port_name(name) {
+            let message = format!("cannot find `{name}` here: `calls` names it `{called}`");
+            self.error(message, span);
+            return Type::Unknown;
         }
 
         self.error(format!("cannot find `{name}` here"), span);

@@ -8,6 +8,8 @@ use super::Writer;
 use crate::names::{c_name, error_code};
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// A `match`, giving back its value in a temporary, or nothing when it
+    /// gives back `Unit`.
     pub fn check_match(&mut self, subject: &Expr, arms: &[MatchArm], ty: &Type) -> String {
         if *ty == Type::Unit {
             self.arms(subject, arms, ty, None);
@@ -25,6 +27,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.arms(subject, arms, ty, Some(target));
     }
 
+    /// Writes each arm's test and body, each body's value into `result`
+    /// when given.
     fn arms(&mut self, subject: &Expr, arms: &[MatchArm], ty: &Type, result: Option<&str>) {
         let (subject, subject_type) = self.eval(subject, None);
 

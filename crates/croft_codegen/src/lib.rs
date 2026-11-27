@@ -1,10 +1,16 @@
 //! Generates portable C89 from a checked Croft program, for one target.
 
+/// Writing the C for function bodies.
 mod function;
+/// The state shared by everything generated for one program.
 mod generator;
+/// C names for Croft declarations and types.
 mod names;
+/// The parts of the generated program outside function bodies.
 mod program;
+/// The memory size report.
 mod report;
+/// C type definitions and sizes.
 mod types;
 
 use croft_analysis::Program;

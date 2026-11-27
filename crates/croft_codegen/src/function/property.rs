@@ -11,6 +11,8 @@ use crate::names::{c_name, error_code};
 use crate::types::bounds::{is_bytes, is_string, list_item};
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// What a name refers to: a constant, an error, a variant, `None`, a
+    /// local name or an own field.
     pub fn name(&mut self, value: &Expr, name: &str, ty: &Type) -> String {
         match self.gen.facts.meaning(value.id).cloned() {
             Some(Meaning::Const(constant)) => c_name(&constant),
@@ -102,6 +104,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         temp
     }
 
+    /// `inner.field`: a field, or a built-in property such as `length`.
     pub fn property(&mut self, inner: &Expr, field: &str) -> String {
         let inner_type = self.type_of(inner, None);
 

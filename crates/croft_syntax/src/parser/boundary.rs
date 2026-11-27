@@ -70,7 +70,7 @@ impl Parser {
         })
     }
 
-    /// An operation is written with `fn`, but belongs to a port or adapter.
+    /// An operation of a port, adapter or repository, written with `fn`.
     fn parse_operation(&mut self) -> ParseResult<FunctionDecl> {
         if !self.check_keyword(Keyword::Fn) {
             return Err(self.unexpected("`fn`"));

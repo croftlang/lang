@@ -9,6 +9,7 @@ use super::{Checker, Scope};
 use crate::facts::BuiltinName;
 use crate::types::MAX_PLACES;
 
+/// The built-in types, each with how many type arguments it takes.
 const BUILTIN_TYPES: [(&str, usize); 11] = [
     ("Int", 0),
     ("Float", 0),
@@ -23,6 +24,7 @@ const BUILTIN_TYPES: [(&str, usize); 11] = [
     ("Result", 2),
 ];
 
+/// Whether `name` is a built-in type.
 pub(super) fn is_builtin_type(name: &str) -> bool {
     BUILTIN_TYPES.iter().any(|(builtin, _)| *builtin == name)
 }
@@ -33,6 +35,8 @@ fn is_type_parameter(name: &str) -> bool {
 }
 
 impl<'a> Checker<'a> {
+    /// A written type names a type, with as many type arguments as it takes.
+    /// With `generic`, a type parameter such as `T` is a type too.
     pub(super) fn check_type(&mut self, scope: &Scope, ty: &TypeExpr, generic: bool) {
         for argument in &ty.arguments {
             self.check_type(scope, argument, generic);
@@ -119,6 +123,7 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Each field is declared once, and its type and constraints are checked.
     pub(super) fn check_fields(&mut self, scope: &Scope, fields: &[Field]) {
         let mut seen = HashSet::new();
 
@@ -138,6 +143,7 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Each parameter is declared once, with a type, and constraints that fit `place`.
     pub(super) fn check_parameters(
         &mut self,
         scope: &Scope,

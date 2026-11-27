@@ -11,6 +11,8 @@ use crate::Generator;
 const MEMORY_SLOTS: usize = 8;
 
 impl<'a> Generator<'a> {
+    /// The C for `MemoryStorage` and `FileStorage`, each only when a
+    /// repository uses it.
     pub fn builtin_storage(&self) -> String {
         let uses = |name: &str| {
             (self.storages.values())
@@ -32,6 +34,7 @@ impl<'a> Generator<'a> {
         out
     }
 
+    /// The C result types of `load`, and of `save` and `remove`.
     fn storage_types(&self) -> (String, String) {
         let loaded = self.c_type(&Type::result(
             Type::option(Type::Bytes),
@@ -43,6 +46,8 @@ impl<'a> Generator<'a> {
         (loaded, written)
     }
 
+    /// The C code of a built-in error such as `StorageFull`, or `0` when the
+    /// program has none.
     fn storage_error(&self, name: &str) -> String {
         let context = if name.starts_with("Storage") {
             "Std.Storage"
@@ -55,6 +60,7 @@ impl<'a> Generator<'a> {
             .map_or("0".to_string(), |error| error_code(&error))
     }
 
+    /// `MemoryStorage`: a table of up to `slots` keys and their bytes.
     fn memory_storage(&self, slots: usize) -> String {
         let (loaded, written) = self.storage_types();
         let full = self.storage_error("StorageFull");
@@ -74,6 +80,7 @@ impl<'a> Generator<'a> {
         )
     }
 
+    /// `FileStorage`: a file for each key, through the target's `Files` adapter.
     fn file_storage(&self) -> String {
         let (loaded, written) = self.storage_types();
         let read = self.c_type(&Type::result(Type::Bytes, Type::Errors(Vec::new())));

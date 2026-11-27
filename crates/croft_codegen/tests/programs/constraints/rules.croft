@@ -1,5 +1,5 @@
 // Breaks one constraint, chosen by the command-line argument, so the test can see
-// each kind of check stop a debug build. Each value depends on the arguments, so
+// each kind of check stop the program. Each value depends on the arguments, so
 // it is only known while running; a value known when compiling is an error then.
 context Clinic {
     use { Decimal } from Std.Numbers
@@ -35,9 +35,9 @@ context Clinic {
     } = numbers.length
 
     service Start(): Unit {
-        calls Arguments
+        calls { Arguments }
     } = {
-        let chosen = arguments.all()
+        let chosen = Arguments.all()
         if chosen.contains("argument") {
             let healed = heal(chosen.length * 70)
         }

@@ -87,27 +87,27 @@ context Shop {
     }
 
     service Check(): Result<Unit, Failure> {
-        calls Shelves, Files, Console
+        calls { Shelves, Files, Console }
     } = {
         let shelf = Shelf.Garden(id: 12)?
-        shelves.save(shelf)?
-        check(files.exists("shelve12.dat"))?
-        let found = shelves.find(12)?
+        Shelves.save(shelf)?
+        check(Files.exists("shelve12.dat"))?
+        let found = Shelves.find(12)?
         check(found == shelf)?
         check(found.name == "Garden" && found.name.length == 6)?
-        let missing = match shelves.find(13) {
+        let missing = match Shelves.find(13) {
             Ok(other) -> false
             Err(error) -> is_missing(error)
         }
         check(missing)?
-        files.write("shelve12.dat", "not a shelf".to_bytes())?
-        let damaged = match shelves.find(12) {
+        Files.write("shelve12.dat", "not a shelf".to_bytes())?
+        let damaged = match Shelves.find(12) {
             Ok(other) -> false
             Err(error) -> is_damaged(error)
         }
         check(damaged)?
-        files.remove("shelve12.dat")?
-        console.print("ok")
+        Files.remove("shelve12.dat")?
+        Console.print("ok")
         Unit
     }
 }

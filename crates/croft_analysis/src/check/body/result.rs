@@ -56,6 +56,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
+    /// Whether a type is an error type, or not known.
     fn is_error_or_unknown(&self, ty: &Type) -> bool {
         match ty {
             Type::Unknown | Type::Errors(_) => true,

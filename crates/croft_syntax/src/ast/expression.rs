@@ -1,6 +1,9 @@
+//! Expressions, statements and patterns.
+
 use super::{ConstraintUse, Identifier, Path, TypeExpr};
 use crate::span::{SourceId, Span};
 
+/// An expression, where it was written, and its id.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Expr {
     pub kind: ExprKind,
@@ -10,12 +13,14 @@ pub struct Expr {
     pub id: ExprId,
 }
 
+/// The id of an expression: its source file and the order the parser made it in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ExprId {
     pub source: SourceId,
     pub index: u32,
 }
 
+/// What kind of expression it is.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExprKind {
     Int(i64),
@@ -82,6 +87,7 @@ pub struct LoopCounter {
     pub constraints: Vec<ConstraintUse>,
 }
 
+/// One step of a code block.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     /// `let name = value`, or `let name: Type = value`.
@@ -90,6 +96,7 @@ pub enum Statement {
     Expr(Expr),
 }
 
+/// One arm of a `match`: a pattern and the value it gives back.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchArm {
     pub pattern: Pattern,
@@ -103,6 +110,7 @@ pub struct Pattern {
     pub bindings: Vec<Identifier>,
 }
 
+/// An operator written before its one operand.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOp {
     Not,
@@ -111,6 +119,7 @@ pub enum UnaryOp {
     BitNot,
 }
 
+/// An operator written between its two operands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
     Add,

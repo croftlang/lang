@@ -127,9 +127,9 @@ fn a_call_from_the_domain_is_checked_against_the_context_constraint() {
                   domain App {\n\
                   contexts { Clinic }\n\
                   use { administer } from Clinic\n\
-                  calls Console\n} = {\n\
+                  calls { Console }\n} = {\n\
                   administer(5000)\n\
-                  console.print(\"OK\")\n}";
+                  Console.print(\"OK\")\n}";
 
     assert_error(
         source,
@@ -198,7 +198,7 @@ fn a_command_argument_is_checked() {
                   }\n\
                   repository Beds for Bed\n\
                   enum WardError {\n include Bed.Error\n include StorageError\n }\n\
-                  service Treat(): Result<Unit, WardError> {\n calls Beds\n} = {\n\
+                  service Treat(): Result<Unit, WardError> {\n calls { Beds }\n} = {\n\
                   issue Give(mg: 5000) on Bed(1)?\n}\n}";
 
     assert_error(
@@ -219,8 +219,8 @@ fn a_factory_argument_is_checked() {
                   }\n\
                   repository Beds for Bed\n\
                   enum WardError {\n include Bed.Error\n include StorageError\n }\n\
-                  service Start(): Result<Unit, WardError> {\n calls Beds\n} = {\n\
-                  let bed = Bed.Admit(id: 1, given: 5000)?\n beds.save(bed)?\n}\n}";
+                  service Start(): Result<Unit, WardError> {\n calls { Beds }\n} = {\n\
+                  let bed = Bed.Admit(id: 1, given: 5000)?\n Beds.save(bed)?\n}\n}";
 
     assert_error(
         source,
@@ -332,7 +332,7 @@ fn ward(contract: &str, issued: &str) -> String {
          }}\n\
          repository Beds for Bed\n\
          enum WardError {{\n include Bed.Error\n include StorageError\n }}\n\
-         service Treat(): Result<Unit, WardError> {{\n calls Beds\n}} = {{\n\
+         service Treat(): Result<Unit, WardError> {{\n calls {{ Beds }}\n}} = {{\n\
          issue Give(mg: {issued}) on Bed(1)?\n}}\n}}"
     )
 }

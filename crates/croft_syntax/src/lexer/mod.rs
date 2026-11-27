@@ -11,6 +11,7 @@ use std::ops::Range;
 use crate::span::{Diagnostic, SourceId, Span};
 use crate::token::{Comment, Token, TokenKind};
 
+/// Reads the tokens of a source file.
 pub fn tokenize(source: &str, source_id: SourceId) -> Result<Vec<Token>, Diagnostic> {
     tokenize_with_comments(source, source_id).map(|tokenized| tokenized.tokens)
 }
@@ -33,6 +34,8 @@ pub fn tokenize_with_comments(
     Lexer::new(source, source_id).tokenize_all()
 }
 
+/// Reads source text one character at a time, keeping track of the line,
+/// column and byte offset.
 pub(crate) struct Lexer<'a> {
     chars: std::iter::Peekable<std::str::Chars<'a>>,
     source_id: SourceId,
@@ -45,6 +48,7 @@ pub(crate) struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
+    /// A lexer at the start of `source`.
     fn new(source: &'a str, source_id: SourceId) -> Self {
         let chars = source.chars().peekable();
 
@@ -58,6 +62,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Where the next character is.
     pub(crate) fn current_span(&self) -> Span {
         Span {
             source: self.source_id,
@@ -66,16 +71,19 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// The next character, without reading it.
     pub(crate) fn peek(&mut self) -> Option<char> {
         self.chars.peek().copied()
     }
 
+    /// The character after the next one, without reading either.
     pub(crate) fn peek_second(&self) -> Option<char> {
         let mut lookahead = self.chars.clone();
         lookahead.next();
         lookahead.next()
     }
 
+    /// Reads the next character and moves the line, column and offset past it.
     pub(crate) fn advance(&mut self) -> Option<char> {
         let next = self.chars.next()?;
 
@@ -91,6 +99,7 @@ impl<'a> Lexer<'a> {
         Some(next)
     }
 
+    /// Reads every token, ending with `EndOfFile`.
     fn tokenize_all(mut self) -> Result<TokenizedSource, Diagnostic> {
         let mut tokens = Vec::new();
         let mut ranges = Vec::new();

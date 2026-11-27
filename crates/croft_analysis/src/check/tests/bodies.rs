@@ -1,3 +1,5 @@
+//! Type checking bodies: expressions, methods, literals, matches and generics.
+
 use super::{assert_error, errors};
 
 /// A small context with an aggregate, to write bodies against.

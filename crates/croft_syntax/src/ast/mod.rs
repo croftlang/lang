@@ -10,6 +10,7 @@ pub use function::*;
 
 use crate::span::Span;
 
+/// A name as written, and where.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifier {
     pub name: String,
@@ -23,16 +24,19 @@ pub struct Path {
 }
 
 impl Path {
+    /// Where the path starts.
     pub fn span(&self) -> Span {
         self.segments[0].span
     }
 
+    /// The last segment: `EnemyDefeated` in `Room.EnemyDefeated`.
     pub fn last(&self) -> &Identifier {
         self.segments
             .last()
             .expect("a path has at least one segment")
     }
 
+    /// The path as written, its segments joined with `.`.
     pub fn text(&self) -> String {
         let names: Vec<&str> = self.segments.iter().map(|s| s.name.as_str()).collect();
         names.join(".")
@@ -159,6 +163,7 @@ impl BinaryOp {
     }
 }
 
+/// A field of a value, entity, aggregate, error, event, enum variant or adapter.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
     pub doc: Vec<String>,

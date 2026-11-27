@@ -5,6 +5,7 @@ use croft_syntax::ast::*;
 use super::Context;
 
 impl Context {
+    /// An empty context named `name`.
     pub(super) fn new(name: Identifier) -> Context {
         Context {
             doc: Vec::new(),
@@ -28,6 +29,7 @@ impl Context {
         }
     }
 
+    /// Adds one part's declarations, joining each aggregate to any of the same name.
     pub(super) fn add_items(&mut self, items: Vec<ContextItem>) {
         for item in items {
             match item {

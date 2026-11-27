@@ -26,6 +26,7 @@ pub fn is_source_file(path: &std::path::Path) -> bool {
         })
 }
 
+/// Tests for `is_source_file`.
 #[cfg(test)]
 mod source_file_tests {
     use super::is_source_file;

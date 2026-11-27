@@ -62,16 +62,16 @@ enum Failure {
 }
 
 service Check(): Result<Unit, Failure> {
-    calls Quests
+    calls { Quests }
 } = {
     let start = Quest.Begin(id: 1)?
     check(start.has_lamp && start.met_keeper && !start.has_key && !start.won)?
     let found = issue Find(key: true) on start?
     check(found.has_key && found.saw_ship && found.has_lamp && found.score == 10)?
     check(found != start && found == found)?
-    quests.save(found)?
+    Quests.save(found)?
     issue Finish on Quest(1)?
-    let loaded = quests.find(1)?
+    let loaded = Quests.find(1)?
     check(loaded.won && !loaded.has_key && loaded.saw_ship && loaded.has_lamp)?
     check(loaded.met_keeper && !loaded.fed_cat && loaded.score == 10)?
     let door = Door { open: false, locked: true, painted: true }

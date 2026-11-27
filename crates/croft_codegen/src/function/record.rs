@@ -42,6 +42,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.set_named_fields(target, Some(named), &types, fields);
     }
 
+    /// The fields of a value, entity, aggregate or event, with their types.
     pub fn field_types(&self, named: &Resolved) -> Vec<(String, Type)> {
         self.gen
             .struct_fields(named)
@@ -50,6 +51,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             .collect()
     }
 
+    /// Sets each given field of `target` from `types`, the owner's fields.
     fn set_named_fields(
         &mut self,
         target: &str,

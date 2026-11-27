@@ -50,7 +50,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         Type::Unit
     }
 
-    /// `native zx_cls()`: C code, only from an adapter. Its type comes from the port.
+    /// `native zx_cls()`: C code, only from an adapter. Its type is the one
+    /// expected where it is used, such as the port operation's return type.
     pub(super) fn native(
         &mut self,
         function: &Identifier,

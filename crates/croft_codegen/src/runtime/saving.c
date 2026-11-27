@@ -1,7 +1,7 @@
 
-/* Writing and reading saved values, for FileStorage. A number is four
-   bytes, least significant first; a length is two. Each gives back 0 when
-   the bytes are full, or have run out. */
+/* Writing and reading saved values, for repositories kept through Storage.
+   A number is four bytes, least significant first; a length is two. Each
+   gives back 0 when the bytes are full, or have run out. */
 
 croft_bool croft_bytes_put_int(croft_bytes *out, croft_int value)
 {

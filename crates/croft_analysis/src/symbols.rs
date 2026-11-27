@@ -15,18 +15,21 @@ use croft_syntax::{Diagnostic, Span};
 pub use build::build_table;
 pub use kind::SymbolKind;
 
+/// What kind of thing a declared name is, and where it is declared.
 #[derive(Debug, Clone, Copy)]
 pub struct Symbol {
     pub kind: SymbolKind,
     pub span: Span,
 }
 
+/// Every name one context declares, by full name, such as `Room.Enemy`.
 #[derive(Debug, Default)]
 pub struct SymbolTable {
     pub symbols: HashMap<String, Symbol>,
 }
 
 impl SymbolTable {
+    /// The symbol for a name, if the context declares it.
     pub fn get(&self, name: &str) -> Option<Symbol> {
         self.symbols.get(name).copied()
     }
@@ -45,6 +48,7 @@ impl SymbolTable {
         self.symbols.insert(name, Symbol { kind, span });
     }
 
+    /// Adds each name with `prefix` in front, such as `Room.` for an aggregate's members.
     fn add_all<'a>(
         &mut self,
         names: impl IntoIterator<Item = &'a Identifier>,

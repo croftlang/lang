@@ -12,8 +12,8 @@ context Hello {
 domain Program {
     contexts { Hello }
     use { add } from Hello
-    calls Console
-} = console.print(add(2, 3).to_string())   // prints 5
+    calls { Console }
+} = Console.print(add(2, 3).to_string())   // prints 5
 
 // dn.toml
 // [package]

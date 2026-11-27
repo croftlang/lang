@@ -25,6 +25,7 @@ use crate::lexer::tokenize;
 use crate::span::{Diagnostic, SourceId};
 use crate::token::Token;
 
+/// Parses one source file into a syntax tree.
 pub fn parse(source: &str, source_id: SourceId) -> Result<File, Diagnostic> {
     let tokens = tokenize(source, source_id)?;
 
@@ -38,18 +39,22 @@ pub fn parse(source: &str, source_id: SourceId) -> Result<File, Diagnostic> {
     .parse_file()
 }
 
+/// What a parse step gives back: what it read, or the first error.
 type ParseResult<T> = Result<T, Diagnostic>;
 
+/// Reads a file's tokens into a syntax tree.
 pub(crate) struct Parser {
     tokens: Vec<Token>,
     position: usize,
     /// False inside an `if` or `match` condition, where `{` starts the block.
     allow_records: bool,
     source_id: SourceId,
+    /// The index the next expression's id gets.
     next_expr: u32,
 }
 
 impl Parser {
+    /// An expression with the next unused id.
     fn make_expr(&mut self, kind: ExprKind, span: crate::span::Span) -> Expr {
         let id = ExprId {
             source: self.source_id,

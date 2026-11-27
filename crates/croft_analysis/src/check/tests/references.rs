@@ -6,6 +6,7 @@ use crate::check::analyze;
 use crate::check::Analysis;
 use crate::symbols::SymbolKind;
 
+/// Analyzes one source file with no project file.
 fn analyze_source(source: &str) -> Analysis {
     let file = parse(source, SourceId(0)).expect("valid syntax");
     analyze(vec![file], None)
@@ -26,6 +27,7 @@ fn target_at(analysis: &Analysis, line: u32, column: u32) -> Option<(String, Sym
     Some((format!("{}.{}", target.context, target.name), target.kind))
 }
 
+/// A dungeon with a `Room` aggregate, for the reference tests.
 const ROOM: &str = "\
 context Dungeon {
     identity RoomId for Room: Int where Range(1, 20)
@@ -109,9 +111,9 @@ context Dungeon {
     }
     fn right(at: Position): Position = Position { x: at.x + 1, y: at.y }
     service Show(at: Position): Unit {
-        calls Screen
+        calls { Screen }
     } = {
-        screen.draw(at)
+        Screen.draw(at)
     }
 }";
 
@@ -139,7 +141,7 @@ context Dungeon {
         assert_eq!(member.ty, crate::types::Type::Int);
     }
 
-    // `draw` in `screen.draw(at)` is the operation on line 7.
+    // `draw` in `Screen.draw(at)` is the operation on line 7.
     let draw = at(13, 16);
     assert_eq!(draw.kind, crate::facts::MemberKind::Operation);
     assert_eq!(draw.defined.map(|s| s.line), Some(7));

@@ -20,6 +20,7 @@ pub fn statements_set(statements: &[Statement], name: &str) -> bool {
     })
 }
 
+/// Whether `value`, or a block inside it, `set`s `name`.
 fn sets(value: &Expr, name: &str) -> bool {
     match &value.kind {
         ExprKind::Block(statements) => statements_set(statements, name),
@@ -81,6 +82,7 @@ pub fn uses(value: &Expr, name: &str) -> bool {
     }
 }
 
+/// Whether `name` is read in any of `values`.
 fn any_uses<'e>(values: impl IntoIterator<Item = &'e Expr>, name: &str) -> bool {
     values.into_iter().any(|value| uses(value, name))
 }

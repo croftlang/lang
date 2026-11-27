@@ -1,7 +1,8 @@
-//! Reserved words. Words such as `on`, `for`, `in`, `from`, `when`, `start`
-//! and `target` are only special in one place, so they stay identifiers and
+//! Reserved words. Words such as `on`, `for`, `from`, `when`, `as`, `include`
+//! and `contexts` are only special in one place, so they stay identifiers and
 //! the parser checks for them where they are expected.
 
+/// A reserved word.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Keyword {
     Context,
@@ -45,6 +46,7 @@ pub enum Keyword {
     False,
 }
 
+/// Each reserved word as written, and the keyword it reads as.
 const KEYWORDS: [(&str, Keyword); 39] = [
     ("context", Keyword::Context),
     ("domain", Keyword::Domain),
@@ -88,6 +90,7 @@ const KEYWORDS: [(&str, Keyword); 39] = [
 ];
 
 impl Keyword {
+    /// The keyword a word reads as, if it is reserved.
     pub fn from_word(word: &str) -> Option<Keyword> {
         KEYWORDS
             .iter()
@@ -100,6 +103,7 @@ impl Keyword {
         KEYWORDS.iter().map(|(text, _)| *text)
     }
 
+    /// The keyword as written.
     pub fn as_str(self) -> &'static str {
         KEYWORDS
             .iter()

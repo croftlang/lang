@@ -75,7 +75,7 @@ fn tape_header(length: Int, start: Int): Bytes = {
 fn wrapped(payload: Bytes where Length(0, 4)): Bytes = payload + [0xFF, 0xFE]
 
 service Check(): Result<Unit, Failure> {
-    calls Mailboxes
+    calls { Mailboxes }
 } = {
     let header = Header { magic: magic(), version: 1 }
     check(header.magic == [0x44, 0x4E] && header.magic.get(1) == Some(0x4E))?
@@ -113,8 +113,8 @@ service Check(): Result<Unit, Failure> {
     check(big.set(0, 9) == [9, 0x12, 0x34] && big.set(5, 9) == big)?
     // Saved and found again, in a field of its own size.
     let mailbox = Mailbox.Open(id: 3)?
-    mailboxes.save(mailbox)?
+    Mailboxes.save(mailbox)?
     issue Retag(new_tag: [1, 2, 3]) on Mailbox(3)?
-    let found = mailboxes.find(3)?
+    let found = Mailboxes.find(3)?
     check(found.tag == [1, 2, 3])
 }

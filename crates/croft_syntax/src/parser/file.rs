@@ -9,6 +9,7 @@ use crate::keyword::Keyword;
 use crate::token::TokenKind;
 
 impl Parser {
+    /// Every context and domain in the file.
     pub(super) fn parse_file(&mut self) -> ParseResult<File> {
         let mut file = File::default();
 
@@ -32,6 +33,7 @@ impl Parser {
         Ok(file)
     }
 
+    /// A context, in braces or as a header line.
     fn parse_context(&mut self) -> ParseResult<ContextDecl> {
         let doc = self.doc();
         self.expect_keyword(Keyword::Context)?;
@@ -62,6 +64,8 @@ impl Parser {
         Ok(ContextDecl { doc, name, items })
     }
 
+    /// One declaration in a context. `braced` says whether the context is in
+    /// braces, since an aggregate inside a braced context must be braced too.
     fn parse_context_item(&mut self, braced: bool) -> ParseResult<ContextItem> {
         let TokenKind::Keyword(keyword) = self.peek().kind else {
             return Err(self.unexpected("a declaration"));
@@ -101,7 +105,7 @@ impl Parser {
     pub(super) fn parse_use(&mut self) -> ParseResult<UseDecl> {
         self.expect_keyword(Keyword::Use)?;
 
-        let names = self.parse_path_list()?;
+        let names = self.parse_imported_names()?;
 
         self.expect_word("from")?;
 

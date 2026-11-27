@@ -36,6 +36,7 @@ pub enum Meaning {
     IssueOnValue(Resolved),
 }
 
+/// What checking learned about each expression, by its id: its type and what it refers to.
 #[derive(Debug, Default)]
 pub struct Facts {
     pub types: HashMap<ExprId, Type>,
@@ -84,6 +85,7 @@ pub struct LocalName {
 }
 
 impl Facts {
+    /// The type of an expression, or `Unknown` when it has none.
     pub fn type_of(&self, id: ExprId) -> &Type {
         self.types.get(&id).unwrap_or(&Type::Unknown)
     }
@@ -93,6 +95,7 @@ impl Facts {
         self.wanted.get(&id).unwrap_or_else(|| self.type_of(id))
     }
 
+    /// What an expression refers to, when it refers to something.
     pub fn meaning(&self, id: ExprId) -> Option<&Meaning> {
         self.meanings.get(&id)
     }
@@ -103,16 +106,17 @@ impl Facts {
 pub struct Member {
     pub span: Span,
     pub name: String,
-    /// What it belongs to: `Room` for `room.player`, `Screen` for `screen.clear()`.
+    /// What it belongs to: `Room` for `room.player`, `Screen` for `Screen.clear()`.
     pub receiver: Type,
     /// A field's type, or what a call gives back.
     pub ty: Type,
     pub kind: MemberKind,
     /// Where it is declared. `None` for what the language provides, such as
-    /// `text.length` or `rooms.find(id)`.
+    /// `text.length` or `Rooms.find(id)`.
     pub defined: Option<Span>,
 }
 
+/// Whether a member is a field or an operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemberKind {
     Field,

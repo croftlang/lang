@@ -26,7 +26,7 @@ its compiler, standard library and language server.
 context Greeter {
   publish { greet }
 
-  fn greet(): String where Length(0, 11) = {
+  fn greet(): String where Length(0, 12) = {
     "Hello, World"
   }
 }
@@ -38,14 +38,14 @@ domain Application {
 
   use { greet } from Greeter
 
-  calls Console
+  calls { Console }
 } = {
   let output = greet() 
 
-  console.print(output) // Hello, World
+  Console.print(output) // Hello, World
 }
 
-// crof.toml
+// croft.toml
 // [package]
 // name = "hello"
 //

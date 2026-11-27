@@ -1,11 +1,12 @@
-//! Paths, types, fields, parameters and `where` constraints.
+//! Paths, imported names, types, fields and parameters.
 
 use super::{ParseResult, Parser};
-use crate::ast::{Field, Identifier, Parameter, Path, TypeExpr};
+use crate::ast::{Field, Identifier, ImportedName, Parameter, Path, TypeExpr};
 use crate::keyword::Keyword;
 use crate::token::TokenKind;
 
 impl Parser {
+    /// A name, possibly dotted: `Room.EnemyDefeated`.
     pub(super) fn parse_path(&mut self) -> ParseResult<Path> {
         let mut segments = vec![self.expect_identifier()?];
 
@@ -30,6 +31,30 @@ impl Parser {
         Ok(paths)
     }
 
+    /// `{ RoomId, Room.EnemyDefeated as Defeated }`, with optional commas: the
+    /// names a `use` or `calls` brings in, each with an optional alias after `as`.
+    pub(super) fn parse_imported_names(&mut self) -> ParseResult<Vec<ImportedName>> {
+        self.expect(&TokenKind::LeftBrace)?;
+
+        let mut names = Vec::new();
+
+        while !self.eat(&TokenKind::RightBrace) {
+            let path = self.parse_path()?;
+            let mut alias = None;
+
+            if self.check_word("as") {
+                self.advance();
+                alias = Some(self.expect_identifier()?);
+            }
+
+            names.push(ImportedName { path, alias });
+            self.eat(&TokenKind::Comma);
+        }
+
+        Ok(names)
+    }
+
+    /// A type: `Int`, `List<Room.Enemy>`, or `Decimal<2>` with a number.
     pub(super) fn parse_type(&mut self) -> ParseResult<TypeExpr> {
         let path = self.parse_path()?;
         let mut arguments = Vec::new();
@@ -66,7 +91,8 @@ impl Parser {
         })
     }
 
-    /// A field: `identity id: RoomId` or `hit_points: Int where Range(0, 100)`.
+    /// A field: `hit_points: Int where Range(0, 100)`, with a starting value
+    /// after `=` in an adapter.
     pub(super) fn parse_field(&mut self) -> ParseResult<Field> {
         let doc = self.doc();
 

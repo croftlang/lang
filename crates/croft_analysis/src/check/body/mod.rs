@@ -59,7 +59,8 @@ pub(super) enum BodyKind<'a> {
     Adapter(&'a AdapterDecl),
 }
 
-/// A name a body can see: a parameter, `let` name, match binding or lambda parameter.
+/// A name a body can see: a parameter, `let` name, match binding, lambda
+/// parameter, loop counter, or a port or repository the service calls.
 pub(super) struct Local {
     pub(super) ty: Type,
     pub(super) settable: bool,
@@ -70,6 +71,7 @@ pub(super) struct Local {
     pub(super) known: Option<crate::check::known::Known>,
 }
 
+/// Checks one body: the type of each expression, and what its kind may do.
 pub(super) struct BodyChecker<'c, 'a> {
     checker: &'c mut Checker<'a>,
     scope: Scope<'a>,
@@ -85,6 +87,7 @@ pub(super) struct BodyChecker<'c, 'a> {
 }
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
+    /// A checker for a body of `kind` that must give back `result`.
     pub(super) fn new(
         checker: &'c mut Checker<'a>,
         scope: Scope<'a>,
@@ -110,6 +113,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
+    /// Reports an error at `span`.
     pub(super) fn error(&mut self, message: impl Into<String>, span: Span) {
         self.checker.error(message, span);
     }
@@ -177,6 +181,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         Some(fields.iter().find(|f| f.name.name == field)?.name.span)
     }
 
+    /// The innermost local name `name` in scope, if there is one.
     pub(super) fn local(&self, name: &str) -> Option<&Local> {
         self.locals.iter().rev().find_map(|scope| scope.get(name))
     }

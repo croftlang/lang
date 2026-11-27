@@ -4,8 +4,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
+/// A source file that `croft fmt` would change.
 const MESSY: &str = "context Greeter {\n  fn greet( ):String={\n\"Hello\"\n  }\n}\n";
 
+/// `MESSY` as `croft fmt` writes it.
 const TIDY: &str = "context Greeter {\n    fn greet(): String = {\n        \"Hello\"\n    }\n}\n";
 
 /// A fresh folder holding one source file with the given text.
@@ -17,6 +19,7 @@ fn folder_with(name: &str, source: &str) -> PathBuf {
     folder
 }
 
+/// Runs `croft fmt` on a folder with the given arguments.
 fn croft_fmt(folder: &PathBuf, arguments: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_croft"))
         .arg("fmt")

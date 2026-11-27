@@ -48,6 +48,7 @@ impl Parser {
         Ok(aggregate)
     }
 
+    /// One member of an aggregate, added to the list it belongs in.
     fn parse_aggregate_member(&mut self, aggregate: &mut AggregateDecl) -> ParseResult<()> {
         let misplaced = self
             .misplaced_in_aggregate()
