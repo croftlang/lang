@@ -26,15 +26,16 @@ context Http {
 
     // What the server answered: its status, such as 200 or 404, its headers,
     // with names in lower case, and the body. After redirects, all three come
-    // from the last answer. Headers longer than a string are left out, as
-    // are any past the first 16.
+    // from the last answer. Headers longer than the target's
+    // `strings_length` are left out, as are any past the first 16.
     value Response {
         status: Int where Range(0, 999)
         headers: Map<String, String> where Length(0, 16)
         body: Bytes
     }
 
-    // Each request sends the URL, at most 1024 characters, and up to 8
+    // Each request sends the URL, at most 1024 characters, borrowed for the
+    // call so it makes no other string as long, and up to 8
     // headers, by name and value, such as `["Accept": "text/plain"]`, or
     // `[:]` for none.
     port Http {

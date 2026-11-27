@@ -1,0 +1,14 @@
+[package]
+name = "unbounded_strings"
+
+# A string with no `Length` holds 8 characters on this target, however long
+# a `Length` elsewhere is.
+[target.test]
+main = "Check"
+strings_length = 8
+
+# Without checks, a string too long for where it goes is cut short.
+[target.unchecked]
+main = "Check"
+strings_length = 8
+checks = false

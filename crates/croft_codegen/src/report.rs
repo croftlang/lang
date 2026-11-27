@@ -94,15 +94,10 @@ impl<'a> Generator<'a> {
         out
     }
 
-    /// How many characters each string holds, and what set the size of one
-    /// with nothing to bound it.
+    /// How many characters each string holds: those kept in sizes of their
+    /// own, and one with nothing to bound it.
     fn strings_section(&self) -> String {
         let capacity = self.sizes.string_capacity;
-
-        let from = match &self.sizes.string_capacity_from {
-            Some(label) => format!("set by the `Length` on {label}"),
-            None => "the default".to_string(),
-        };
 
         let bounded: Vec<String> = self.texts.borrow().iter().map(i64::to_string).collect();
 
@@ -118,8 +113,8 @@ impl<'a> Generator<'a> {
         format!(
             "\nStrings\n  Each string is kept in the most characters it can need, from the \
              literals and `Length`s it comes from.\n{sizes}  A string with nothing to bound it, \
-             such as a parameter with no `Length`, holds {capacity} characters ({} bytes), \
-             {from}.\n",
+             such as a field with no `Length`, holds {capacity} characters ({} bytes), the \
+             target's `strings_length`.\n",
             2 + capacity
         )
     }

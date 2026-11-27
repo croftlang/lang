@@ -7,7 +7,7 @@ use croft_syntax::{Diagnostic, SourceId};
 use serde::Deserialize;
 use toml::Spanned;
 
-use super::{span_at, Manifest, TargetConfig, DEFAULT_BYTES_LENGTH};
+use super::{span_at, Manifest, TargetConfig, DEFAULT_BYTES_LENGTH, DEFAULT_STRINGS_LENGTH};
 
 /// `croft.toml` as written, before it is turned into a `Manifest`.
 #[derive(Deserialize)]
@@ -37,6 +37,7 @@ struct RawTarget {
     adapters: BTreeMap<Spanned<String>, Spanned<String>>,
     checks: Option<bool>,
     bytes_length: Option<Spanned<i64>>,
+    strings_length: Option<Spanned<i64>>,
 }
 
 /// Reads `croft.toml` into a `Manifest`, keeping where each name was written.
@@ -75,7 +76,8 @@ pub fn parse(text: &str, source: SourceId) -> Result<Manifest, Diagnostic> {
                 .map(|(port, adapter)| (name(port), name(adapter)))
                 .collect(),
             checks: target.checks.unwrap_or(true),
-            bytes_length: bytes_length(text, source, target.bytes_length.as_ref())?,
+            bytes_length: length(text, source, target.bytes_length.as_ref(), BYTES_LENGTH)?,
+            strings_length: length(text, source, target.strings_length.as_ref(), STRINGS_LENGTH)?,
         });
     }
 
@@ -86,23 +88,49 @@ pub fn parse(text: &str, source: SourceId) -> Result<Manifest, Diagnostic> {
     })
 }
 
-/// A target's `bytes_length`: from 1 to 65535, as a `Bytes` counts its
-/// values in 16 bits, or the default when it has none.
-fn bytes_length(
+/// A setting for how much a value with no `Length` holds: its name in
+/// `croft.toml`, its default, and what it counts, for the error.
+struct LengthSetting {
+    name: &'static str,
+    default: u16,
+    holds: &'static str,
+}
+
+/// `bytes_length`: how many values a `Bytes` with no `Length` holds.
+const BYTES_LENGTH: LengthSetting = LengthSetting {
+    name: "bytes_length",
+    default: DEFAULT_BYTES_LENGTH,
+    holds: "a `Bytes` holds from 1 to 65535 values",
+};
+
+/// `strings_length`: how many characters a string with no `Length` holds.
+const STRINGS_LENGTH: LengthSetting = LengthSetting {
+    name: "strings_length",
+    default: DEFAULT_STRINGS_LENGTH,
+    holds: "a string holds from 1 to 65535 characters",
+};
+
+/// A target's `bytes_length` or `strings_length`: from 1 to 65535, as a
+/// `Bytes` and a string count what they hold in 16 bits, or the default
+/// when it has none.
+fn length(
     text: &str,
     source: SourceId,
     written: Option<&Spanned<i64>>,
+    setting: LengthSetting,
 ) -> Result<u16, Diagnostic> {
     let Some(written) = written else {
-        return Ok(DEFAULT_BYTES_LENGTH);
+        return Ok(setting.default);
     };
 
     match u16::try_from(*written.get_ref()) {
         Ok(length) if length > 0 => Ok(length),
         _ => Err(Diagnostic::new(
             format!(
-                "`bytes_length` is {}, but a `Bytes` holds from 1 to 65535 values",
-                written.get_ref()
+                "`{}` is {}, but {}",
+                setting.name,
+                written.get_ref(),
+                setting.holds
             ),
             span_at(text, written.span().start, source),
         )),

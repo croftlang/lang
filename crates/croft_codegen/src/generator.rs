@@ -106,7 +106,12 @@ impl<'a> Generator<'a> {
             }
         }
 
-        let sizes = Sizes::measure(program, &model, i64::from(target_config.bytes_length));
+        let sizes = Sizes::measure(
+            program,
+            &model,
+            i64::from(target_config.bytes_length),
+            i64::from(target_config.strings_length),
+        );
 
         let mut generator = Generator {
             program,
@@ -144,6 +149,7 @@ impl<'a> Generator<'a> {
         let largest = self.largest_save();
         self.sizes.bytes_largest = self.sizes.bytes_largest.max(largest);
         self.sizes.string_capacity = self.sizes.string_capacity.max(12);
+        self.sizes.string_largest = self.sizes.string_largest.max(12);
     }
 
     /// The most bytes a save of any aggregate kept in storage takes, or 0

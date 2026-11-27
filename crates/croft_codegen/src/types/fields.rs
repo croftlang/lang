@@ -1,5 +1,5 @@
 //! The fields of the structs for values, entities, aggregates and events. A
-//! string field with a `Length` shorter than the longest string anywhere is
+//! string field with a `Length` other than the target's `strings_length` is
 //! kept in a `croft_text_N` of just that many characters, a `Bytes` field
 //! with one other than the target's `bytes_length` in a `croft_bytes_N`, and a list
 //! field with one shorter than the longest list of its items in a
@@ -65,8 +65,8 @@ impl<'a> Generator<'a> {
         fields
     }
 
-    /// How many characters a string field keeps, when that is fewer than
-    /// every other string: its own `Length`. Errors, enum variants and
+    /// How many characters a string field keeps, when that is more or fewer
+    /// than a string with no `Length` holds: its own `Length`. Errors and
     /// adapters keep full strings.
     pub fn text_capacity(&self, owner: &Resolved, field: &str) -> Option<i64> {
         self.kept_capacity(owner, field, &Type::String)
@@ -120,9 +120,8 @@ impl<'a> Generator<'a> {
     }
 
     /// The `Length` of a field of type `kind`, `String` or `Bytes`, when it
-    /// differs from the shared size for that type: below it for a string,
-    /// which is as long as the longest, and either way for `Bytes`, whose
-    /// shared size is the target's `bytes_length`.
+    /// differs from the shared size for that type, the target's
+    /// `strings_length` or `bytes_length`, shorter or longer.
     fn kept_capacity(&self, owner: &Resolved, field: &str, kind: &Type) -> Option<i64> {
         if !self.keeps_own_sizes(owner) {
             return None;
@@ -140,7 +139,7 @@ impl<'a> Generator<'a> {
             .max(1);
 
         match kind {
-            Type::String => (capacity < self.sizes.string_capacity).then_some(capacity),
+            Type::String => (capacity != self.sizes.string_capacity).then_some(capacity),
             _ => (capacity != self.sizes.bytes_capacity).then_some(capacity),
         }
     }

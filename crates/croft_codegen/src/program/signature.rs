@@ -60,6 +60,18 @@ impl<'a> Generator<'a> {
         let mut list: Vec<String> = leading.to_vec();
 
         for (index, (parameter, ty)) in parameters.iter().enumerate() {
+            // A borrowed string or `Bytes` never names its own C type, so a
+            // long `Length` on one adds no type to the program.
+            if is_string(ty) {
+                list.push(format!("croft_string_view p_{parameter}"));
+                continue;
+            }
+
+            if is_bytes(ty) {
+                list.push(format!("croft_bytes_view p_{parameter}"));
+                continue;
+            }
+
             let c_type = match ranges.get(index).copied().flatten() {
                 Some(range) if width_for(range.low, range.high) != "croft_int" => {
                     format!("CROFT_RANGED({})", width_for(range.low, range.high))
@@ -67,11 +79,7 @@ impl<'a> Generator<'a> {
                 _ => self.c_type(ty),
             };
 
-            list.push(if is_string(ty) {
-                format!("croft_string_view p_{parameter}")
-            } else if is_bytes(ty) {
-                format!("croft_bytes_view p_{parameter}")
-            } else if self.is_scalar(ty) {
+            list.push(if self.is_scalar(ty) {
                 format!("{c_type} p_{parameter}")
             } else {
                 format!("const {c_type} *p_{parameter}")

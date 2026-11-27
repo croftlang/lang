@@ -1,0 +1,53 @@
+// Strings with no `Length` hold the target's `strings_length`, 8 here,
+// while one with a `Length` is kept in a size of its own, longer or shorter.
+context Notes {
+    publish { Check }
+
+    use { repeat } from Std.Text
+
+    error WrongAnswer
+
+    value Note {
+        text: String
+    }
+
+    value Page {
+        text: String where Length(0, 300)
+    }
+
+    fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+        if ok {
+            Ok(Unit)
+        }
+        Err(WrongAnswer)
+    }
+
+    // A string parameter borrows what it is given, however long.
+    fn size_of(given: String): Int = given.length
+
+    service Check(): Result<Unit, WrongAnswer> {
+        calls { Arguments }
+    } = {
+        let chosen = Arguments.all()
+        let page = Page { text: "ab".repeat(chosen.length * 100) }
+        check(page.text.length == 200 && size_of(page.text) == 200)?
+        let note = Note { text: "01234567" }
+        check(note.text.length == 8)?
+        if chosen.contains("long") {
+            let cut = Note { text: page.text }
+            check(cut.text.length == 8)?
+        }
+        // A `let` that `set` changes keeps room for a string with no
+        // `Length`.
+        let kept = ""
+        if chosen.contains("set") {
+            set kept = "ab".repeat(chosen.length * 9)
+            check(kept.length == 8)?
+        }
+    }
+}
+
+domain Program {
+    contexts { Notes }
+    use { Check } from Notes
+} = Check()?
