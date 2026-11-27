@@ -1,13 +1,16 @@
 //! Arithmetic with no answer in 32 bits. A whole number has exactly 32 bits
 //! on every machine, and a `Decimal` keeps its smallest units in one, so `+`,
 //! `-` and `*` past them, and `/` or `%` by zero, would stop the program.
-//! When the values are known that is an error found by `croft check`.
+//! When the values are known that is an error found by `croft check`, as is
+//! a `Std.Numbers` function such as `pow` with no answer.
 
-use croft_syntax::ast::{Argument, BinaryOp, Expr, UnaryOp};
+use croft_syntax::ast::{Argument, BinaryOp, Expr, ExprId, UnaryOp};
 use croft_syntax::Span;
 
 use super::BodyChecker;
 use crate::check::known::{fault, fits, negate_fault, Known};
+use crate::check::numbers::{number_fault, stand_in};
+use crate::standard::standard_context_of;
 use crate::types::{Resolved, Type};
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
@@ -113,6 +116,53 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         );
 
         self.report_fault(whole, &message);
+    }
+
+    /// Reports a call to a `Std.Numbers` function, such as `pow(10, 10)`,
+    /// whose arguments are known and that has no answer.
+    pub(super) fn check_known_number_call(
+        &mut self,
+        id: ExprId,
+        name: &str,
+        arguments: &[Argument],
+        span: Span,
+    ) {
+        if standard_context_of(name) != Some("Std.Numbers") {
+            return;
+        }
+
+        let given: Vec<Option<Known>> = (arguments.iter())
+            .map(|argument| self.known_local_value(&argument.value))
+            .collect();
+
+        let Some(known) = (0..given.len())
+            .map(|index| {
+                given[index]
+                    .clone()
+                    .or_else(|| stand_in(name, index, &given))
+            })
+            .collect::<Option<Vec<Known>>>()
+        else {
+            return;
+        };
+
+        let Some(mut fault) = number_fault(name, &known) else {
+            return;
+        };
+
+        let written: Vec<String> = arguments.iter().map(|a| a.value.text()).collect();
+        let written = format!("{name}({})", written.join(", "));
+
+        // With a stand-in, what it works out is only the call as written.
+        if given.contains(&None) {
+            fault.operation = written.clone();
+        }
+
+        let message = fault.describe(&written);
+
+        if self.checker.faults.get_mut().report(id) {
+            self.error(message, span);
+        }
     }
 
     /// Reports a fault in `whole` once, however many times it is checked.

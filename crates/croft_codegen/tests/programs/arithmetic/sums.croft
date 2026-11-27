@@ -1,13 +1,13 @@
 // Works out the arithmetic the arguments name on the two numbers after it,
-// such as `add 2147483647 1`, and prints the answer. The numbers come from the
+// such as `add 2147483647 1` or `clamp 50 0 10`, and prints the answer. The numbers come from the
 // arguments, so they are only known while running; a whole number has
 // exactly 32 bits, and an answer past them, or dividing by zero, stops the
 // program when its checks are on.
 context Sums {
-    use { Decimal, abs } from Std.Numbers
+    use { Decimal, abs, clamp, pow, sign, checked_add, checked_subtract, checked_multiply } from Std.Numbers
     use { starts_with, to_int } from Std.Text
 
-    fn work_out(operation: String, a: Int, b: Int): Int = {
+    fn work_out(operation: String, a: Int, b: Int, c: Int): Int = {
         if operation == "add" {
             a + b
         }
@@ -28,6 +28,15 @@ context Sums {
         }
         if operation == "abs" {
             abs(a)
+        }
+        if operation == "clamp" {
+            clamp(a, b, c)
+        }
+        if operation == "pow" {
+            pow(a, b)
+        }
+        if operation == "sign" {
+            sign(a)
         }
         if operation == "shift" {
             a << b
@@ -50,7 +59,21 @@ context Sums {
         if operation == "decimal_divide" {
             a / b
         }
+        if operation == "decimal_clamp" {
+            clamp(a, 0.50, b)
+        }
         a
+    }
+
+    // Checked arithmetic gives None past 32 bits, whatever the checks.
+    fn work_out_checked(operation: String, a: Int, b: Int): Option<Int> = {
+        if operation == "checked_add" {
+            checked_add(a, b)
+        }
+        if operation == "checked_subtract" {
+            checked_subtract(a, b)
+        }
+        checked_multiply(a, b)
     }
 
     service Start(): Unit {
@@ -60,11 +83,15 @@ context Sums {
         let operation = given.first.unwrap_or("")
         let a = given.get(1).unwrap_or("0").to_int().unwrap_or(0)
         let b = given.get(2).unwrap_or("0").to_int().unwrap_or(0)
+        let c = given.get(3).unwrap_or("0").to_int().unwrap_or(0)
         if operation.starts_with("decimal") {
             Console.print(work_out_decimal(operation, a, b).to_string())
         }
-        if !operation.starts_with("decimal") {
-            Console.print(work_out(operation, a, b).to_string())
+        if operation.starts_with("checked") {
+            Console.print(work_out_checked(operation, a, b).map(n -> n.to_string()).unwrap_or("none"))
+        }
+        if !operation.starts_with("decimal") && !operation.starts_with("checked") {
+            Console.print(work_out(operation, a, b, c).to_string())
         }
         Unit
     }

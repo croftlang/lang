@@ -89,6 +89,34 @@ pub fn built_in_doc(name: &str) -> Option<(&'static str, &'static str)> {
             "fn abs(number: Int): Int",
             "How far the number is from zero.",
         ),
+        "clamp" => (
+            "fn clamp(number: Number, low: Number, high: Number): Number",
+            "The number kept from `low` to `high`: `low` when it is below, \
+             `high` when it is above. A `low` above `high` is a mistake.",
+        ),
+        "pow" => (
+            "fn pow(base: Int, exponent: Int): Int",
+            "The base multiplied by itself `exponent` times; 1 when the \
+             exponent is 0. An exponent below zero, and an answer past 32 \
+             bits, are mistakes, as for `*`.",
+        ),
+        "sign" => (
+            "fn sign(number: Number): Int",
+            "-1 when the number is below zero, 0 when it is zero, and 1 \
+             when it is above.",
+        ),
+        "checked_add" => (
+            "fn checked_add(a: Int, b: Int): Option<Int>",
+            "`Some(a + b)`, or `None` when the answer doesn't fit in 32 bits.",
+        ),
+        "checked_subtract" => (
+            "fn checked_subtract(a: Int, b: Int): Option<Int>",
+            "`Some(a - b)`, or `None` when the answer doesn't fit in 32 bits.",
+        ),
+        "checked_multiply" => (
+            "fn checked_multiply(a: Int, b: Int): Option<Int>",
+            "`Some(a * b)`, or `None` when the answer doesn't fit in 32 bits.",
+        ),
         "Some" => (
             "fn Some(value: T): Option<T>",
             "An `Option` that holds the value.",

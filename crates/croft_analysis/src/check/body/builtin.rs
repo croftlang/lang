@@ -1,5 +1,5 @@
-//! Built-in functions: `max`, `min`, `abs`, `Some`, `Ok`, `Err`, and the
-//! built-in constraints `Range` and `Length` called directly.
+//! Built-in functions: the numbers of `Std.Numbers`, `Some`, `Ok`, `Err`,
+//! and the built-in constraints `Range` and `Length` called directly.
 
 use croft_syntax::ast::Argument;
 use croft_syntax::Span;
@@ -31,7 +31,39 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
                 first
             }
+            "clamp" => {
+                let first = self.one_argument(name, arguments, 0, 3, span, None);
+
+                if !first.is_number() {
+                    self.error(format!("`{name}` needs numbers, found `{first}`"), span);
+                }
+
+                for index in 1..3 {
+                    self.one_argument(name, arguments, index, 3, span, Some(&first));
+                }
+
+                first
+            }
+            "sign" => {
+                let number = self.one_argument(name, arguments, 0, 1, span, None);
+
+                if !number.is_number() {
+                    self.error(format!("`{name}` needs a number, found `{number}`"), span);
+                }
+
+                Type::Int
+            }
             "abs" => self.one_argument(name, arguments, 0, 1, span, Some(&Type::Int)),
+            "pow" | "checked_add" | "checked_subtract" | "checked_multiply" => {
+                for index in 0..2 {
+                    self.one_argument(name, arguments, index, 2, span, Some(&Type::Int));
+                }
+
+                match name {
+                    "pow" => Type::Int,
+                    _ => Type::option(Type::Int),
+                }
+            }
             "Some" => {
                 let item = match expected {
                     Some(Type::Option(item)) => Some((**item).clone()),

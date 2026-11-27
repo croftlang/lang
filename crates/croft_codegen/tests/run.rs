@@ -926,7 +926,9 @@ fn works_out_narrow_numbers_as_if_they_had_32_bits() {
 
 /// Whole numbers have exactly 32 bits. With checks on, arithmetic past them
 /// and dividing by zero stop the program; with them off the answer wraps
-/// around in 32 bits and dividing by zero gives 0.
+/// around in 32 bits and dividing by zero gives 0. So it is for `pow`, which
+/// gives 0 for an exponent below zero, and `clamp`, which gives its low when
+/// that is above its high; checked arithmetic gives `None` either way.
 #[test]
 fn works_out_whole_numbers_in_32_bits() {
     if !has_c_compiler() {
@@ -961,6 +963,9 @@ fn works_out_whole_numbers_in_32_bits() {
 
     let too_big = (Some(1), "a whole number doesn't fit in 32 bits".to_string());
     let by_zero = (Some(1), "division by zero".to_string());
+    let low_above_high = (Some(1), "clamp's low is above its high".to_string());
+    let below_zero = (Some(1), "pow's exponent is below zero".to_string());
+    let none = (Some(0), "none".to_string());
 
     // What each gives with checks on, and with them off.
     let cases = [
@@ -1011,6 +1016,31 @@ fn works_out_whole_numbers_in_32_bits() {
         ),
         ("decimal_divide 1 3", (Some(0), "0.33".to_string()), "0.33"),
         ("decimal_divide 2 0", by_zero.clone(), "0.00"),
+        ("clamp 50 0 10", (Some(0), "10".to_string()), "10"),
+        ("clamp -5 0 10", (Some(0), "0".to_string()), "0"),
+        ("clamp 5 10 0", low_above_high.clone(), "10"),
+        ("decimal_clamp 0 3", (Some(0), "0.50".to_string()), "0.50"),
+        ("pow 3 4", (Some(0), "81".to_string()), "81"),
+        ("pow 7 0", (Some(0), "1".to_string()), "1"),
+        (
+            "pow -2 31",
+            (Some(0), "-2147483648".to_string()),
+            "-2147483648",
+        ),
+        ("pow 2 31", too_big.clone(), "-2147483648"),
+        ("pow 65536 2", too_big.clone(), "0"),
+        ("pow 2 -1", below_zero.clone(), "0"),
+        ("sign -9", (Some(0), "-1".to_string()), "-1"),
+        ("sign 0", (Some(0), "0".to_string()), "0"),
+        ("checked_add 2 3", (Some(0), "5".to_string()), "5"),
+        ("checked_add 2147483647 1", none.clone(), "none"),
+        ("checked_subtract -2147483648 1", none.clone(), "none"),
+        ("checked_multiply 65536 32768", none.clone(), "none"),
+        (
+            "checked_multiply -65536 32768",
+            (Some(0), "-2147483648".to_string()),
+            "-2147483648",
+        ),
     ];
 
     for (arguments, with_checks, without) in cases {

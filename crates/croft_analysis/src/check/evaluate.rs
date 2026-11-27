@@ -12,7 +12,9 @@ use croft_syntax::Span;
 
 use super::data::expr_path;
 use super::known::{fault, negate_fault, Fault, Known};
+use super::numbers::{number_fault, number_function};
 use super::{Checker, Scope};
+use crate::standard::standard_context_of;
 use crate::symbols::SymbolKind;
 use crate::types::Resolved;
 
@@ -163,6 +165,7 @@ impl<'a> Checker<'a> {
                 .map(Known::List),
             ExprKind::Name(name) => match bindings.get(name) {
                 Some(bound) => Some(bound.clone()),
+                None if name == "None" => Some(Known::Option(None)),
                 None => self.constant_value(scope, &expr_path(value)?, depth),
             },
             ExprKind::Field(receiver, member) if member.name == "length" => {
@@ -172,6 +175,13 @@ impl<'a> Checker<'a> {
                 let length = known(receiver)?.length()?;
 
                 Known::binary(BinaryOp::Equal, length, Known::int(0))
+            }
+            ExprKind::Field(receiver, member) if is_option_field(&member.name) => {
+                let Known::Option(held) = known(receiver)? else {
+                    return None;
+                };
+
+                Some(Known::Bool(held.is_some() == (member.name == "is_some")))
             }
             ExprKind::Field(..) => self.constant_value(scope, &expr_path(value)?, depth),
             ExprKind::Unary(op, operand) => {
@@ -195,9 +205,14 @@ impl<'a> Checker<'a> {
             }
             ExprKind::Block(statements) => self.known_block(scope, bindings, statements, depth),
             ExprKind::Call(callee, arguments) => {
-                let path = expr_path(callee)?;
+                if let Some(held) = self.known_unwrap_or(callee, arguments, &known) {
+                    return Some(held);
+                }
 
-                if let Some(found) = self.find_path(scope, &path).filter(is_pure_function) {
+                let path = expr_path(callee)?;
+                let found = self.find_path(scope, &path);
+
+                if let Some(found) = found.clone().filter(is_pure_function) {
                     return self.known_call_at(scope, bindings, &found, arguments, depth);
                 }
 
@@ -205,11 +220,50 @@ impl<'a> Checker<'a> {
                     .map(|argument| known(&argument.value))
                     .collect::<Option<_>>()?;
 
+                if found.is_none() {
+                    let name = path.text();
+
+                    if name == "Some" {
+                        let [held] = <[Known; 1]>::try_from(arguments).ok()?;
+
+                        return Some(Known::Option(Some(Box::new(held))));
+                    }
+
+                    if standard_context_of(&name) == Some("Std.Numbers") {
+                        self.note_fault(value.id, number_fault(&name, &arguments));
+
+                        return number_function(&name, &arguments);
+                    }
+                }
+
                 let (checked, rest) = arguments.split_first()?;
 
                 self.constraint_answer(scope, &path, checked, rest, depth)
                     .map(Known::Bool)
             }
+            _ => None,
+        }
+    }
+
+    /// What `option.unwrap_or(fallback)` gives, when `callee` is that method
+    /// on an option whose value is known.
+    fn known_unwrap_or(
+        &self,
+        callee: &Expr,
+        arguments: &[Argument],
+        known: &dyn Fn(&Expr) -> Option<Known>,
+    ) -> Option<Known> {
+        let (ExprKind::Field(receiver, method), [fallback]) = (&callee.kind, arguments) else {
+            return None;
+        };
+
+        if method.name != "unwrap_or" {
+            return None;
+        }
+
+        match known(receiver)? {
+            Known::Option(Some(held)) => Some(*held),
+            Known::Option(None) => known(&fallback.value),
             _ => None,
         }
     }
@@ -356,6 +410,11 @@ impl<'a> Checker<'a> {
 /// can be worked out; services cannot, since they use ports.
 fn is_pure_function(found: &Resolved) -> bool {
     matches!(found.kind, SymbolKind::Function | SymbolKind::Translation)
+}
+
+/// Whether `name` is a field every option has: `is_some` or `is_none`.
+fn is_option_field(name: &str) -> bool {
+    matches!(name, "is_some" | "is_none")
 }
 
 /// `Range(low, high)`, `Length(exactly)` and `Length(low, high)`.

@@ -28,7 +28,21 @@ pub const STANDARD_CONTEXTS: [(&str, &[&str]); 3] = [
             "trim",
         ],
     ),
-    ("Std.Numbers", &["Decimal", "abs", "max", "min"]),
+    (
+        "Std.Numbers",
+        &[
+            "Decimal",
+            "abs",
+            "checked_add",
+            "checked_multiply",
+            "checked_subtract",
+            "clamp",
+            "max",
+            "min",
+            "pow",
+            "sign",
+        ],
+    ),
     ("Std.Collections", &["Map"]),
 ];
 
