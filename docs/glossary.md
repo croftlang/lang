@@ -446,10 +446,17 @@ checks on, an argument longer than a string, or more arguments than the
 list holds, stops the program rather than being cut short.
 
 ### Console
-The port in `Std.Console` that prints a line, with no import needed:
-`Console.print("hello")` in a service or domain that lists it in `calls`.
+The port in `Std.Console` that prints and reads lines, with no import
+needed: `Console.print("hello")` in a service or domain that lists it in
+`calls`, `Console.print_error` for the error output, and
+`Console.read_line()` for an `Option<String>`, None at the end of the input.
 Every target supplies it, so `croft.toml` names no adapter for it. A
 program's own port called `Console` replaces it.
+
+### Process
+The port in `Std.Console` for the running program, with no import needed:
+`Process.exit(code)` stops it at once with an exit code from 0 to 255.
+Every target supplies it, through C's `exit`.
 
 ### Adapter
 Implements a port, usually in a `Platform` context: `adapter FixedClock for
