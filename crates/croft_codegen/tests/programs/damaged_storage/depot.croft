@@ -1,0 +1,221 @@
+// Saves a crate and a gate in FileStorage, then changes one byte of each
+// saved file at a time and finds them again. Every change that leaves a
+// number too big for its field, an unknown variant, a flag that is neither
+// true nor false, or a broken constraint loads as StorageDamaged.
+context Depot {
+    publish { Check }
+
+    use { Files, FileError } from Std.Files
+    use { Map } from Std.Collections
+
+    identity CrateId for Crate: Int where Range(1, 99)
+    identity GateId for Gate: Int where Range(1, 9)
+
+    enum Colour {
+        Red
+        Green
+        Blue
+    }
+
+    enum Label {
+        Plain
+        Sale(percent: Int where Range(1, 90))
+    }
+
+    constraint Even(number: Int) = number % 2 == 0
+
+    constraint Calm(item: Crate) = item.small != 999
+
+    // Byte by byte after the layout's four: id 4, count 8, small 12,
+    // colour 16, label 20 and its percent 24, sealed 28, best 32 and its
+    // value 36, even 40, scores 44 with items from 46, sizes 58 with "a"
+    // at 62 and "b" at 69, and name 74 with its characters from 76.
+    aggregate Crate {
+        id: CrateId
+        count: Int where Range(0, 200)
+        small: Int where Range(-1000, 1000)
+        colour: Colour
+        label: Label
+        sealed: Bool
+        best: Option<Int>
+        even: Int where Even
+        scores: List<Int> where Length(0, 3), each Range(0, 9)
+        sizes: Map<String, Int> where Length(0, 2)
+        name: String where Length(2, 8)
+
+        invariant Calm or Stormy
+
+        error NotFound
+        error Stormy
+
+        // The crate every check starts from.
+        factory Sample(id: CrateId) = Crate {
+            id,
+            count: 100,
+            small: 5,
+            colour: Colour.Green,
+            label: Label.Sale(percent: 20),
+            sealed: true,
+            best: Some(3),
+            even: 4,
+            scores: [1, 2, 3],
+            sizes: ["a": 1, "b": 2],
+            name: "abc"
+        }
+    }
+
+    // Its two flags share the byte after the layout, so id is at 5 and
+    // label at 9.
+    aggregate Gate {
+        id: GateId
+        open: Bool
+        locked: Bool
+        label: Label
+
+        error NotFound
+
+        // A plain gate that is open and locked.
+        factory Sample(id: GateId) = Gate { id, open: true, locked: true, label: Label.Plain }
+    }
+
+    repository Crates for Crate
+    repository Gates for Gate
+
+    error WrongAnswer
+
+    fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+        if ok {
+            Ok(Unit)
+        }
+        Err(WrongAnswer)
+    }
+
+    enum Failure {
+        include Crate.Error
+        include Gate.Error
+        include StorageError
+        include WrongAnswer
+        include FileError
+    }
+
+    enum Finding {
+        include Crate.Error
+        include StorageError
+    }
+
+    enum GateFinding {
+        include Gate.Error
+        include StorageError
+    }
+
+    fn is_damaged(error: Finding): Bool = match error {
+        NotFound -> false
+        Stormy -> false
+        StorageFull -> false
+        StorageDamaged -> true
+        StorageUnavailable -> false
+    }
+
+    fn is_damaged_gate(error: GateFinding): Bool = match error {
+        NotFound -> false
+        StorageFull -> false
+        StorageDamaged -> true
+        StorageUnavailable -> false
+    }
+
+
+    service Check(): Result<Unit, Failure> {
+        calls { Crates, Gates, Files, Console }
+    } = {
+        let sample = Crate.Sample(id: 12)?
+        Crates.save(sample)?
+        let data = Files.read("crates12.dat")?
+        check(data.length == 79)?
+        check(Crates.find(12)? == sample)?
+
+        Files.write("crates12.dat", data.set(4, 0))?
+        let id = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(id)?
+
+        Files.write("crates12.dat", data.set(8, 201))?
+        let range = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(range)?
+
+        Files.write("crates12.dat", data.set(9, 1))?
+        let wide = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(wide)?
+
+        Files.write("crates12.dat", data.set(14, 1))?
+        let wider = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(wider)?
+
+        Files.write("crates12.dat", data.set(16, 3))?
+        let colour = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(colour)?
+
+        Files.write("crates12.dat", data.set(20, 2))?
+        let tag = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(tag)?
+
+        Files.write("crates12.dat", data.set(24, 95))?
+        let percent = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(percent)?
+
+        Files.write("crates12.dat", data.set(28, 2))?
+        let sealed = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(sealed)?
+
+        Files.write("crates12.dat", data.set(32, 2))?
+        let best = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(best)?
+
+        Files.write("crates12.dat", data.set(40, 5))?
+        let even = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(even)?
+
+        Files.write("crates12.dat", data.set(46, 10))?
+        let scores = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(scores)?
+
+        Files.write("crates12.dat", data.set(69, 97))?
+        let keys = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(keys)?
+
+        Files.write("crates12.dat", data.set(74, 1).slice(0, 77))?
+        let name = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(name)?
+
+        Files.write("crates12.dat", data.set(12, 231).set(13, 3))?
+        let calm = match Crates.find(12) { Ok(found) -> false  Err(error) -> is_damaged(error) }
+        check(calm)?
+
+        Files.write("crates12.dat", data.set(8, 200))?
+        check(Crates.find(12)?.count == 200)?
+        Files.remove("crates12.dat")?
+
+        let gate = Gate.Sample(id: 3)?
+        Gates.save(gate)?
+        let kept = Files.read("gates3.dat")?
+        check(kept.length == 13 && Gates.find(3)? == gate)?
+
+        Files.write("gates3.dat", kept.set(4, 7))?
+        let flags = match Gates.find(3) { Ok(found) -> false  Err(error) -> is_damaged_gate(error) }
+        check(flags)?
+
+        Files.write("gates3.dat", kept.set(9, 2))?
+        let plain = match Gates.find(3) { Ok(found) -> false  Err(error) -> is_damaged_gate(error) }
+        check(plain)?
+
+        Files.write("gates3.dat", kept.set(4, 1))?
+        check(!Gates.find(3)?.locked)?
+        Files.remove("gates3.dat")?
+
+        Console.print("ok")
+        Unit
+    }
+}
+
+domain Program {
+    contexts { Depot }
+    use { Check } from Depot
+} = Check()?

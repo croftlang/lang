@@ -24,7 +24,9 @@ enum Lookup {
 // fn load(id: CargoId): Result<Cargo, Lookup>
 
 // StorageError: StorageFull, StorageDamaged, StorageUnavailable
-// StorageDamaged: written by a different version of the program, or damaged
+// StorageDamaged: written by a different version of the program, or damaged:
+// a number that doesn't fit its field, a variant or flag that isn't one, a
+// map key kept twice, or a broken constraint or invariant
 
 // built in: bytes under a key such as rooms12
 port Storage {
@@ -57,3 +59,5 @@ adapter PostgresCargos for Cargos = {
 // Rooms = "MemoryStorage"
 // Cargos = "PostgresCargos"  // Storage has no awaiting_customs, so Cargos needs its own adapter
 ```
+
+Storage keeps bytes from outside the program, which can be damaged or changed. Finding an aggregate checks everything it reads back: each number fits its field and its `Range`, each enum tag names a variant, each `Bool` and option is true or false, no map key is kept twice, and every field constraint and invariant holds. Anything else gives back `StorageDamaged`, on every target, whatever its `checks` setting.
