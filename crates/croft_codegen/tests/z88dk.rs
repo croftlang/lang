@@ -93,7 +93,7 @@ const PROGRAMS: [&str; 14] = [
 
 /// The arguments for each run of the `arithmetic` program, the same as its
 /// desktop test in run.rs gives.
-const ARITHMETIC: [&str; 34] = [
+const ARITHMETIC: [&str; 51] = [
     "add 2147483646 1",
     "add 2147483647 1",
     "subtract -2147483648 1",
@@ -128,6 +128,23 @@ const ARITHMETIC: [&str; 34] = [
     "decimal_divide 1 3",
     "decimal_divide 2 0",
     "add -1 -2147483647",
+    "clamp 50 0 10",
+    "clamp -5 0 10",
+    "clamp 5 10 0",
+    "pow 3 4",
+    "pow 7 0",
+    "pow -2 31",
+    "pow 2 31",
+    "pow 65536 2",
+    "pow 2 -1",
+    "sign -9",
+    "sign 0",
+    "checked_add 2 3",
+    "checked_add 2147483647 1",
+    "checked_subtract -2147483648 1",
+    "checked_multiply 65536 32768",
+    "checked_multiply -65536 32768",
+    "decimal_clamp 0 3",
 ];
 
 /// Whether docker runs and already has the z88dk image.
