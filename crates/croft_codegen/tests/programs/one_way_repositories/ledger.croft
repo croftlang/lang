@@ -1,0 +1,64 @@
+// Repositories that only go one way: Ledgers only saves, so nothing reads a
+// ledger back, and Archives only finds, so nothing writes a page. Neither
+// may leave a function behind that nothing calls.
+context Books {
+    identity LedgerId for Ledger: Int where Range(1, 99)
+
+    enum Entry {
+        Credit(amount: Int where Range(0, 500))
+        Debit(amount: Int where Range(0, 500))
+    }
+
+    constraint Solvent(ledger: Ledger) = ledger.balance <= 900
+
+    aggregate Ledger {
+        id: LedgerId
+        entries: List<Entry> where Length(0, 4)
+        balance: Int where Range(0, 1000)
+
+        invariant Solvent or Overdrawn
+
+        error Overdrawn
+
+        factory Open(id: LedgerId, balance: Int) = Ledger { id, entries: [Credit(amount: 5)], balance }
+    }
+
+    repository Ledgers for Ledger {
+        fn keep(ledger: Ledger): Result<Unit, StorageError>
+    }
+
+    identity PageId for Page: Int where Range(1, 9)
+
+    aggregate Page {
+        id: PageId
+        lines: List<Int> where Length(0, 3)
+        lines_read: Option<Int>
+    }
+
+    repository Archives for Page {
+        fn find(id: PageId): Result<Option<Page>, StorageError>
+    }
+
+    error WrongAnswer
+
+    fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+        if ok {
+            Ok(Unit)
+        }
+        Err(WrongAnswer)
+    }
+
+    enum Failure {
+        include Ledger.Error
+        include StorageError
+        include WrongAnswer
+    }
+
+    service Check(): Result<Unit, Failure> {
+        calls { Ledgers, Archives }
+    } = {
+        Ledgers.keep(Ledger.Open(id: 3, balance: 40)?)?
+        let page = Archives.find(2)?
+        check(page.is_none)
+    }
+}

@@ -21,22 +21,44 @@ struct Field<'f> {
     range: Option<(i64, i64)>,
 }
 
-impl<'a> Generator<'a> {
-    /// The name part of `croft_write_X` and `croft_read_X` for a type, asking for
-    /// both functions to be written.
-    pub fn serializer_for(&self, ty: &Type) -> String {
-        let ty = self.canonical(ty);
-        let name = self.c_type(&ty).trim_start_matches("croft_").to_string();
-        let mut serialized = self.serialized.borrow_mut();
+/// Which way a serializer goes: `croft_write_X` turns a value into bytes,
+/// and `croft_read_X` turns them back. Each is written only when something
+/// calls it, since a strict build rejects a static function nobody calls.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum Direction {
+    /// From a value into bytes, for a save.
+    Write,
+    /// From bytes back into a value, for a find.
+    Read,
+}
 
-        if serialized.1.insert(ty.clone()) {
-            serialized.0.push(ty);
+/// A serializer asked for: the type it works on and which way it goes.
+pub(crate) type Serializer = (Type, Direction);
+
+impl<'a> Generator<'a> {
+    /// The name part of `croft_write_X` and `croft_read_X` for a type,
+    /// asking for the function that goes `direction` to be written.
+    pub(crate) fn serializer_for(&self, ty: &Type, direction: Direction) -> String {
+        let ty = self.canonical(ty);
+        let name = self.serializer_name(&ty);
+        let mut serialized = self.serialized.borrow_mut();
+        let wanted = (ty, direction);
+
+        if serialized.1.insert(wanted.clone()) {
+            serialized.0.push(wanted);
         }
 
         name
     }
 
-    /// Every serializer asked for, including those they need in turn.
+    /// The name part of `croft_write_X` and `croft_read_X` for a type.
+    fn serializer_name(&self, ty: &Type) -> String {
+        self.c_type(ty).trim_start_matches("croft_").to_string()
+    }
+
+    /// Every serializer asked for, including those they call in turn. A
+    /// read also tests what it read with `croft_kept_X`, when the type has
+    /// constraints or invariants.
     pub fn serializer_functions(&self) -> String {
         let (mut prototypes, mut bodies) = (String::new(), String::new());
         let mut index = 0;
@@ -44,22 +66,30 @@ impl<'a> Generator<'a> {
         loop {
             let next = self.serialized.borrow().0.get(index).cloned();
 
-            let Some(ty) = next else {
+            let Some((ty, direction)) = next else {
                 break;
             };
 
             index += 1;
 
-            let name = self.serializer_for(&ty);
+            let name = self.serializer_name(&ty);
             let c = self.c_type(&ty);
-            let write = format!(
-                "static croft_bool croft_write_{name}(const {c} *value, croft_bytes_writer *out)"
-            );
+            let (write_body, mut read_body) = self.serializer_bodies(&ty, direction);
+
+            if direction == Direction::Write {
+                let write = format!(
+                    "static croft_bool croft_write_{name}(const {c} *value, croft_bytes_writer *out)"
+                );
+
+                prototypes.push_str(&format!("{write};\n"));
+                bodies.push_str(&format!("{write}\n{{\n{write_body}    return 1;\n}}\n\n"));
+
+                continue;
+            }
+
             let read =
                 format!("static croft_bool croft_read_{name}(croft_bytes_view in, croft_u16 *at, {c} *value)");
-            prototypes.push_str(&format!("{write};\n{read};\n"));
-
-            let (write_body, mut read_body) = self.serializer_bodies(&ty);
+            prototypes.push_str(&format!("{read};\n"));
 
             if let Type::Named(named) = &ty {
                 if let Some((prototype, check)) = self.load_check(named, &name) {
@@ -72,7 +102,7 @@ impl<'a> Generator<'a> {
             }
 
             bodies.push_str(&format!(
-                "{write}\n{{\n{write_body}    return 1;\n}}\n\n{read}\n{{\n    croft_int number = 0;\n\n{read_body}    (void) number;\n    return 1;\n}}\n\n"
+                "{read}\n{{\n    croft_int number = 0;\n\n{read_body}    (void) number;\n    return 1;\n}}\n\n"
             ));
         }
 
@@ -84,13 +114,13 @@ impl<'a> Generator<'a> {
     }
 
     /// The bodies of the functions that write a value of `ty` and read it
-    /// back.
-    fn serializer_bodies(&self, ty: &Type) -> (String, String) {
+    /// back, asking only for the serializers the one going `direction` calls.
+    fn serializer_bodies(&self, ty: &Type, direction: Direction) -> (String, String) {
         match ty {
             Type::List(item) | Type::SizedList(item, _) => {
                 let capacity = self.capacity(ty);
                 let (write, read) =
-                    self.serialize_value("value->items[index]", item, None, "        ");
+                    self.serialize_value("value->items[index]", item, None, "        ", direction);
 
                 (
                     format!(
@@ -107,9 +137,14 @@ impl<'a> Generator<'a> {
                 let capacity = self.sizes.map_capacity(ty);
                 let same = self.same_key("value->keys[index]", "value->keys[other]", key);
                 let (key_write, key_read) =
-                    self.serialize_value("value->keys[index]", key, None, "        ");
-                let (value_write, value_read) =
-                    self.serialize_value("value->values[index]", value, None, "        ");
+                    self.serialize_value("value->keys[index]", key, None, "        ", direction);
+                let (value_write, value_read) = self.serialize_value(
+                    "value->values[index]",
+                    value,
+                    None,
+                    "        ",
+                    direction,
+                );
 
                 (
                     format!(
@@ -127,7 +162,7 @@ impl<'a> Generator<'a> {
                 let capacity = self.sizes.set_capacity(ty);
                 let same = self.same_key("value->items[index]", "value->items[other]", item);
                 let (write, read) =
-                    self.serialize_value("value->items[index]", item, None, "        ");
+                    self.serialize_value("value->items[index]", item, None, "        ", direction);
 
                 (
                     format!(
@@ -142,7 +177,8 @@ impl<'a> Generator<'a> {
                 )
             }
             Type::Option(item) => {
-                let (write, read) = self.serialize_value("value->value", item, None, "        ");
+                let (write, read) =
+                    self.serialize_value("value->value", item, None, "        ", direction);
 
                 (
                     format!(
@@ -168,7 +204,8 @@ impl<'a> Generator<'a> {
 
                     for (field, field_type) in &variant.fields {
                         let place = format!("value->as.{}.{field}", variant.name);
-                        let (w, r) = self.serialize_value(&place, field_type, None, "        ");
+                        let (w, r) =
+                            self.serialize_value(&place, field_type, None, "        ", direction);
                         fields_write.push_str(&w);
                         fields_read.push_str(&r);
                     }
@@ -239,7 +276,8 @@ impl<'a> Generator<'a> {
                         range: (self.field_range(named, &field)).map(|span| (span.low, span.high)),
                     };
 
-                    let (w, r) = self.serialize_value(&place, &field_type, Some(kept), "    ");
+                    let (w, r) =
+                        self.serialize_value(&place, &field_type, Some(kept), "    ", direction);
                     write.push_str(&w);
                     read.push_str(&r);
                 }
@@ -250,15 +288,17 @@ impl<'a> Generator<'a> {
         }
     }
 
-    /// Statements that write the value at `place`, and read it back. A
-    /// struct `field` says what C type a number read into it is kept in,
-    /// and the `Range` it must be in.
+    /// Statements that write the value at `place`, and read it back,
+    /// asking only for the serializer going `direction`. A struct `field`
+    /// says what C type a number read into it is kept in, and the `Range`
+    /// it must be in.
     fn serialize_value(
         &self,
         place: &str,
         ty: &Type,
         field: Option<Field>,
         indent: &str,
+        direction: Direction,
     ) -> (String, String) {
         let fail = format!(" {{\n{indent}    return 0;\n{indent}}}\n");
 
@@ -286,7 +326,7 @@ impl<'a> Generator<'a> {
         let name = match ty {
             Type::String | Type::Text(_) => "string".to_string(),
             Type::Bytes | Type::SizedBytes(_) => "bytes".to_string(),
-            _ => self.serializer_for(ty),
+            _ => self.serializer_for(ty, direction),
         };
 
         let (write, read) = match ty {

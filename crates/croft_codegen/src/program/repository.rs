@@ -13,6 +13,7 @@ use croft_syntax::ast::ConstraintUse;
 
 use super::constraints::CheckPlace;
 use super::layout::layout_hash;
+use super::serialize::Direction;
 use crate::names::{aggregate_kind, c_name, c_string, error_code};
 use crate::Generator;
 
@@ -163,7 +164,6 @@ impl<'a> Generator<'a> {
         } = *stored;
 
         let aggregate_type = Type::Named(aggregate.clone());
-        let serializer = self.serializer_for(&aggregate_type);
         let hash = layout_hash(&self.layout(&aggregate_type));
         let field = self.identity_field(aggregate);
         let prefix = c_string(&self.key_prefix(repository, aggregate));
@@ -184,6 +184,8 @@ impl<'a> Generator<'a> {
 
         match shape {
             StorageShape::Find | StorageShape::FindOption => {
+                let serializer = self.serializer_for(&aggregate_type, Direction::Read);
+
                 let (missing, into, found) = if shape == StorageShape::Find {
                     let not_found = self
                         .model
@@ -214,6 +216,7 @@ impl<'a> Generator<'a> {
                 )
             }
             StorageShape::Save => {
+                let serializer = self.serializer_for(&aggregate_type, Direction::Write);
                 let kind = aggregate_kind(aggregate);
                 let key = self.event_key(aggregate, &format!("{value}.{field}"));
 

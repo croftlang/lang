@@ -79,7 +79,6 @@ context Clinic {
 
     // `Storage` saves a bed, after checking it against the constraint.
     repository Beds for Bed {
-        fn find(id: BedId): Result<Option<Bed>, StorageError>
         fn keep(bed: Bed where Made): Result<Unit, StorageError>
     }
 

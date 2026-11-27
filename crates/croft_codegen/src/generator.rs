@@ -7,6 +7,7 @@ use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::Resolved;
 use croft_analysis::{Facts, Model, Program, Type};
 
+use crate::program::serialize::Serializer;
 use crate::types::sizes::Sizes;
 
 /// Generates the C for one program on one target.
@@ -19,8 +20,9 @@ pub struct Generator<'a> {
     pub(crate) bindings: HashMap<Resolved, Resolved>,
     /// The adapter for `Storage` that keeps each repository's aggregates.
     pub(crate) storages: HashMap<Resolved, Resolved>,
-    /// Types that need functions to turn them into bytes and back.
-    pub(crate) serialized: RefCell<(Vec<Type>, HashSet<Type>)>,
+    /// Types that need a function to turn them into bytes, or back, in the
+    /// order first asked for.
+    pub(crate) serialized: RefCell<(Vec<Serializer>, HashSet<Serializer>)>,
     /// What runs first: the domain's body, or the target's `main` service.
     pub(crate) start: Resolved,
     pub(crate) sizes: Sizes,
@@ -182,7 +184,7 @@ impl<'a> Generator<'a> {
 /// What writing functions adds to a `Generator`, saved so a round of
 /// `settle_results` leaves no trace.
 pub(crate) struct SavedState {
-    serialized: (Vec<Type>, HashSet<Type>),
+    serialized: (Vec<Serializer>, HashSet<Serializer>),
     used_types: (Vec<Type>, HashSet<Type>),
     equalities: (Vec<Type>, HashSet<Type>),
     sorts: Vec<(String, String, String)>,
