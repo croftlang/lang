@@ -62,6 +62,8 @@ module.exports = grammar({
     // `calls { Screen }` then `from != to` on the next line: the context the
     // ports come from, or a contract line about a parameter called `from`.
     [$.calls_clause],
+    // `(item)`: a name in brackets, or the parameter of `(item) -> item * 2`.
+    [$._expression, $._lambda_parameters],
   ],
 
   rules: {
@@ -525,11 +527,20 @@ module.exports = grammar({
     native_call: $ => seq('native', field('function', $.identifier), field('arguments', $.arguments)),
 
     // `enemy -> enemy.hit_points > 0`
+    // `e -> e.id`, or `(total, item) -> total + item` with its parameters in brackets.
     lambda_expression: $ => prec.right(PREC.lambda, seq(
-      field('parameter', $._name),
+      choice(field('parameter', $._name), $._lambda_parameters),
       '->',
       field('body', $._expression),
     )),
+
+    // `(total, item)`, before `->`.
+    _lambda_parameters: $ => seq(
+      '(',
+      field('parameter', $._name),
+      repeat(seq(',', field('parameter', $._name))),
+      ')',
+    ),
 
     // `[a, b]`, `[]`
     list_expression: $ => seq('[', optional(seq(

@@ -28,6 +28,16 @@ fn spaces_words_operators_and_punctuation() {
 }
 
 #[test]
+fn spaces_a_lambda_with_two_parameters() {
+    let source = "context A {\nfn f(xs: List<Int>): Int = xs.fold(0,( total ,x )->total+x)\n}\n";
+
+    let expected =
+        "context A {\n    fn f(xs: List<Int>): Int = xs.fold(0, (total, x) -> total + x)\n}\n";
+
+    assert_eq!(formatted(source), expected);
+}
+
+#[test]
 fn writes_type_arguments_without_spaces() {
     let source = "context A {\nfn first < T > (items: List < List < T >>, price: Decimal < 2 >): Option < T > = {\nlet small = count < LIMIT\nitems\n}\n}\n";
 

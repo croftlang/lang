@@ -35,6 +35,35 @@ fn continues_a_chain_of_calls_across_lines() {
 }
 
 #[test]
+fn reads_a_lambda_with_two_parameters() {
+    let body = function_body("fn f(): Int = [1, 2].fold(0, (total, item) -> total + item)");
+
+    let ExprKind::Call(_, arguments) = body.kind else {
+        panic!("expected a call")
+    };
+
+    let ExprKind::Lambda(parameters, lambda_body) = &arguments[1].value.kind else {
+        panic!("expected a lambda")
+    };
+
+    let names: Vec<&str> = parameters.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(names, ["total", "item"]);
+    assert!(matches!(
+        lambda_body.kind,
+        ExprKind::Binary(BinaryOp::Add, _, _)
+    ));
+}
+
+#[test]
+fn reads_an_expression_in_brackets_that_is_not_a_lambda() {
+    let body = function_body("fn f(): Int = (a + b) * 2");
+    assert!(matches!(
+        body.kind,
+        ExprKind::Binary(BinaryOp::Multiply, _, _)
+    ));
+}
+
+#[test]
 fn reads_records_and_with() {
     let body = statements("let start = Position { x: 10, y: 20 }\nstart with { x: 11 }");
 
