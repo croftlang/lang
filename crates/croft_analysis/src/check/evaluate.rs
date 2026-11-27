@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 
 use croft_syntax::ast::{
-    Argument, BinaryOp, ConstraintUse, Expr, ExprId, ExprKind, Path, Statement, UnaryOp,
+    Argument, BinaryOp, ConstraintUse, Expr, ExprId, ExprKind, FieldValue, Path, Statement, UnaryOp,
 };
 use croft_syntax::Span;
 
@@ -187,7 +187,30 @@ impl<'a> Checker<'a> {
 
                 Some(Known::Bool(held.is_some() == (member.name == "is_some")))
             }
-            ExprKind::Field(..) => self.constant_value(scope, &expr_path(value)?, depth),
+            ExprKind::Field(receiver, member) => match known(receiver) {
+                Some(record) => record.field(&member.name),
+                None => self.constant_value(scope, &expr_path(value)?, depth),
+            },
+            ExprKind::Record(path, fields) => {
+                let fields = self.known_fields(scope, bindings, fields, depth)?;
+
+                Some(Known::Record {
+                    name: path.text(),
+                    fields,
+                })
+            }
+            ExprKind::With(base, changed) => {
+                let Known::Record { name, mut fields } = known(base)? else {
+                    return None;
+                };
+
+                for (field, value) in self.known_fields(scope, bindings, changed, depth)? {
+                    let kept = fields.iter_mut().find(|(kept, _)| *kept == field)?;
+                    kept.1 = value;
+                }
+
+                Some(Known::Record { name, fields })
+            }
             ExprKind::Unary(op, operand) => {
                 let operand = known(operand)?;
 
@@ -247,6 +270,27 @@ impl<'a> Checker<'a> {
             }
             _ => None,
         }
+    }
+
+    /// The known value of each field given in a record or `with`, in order.
+    /// Shorthand, `{ day }`, is the name of the same name.
+    fn known_fields(
+        &self,
+        scope: &Scope,
+        bindings: &Bindings,
+        fields: &[FieldValue],
+        depth: u32,
+    ) -> Option<Vec<(String, Known)>> {
+        (fields.iter())
+            .map(|given| {
+                let value = match &given.value {
+                    Some(value) => self.known_at(scope, bindings, value, depth)?,
+                    None => bindings.get(&given.name.name)?.clone(),
+                };
+
+                Some((given.name.name.clone(), value))
+            })
+            .collect()
     }
 
     /// What `option.unwrap_or(fallback)` gives, when `callee` is that method

@@ -318,6 +318,51 @@ fn a_contract_line_with_an_unknown_argument_is_left_to_runtime() {
     assert_eq!(errors(&source), Vec::<String>::new());
 }
 
+/// A clinic with a `Dosage` whose least must not be above its most.
+fn dosage(extra: &str) -> String {
+    clinic(&format!(
+        "constraint Ordered(dosage: Dosage) = dosage.least <= dosage.most\n\
+         value Dosage {{\n least: Int\n most: Int\n invariant Ordered\n}}\n\
+         {extra}"
+    ))
+}
+
+#[test]
+fn a_value_known_to_break_its_invariant_is_an_error() {
+    let source = dosage("fn usual(): Dosage = Dosage { least: 20, most: 10 }");
+
+    assert_error(
+        &source,
+        "`Dosage { least: 20, most: 10 }` breaks `Dosage`'s invariant `Ordered`",
+    );
+}
+
+#[test]
+fn a_value_that_keeps_its_invariant_is_accepted() {
+    let source = dosage("fn usual(): Dosage = Dosage { least: 10, most: 20 }");
+
+    assert_eq!(errors(&source), Vec::<String>::new());
+}
+
+#[test]
+fn a_value_copied_with_with_is_held_to_its_invariant() {
+    let source = dosage(
+        "fn raised(): Dosage = {\n let usual = Dosage { least: 10, most: 20 }\n usual with { least: 30 }\n}",
+    );
+
+    assert_error(
+        &source,
+        "`Dosage { least: 30, most: 20 }` breaks `Dosage`'s invariant `Ordered`",
+    );
+}
+
+#[test]
+fn a_value_with_a_field_not_known_is_left_to_runtime() {
+    let source = dosage("fn usual(most: Int): Dosage = Dosage { least: 20, most }");
+
+    assert_eq!(errors(&source), Vec::<String>::new());
+}
+
 /// A ward whose `Give` command has `contract` between its signature and body.
 fn ward(contract: &str, issued: &str) -> String {
     format!(

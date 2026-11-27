@@ -12,7 +12,7 @@ use std::collections::HashSet;
 use crate::check::evaluate::Bindings;
 use crate::check::known::Known;
 use crate::check::Scope;
-use crate::types::Resolved;
+use crate::types::{Resolved, Type};
 use croft_syntax::Span;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
@@ -96,6 +96,40 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let given = format!("`{}` is given", named.name);
 
         self.check_known_value(value, &field.constraints, &owner, &given, &field.name.name);
+    }
+
+    /// Reports each invariant of the value `ty` that `value`, a record or
+    /// `with` making one, is known to break.
+    pub(super) fn check_known_invariants(&mut self, ty: &Type, value: &Expr) {
+        let Type::Named(named) = ty else { return };
+        let invariants = self.checker.value_invariants(named);
+
+        if invariants.is_empty() {
+            return;
+        }
+
+        let Some(known) = self.known_local_value(value) else {
+            return;
+        };
+
+        let owner = self.checker.scope_of(named);
+
+        for invariant in invariants {
+            let constraint = &invariant.constraint;
+
+            if self.checker.keeps_constraint(&owner, constraint, &known) != Some(false) {
+                continue;
+            }
+
+            let message = format!(
+                "`{}` breaks `{}`'s invariant `{}`",
+                known.describe(),
+                named.name,
+                constraint.text()
+            );
+
+            self.error(message, value.span);
+        }
     }
 
     /// Reports each constraint in `constraints`, written in `owner`, that
