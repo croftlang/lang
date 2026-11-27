@@ -1,14 +1,15 @@
 //! Debug-build checks of `where` constraints: on a function's arguments when it
 //! starts, on its result before it returns, on a value's fields when it is
-//! built, and of a port's contract when an adapter's operation starts. Each
+//! built and against its invariants, and of a port's contract when an adapter's operation starts. Each
 //! check is its own function, compiled only with `CROFT_CHECKS`.
 
+use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::Resolved;
 use croft_analysis::Type;
-use croft_syntax::ast::{ConstraintUse, Expr};
+use croft_syntax::ast::{ConstraintUse, Expr, Invariant};
 
 use crate::function::{Returns, Writer};
-use crate::names::c_name;
+use crate::names::{c_name, c_string};
 use crate::Generator;
 
 /// Where a check's constraints are looked up, and how its messages name things.
@@ -128,14 +129,17 @@ impl<'a> Generator<'a> {
         Some(name)
     }
 
-    /// The function that checks a value's fields against their constraints, when
-    /// any field has constraints. Generated once for each type.
+    /// The function that checks a value's fields against their constraints,
+    /// and a value against its invariants, when it has any. Generated once
+    /// for each type.
     pub fn field_check(&self, named: &Resolved) -> Option<String> {
         let fields = self.model.fields(named);
+        let invariants = self.value_invariants(named);
 
-        if fields
-            .iter()
-            .all(|(_, _, field)| field.constraints.is_empty())
+        if invariants.is_empty()
+            && fields
+                .iter()
+                .all(|(_, _, field)| field.constraints.is_empty())
         {
             return None;
         }
@@ -177,12 +181,39 @@ impl<'a> Generator<'a> {
             }
         }
 
+        // The fields are checked first, so an invariant only reads ones that keep theirs.
+        for invariant in &invariants {
+            let Some(holds) = writer.invariant_holds(named, invariant, "(*p_value)") else {
+                continue;
+            };
+
+            let message = format!(
+                "{} must satisfy {}",
+                named.name,
+                invariant.constraint.text()
+            );
+            writer.line(format!("CROFT_CHECK({holds}, {});", c_string(&message)));
+        }
+
         self.add_check(
             writer,
             &self.signature(&name, &[], &[("value".to_string(), ty)], None),
         );
 
         Some(name)
+    }
+
+    /// The invariants of a value declared in its context, which every one
+    /// the program makes or reads back keeps. Other types have none kept
+    /// this way: an aggregate's fail its commands instead.
+    pub(crate) fn value_invariants(&self, named: &Resolved) -> Vec<Invariant> {
+        if named.kind != SymbolKind::Value {
+            return Vec::new();
+        }
+
+        (self.program.contexts.get(&named.context))
+            .and_then(|context| context.values.iter().find(|v| v.name.name == named.name))
+            .map_or(Vec::new(), |value| value.invariants.clone())
     }
 
     /// A writer for the body of a check function at `place`.

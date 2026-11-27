@@ -719,6 +719,16 @@ fn checks_rules_in_every_build_by_default() {
     );
 
     assert_eq!(
+        run("checked", "invariant"),
+        (Some(1), "Dosage must satisfy Ordered".to_string())
+    );
+
+    assert_eq!(
+        run("checked", "with"),
+        (Some(1), "Dosage must satisfy Ordered".to_string())
+    );
+
+    assert_eq!(
         run("checked", "each"),
         (Some(1), "count: numbers must satisfy each Even".to_string())
     );
@@ -778,6 +788,7 @@ fn checks_rules_in_every_build_by_default() {
     );
 
     assert_eq!(run("unchecked", "argument"), (Some(0), String::new()));
+    assert_eq!(run("unchecked", "invariant"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "let"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "full"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "name"), (Some(0), String::new()));
@@ -1462,7 +1473,7 @@ fn counts_days_on_the_calendar() {
 }
 
 /// Std.Time's SystemClock reads the machine's clock, and a date past 9999
-/// stops the program.
+/// or a day its month doesn't have stops the program.
 #[test]
 fn reads_the_system_clock() {
     if !has_c_compiler() {
@@ -1515,6 +1526,18 @@ fn reads_the_system_clock() {
     assert_eq!(
         String::from_utf8_lossy(&past.stderr),
         "date_from_day_number: number must satisfy Range(306, LAST_DAY)\n"
+    );
+
+    let february = std::process::Command::new(output.join("program"))
+        .arg("february")
+        .output()
+        .expect("it runs");
+
+    assert_eq!(february.status.code(), Some(1));
+
+    assert_eq!(
+        String::from_utf8_lossy(&february.stderr),
+        "Date must satisfy DayInMonth\n"
     );
 
     fs::remove_dir_all(output).ok();

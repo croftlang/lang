@@ -62,7 +62,6 @@ service Check(): Result<Unit, WrongAnswer> {
     check(add_days(on(2000, 2, 28), 1) == on(2000, 2, 29))?
     check(add_days(on(2026, 11, 27), -10000) == on(1999, 7, 12))?
     check(add_days(on(2026, 11, 27), 0) == on(2026, 11, 27))?
-    check(add_days(on(2023, 2, 30), 0) == on(2023, 3, 2))?
 
     let today = Clock.today()
     check(today == on(2026, 11, 27))?
