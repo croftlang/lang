@@ -37,12 +37,16 @@ static croft_bool starts_response(const char *data, size_t length)
 }
 
 /* Each header line, "Name: value", kept with its name in lower case. A new
-   status line starts the headers again, so only the last response's are kept. */
+   status line starts the headers again, so only the last response's are kept.
+   A header whose name or value is longer than a string is left out, rather
+   than kept cut short. */
 static size_t keep_header(char *data, size_t size, size_t count, void *user)
 {
     croft_result_Std_Http_Response_error *out = (croft_result_Std_Http_Response_error *) user;
     size_t length = size * count;
     size_t colon = 0;
+    size_t start;
+    size_t end;
     size_t index;
     croft_u16 at;
     if (starts_response(data, length)) {
@@ -56,22 +60,26 @@ static size_t keep_header(char *data, size_t size, size_t count, void *user)
     if (colon == length || at >= sizeof out->value.headers.keys / sizeof out->value.headers.keys[0]) {
         return length;
     }
-    out->value.headers.keys[at].length = 0;
-    for (index = 0; index < colon && index < CROFT_STRING_CAPACITY; index++) {
+    start = colon + 1;
+    while (start < length && data[start] == ' ') {
+        start++;
+    }
+    end = start;
+    while (end < length && data[end] != '\r' && data[end] != '\n') {
+        end++;
+    }
+    if (colon > CROFT_STRING_CAPACITY || end - start > CROFT_STRING_CAPACITY) {
+        return length;
+    }
+    for (index = 0; index < colon; index++) {
         char c = data[index];
         out->value.headers.keys[at].text[index] = (char) (c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c);
-        out->value.headers.keys[at].length++;
     }
-    index = colon + 1;
-    while (index < length && data[index] == ' ') {
-        index++;
+    out->value.headers.keys[at].length = (croft_u16) colon;
+    for (index = start; index < end; index++) {
+        out->value.headers.values[at].text[index - start] = data[index];
     }
-    out->value.headers.values[at].length = 0;
-    for (; index < length && data[index] != '\r' && data[index] != '\n'
-           && out->value.headers.values[at].length < CROFT_STRING_CAPACITY; index++) {
-        out->value.headers.values[at].text[out->value.headers.values[at].length] = data[index];
-        out->value.headers.values[at].length++;
-    }
+    out->value.headers.values[at].length = (croft_u16) (end - start);
     out->value.headers.length++;
     return length;
 }

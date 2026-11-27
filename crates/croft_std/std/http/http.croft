@@ -25,7 +25,8 @@ context Http {
 
     // What the server answered: its status, such as 200 or 404, its headers,
     // with names in lower case, and the body. After redirects, all three come
-    // from the last answer.
+    // from the last answer. Headers longer than a string are left out, as
+    // are any past the first 16.
     value Response {
         status: Int where Range(0, 999)
         headers: Map<String, String> where Length(0, 16)
