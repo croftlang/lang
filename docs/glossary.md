@@ -381,7 +381,8 @@ messages. Written as a list of numbers where `Bytes` is expected:
 `header + [0, 1]`. `get_u16` and `add_u16` read and write a number from 0 to
 65535 in two bytes, the low byte first, as the Z80 and 6502 keep them;
 `get_u16_be` and `add_u16_be` put the high byte first, as the 68000 does. `Std.Text` turns text into bytes with
-`to_bytes`, and back with `to_text`. Each `Bytes` is kept in the most values
+`to_bytes`, and back with `to_text`; `Std.Encoding` writes them as hex or
+base64 and reads them back, and gives their CRC-16 or CRC-32. Each `Bytes` is kept in the most values
 it can need, as a string is; see Capacity.
 
 ### Standard context
@@ -394,6 +395,11 @@ whole numbers, `from_code` and `from_hex`, `join` for a list of strings, and
 `to_text` for bytes. `Std.Numbers`
 has `Decimal`, `max`, `min`, `abs`, `clamp`, `pow`, `sign`, `checked_add`,
 `checked_subtract` and `checked_multiply`. `Std.Collections` has `Map` and `Set`.
+`Std.Encoding` has `to_hex`, `to_base64`, `crc16` and `crc32` for bytes,
+`from_hex` and `from_base64`, which make bytes from text, and
+`percent_encode` and `percent_decode` for strings. `to_hex` is a method, so
+the value it is called on picks the context; `from_hex` means what the
+context imports it from, and a context can't import it from both.
 Each file of a context sees what any of them imports. Standard contexts need
 no arrow in the domain's `contexts`.
 

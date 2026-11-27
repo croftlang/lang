@@ -39,6 +39,8 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
                 "repeat",
                 "pad_left",
                 "pad_right",
+                "percent_encode",
+                "percent_decode",
             ]));
 
             members
@@ -55,6 +57,10 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
                 "add_u16",
                 "add_u16_be",
                 "to_text",
+                "to_hex",
+                "to_base64",
+                "crc16",
+                "crc32",
             ]));
             members
         }

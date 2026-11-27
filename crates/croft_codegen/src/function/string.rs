@@ -123,6 +123,26 @@ impl<'g, 'a> Writer<'g, 'a> {
                 ));
                 temp
             }
+            "percent_encode" => {
+                // At most three characters for each one.
+                let most = self.gen.bound(bounded) * 3;
+                let temp = self.temp(&self.gen.text_type(most));
+
+                self.line(format!(
+                    "croft_string_percent_encode({text}, CROFT_OUT({temp}));"
+                ));
+
+                temp
+            }
+            "percent_decode" => {
+                let temp = self.temp(&Type::option(owned));
+
+                self.line(format!(
+                    "{temp}.some = croft_string_percent_decode({text}, CROFT_OUT({temp}.value));"
+                ));
+
+                temp
+            }
             "split" => {
                 let separator = self.raw_variable("separator", "croft_string_view");
                 let value = part(self, 0);

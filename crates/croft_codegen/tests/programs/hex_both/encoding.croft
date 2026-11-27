@@ -1,0 +1,23 @@
+// The same names from Std.Encoding read and write bytes, beside a context
+// that has them from Std.Text: each context's import decides.
+context Encoding
+
+use { from_hex, to_hex } from Std.Encoding
+use { number_of, hex_of_number } from Numbers
+
+error WrongAnswer
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+service Check(): Result<Unit, WrongAnswer> = {
+    let data: Bytes = [0x4E, 0x0A]
+    check(from_hex("4E0a") == Some(data))?
+    check(data.to_hex() == "4E0A")?
+    check(number_of("4E0a") == Some(0x4E0A))?
+    check(hex_of_number(0x4E0A) == "4E0A")
+}

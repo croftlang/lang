@@ -1,0 +1,12 @@
+// Hex of 20 bytes takes 40 characters, more than the 32 a string with no
+// Length holds: a checked build stops, and an unchecked one cuts it short.
+context Encoding
+
+use { to_hex } from Std.Encoding
+
+service Encode(): Unit {
+    calls { Console }
+} = {
+    let data: Bytes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    Console.print(data.to_hex())
+}

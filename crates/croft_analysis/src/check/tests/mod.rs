@@ -8,6 +8,7 @@ mod collections;
 mod declarations;
 mod domain;
 mod effects;
+mod encoding;
 mod factories;
 mod failing_constraints;
 mod files;

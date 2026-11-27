@@ -69,6 +69,9 @@ pub struct Facts {
 pub struct BuiltinName {
     pub span: Span,
     pub name: String,
+    /// The standard context the name is imported from, when it is one that
+    /// two provide, such as `from_hex`.
+    pub from: Option<&'static str>,
 }
 
 /// A name as written, such as the `Room` in `Room.Error`, and what it names.

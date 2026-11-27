@@ -5,6 +5,7 @@ use croft_syntax::ast::{Argument, Identifier};
 
 use super::BodyChecker;
 use crate::facts::MemberKind;
+use crate::standard::{ENCODING_CONTEXT, TEXT_CONTEXT};
 use crate::symbols::SymbolKind;
 use crate::types::{Resolved, Type};
 
@@ -35,8 +36,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             Type::Bytes => {
                 let context = self.scope.context;
 
-                if name == "to_text" {
-                    self.checker.check_standard(context, name, span);
+                // A name two standard contexts provide is checked against
+                // the one whose method `Bytes` has.
+                if let Some(standard) = bytes_standard(name) {
+                    self.checker
+                        .check_standard_from(context, standard, name, span);
                 }
 
                 self.bytes_method(name, arguments, span)
@@ -48,7 +52,11 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             Type::Int if name == "to_hex" => {
                 let context = self.scope.context;
-                self.checker.check_standard(context, name, span);
+
+                // `to_hex` on `Bytes` is `Std.Encoding`'s, so it doesn't count.
+                self.checker
+                    .check_standard_from(context, TEXT_CONTEXT, name, span);
+
                 self.fixed(name, arguments, &[], Type::String, span)
             }
             Type::Int | Type::Float | Type::Decimal(_) if name == "to_string" => {
@@ -95,6 +103,16 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         self.check_arguments(arguments, &parameters, name, span, false);
 
         Some(result)
+    }
+}
+
+/// The standard context a method of `Bytes` called `name` is imported from,
+/// if it is imported at all.
+fn bytes_standard(name: &str) -> Option<&'static str> {
+    match name {
+        "to_text" => Some(TEXT_CONTEXT),
+        "to_hex" | "to_base64" | "crc16" | "crc32" => Some(ENCODING_CONTEXT),
+        _ => None,
     }
 }
 

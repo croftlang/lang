@@ -331,7 +331,7 @@ pub fn hover(state: &ProjectState, found: &Found) -> Option<String> {
             return Some(describe_member(state, written, &of, false));
         }
         Found::Context(name, _) => return describe_context(state, name),
-        Found::Builtin(builtin) => return describe_builtin(&builtin.name),
+        Found::Builtin(builtin) => return describe_builtin(&builtin.name, builtin.from),
     };
 
     describe(state, target, written)
@@ -429,11 +429,13 @@ fn describe(state: &ProjectState, target: &Resolved, written: &str) -> Option<St
     Some(markdown)
 }
 
-/// A built-in type, function or constraint, which has no declaration to show.
-fn describe_builtin(name: &str) -> Option<String> {
-    let (written, doc) = built_in_doc(name)?;
+/// A built-in type, function or constraint, which has no declaration to show,
+/// as the standard context it is imported from, `from`, gives it.
+fn describe_builtin(name: &str, from: Option<&str>) -> Option<String> {
+    let from = from.or_else(|| standard_context_of(name));
+    let (written, doc) = built_in_doc(name, from)?;
 
-    let what = match standard_context_of(name) {
+    let what = match from {
         Some(context) => format!("From `{context}`"),
         None => "Built in: it needs no import".to_string(),
     };

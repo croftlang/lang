@@ -42,6 +42,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 self.checker.facts.builtins.push(crate::facts::BuiltinName {
                     span,
                     name: name.to_string(),
+                    from: None,
                 });
 
                 return Type::option(Type::Unknown);

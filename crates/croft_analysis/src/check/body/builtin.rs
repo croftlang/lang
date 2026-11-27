@@ -1,12 +1,14 @@
 //! Built-in functions: the numbers of `Std.Numbers`, `from_code` and
-//! `from_hex` of `Std.Text`, `Some`, `Ok`, `Err`, and the built-in
-//! constraints `Range` and `Length` called directly.
+//! `from_hex` of `Std.Text`, the decoders of `Std.Encoding`, `Some`, `Ok`,
+//! `Err`, and the built-in constraints `Range` and `Length` called directly.
 
 use croft_syntax::ast::Argument;
 use croft_syntax::Span;
 
 use super::BodyChecker;
 use crate::check::known::Known;
+use crate::check::publish::imported_standard;
+use crate::standard::{ENCODING_CONTEXT, SHARED_FUNCTIONS, TEXT_CONTEXT};
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
@@ -18,8 +20,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         span: Span,
         expected: Option<&Type>,
     ) -> Option<Type> {
-        let context = self.scope.context;
-        self.checker.check_standard(context, name, span);
+        let from = self.check_function_import(name, span, expected);
 
         let ty = match name {
             "max" | "min" => {
@@ -72,10 +73,21 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
                 Type::String
             }
+            "from_hex" | "from_base64"
+                if name == "from_base64" || from == Some(ENCODING_CONTEXT) =>
+            {
+                self.one_argument(name, arguments, 0, 1, span, Some(&Type::String));
+
+                Type::option(Type::Bytes)
+            }
             "from_hex" => {
                 self.one_argument(name, arguments, 0, 1, span, Some(&Type::String));
 
-                Type::option(Type::Int)
+                // With no import to say which it is, nothing more is reported.
+                match from {
+                    Some(_) => Type::option(Type::Int),
+                    None => Type::option(Type::Unknown),
+                }
             }
             "Some" => {
                 let item = match expected {
@@ -131,6 +143,37 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         };
 
         Some(ty)
+    }
+
+    /// Checks that the context may call the built-in function `name`, and
+    /// gives the standard context it comes from. A function two standard
+    /// contexts provide, such as `from_hex`, means what the context imports;
+    /// with no import, the type `expected` here picks the one to name, or
+    /// both are named when it doesn't.
+    fn check_function_import(
+        &mut self,
+        name: &str,
+        span: Span,
+        expected: Option<&Type>,
+    ) -> Option<&'static str> {
+        let context = self.scope.context;
+        let from = imported_standard(context, name);
+
+        if from.is_some() || !SHARED_FUNCTIONS.contains(&name) {
+            self.checker.check_standard(context, name, span);
+            return from;
+        }
+
+        let wanted = match expected {
+            Some(Type::Option(item)) if **item == Type::Bytes => Some(ENCODING_CONTEXT),
+            Some(Type::Option(item)) if **item == Type::Int => Some(TEXT_CONTEXT),
+            _ => None,
+        };
+
+        self.checker
+            .report_missing_shared_import(name, wanted, span);
+
+        wanted
     }
 
     /// Reports a character code given to `from_code` that is known when the

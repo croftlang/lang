@@ -54,6 +54,20 @@ seen.remove(3)              // a copy without 3
 seen.contains(1)   seen.length   seen.is_empty
 seen.items                  // List<Int>: [3, 1, 2], in the order they were added
 
+// Std.Encoding: bytes as text and back, text for URLs, and checksums, here
+// in a context of its own, since from_hex comes from Std.Text or Std.Encoding
+context Packets
+use { to_hex, from_hex, to_base64, from_base64, percent_encode, percent_decode, crc16, crc32 } from Std.Encoding
+let header: Bytes = [0x44, 0x4E, 0xFF]
+header.to_hex()            // "444EFF"
+from_hex("444eff")         // Some([0x44, 0x4E, 0xFF]); None for "444", "0x44" or "44 4E"
+header.to_base64()         // "RE7/"
+from_base64("RE7/")        // Some([0x44, 0x4E, 0xFF]); None for anything but base64
+"fish & chips".percent_encode()     // "fish%20%26%20chips"
+"fish%20%26%20chips".percent_decode()   // Some("fish & chips"); None for "100%"
+"123456789".to_bytes().crc16()   // 0x29B1, CRC-16/CCITT-FALSE
+"123456789".to_bytes().crc32()   // 0xCBF43926 as 32 bits: -873187034
+
 // Std.Files: read, read_part, size, write, append, exists, remove, list, make_folder, copy, rename
 service Keep(): Result<Unit, FileError> {
     calls { Files }
@@ -113,3 +127,7 @@ service Due(): Int {
 // without the import:
 // `Files` needs `use { Files } from Std.Files`
 ```
+
+Std.Encoding works on `Bytes`. The `to_` names, `percent_encode`, `percent_decode`, `crc16` and `crc32` are methods of what they read, as `to_bytes` is in Std.Text: `to_hex`, `to_base64`, `crc16` and `crc32` of `Bytes`, and the percent methods of a `String`. `from_hex` and `from_base64` are functions taking the text, since they make `Bytes` from a `String`. `to_hex` writes two upper-case digits for each byte, and `from_hex` reads either case, two digits for each byte, with nothing between them. Base64 is RFC 4648's standard alphabet with `=` padding; `from_base64` gives `None` for a length that isn't a multiple of 4, a character outside the alphabet, `=` anywhere but the end, or leftover bits that aren't 0, so each `Bytes` has one base64 text. `percent_encode` keeps letters, digits and `-._~`, RFC 3986's unreserved characters, and writes every other character as `%` and two upper-case hex digits, each byte of a character on its own; `percent_decode` reads either case, gives `None` for a `%` not followed by two hex digits, and leaves `+` as it is. `crc16` is CRC-16/CCITT-FALSE, polynomial 0x1021 starting from 0xFFFF, and `crc32` is the CRC-32 of zip, PNG and Ethernet, its 32 bits given as an `Int`, so one with the top bit set is below zero. Text is checked through its bytes: `text.to_bytes().crc32()`. Each result has room for all of it, two characters for each byte of hex, four for each three of base64 and three for each character percent-encoded, up to what a string or `Bytes` with no `Length` holds; a longer result stops the program, or is cut short when the target sets `checks = false`, as a string is.
+
+`to_hex` and `from_hex` are in both Std.Text and Std.Encoding. `to_hex` is a method, so the value it is called on picks one: `255.to_hex()` is Std.Text's and `header.to_hex()` is Std.Encoding's, and a context that uses both imports `to_hex` from each. `from_hex` is a function, so the import decides: from Std.Text it gives an `Option<Int>`, from Std.Encoding an `Option<Bytes>`. A context imports it from one of them; importing it from both is an error, `` `from_hex` can't come from both `Std.Text` and `Std.Encoding`: they mean different things, so import it from one ``. Two contexts of one program can each import their own.

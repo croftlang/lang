@@ -3,8 +3,12 @@
 //! `check/constraints.rs` decide what each one takes and gives back; when one
 //! is added there, add it here too.
 
+use crate::standard::ENCODING_CONTEXT;
+
 /// How a built-in type, function or constraint is written, and what it is.
-pub fn built_in_doc(name: &str) -> Option<(&'static str, &'static str)> {
+/// `from` is the standard context it was imported from, when known, which
+/// picks between the functions two of them provide, such as `from_hex`.
+pub fn built_in_doc(name: &str, from: Option<&str>) -> Option<(&'static str, &'static str)> {
     let found = match name {
         "Int" => (
             "Int",
@@ -123,6 +127,18 @@ pub fn built_in_doc(name: &str) -> Option<(&'static str, &'static str)> {
         "checked_multiply" => (
             "fn checked_multiply(a: Int, b: Int): Option<Int>",
             "`Some(a * b)`, or `None` when the answer doesn't fit in 32 bits.",
+        ),
+        "from_hex" if from == Some(ENCODING_CONTEXT) => (
+            "fn from_hex(text: String): Option<Bytes>",
+            "The bytes two hex digits each stand for, either case: \
+             `from_hex(\"4E0a\")` is `Some([0x4E, 0x0A])`. `None` for an odd \
+             number of digits or anything else, spaces and `0x` included.",
+        ),
+        "from_base64" => (
+            "fn from_base64(text: String): Option<Bytes>",
+            "The bytes base64 text stands for, in the standard alphabet with \
+             `=` padding (RFC 4648). `None` for anything else, including text \
+             whose length isn't a multiple of 4.",
         ),
         "from_code" => (
             "fn from_code(code: Int): String",

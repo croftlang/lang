@@ -231,4 +231,14 @@ void croft_environment_get(croft_string_view name, croft_bool *present, char *ou
 /* The built-in Process port: stops the program with an exit code. */
 void croft_process_exit(croft_int code, croft_unit *out);
 
+/* Std.Encoding: hex, base64, percent-encoding and checksums. */
+void croft_bytes_to_hex(croft_bytes_view bytes, char *out, croft_u16 *length, croft_u16 capacity);
+croft_bool croft_bytes_from_hex(croft_string_view text, unsigned char *out, croft_u16 *length, croft_u16 capacity);
+void croft_bytes_to_base64(croft_bytes_view bytes, char *out, croft_u16 *length, croft_u16 capacity);
+croft_bool croft_bytes_from_base64(croft_string_view text, unsigned char *out, croft_u16 *length, croft_u16 capacity);
+void croft_string_percent_encode(croft_string_view text, char *out, croft_u16 *length, croft_u16 capacity);
+croft_bool croft_string_percent_decode(croft_string_view text, char *out, croft_u16 *length, croft_u16 capacity);
+croft_int croft_bytes_crc16(croft_bytes_view bytes);
+croft_int croft_bytes_crc32(croft_bytes_view bytes);
+
 #endif
