@@ -1,0 +1,31 @@
+// Methods and fields on constants: `BIG.to_string()` is a method on a value,
+// not a path to a declaration.
+context Constants
+
+use { trim } from Std.Text
+
+error WrongAnswer
+
+value Point {
+    x: Int
+    y: Int
+}
+
+const BIG: Int = 100
+const ORIGIN: Point = Point { x: 3, y: 4 }
+const NAME: String = "  croft  "
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+service Check(): Result<Unit, WrongAnswer> = {
+    check(BIG.to_string() == "100")?
+    check(ORIGIN.x + ORIGIN.y == 7)?
+    check(ORIGIN.x.to_string() == "3")?
+    check(NAME.trim() == "croft")?
+    check(NAME.length == 9)
+}

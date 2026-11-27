@@ -366,3 +366,19 @@ fn checks_the_newer_text_list_and_result_methods() {
         "the lambda passed to `map_err` must give back an error, found `Int`",
     );
 }
+
+#[test]
+fn calls_methods_and_reads_fields_on_constants() {
+    let constants = "const BIG: Int = 100\n\
+                     const START: Position = Position { x: 3, y: 4 }\n\
+                     const NAME: String = \"  croft  \"\n";
+
+    let source = game(&format!(
+        "{constants}fn label(): String = BIG.to_string()\n\
+         fn sum(): Int = START.x + START.x.to_string().length + NAME.trim().length"
+    ));
+    assert_eq!(errors(&source), Vec::<String>::new());
+
+    let source = game(&format!("{constants}fn label(): Int = BIG.to_string()"));
+    assert_error(&source, "expected `Int`, found `String`");
+}

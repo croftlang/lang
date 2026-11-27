@@ -2038,3 +2038,9 @@ fn stops_on_hex_longer_than_a_string_holds() {
         fs::remove_dir_all(output).ok();
     }
 }
+
+/// Methods and fields on constants.
+#[test]
+fn calls_methods_on_constants() {
+    run_program("constant_methods");
+}
