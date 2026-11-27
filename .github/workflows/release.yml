@@ -15,34 +15,41 @@ env:
 
 jobs:
   build:
-    name: build ${{ matrix.target }}
+    name: build ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
       matrix:
         include:
           # musl links statically, so one Linux build runs on any distribution.
-          - target: x86_64-unknown-linux-musl
+          - name: linux x86_64
             os: ubuntu-latest
-          - target: aarch64-unknown-linux-musl
+            targets: x86_64-unknown-linux-musl
+          - name: linux aarch64
             os: ubuntu-24.04-arm
-          - target: aarch64-apple-darwin
+            targets: aarch64-unknown-linux-musl
+          # Both macOS builds share one runner: macOS runners are scarce, and
+          # an Apple silicon Mac builds for Intel too.
+          - name: macos
             os: macos-latest
-          - target: x86_64-apple-darwin
-            os: macos-latest
-          - target: x86_64-pc-windows-msvc
+            targets: aarch64-apple-darwin x86_64-apple-darwin
+          - name: windows
             os: windows-latest
+            targets: x86_64-pc-windows-msvc
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+
+      - name: Add the targets
+        shell: bash
+        run: rustup target add ${{ matrix.targets }}
 
       - name: Install musl
-        if: contains(matrix.target, 'musl')
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       # The tag must name the version in Cargo.toml, so `croft version` agrees
@@ -58,49 +65,61 @@ jobs:
           fi
 
       - name: Build
-        run: cargo build --release --locked -p croft_cli --target ${{ matrix.target }}
+        shell: bash
+        run: |
+          for target in ${{ matrix.targets }}; do
+            cargo build --release --locked -p croft_cli --target "$target"
+          done
 
       # Archive names leave out the version, so
       # releases/latest/download/croft-<target>.tar.gz always finds the newest.
       - name: Package
         shell: bash
         run: |
-          name=croft-${{ matrix.target }}
-          mkdir "$name"
-          cp LICENSE-MIT LICENSE-APACHE COPYRIGHT README.md "$name/"
+          mkdir dist
 
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            cp target/${{ matrix.target }}/release/croft.exe "$name/"
-            7z a "$name.zip" "$name" > /dev/null
-            archive="$name.zip"
-          else
-            cp target/${{ matrix.target }}/release/croft "$name/"
-            tar -czf "$name.tar.gz" "$name"
-            archive="$name.tar.gz"
-          fi
+          for target in ${{ matrix.targets }}; do
+            name="croft-$target"
+            mkdir "$name"
+            cp LICENSE-MIT LICENSE-APACHE COPYRIGHT README.md "$name/"
 
-          if command -v sha256sum > /dev/null; then
-            sha256sum "$archive" > "$archive.sha256"
-          else
-            shasum -a 256 "$archive" > "$archive.sha256"
-          fi
+            if [ "${{ runner.os }}" = "Windows" ]; then
+              cp "target/$target/release/croft.exe" "$name/"
+              7z a "dist/$name.zip" "$name" > /dev/null
+              archive="$name.zip"
+            else
+              cp "target/$target/release/croft" "$name/"
+              tar -czf "dist/$name.tar.gz" "$name"
+              archive="$name.tar.gz"
+            fi
 
-      # Run the packaged binary once, where the runner can, to catch a broken build.
+            if command -v sha256sum > /dev/null; then
+              (cd dist && sha256sum "$archive" > "$archive.sha256")
+            else
+              (cd dist && shasum -a 256 "$archive" > "$archive.sha256")
+            fi
+          done
+
+      # Run each packaged binary the runner can run, to catch a broken build.
       - name: Smoke test
-        if: matrix.target != 'x86_64-apple-darwin'
         shell: bash
         run: |
           printf 'domain Program {\n    calls { Console }\n} = Console.print("Hello, World")\n' > hello.croft
-          ./croft-${{ matrix.target }}/croft version
-          ./croft-${{ matrix.target }}/croft check hello.croft
+
+          for target in ${{ matrix.targets }}; do
+            if [ "$target" = "x86_64-apple-darwin" ] && ! arch -x86_64 /usr/bin/true 2> /dev/null; then
+              echo "Skipping $target: no Rosetta on this runner"
+              continue
+            fi
+
+            "./croft-$target/croft" version
+            "./croft-$target/croft" check hello.croft
+          done
 
       - uses: actions/upload-artifact@v4
         with:
-          name: croft-${{ matrix.target }}
-          path: |
-            croft-${{ matrix.target }}.tar.gz
-            croft-${{ matrix.target }}.zip
-            croft-${{ matrix.target }}.*.sha256
+          name: croft-${{ matrix.os }}
+          path: dist/*
           if-no-files-found: error
 
   release:
