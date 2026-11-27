@@ -6,7 +6,7 @@ const NOTES: &str = "context Notes {\n\
      publish { Keep }\n\
      use { Files, FileError, NotFound } from Std.Files\n\
      service Keep(): Result<Unit, FileError> {\n calls { Files }\n} = {\n\
-         let data = Files.read(\"notes.txt\")?\n\
+         let data = Files.read(\"notes.txt\", 4096)?\n\
          Files.write(\"copy.txt\", data)\n\
      }\n\
      }\n\
@@ -34,6 +34,36 @@ fn names_the_import_a_standard_name_needs() {
 fn reports_a_name_a_standard_context_does_not_publish() {
     let source = NOTES.replace("NotFound }", "Missing }");
     assert_error(&source, "context `Std.Files` does not publish `Missing`");
+}
+
+/// `Files.read` says the most it reads, which sizes its result, so a
+/// number not known when the program is compiled is an error, as is one
+/// outside `Range(1, 65535)`. Leaving it out names it.
+#[test]
+fn reads_a_file_of_at_most_a_known_size() {
+    let read = |given: &str| NOTES.replace("let data = Files.read(\"notes.txt\", 4096)?", given);
+
+    let limit = "let limit = 512\nlet data = Files.read(\"notes.txt\", limit * 2)?";
+    assert_eq!(errors(&read(limit)), Vec::<String>::new());
+
+    assert_error(
+        &read("let data = Files.read(\"notes.txt\")?"),
+        "`read` needs a value for `most`",
+    );
+
+    assert_error(
+        &read("let data = Files.read(\"notes.txt\", 70000)?"),
+        "`Files.read` is given `70000` for `most`, which breaks `Range(1, 65535)`",
+    );
+
+    let measured = "let first = Files.read(\"notes.txt\", 16)?\n\
+                    let data = Files.read(\"notes.txt\", first.length)?";
+
+    assert_error(
+        &read(measured),
+        "`most` must be known when the program is compiled, since it says how much room \
+         `Files.read` keeps for its result: use a number or a constant",
+    );
 }
 
 /// A game rolling a die through Std.Random, with `roll` in its body.

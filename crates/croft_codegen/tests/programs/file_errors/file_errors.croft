@@ -36,7 +36,7 @@ context Probe {
             Files.append(path, "x".to_bytes())?
             Console.print("appended")
         }
-        Files.read(path)?
+        Files.read(path, 64)?
         Console.print("read")
     }
 }

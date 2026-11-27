@@ -14,7 +14,8 @@ context Http {
     // The server took longer than 30 seconds to answer.
     error TimedOut
 
-    // The answer holds more than a `Bytes` can.
+    // The answer's body is longer than the target's `bytes_length`, as
+    // many as a `Bytes` with no `Length` holds.
     error TooLarge
 
     enum HttpError {

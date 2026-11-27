@@ -202,9 +202,11 @@ program and says which field it was. `Bytes` are kept the same way: a field, var
 parameter or result with a `Length` holds that many values, a literal holds
 as many as it has, `slice` and `set` no more than it came from, `add` one
 more, `add_u16` two more, `+` as many as both, and
-`to_bytes` as many as the string has characters. A `Bytes` with nothing to
-bound it holds 64 values, or the longest `Length` on any `Bytes` if that is
-longer. Lists are kept the same way: a field, variant field, parameter or
+`to_bytes` as many as the string has characters, and `Files.read(path, most)`
+as many as `most`. A `Bytes` with nothing to bound it holds the target's
+`bytes_length`, 64 unless croft.toml sets it, whatever `Length`s the rest of
+the program has; a longer one going into it is cut short, and stops the
+program unless the target sets `checks = false`. Lists are kept the same way: a field, variant field, parameter or
 result with a `Length` holds that many items, a literal holds as many as it
 has, `filter`, `map`, `drop`, `take`, `remove`, `reverse` and `sort` no more
 than the list they come from, `add` one more, `+` as many as both, `split`

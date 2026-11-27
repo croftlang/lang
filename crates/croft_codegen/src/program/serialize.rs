@@ -52,10 +52,11 @@ impl<'a> Generator<'a> {
 
             let name = self.serializer_for(&ty);
             let c = self.c_type(&ty);
-            let write =
-                format!("static croft_bool croft_write_{name}(const {c} *value, croft_bytes *out)");
+            let write = format!(
+                "static croft_bool croft_write_{name}(const {c} *value, croft_bytes_writer *out)"
+            );
             let read =
-                format!("static croft_bool croft_read_{name}(const croft_bytes *in, croft_u16 *at, {c} *value)");
+                format!("static croft_bool croft_read_{name}(croft_bytes_view in, croft_u16 *at, {c} *value)");
             prototypes.push_str(&format!("{write};\n{read};\n"));
 
             let (write_body, mut read_body) = self.serializer_bodies(&ty);

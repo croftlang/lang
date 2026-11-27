@@ -72,6 +72,14 @@ typedef struct {
 #define CROFT_BYTES_VIEW(b) croft_bytes_view_from((b).items, (b).length)
 #define CROFT_BYTES_OUT(b) (b).items, &(b).length, (croft_u16) sizeof (b).items
 
+/* Where a save is written: the values of Bytes of any size, where their
+   length goes, and how many values there is room for. */
+typedef struct {
+    unsigned char *items;
+    croft_u16 *length;
+    croft_u16 capacity;
+} croft_bytes_writer;
+
 #define CROFT_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define CROFT_MIN(a, b) ((a) < (b) ? (a) : (b))
 /* Only for a number known not to be the lowest; croft_int_abs checks. */
@@ -184,17 +192,18 @@ void croft_bytes_slice(croft_bytes_view bytes, croft_int start, croft_int end, u
                        croft_u16 capacity);
 void croft_bytes_to_text(croft_bytes_view bytes, char *out, croft_u16 *length, croft_u16 capacity);
 void croft_string_to_bytes(croft_string_view text, unsigned char *out, croft_u16 *length, croft_u16 capacity);
-croft_bool croft_bytes_put_int(croft_bytes *out, croft_int value);
-croft_bool croft_bytes_take_int(const croft_bytes *in, croft_u16 *at, croft_int *out);
-croft_bool croft_bytes_put_byte(croft_bytes *out, croft_u8 value);
-croft_bool croft_bytes_take_byte(const croft_bytes *in, croft_u16 *at, croft_u8 *out);
-croft_bool croft_bytes_put_length(croft_bytes *out, croft_u16 length);
-croft_bool croft_bytes_take_length(const croft_bytes *in, croft_u16 *at, croft_u16 *out);
-croft_bool croft_bytes_put_string(croft_bytes *out, croft_string_view text);
-croft_bool croft_bytes_take_string(const croft_bytes *in, croft_u16 *at, char *text, croft_u16 *length,
+croft_bytes_writer croft_bytes_writer_to(unsigned char *items, croft_u16 *length, croft_u16 capacity);
+croft_bool croft_bytes_put_int(croft_bytes_writer *out, croft_int value);
+croft_bool croft_bytes_take_int(croft_bytes_view in, croft_u16 *at, croft_int *out);
+croft_bool croft_bytes_put_byte(croft_bytes_writer *out, croft_u8 value);
+croft_bool croft_bytes_take_byte(croft_bytes_view in, croft_u16 *at, croft_u8 *out);
+croft_bool croft_bytes_put_length(croft_bytes_writer *out, croft_u16 length);
+croft_bool croft_bytes_take_length(croft_bytes_view in, croft_u16 *at, croft_u16 *out);
+croft_bool croft_bytes_put_string(croft_bytes_writer *out, croft_string_view text);
+croft_bool croft_bytes_take_string(croft_bytes_view in, croft_u16 *at, char *text, croft_u16 *length,
                                    croft_u16 capacity);
-croft_bool croft_bytes_put_bytes(croft_bytes *out, croft_bytes_view bytes);
-croft_bool croft_bytes_take_bytes(const croft_bytes *in, croft_u16 *at, unsigned char *items, croft_u16 *length,
+croft_bool croft_bytes_put_bytes(croft_bytes_writer *out, croft_bytes_view bytes);
+croft_bool croft_bytes_take_bytes(croft_bytes_view in, croft_u16 *at, unsigned char *items, croft_u16 *length,
                                   croft_u16 capacity);
 void croft_storage_key(const char *prefix, croft_int identity, croft_string *out);
 

@@ -24,7 +24,7 @@ impl<'a> Generator<'a> {
         let memory = uses("MemoryStorage");
 
         if memory > 0 {
-            out.push_str(&self.memory_storage(memory * MEMORY_SLOTS));
+            out.push_str(&self.memory_storage(memory * MEMORY_SLOTS, &self.memory_slot()));
         }
 
         if uses("FileStorage") > 0 {
@@ -36,14 +36,16 @@ impl<'a> Generator<'a> {
 
     /// The C result types of `load`, and of `save` and `remove`.
     fn storage_types(&self) -> (String, String) {
-        let loaded = self.c_type(&Type::result(
-            Type::option(Type::Bytes),
-            Type::Errors(Vec::new()),
-        ));
+        let loaded = self.c_type(&self.loaded_type());
 
         let written = self.c_type(&Type::result(Type::Unit, Type::Errors(Vec::new())));
 
         (loaded, written)
+    }
+
+    /// What `Storage.load` gives back: room for the largest save.
+    pub fn loaded_type(&self) -> Type {
+        Type::result(Type::option(self.stored_bytes()), Type::Errors(Vec::new()))
     }
 
     /// The C code of a built-in error such as `StorageFull`, or `0` when the
@@ -60,20 +62,36 @@ impl<'a> Generator<'a> {
             .map_or("0".to_string(), |error| error_code(&error))
     }
 
-    /// `MemoryStorage`: a table of up to `slots` keys and their bytes.
-    fn memory_storage(&self, slots: usize) -> String {
+    /// The C type of each of `MemoryStorage`'s slots: room for the largest
+    /// save of an aggregate it keeps, however large a `Bytes` elsewhere in
+    /// the program can be.
+    fn memory_slot(&self) -> String {
+        let kept = (self.storages.iter())
+            .filter(|(_, s)| s.context == "Std.Storage" && s.name == "MemoryStorage")
+            .filter_map(|(repository, _)| self.model.repository_aggregate(repository))
+            .map(|aggregate| self.saved_size(&aggregate))
+            .max()
+            .unwrap_or(1);
+
+        self.c_type(&self.bytes_type(kept))
+    }
+
+    /// `MemoryStorage`: a table of up to `slots` keys and their bytes, each
+    /// a `slot`.
+    fn memory_storage(&self, slots: usize, slot: &str) -> String {
         let (loaded, written) = self.storage_types();
         let full = self.storage_error("StorageFull");
 
         format!(
-            "static croft_string croft_memory_keys[{slots}];\nstatic croft_bytes croft_memory_values[{slots}];\nstatic croft_u16 croft_memory_count = 0;\n\n\
+            "static croft_string croft_memory_keys[{slots}];\nstatic {slot} croft_memory_values[{slots}];\nstatic croft_u16 croft_memory_count = 0;\n\n\
              /* Where a key is kept, or croft_memory_count when it isn't. */\nstatic croft_u16 croft_memory_find(croft_string_view key)\n{{\n    croft_u16 index;\n\n    \
              for (index = 0; index < croft_memory_count; index++) {{\n        if (croft_string_equal(CROFT_VIEW(croft_memory_keys[index]), key)) {{\n            return index;\n        }}\n    }}\n    return croft_memory_count;\n}}\n\n\
              void croft_memory_storage_load(croft_string_view key, {loaded} *out)\n{{\n    croft_u16 index = croft_memory_find(key);\n\n    \
-             croft_clear(out, sizeof *out);\n    out->ok = 1;\n    if (index < croft_memory_count) {{\n        out->value.some = 1;\n        out->value.value = croft_memory_values[index];\n    }}\n}}\n\n\
-             void croft_memory_storage_save(croft_string_view key, const croft_bytes *data, {written} *out)\n{{\n    croft_u16 index = croft_memory_find(key);\n\n    \
-             croft_clear(out, sizeof *out);\n    if (index == croft_memory_count) {{\n        if (croft_memory_count == {slots}) {{\n            out->error.code = {full};\n            return;\n        }}\n        \
-             croft_string_copy(key, CROFT_OUT(croft_memory_keys[index]));\n        croft_memory_count++;\n    }}\n    croft_memory_values[index] = *data;\n    out->ok = 1;\n}}\n\n\
+             croft_clear(out, sizeof *out);\n    out->ok = 1;\n    if (index < croft_memory_count) {{\n        out->value.some = 1;\n        croft_bytes_copy(CROFT_BYTES_VIEW(croft_memory_values[index]), CROFT_BYTES_OUT(out->value.value));\n    }}\n}}\n\n\
+             void croft_memory_storage_save(croft_string_view key, croft_bytes_view data, {written} *out)\n{{\n    croft_u16 index = croft_memory_find(key);\n\n    \
+             croft_clear(out, sizeof *out);\n    if (data.length > sizeof croft_memory_values[0].items) {{\n        out->error.code = {full};\n        return;\n    }}\n    \
+             if (index == croft_memory_count) {{\n        if (croft_memory_count == {slots}) {{\n            out->error.code = {full};\n            return;\n        }}\n        \
+             croft_string_copy(key, CROFT_OUT(croft_memory_keys[index]));\n        croft_memory_count++;\n    }}\n    croft_bytes_copy(data, CROFT_BYTES_OUT(croft_memory_values[index]));\n    out->ok = 1;\n}}\n\n\
              void croft_memory_storage_remove(croft_string_view key, {written} *out)\n{{\n    croft_u16 index = croft_memory_find(key);\n\n    \
              croft_clear(out, sizeof *out);\n    out->ok = 1;\n    if (index < croft_memory_count) {{\n        croft_memory_count--;\n        \
              croft_memory_keys[index] = croft_memory_keys[croft_memory_count];\n        croft_memory_values[index] = croft_memory_values[croft_memory_count];\n    }}\n}}\n\n"
@@ -83,7 +101,10 @@ impl<'a> Generator<'a> {
     /// `FileStorage`: a file for each key, through the target's `Files` adapter.
     fn file_storage(&self) -> String {
         let (loaded, written) = self.storage_types();
-        let read = self.c_type(&Type::result(Type::Bytes, Type::Errors(Vec::new())));
+        let files_port = self.model.lookup("Std.Files", "Files");
+        let read = files_port.map_or(Type::Unknown, |port| self.operation_result(&port, "read"));
+        let read = self.c_type(&read);
+        let most = self.bound(&self.stored_bytes());
 
         let files = (self.bindings.iter())
             .find(|(port, _)| port.context == "Std.Files" && port.name == "Files")
@@ -98,9 +119,9 @@ impl<'a> Generator<'a> {
             "/* The file for a key: the key and \".dat\". */\nstatic void croft_file_path(croft_string_view key, croft_string *out)\n{{\n    \
              croft_string_join(key, croft_string_view_from(\".dat\", 4), CROFT_OUT(*out));\n}}\n\n\
              void croft_file_storage_load(croft_string_view key, {loaded} *out)\n{{\n    croft_string path;\n    {read} file;\n\n    \
-             croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_read(CROFT_VIEW(path), &file);\n    \
-             if (file.ok) {{\n        out->ok = 1;\n        out->value.some = 1;\n        out->value.value = file.value;\n    }} else if (file.error.code == {missing}) {{\n        out->ok = 1;\n    }} else {{\n        out->error.code = {unavailable};\n    }}\n}}\n\n\
-             void croft_file_storage_save(croft_string_view key, const croft_bytes *data, {written} *out)\n{{\n    croft_string path;\n    {written} file;\n\n    \
+             croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_read(CROFT_VIEW(path), {most}L, &file);\n    \
+             if (file.ok) {{\n        out->ok = 1;\n        out->value.some = 1;\n        croft_bytes_copy(CROFT_BYTES_VIEW(file.value), CROFT_BYTES_OUT(out->value.value));\n    }} else if (file.error.code == {missing}) {{\n        out->ok = 1;\n    }} else {{\n        out->error.code = {unavailable};\n    }}\n}}\n\n\
+             void croft_file_storage_save(croft_string_view key, croft_bytes_view data, {written} *out)\n{{\n    croft_string path;\n    {written} file;\n\n    \
              croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_write(CROFT_VIEW(path), data, &file);\n    \
              if (file.ok) {{\n        out->ok = 1;\n    }} else {{\n        out->error.code = file.error.code == {no_room} ? {full} : {unavailable};\n    }}\n}}\n\n\
              void croft_file_storage_remove(croft_string_view key, {written} *out)\n{{\n    croft_string path;\n    {written} file;\n\n    \

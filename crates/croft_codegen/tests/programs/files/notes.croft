@@ -11,13 +11,20 @@ context Notes {
     } = {
         Files.write("notes.txt", "first line".to_bytes())?
         Files.append("notes.txt", ", then more".to_bytes())?
-        let text = Files.read("notes.txt")?
-        Console.print(text.to_text())
+        Files.append("notes.txt", ", more than the 64 a Bytes without a Length holds".to_bytes())?
+        let text = Files.read("notes.txt", 4096)?
+        Console.print(text.slice(0, 21).to_text())
+        Console.print(text.length.to_string())
+        let short = match Files.read("notes.txt", 50) {
+            Ok(found) -> "read whole"
+            Err(error) -> "longer than 50"
+        }
+        Console.print(short)
         Files.remove("notes.txt")?
         if Files.exists("notes.txt") {
             Console.print("still there")
         }
-        Files.read("notes.txt")?
+        Files.read("notes.txt", 16)?
         Unit
     }
 }

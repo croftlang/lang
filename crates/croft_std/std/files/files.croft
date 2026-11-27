@@ -10,7 +10,7 @@ context Files {
     // permission, is `Unreadable` instead.
     error NotFound
 
-    // The disk is full, or the file holds more than a `Bytes` can.
+    // The disk is full, or the file holds more than `read` was asked for.
     error NoRoom
 
     // The machine couldn't read or write it, for any other reason, or the
@@ -24,8 +24,11 @@ context Files {
     }
 
     port Files {
-        // The whole file.
-        fn read(path: String): Result<Bytes, FileError>
+        // The whole file, of at most `most` bytes: one any longer fails
+        // with `NoRoom`. `most` must be known when the program is compiled,
+        // since the result keeps room for that many, such as
+        // `Files.read(path, 4096)`.
+        fn read(path: String, most: Int where Range(1, 65535)): Result<Bytes, FileError> where Length(0, most)
 
         // Replaces the file, or makes it. Fails with `NotFound` when the
         // folder it goes in isn't there.
@@ -66,7 +69,7 @@ context Files {
     // with a NUL byte in it, makes every operation fail with `Unreadable`,
     // and `exists` give `false`.
     adapter StdioFiles for Files = {
-        fn read(path) = native croft_files_read(path)
+        fn read(path, most) = native croft_files_read(path, most)
         fn write(path, data) = native croft_files_write(path, data)
         fn append(path, data) = native croft_files_append(path, data)
         fn exists(path) = native croft_files_exists(path)

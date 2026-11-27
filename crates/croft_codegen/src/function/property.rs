@@ -117,7 +117,11 @@ impl<'g, 'a> Writer<'g, 'a> {
             };
         }
 
-        let (c, inner_type) = self.eval(inner, None);
+        let (c, inner_type) = if is_bytes(&inner_type) {
+            self.bytes_place(inner)
+        } else {
+            self.eval(inner, None)
+        };
 
         let has_length = is_bytes(&inner_type)
             || list_item(&inner_type).is_some()

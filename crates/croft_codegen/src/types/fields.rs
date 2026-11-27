@@ -1,7 +1,7 @@
 //! The fields of the structs for values, entities, aggregates and events. A
 //! string field with a `Length` shorter than the longest string anywhere is
 //! kept in a `croft_text_N` of just that many characters, a `Bytes` field
-//! with one shorter than the longest `Bytes` in a `croft_bytes_N`, and a list
+//! with one other than the target's `bytes_length` in a `croft_bytes_N`, and a list
 //! field with one shorter than the longest list of its items in a
 //! `croft_listN_...`. When a value, entity or aggregate has two or more `Bool`
 //! fields, each is one bit of `croft_flags`, eight to a byte.
@@ -72,8 +72,8 @@ impl<'a> Generator<'a> {
         self.kept_capacity(owner, field, &Type::String)
     }
 
-    /// How many values a `Bytes` field keeps, when that is fewer than every
-    /// other `Bytes`: its own `Length`, as for a string field.
+    /// How many values a `Bytes` field keeps, when that is more or fewer
+    /// than a `Bytes` with no `Length` holds: its own `Length`.
     pub fn bytes_field_capacity(&self, owner: &Resolved, field: &str) -> Option<i64> {
         self.kept_capacity(owner, field, &Type::Bytes)
     }
@@ -120,7 +120,9 @@ impl<'a> Generator<'a> {
     }
 
     /// The `Length` of a field of type `kind`, `String` or `Bytes`, when it
-    /// is below the shared size for that type.
+    /// differs from the shared size for that type: below it for a string,
+    /// which is as long as the longest, and either way for `Bytes`, whose
+    /// shared size is the target's `bytes_length`.
     fn kept_capacity(&self, owner: &Resolved, field: &str, kind: &Type) -> Option<i64> {
         if !self.keeps_own_sizes(owner) {
             return None;
@@ -129,18 +131,18 @@ impl<'a> Generator<'a> {
         let fields = self.model.fields(owner);
         let (_, ty, declared) = fields.into_iter().find(|(name, _, _)| name == field)?;
 
-        let shared = match kind {
-            Type::String => self.sizes.string_capacity,
-            _ => self.sizes.bytes_capacity,
-        };
-
         if ty != *kind {
             return None;
         }
 
-        let capacity = self.length_bound(&owner.context, &declared.constraints)?;
+        let capacity = self
+            .length_bound(&owner.context, &declared.constraints)?
+            .max(1);
 
-        (capacity < shared).then_some(capacity.max(1))
+        match kind {
+            Type::String => (capacity < self.sizes.string_capacity).then_some(capacity),
+            _ => (capacity != self.sizes.bytes_capacity).then_some(capacity),
+        }
     }
 
     /// The most a `Length` among `constraints` allows, when there is one.

@@ -1,0 +1,14 @@
+[package]
+name = "unbounded_bytes"
+
+# A `Bytes` with no `Length` holds 8 values on this target, however long a
+# `Length` elsewhere is.
+[target.test]
+main = "Check"
+bytes_length = 8
+
+# Without checks, a `Bytes` too long for where it goes is cut short.
+[target.unchecked]
+main = "Check"
+bytes_length = 8
+checks = false

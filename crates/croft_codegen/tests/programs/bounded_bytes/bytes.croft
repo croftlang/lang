@@ -39,7 +39,7 @@ enum Failure {
     include StorageError
 }
 
-// The longest `Length` anywhere, so every unbounded `Bytes` holds 200.
+// Longer than a `Bytes` with no `Length` holds, so in a size of its own.
 fn body_length(body: Bytes where Length(0, 200)): Int = body.length
 
 fn check(ok: Bool): Result<Unit, WrongAnswer> = {

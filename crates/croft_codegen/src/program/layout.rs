@@ -2,11 +2,23 @@
 //! hash marks every saved file, so a change of layout is noticed on loading.
 
 use croft_analysis::symbols::SymbolKind;
+use croft_analysis::types::Resolved;
 use croft_analysis::Type;
 
 use crate::Generator;
 
 impl<'a> Generator<'a> {
+    /// The most bytes a save of `aggregate` takes: the hash of its layout,
+    /// then its fields.
+    pub fn saved_size(&self, aggregate: &Resolved) -> i64 {
+        4 + self.serialized_size(&Type::Named(aggregate.clone()))
+    }
+
+    /// `Bytes` with room for a save of `aggregate`, and no more.
+    pub fn saved_bytes(&self, aggregate: &Resolved) -> Type {
+        self.bytes_type(self.saved_size(aggregate))
+    }
+
     /// The most bytes a value of the type can take once written.
     pub fn serialized_size(&self, ty: &Type) -> i64 {
         let ty = self.canonical(ty);

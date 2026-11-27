@@ -4,8 +4,20 @@
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::Resolved;
 use croft_analysis::Type;
+use croft_syntax::ast::{ConstraintUse, ExprKind};
 
 use crate::Generator;
+
+/// `ty` with `bytes` for its `Bytes`, alone or as what an `Option` or a
+/// successful `Result` holds.
+fn with_bytes(ty: &Type, bytes: &Type) -> Type {
+    match ty {
+        Type::Bytes => bytes.clone(),
+        Type::Option(item) => Type::option(with_bytes(item, bytes)),
+        Type::Result(value, error) => Type::result(with_bytes(value, bytes), (**error).clone()),
+        other => other.clone(),
+    }
+}
 
 impl<'a> Generator<'a> {
     /// Parameters of a function, translation, service, constraint or factory
@@ -135,12 +147,49 @@ impl<'a> Generator<'a> {
     }
 
     /// What a port operation gives back: bounded by a `Length` on its result.
+    /// `Storage.load` has room for the largest save, and an operation whose
+    /// result's `Length` names a parameter, such as `Files.read(path, most)`,
+    /// for the most any call asks for, and never less than a `Bytes` with no
+    /// `Length` holds.
     pub fn operation_result(&self, port: &Resolved, operation: &str) -> Type {
         let operations = self.model.operations_of(port);
 
-        match operations.into_iter().find(|op| op.name == operation) {
-            Some(op) => self.parameter_type(&port.context, op.result, op.result_constraints),
-            None => Type::Unknown,
+        let Some(op) = operations.into_iter().find(|op| op.name == operation) else {
+            return Type::Unknown;
+        };
+
+        if port.context == "Std.Storage" && port.name == "Storage" && operation == "load" {
+            return with_bytes(&op.result, &self.stored_bytes());
+        }
+
+        let named = (op.parameters.iter()).any(|(name, _, _)| {
+            Self::length_names(op.result_constraints).is_some_and(|named| named == name)
+        });
+
+        if named {
+            let key = (port.clone(), operation.to_string());
+            let asked = self.facts.result_lengths.get(&key).copied().unwrap_or(0);
+            let mut most = asked.max(self.sizes.bytes_capacity);
+
+            // `FileStorage` reads each save through `Files.read`.
+            if port.context == "Std.Files" && self.uses_storage("FileStorage") {
+                most = most.max(self.bound(&self.stored_bytes()));
+            }
+
+            return with_bytes(&op.result, &self.bytes_type(most));
+        }
+
+        self.parameter_type(&port.context, op.result, op.result_constraints)
+    }
+
+    /// The name a `Length` among `constraints` gives as its most, such as
+    /// `most` in `Length(0, most)`.
+    fn length_names(constraints: &[ConstraintUse]) -> Option<&str> {
+        let length = (constraints.iter()).find(|c| !c.each && c.name.text() == "Length")?;
+
+        match &length.arguments.last()?.kind {
+            ExprKind::Name(name) => Some(name.as_str()),
+            _ => None,
         }
     }
 

@@ -115,7 +115,7 @@ fn calls_a_standard_port_from_its_standard_context() {
     let notes = "context Notes {\n\
          use { FileError } from Std.Files\n\
          service Keep(): Result<Unit, FileError> {\n calls { Files as disk } from Std.Files\n} = {\n\
-         let data = disk.read(\"notes.txt\")?\n disk.write(\"copy.txt\", data)\n}\n\
+         let data = disk.read(\"notes.txt\", 4096)?\n disk.write(\"copy.txt\", data)\n}\n\
          }";
 
     assert_eq!(errors(notes), Vec::<String>::new());

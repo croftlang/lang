@@ -1,32 +1,44 @@
 
 /* Writing and reading saved values, for repositories kept through Storage.
    A number is four bytes, least significant first; a length is two. Each
-   gives back 0 when the bytes are full, or have run out. */
+   gives back 0 when the bytes are full, or have run out. A save is written
+   through a croft_bytes_writer, so it goes into Bytes of any size, and read
+   back from a croft_bytes_view. */
 
-croft_bool croft_bytes_put_int(croft_bytes *out, croft_int value)
+croft_bytes_writer croft_bytes_writer_to(unsigned char *items, croft_u16 *length, croft_u16 capacity)
+{
+    croft_bytes_writer writer;
+    writer.items = items;
+    writer.length = length;
+    writer.capacity = capacity;
+    *length = 0;
+    return writer;
+}
+
+croft_bool croft_bytes_put_int(croft_bytes_writer *out, croft_int value)
 {
     unsigned long bits = (unsigned long) value;
     int index;
-    if (out->length + 4 > CROFT_BYTES_CAPACITY) {
+    if (*out->length + 4 > out->capacity) {
         return 0;
     }
     for (index = 0; index < 4; index++) {
-        out->items[out->length] = (unsigned char) (bits & 0xFFUL);
-        out->length++;
+        out->items[*out->length] = (unsigned char) (bits & 0xFFUL);
+        (*out->length)++;
         bits >>= 8;
     }
     return 1;
 }
 
-croft_bool croft_bytes_take_int(const croft_bytes *in, croft_u16 *at, croft_int *out)
+croft_bool croft_bytes_take_int(croft_bytes_view in, croft_u16 *at, croft_int *out)
 {
     unsigned long bits = 0;
     int index;
-    if (*at + 4 > in->length) {
+    if (*at + 4 > in.length) {
         return 0;
     }
     for (index = 3; index >= 0; index--) {
-        bits = (bits << 8) | in->items[*at + index];
+        bits = (bits << 8) | in.items[*at + index];
     }
     *at = (croft_u16) (*at + 4);
     /* Back from unsigned without relying on the compiler to wrap. */
@@ -34,97 +46,97 @@ croft_bool croft_bytes_take_int(const croft_bytes *in, croft_u16 *at, croft_int 
     return 1;
 }
 
-croft_bool croft_bytes_put_byte(croft_bytes *out, croft_u8 value)
+croft_bool croft_bytes_put_byte(croft_bytes_writer *out, croft_u8 value)
 {
-    if (out->length + 1 > CROFT_BYTES_CAPACITY) {
+    if (*out->length + 1 > out->capacity) {
         return 0;
     }
-    out->items[out->length] = value;
-    out->length++;
+    out->items[*out->length] = value;
+    (*out->length)++;
     return 1;
 }
 
-croft_bool croft_bytes_take_byte(const croft_bytes *in, croft_u16 *at, croft_u8 *out)
+croft_bool croft_bytes_take_byte(croft_bytes_view in, croft_u16 *at, croft_u8 *out)
 {
-    if (*at + 1 > in->length) {
+    if (*at + 1 > in.length) {
         return 0;
     }
-    *out = in->items[*at];
+    *out = in.items[*at];
     *at = (croft_u16) (*at + 1);
     return 1;
 }
 
-croft_bool croft_bytes_put_length(croft_bytes *out, croft_u16 length)
+croft_bool croft_bytes_put_length(croft_bytes_writer *out, croft_u16 length)
 {
-    if (out->length + 2 > CROFT_BYTES_CAPACITY) {
+    if (*out->length + 2 > out->capacity) {
         return 0;
     }
-    out->items[out->length] = (unsigned char) (length & 0xFF);
-    out->items[out->length + 1] = (unsigned char) (length >> 8);
-    out->length = (croft_u16) (out->length + 2);
+    out->items[*out->length] = (unsigned char) (length & 0xFF);
+    out->items[*out->length + 1] = (unsigned char) (length >> 8);
+    *out->length = (croft_u16) (*out->length + 2);
     return 1;
 }
 
-croft_bool croft_bytes_take_length(const croft_bytes *in, croft_u16 *at, croft_u16 *out)
+croft_bool croft_bytes_take_length(croft_bytes_view in, croft_u16 *at, croft_u16 *out)
 {
-    if (*at + 2 > in->length) {
+    if (*at + 2 > in.length) {
         return 0;
     }
-    *out = (croft_u16) (in->items[*at] | (in->items[*at + 1] << 8));
+    *out = (croft_u16) (in.items[*at] | (in.items[*at + 1] << 8));
     *at = (croft_u16) (*at + 2);
     return 1;
 }
 
-croft_bool croft_bytes_put_string(croft_bytes *out, croft_string_view text)
+croft_bool croft_bytes_put_string(croft_bytes_writer *out, croft_string_view text)
 {
     croft_u16 index;
-    if (!croft_bytes_put_length(out, text.length) || out->length + text.length > CROFT_BYTES_CAPACITY) {
+    if (!croft_bytes_put_length(out, text.length) || *out->length + text.length > out->capacity) {
         return 0;
     }
     for (index = 0; index < text.length; index++) {
-        out->items[out->length] = (unsigned char) text.text[index];
-        out->length++;
+        out->items[*out->length] = (unsigned char) text.text[index];
+        (*out->length)++;
     }
     return 1;
 }
 
 /* Fails when the saved text is longer than there is room for. */
-croft_bool croft_bytes_take_string(const croft_bytes *in, croft_u16 *at, char *text, croft_u16 *length,
+croft_bool croft_bytes_take_string(croft_bytes_view in, croft_u16 *at, char *text, croft_u16 *length,
                                    croft_u16 capacity)
 {
     croft_u16 index;
-    if (!croft_bytes_take_length(in, at, length) || *length > capacity || *at + *length > in->length) {
+    if (!croft_bytes_take_length(in, at, length) || *length > capacity || *at + *length > in.length) {
         return 0;
     }
     for (index = 0; index < *length; index++) {
-        text[index] = (char) in->items[*at + index];
+        text[index] = (char) in.items[*at + index];
     }
     *at = (croft_u16) (*at + *length);
     return 1;
 }
 
-croft_bool croft_bytes_put_bytes(croft_bytes *out, croft_bytes_view bytes)
+croft_bool croft_bytes_put_bytes(croft_bytes_writer *out, croft_bytes_view bytes)
 {
     croft_u16 index;
-    if (!croft_bytes_put_length(out, bytes.length) || out->length + bytes.length > CROFT_BYTES_CAPACITY) {
+    if (!croft_bytes_put_length(out, bytes.length) || *out->length + bytes.length > out->capacity) {
         return 0;
     }
     for (index = 0; index < bytes.length; index++) {
-        out->items[out->length] = bytes.items[index];
-        out->length++;
+        out->items[*out->length] = bytes.items[index];
+        (*out->length)++;
     }
     return 1;
 }
 
-croft_bool croft_bytes_take_bytes(const croft_bytes *in, croft_u16 *at, unsigned char *items, croft_u16 *length,
+croft_bool croft_bytes_take_bytes(croft_bytes_view in, croft_u16 *at, unsigned char *items, croft_u16 *length,
                                   croft_u16 capacity)
 {
     croft_u16 index;
-    if (!croft_bytes_take_length(in, at, length) || *length > capacity || *at + *length > in->length) {
+    if (!croft_bytes_take_length(in, at, length) || *length > capacity || *at + *length > in.length) {
         return 0;
     }
     for (index = 0; index < *length; index++) {
-        items[index] = in->items[*at + index];
+        items[index] = in.items[*at + index];
     }
     *at = (croft_u16) (*at + *length);
     return 1;

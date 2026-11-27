@@ -79,6 +79,21 @@ impl<'g, 'a> Writer<'g, 'a> {
             return temp;
         }
 
+        if is_bytes(&left_type) && matches!(op, Equal | NotEqual) {
+            let (left, _) = self.bytes_place(left);
+            let (right, _) = self.bytes_place(right);
+            let equal = format!(
+                "croft_bytes_equal({}, {})",
+                self.bytes_view_of(&left),
+                self.bytes_view_of(&right)
+            );
+
+            return match op {
+                Equal => equal,
+                _ => format!("(!{equal})"),
+            };
+        }
+
         if matches!(left_type, Type::List(_)) && op == Add {
             return self.join_lists(left, right, ty);
         }
@@ -280,13 +295,13 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// The two sides of `+` on `Bytes`, as views, and the type with room
     /// for both.
     pub(super) fn bytes_parts(&mut self, left: &Expr, right: &Expr) -> (String, String, Type) {
-        let (left, left_type) = self.eval(left, Some(&Type::Bytes));
-        let (right, right_type) = self.eval(right, Some(&Type::Bytes));
+        let (left, left_type) = self.bytes_place(left);
+        let (right, right_type) = self.bytes_place(right);
         let length = self.gen.bound(&left_type) + self.gen.bound(&right_type);
 
         (
-            format!("CROFT_BYTES_VIEW({left})"),
-            format!("CROFT_BYTES_VIEW({right})"),
+            self.bytes_view_of(&left),
+            self.bytes_view_of(&right),
             self.gen.bytes_type(length),
         )
     }

@@ -7,7 +7,7 @@ use croft_syntax::{Diagnostic, SourceId};
 use serde::Deserialize;
 use toml::Spanned;
 
-use super::{span_at, Manifest, TargetConfig};
+use super::{span_at, Manifest, TargetConfig, DEFAULT_BYTES_LENGTH};
 
 /// `croft.toml` as written, before it is turned into a `Manifest`.
 #[derive(Deserialize)]
@@ -36,6 +36,7 @@ struct RawTarget {
     #[serde(default)]
     adapters: BTreeMap<Spanned<String>, Spanned<String>>,
     checks: Option<bool>,
+    bytes_length: Option<Spanned<i64>>,
 }
 
 /// Reads `croft.toml` into a `Manifest`, keeping where each name was written.
@@ -61,21 +62,49 @@ pub fn parse(text: &str, source: SourceId) -> Result<Manifest, Diagnostic> {
         }
     };
 
-    let targets = raw.target.iter().map(|(target_name, target)| TargetConfig {
-        name: name(target_name),
-        main: target.main.as_ref().map(name),
-        native: target.native.iter().map(name).collect(),
-        adapters: target
-            .adapters
-            .iter()
-            .map(|(port, adapter)| (name(port), name(adapter)))
-            .collect(),
-        checks: target.checks.unwrap_or(true),
-    });
+    let mut targets = Vec::new();
+
+    for (target_name, target) in &raw.target {
+        targets.push(TargetConfig {
+            name: name(target_name),
+            main: target.main.as_ref().map(name),
+            native: target.native.iter().map(name).collect(),
+            adapters: target
+                .adapters
+                .iter()
+                .map(|(port, adapter)| (name(port), name(adapter)))
+                .collect(),
+            checks: target.checks.unwrap_or(true),
+            bytes_length: bytes_length(text, source, target.bytes_length.as_ref())?,
+        });
+    }
 
     Ok(Manifest {
         name: name(&raw.package.name),
         version: raw.package.version,
-        targets: targets.collect(),
+        targets,
     })
+}
+
+/// A target's `bytes_length`: from 1 to 65535, as a `Bytes` counts its
+/// values in 16 bits, or the default when it has none.
+fn bytes_length(
+    text: &str,
+    source: SourceId,
+    written: Option<&Spanned<i64>>,
+) -> Result<u16, Diagnostic> {
+    let Some(written) = written else {
+        return Ok(DEFAULT_BYTES_LENGTH);
+    };
+
+    match u16::try_from(*written.get_ref()) {
+        Ok(length) if length > 0 => Ok(length),
+        _ => Err(Diagnostic::new(
+            format!(
+                "`bytes_length` is {}, but a `Bytes` holds from 1 to 65535 values",
+                written.get_ref()
+            ),
+            span_at(text, written.span().start, source),
+        )),
+    }
 }

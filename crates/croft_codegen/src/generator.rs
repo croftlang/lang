@@ -106,7 +106,7 @@ impl<'a> Generator<'a> {
             }
         }
 
-        let sizes = Sizes::measure(program, &model);
+        let sizes = Sizes::measure(program, &model, i64::from(target_config.bytes_length));
 
         let mut generator = Generator {
             program,
@@ -134,20 +134,41 @@ impl<'a> Generator<'a> {
         Ok(generator)
     }
 
-    /// Makes every `Bytes` big enough to hold a whole saved aggregate, and
-    /// every string a file name such as `rooms12.dat`.
+    /// Makes room for a whole saved aggregate in what `Storage.load` gives
+    /// back, and in every string for a file name such as `rooms12.dat`.
     fn make_room_for_storage(&mut self) {
-        let mut largest = 0;
-
-        for repository in self.storages.keys() {
-            if let Some(aggregate) = self.model.repository_aggregate(repository) {
-                largest = largest.max(4 + self.serialized_size(&Type::Named(aggregate)));
-            }
+        if self.storages.is_empty() {
+            return;
         }
 
-        if !self.storages.is_empty() {
-            self.sizes.bytes_capacity = self.sizes.bytes_capacity.max(largest);
-            self.sizes.string_capacity = self.sizes.string_capacity.max(12);
+        let largest = self.largest_save();
+        self.sizes.bytes_largest = self.sizes.bytes_largest.max(largest);
+        self.sizes.string_capacity = self.sizes.string_capacity.max(12);
+    }
+
+    /// The most bytes a save of any aggregate kept in storage takes, or 0
+    /// when nothing is.
+    fn largest_save(&self) -> i64 {
+        let saves = (self.storages.keys())
+            .filter_map(|repository| self.model.repository_aggregate(repository))
+            .map(|aggregate| self.saved_size(&aggregate));
+
+        saves.max().unwrap_or(0).min(i64::from(u16::MAX))
+    }
+
+    /// Whether a repository is kept by the built-in `Storage` adapter named
+    /// `name`, such as `FileStorage`.
+    pub fn uses_storage(&self, name: &str) -> bool {
+        (self.storages.values()).any(|s| s.context == "Std.Storage" && s.name == name)
+    }
+
+    /// `Bytes` with room for the largest save of an aggregate kept in
+    /// storage, as `Storage.load` gives back, however many a `Bytes` with no
+    /// `Length` holds. A full `Bytes` when nothing is kept.
+    pub fn stored_bytes(&self) -> Type {
+        match self.largest_save() {
+            0 => Type::Bytes,
+            largest => self.bytes_type(largest),
         }
     }
 }

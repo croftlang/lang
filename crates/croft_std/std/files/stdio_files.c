@@ -78,11 +78,18 @@ static croft_u16 open_error(void)
     return is_missing() ? CROFT_ERROR_Std_Files_NotFound : CROFT_ERROR_Std_Files_Unreadable;
 }
 
-void croft_files_read(croft_string_view path, croft_result_bytes_error *out)
+/* Reads the whole file into the Bytes `into` writes, failing with NoRoom
+   when it holds more than `most` bytes, or more than there is room for. */
+void croft_files_read(croft_string_view path, croft_int most, croft_bytes_writer *into, croft_result_unit_error *out)
 {
     char name[CROFT_PATH_CAPACITY + 1];
     FILE *file;
+    croft_u16 room = into->capacity;
     croft_clear(out, sizeof *out);
+    *into->length = 0;
+    if (most < (croft_int) room) {
+        room = most > 0 ? (croft_u16) most : 0;
+    }
     if (!to_path(path, name)) {
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
         return;
@@ -93,10 +100,10 @@ void croft_files_read(croft_string_view path, croft_result_bytes_error *out)
         fail(&out->error, open_error());
         return;
     }
-    out->value.length = (croft_u16) fread(out->value.items, 1, CROFT_BYTES_CAPACITY, file);
+    *into->length = (croft_u16) fread(into->items, 1, room, file);
     if (ferror(file)) {
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
-    } else if (out->value.length == CROFT_BYTES_CAPACITY && fgetc(file) != EOF) {
+    } else if (*into->length == room && fgetc(file) != EOF) {
         fail(&out->error, CROFT_ERROR_Std_Files_NoRoom);
     } else {
         out->ok = 1;
@@ -104,7 +111,7 @@ void croft_files_read(croft_string_view path, croft_result_bytes_error *out)
     fclose(file);
 }
 
-static void put(croft_string_view path, const croft_bytes *data, const char *mode,
+static void put(croft_string_view path, croft_bytes_view data, const char *mode,
                 croft_result_unit_error *out)
 {
     char name[CROFT_PATH_CAPACITY + 1];
@@ -122,20 +129,20 @@ static void put(croft_string_view path, const croft_bytes *data, const char *mod
         fail(&out->error, open_error());
         return;
     }
-    written = fwrite(data->items, 1, data->length, file);
-    if (fclose(file) != 0 || written != data->length) {
+    written = fwrite(data.items, 1, data.length, file);
+    if (fclose(file) != 0 || written != data.length) {
         fail(&out->error, CROFT_ERROR_Std_Files_NoRoom);
         return;
     }
     out->ok = 1;
 }
 
-void croft_files_write(croft_string_view path, const croft_bytes *data, croft_result_unit_error *out)
+void croft_files_write(croft_string_view path, croft_bytes_view data, croft_result_unit_error *out)
 {
     put(path, data, "wb", out);
 }
 
-void croft_files_append(croft_string_view path, const croft_bytes *data, croft_result_unit_error *out)
+void croft_files_append(croft_string_view path, croft_bytes_view data, croft_result_unit_error *out)
 {
     put(path, data, "ab", out);
 }

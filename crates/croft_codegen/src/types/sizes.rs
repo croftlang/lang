@@ -13,8 +13,6 @@ use super::constant::evaluate;
 pub const DEFAULT_LIST_CAPACITY: i64 = 16;
 /// How many characters a string holds when no `Length` constraint says otherwise.
 pub const DEFAULT_STRING_CAPACITY: i64 = 32;
-/// How many bytes a `Bytes` holds when no `Length` constraint says otherwise.
-pub const DEFAULT_BYTES_CAPACITY: i64 = 64;
 
 /// The capacities of strings, bytes, lists and maps for one program.
 pub struct Sizes {
@@ -25,9 +23,14 @@ pub struct Sizes {
     /// What set `string_capacity`, when a constraint did: a field or a
     /// parameter, such as `Terminal.print: text`.
     pub string_capacity_from: Option<String>,
-    /// The most bytes any constraint allows, or the default. Every `Bytes`
-    /// has room for them.
+    /// How many values a `Bytes` with no `Length` of its own holds: the
+    /// target's `bytes_length`. A `Bytes` with a `Length`, shorter or longer,
+    /// is kept in a size of its own.
     pub bytes_capacity: i64,
+    /// The most values any `Bytes` can need: the longest `Length` on one,
+    /// or `bytes_capacity` if that is more. A `Bytes` made by joining or
+    /// growing others is never kept in more.
+    pub bytes_largest: i64,
     /// The longest list of each item type any constraint allows.
     list_capacity: HashMap<Type, i64>,
     /// The most entries each type of map can hold.
@@ -35,12 +38,14 @@ pub struct Sizes {
 }
 
 impl Sizes {
-    /// Reads every `Length` in the program to work out its sizes.
-    pub fn measure(program: &Program, model: &Model) -> Sizes {
+    /// Reads every `Length` in the program to work out its sizes. A `Bytes`
+    /// with none holds `bytes_length` values.
+    pub fn measure(program: &Program, model: &Model, bytes_length: i64) -> Sizes {
         let mut sizes = Sizes {
             string_capacity: 0,
             string_capacity_from: None,
-            bytes_capacity: 0,
+            bytes_capacity: bytes_length,
+            bytes_largest: bytes_length,
             list_capacity: HashMap::new(),
             map_capacity: HashMap::new(),
         };
@@ -125,9 +130,13 @@ impl Sizes {
             sizes.grow(ty, *longest, format!("let {name}"));
         }
 
-        if sizes.bytes_capacity == 0 {
-            sizes.bytes_capacity = DEFAULT_BYTES_CAPACITY;
+        // A port operation whose result's `Length` names a parameter, such
+        // as `Files.read`, gives back as many as its calls ask for.
+        for asked in program.facts.result_lengths.values() {
+            sizes.bytes_largest = sizes.bytes_largest.max(*asked);
         }
+
+        sizes.bytes_largest = sizes.bytes_largest.min(i64::from(u16::MAX));
 
         sizes.string_capacity = sizes.string_capacity.max(DEFAULT_STRING_CAPACITY);
 
@@ -182,7 +191,7 @@ impl Sizes {
 
                 self.string_capacity = self.string_capacity.max(longest);
             }
-            Type::Bytes => self.bytes_capacity = self.bytes_capacity.max(longest),
+            Type::Bytes => self.bytes_largest = self.bytes_largest.max(longest),
             Type::List(item) => {
                 let capacity = self.list_capacity.entry((**item).clone()).or_insert(0);
                 *capacity = (*capacity).max(longest);
