@@ -1,0 +1,5 @@
+[package]
+name = "appends"
+
+[target.test]
+main = "Check"

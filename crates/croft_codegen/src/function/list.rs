@@ -2,8 +2,8 @@
 //! also looked up, replaced and removed by identity.
 
 use croft_analysis::symbols::SymbolKind;
-use croft_analysis::Type;
-use croft_syntax::ast::Argument;
+use croft_analysis::{Meaning, Type};
+use croft_syntax::ast::{Argument, BinaryOp, Expr, ExprKind};
 
 use super::Writer;
 use crate::types::bounds::{is_bytes, list_item};
@@ -219,6 +219,105 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.close();
 
         temp
+    }
+
+    /// `set items = items.add(item)` or `set items = items + more`, where
+    /// `target` is `items`, a list of type `ty` named `name`: the new items
+    /// go straight onto its end, with no copy of the list. Gives back
+    /// whether `value` was one of these and so has been written.
+    pub fn append_in_place(&mut self, target: &str, ty: &Type, name: &str, value: &Expr) -> bool {
+        let Some(item) = list_item(ty).cloned() else {
+            return false;
+        };
+
+        // The list being set, read by its name.
+        let is_target = |writer: &Self, expr: &Expr| {
+            matches!(&expr.kind, ExprKind::Name(read) if read == name)
+                && matches!(writer.type_of(expr, None), Type::List(_))
+        };
+
+        match &value.kind {
+            ExprKind::Call(callee, arguments) => {
+                let ExprKind::Field(receiver, method) = &callee.kind else {
+                    return false;
+                };
+
+                let [argument] = arguments.as_slice() else {
+                    return false;
+                };
+
+                let is_method = matches!(self.gen.facts.meaning(value.id), Some(Meaning::Method));
+
+                if !is_method || method.name != "add" || !is_target(self, receiver) {
+                    return false;
+                }
+
+                self.push_in_place(target, ty, &item, &argument.value);
+                true
+            }
+            ExprKind::Binary(BinaryOp::Add, left, right) if is_target(self, left) => {
+                match &right.kind {
+                    ExprKind::List(items) => {
+                        for added in items {
+                            self.push_in_place(target, ty, &item, added);
+                        }
+                    }
+                    _ => self.push_all_in_place(target, ty, &item, right),
+                }
+
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Adds `added` to the end of `target`, a list of type `ty` holding
+    /// items of `item`, stopping a checked build when it is full.
+    fn push_in_place(&mut self, target: &str, ty: &Type, item: &Type, added: &Expr) {
+        let (added, added_type) = self.eval(added, Some(item));
+        let given = self.gen.keep_bound(&added_type, item);
+        let added = self.convert(added, &added_type, &given);
+        let capacity = self.gen.capacity(ty);
+
+        self.line(format!(
+            "CROFT_CHECK({target}.length < {capacity}, \"a list is full\");"
+        ));
+
+        self.open(format!("if ({target}.length < {capacity})"));
+        let slot = format!("{target}.items[{target}.length]");
+        self.copy_into(&slot, &added, &given, item);
+        self.line(format!("{target}.length++;"));
+        self.close();
+    }
+
+    /// Adds every item of the list `more` to the end of `target`, a list of
+    /// type `ty` holding items of `item`. How many there are is read first,
+    /// so `items + items` adds each once.
+    fn push_all_in_place(&mut self, target: &str, ty: &Type, item: &Type, more: &Expr) {
+        let (more, more_type) = self.eval(more, Some(ty));
+
+        let Some(more_item) = list_item(&more_type).cloned() else {
+            return;
+        };
+
+        let capacity = self.gen.capacity(ty);
+        let count = self.raw_variable("count", "croft_u16");
+        let index = self.index_variable();
+
+        self.line(format!("{count} = {more}.length;"));
+        self.open(format!("for ({index} = 0; {index} < {count}; {index}++)"));
+
+        self.line(format!(
+            "CROFT_CHECK({target}.length < {capacity}, \"a list is full\");"
+        ));
+
+        self.open(format!("if ({target}.length < {capacity})"));
+        let slot = format!("{target}.items[{target}.length]");
+        let given = format!("{more}.items[{index}]");
+        self.copy_into(&slot, &given, &more_item, item);
+        self.line(format!("{target}.length++;"));
+        self.close();
+        self.close();
     }
 
     /// `names.join(", ")`: each string, with the separator between each two.

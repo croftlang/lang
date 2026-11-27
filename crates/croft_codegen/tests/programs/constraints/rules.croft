@@ -36,6 +36,9 @@ context Clinic {
         numbers where each Even
     } = numbers.length
 
+    // Room for two numbers, and no more.
+    fn pair(): List<Int> where Length(0, 2) = []
+
     service Start(): Unit {
         calls { Arguments }
     } = {
@@ -77,6 +80,12 @@ context Clinic {
         }
         if chosen.contains("shift") {
             let shifted = 1 << chosen.length * 40
+        }
+        if chosen.contains("full") {
+            let few = pair()
+            set few = few.add(1)
+            set few = few.add(2)
+            set few = few.add(chosen.length)
         }
         Unit
     }
