@@ -80,9 +80,8 @@ impl<'a> Generator<'a> {
 
                 let result = self.operation_result(port, &operation.name.name);
 
-                let parameters: Vec<(String, Type)> = (expected.parameters.iter())
-                    .map(|(name, ty, _)| (name.clone(), ty.clone()))
-                    .collect();
+                // Typed as a call passes them: a list in the size its `Length` gives.
+                let parameters = self.operation_parameters(port, &operation.name.name);
 
                 let signature = self.signature(
                     &format!("{name}_{}", operation.name.name),
@@ -132,17 +131,16 @@ impl<'a> Generator<'a> {
                     .iter()
                     .map(|(_, _, constraints)| *constraints);
 
-                let checked: Vec<(String, Type, &[croft_syntax::ast::ConstraintUse])> = renamed
-                    .iter()
-                    .zip(constraints)
-                    .map(|((n, ty), constraints)| (n.clone(), ty.clone(), constraints))
-                    .collect();
-
-                if let Some(call) = self.argument_check(&function, &place, &checked) {
-                    writer.checked_call(&call);
-                }
+                let checked: Vec<(String, Type, &[croft_syntax::ast::ConstraintUse])> =
+                    (parameters.iter().zip(constraints))
+                        .map(|((n, ty), constraints)| (n.clone(), ty.clone(), constraints))
+                        .collect();
 
                 let passed: Vec<String> = renamed.iter().map(|(n, _)| format!("p_{n}")).collect();
+
+                if let Some(call) = self.operation_check(&function, &place, &checked, &passed) {
+                    writer.checked_call(&call);
+                }
 
                 if let Some(call) = self.contract_check(
                     &function,

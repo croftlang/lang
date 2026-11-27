@@ -787,11 +787,34 @@ fn checks_rules_in_every_build_by_default() {
         (Some(1), "a list is full".to_string())
     );
 
+    assert_eq!(
+        run("checked", "port"),
+        (
+            Some(1),
+            "CountingPharmacy.dispense: amount must satisfy Range(1, 50)".to_string()
+        )
+    );
+
+    assert_eq!(
+        run("checked", "port_each"),
+        (
+            Some(1),
+            "CountingPharmacy.dispense: doses must satisfy each Even".to_string()
+        )
+    );
+
+    assert_eq!(
+        run("checked", "repository"),
+        (Some(1), "Beds.keep: bed must satisfy Made".to_string())
+    );
+
     assert_eq!(run("unchecked", "argument"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "invariant"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "let"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "full"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "name"), (Some(0), String::new()));
+    assert_eq!(run("unchecked", "port"), (Some(0), String::new()));
+    assert_eq!(run("unchecked", "repository"), (Some(0), String::new()));
     fs::remove_dir_all(output).ok();
     fs::remove_dir_all(unchecked_output).ok();
 }

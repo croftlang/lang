@@ -4,10 +4,11 @@
 use croft_analysis::standard::CONSOLE_CONTEXT;
 use croft_analysis::types::Resolved;
 use croft_analysis::Type;
-use croft_syntax::ast::{Argument, Expr, ExprKind};
+use croft_syntax::ast::{Argument, ConstraintUse, Expr, ExprKind};
 
 use super::{Into, Writer};
 use crate::names::c_name;
+use crate::program::constraints::CheckPlace;
 
 /// The most characters a whole number takes as text: `-2147483648`.
 const INT_DIGITS: i64 = 11;
@@ -116,7 +117,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     ) -> String {
         // Every target supplies `Std.Console`'s ports, so no adapter is bound.
         if port.context == CONSOLE_CONTEXT {
-            return self.builtin_port_call(&port.name, name, arguments, ty);
+            return self.builtin_port_call(port, name, arguments, ty);
         }
 
         let Some(adapter) = self.gen.bindings.get(port).cloned() else {
@@ -140,30 +141,85 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// which the runtime supplies on every target.
     fn builtin_port_call(
         &mut self,
-        port: &str,
+        port: &Resolved,
         name: &str,
         arguments: &[Argument],
         ty: &Type,
     ) -> String {
-        let text = [("text".to_string(), Type::String)];
-
-        match (port, name) {
-            ("Console", "read_line") => self.read_line(ty),
-            ("Console", "print_error") => {
-                let passed = self.pass_all(arguments, &text);
-                self.call_into("croft_console_print_error", passed, ty)
-            }
-            ("Console", _) => {
-                let passed = self.pass_all(arguments, &text);
-                self.call_into("croft_console_print", passed, ty)
-            }
-            ("Environment", _) => self.environment_get(arguments, ty),
-            ("Process", _) => {
-                let passed = self.pass_all(arguments, &[("code".to_string(), Type::Int)]);
-                self.call_into("croft_process_exit", passed, ty)
-            }
-            _ => self.all_arguments(ty),
+        match (port.name.as_str(), name) {
+            ("Console", "read_line") => return self.read_line(ty),
+            ("Arguments", _) => return self.all_arguments(ty),
+            _ => {}
         }
+
+        let parameters = self.gen.operation_parameters(port, name);
+        let passed = self.pass_all(arguments, &parameters);
+        let passed = self.check_builtin_arguments(port, name, &parameters, passed);
+
+        match (port.name.as_str(), name) {
+            ("Console", "print_error") => self.call_into("croft_console_print_error", passed, ty),
+            ("Console", _) => self.call_into("croft_console_print", passed, ty),
+            ("Environment", _) => self.environment_get(passed, ty),
+            _ => self.call_into("croft_process_exit", passed, ty),
+        }
+    }
+
+    /// Checks the arguments of an operation the runtime supplies against its
+    /// parameters' constraints, as an adapter's operation does, when checks
+    /// are on. Each number is kept in a temporary first, so it is worked out
+    /// once. Gives back what to pass to the runtime.
+    fn check_builtin_arguments(
+        &mut self,
+        port: &Resolved,
+        name: &str,
+        parameters: &[(String, Type)],
+        mut passed: Vec<String>,
+    ) -> Vec<String> {
+        let operations = self.gen.model.operations_of(port);
+
+        let Some(operation) = operations.iter().find(|op| op.name == name) else {
+            return passed;
+        };
+
+        if operation.parameters.iter().all(|(_, _, c)| c.is_empty()) {
+            return passed;
+        }
+
+        for ((_, ty), value) in parameters.iter().zip(passed.iter_mut()) {
+            if !self.gen.is_scalar(ty) {
+                continue;
+            }
+
+            let temp = self.temp(ty);
+            self.line(format!("{temp} = {value};"));
+            *value = temp;
+        }
+
+        let checked: Vec<(String, Type, &[ConstraintUse])> = (parameters.iter())
+            .zip(&operation.parameters)
+            .map(|((parameter, ty), (_, _, constraints))| {
+                (parameter.clone(), ty.clone(), *constraints)
+            })
+            .collect();
+
+        let label = format!("{}.{name}", port.name);
+
+        let place = CheckPlace {
+            context: &port.context,
+            aggregate: None,
+            label: &label,
+        };
+
+        let function = format!("{}_{name}", c_name(port));
+
+        if let Some(call) = self
+            .gen
+            .operation_check(&function, &place, &checked, &passed)
+        {
+            self.checked_call(&call);
+        }
+
+        passed
     }
 
     /// `Console.read_line()`: the next line of input, or None at its end.
@@ -177,9 +233,9 @@ impl<'g, 'a> Writer<'g, 'a> {
         line
     }
 
-    /// `Environment.get(name)`: the variable's value, or None when it isn't set.
-    fn environment_get(&mut self, arguments: &[Argument], ty: &Type) -> String {
-        let passed = self.pass_all(arguments, &[("name".to_string(), Type::String)]);
+    /// `Environment.get(name)`, given the name as passed: the variable's
+    /// value, or None when it isn't set.
+    fn environment_get(&mut self, passed: Vec<String>, ty: &Type) -> String {
         let name = passed.first().cloned().unwrap_or_default();
         let value = self.temp(ty);
 
