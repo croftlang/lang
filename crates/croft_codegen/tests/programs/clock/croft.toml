@@ -1,0 +1,8 @@
+[package]
+name = "clock"
+
+[target.test]
+main = "Show"
+
+[target.test.adapters]
+Clock = "SystemClock"

@@ -1,6 +1,6 @@
 # Standard contexts
 
-Two standard contexts need no import: Std.Console, with the `Console` and `Arguments` ports, and Std.Storage, for repositories. The rest of the built-ins are imported, like names from any other context, so each context says what it relies on and the standard library can grow without filling every namespace. An import covers every file of the context, and needs no arrow in the domain's contexts. Std.Files, Std.Http and Std.Random are written in dn: a port, its errors, and an adapter that dn.toml can bind, StdioFiles on any machine with C's stdio, CurlHttp wherever libcurl is, which also brings HTTPS, and SeededRandom on any machine. CurlHttp speaks only http and https, redirects included, and follows at most 10 redirects, giving the last answer's status, headers and body; any other URL, such as `file:///etc/passwd`, and an eleventh redirect fail with `Unreachable`. SeededRandom is a xorshift32 generator, seeded once from C's `time` the first time it is used, so each run gives different numbers, and a machine without a clock the same ones; it is fine for games and samples and never for anything secret. Whatever is imported, the generated C only carries the runtime functions the program calls.
+Two standard contexts need no import: Std.Console, with the `Console` and `Arguments` ports, and Std.Storage, for repositories. The rest of the built-ins are imported, like names from any other context, so each context says what it relies on and the standard library can grow without filling every namespace. An import covers every file of the context, and needs no arrow in the domain's contexts. Std.Files, Std.Http, Std.Random and Std.Time are written in dn: a port, its errors, and an adapter that dn.toml can bind, StdioFiles on any machine with C's stdio, CurlHttp wherever libcurl is, which also brings HTTPS, SeededRandom on any machine, and SystemClock wherever C's time and localtime are. CurlHttp speaks only http and https, redirects included, and follows at most 10 redirects, giving the last answer's status, headers and body; any other URL, such as `file:///etc/passwd`, and an eleventh redirect fail with `Unreachable`. SeededRandom is a xorshift32 generator, seeded once from C's `time` the first time it is used, so each run gives different numbers, and a machine without a clock the same ones; it is fine for games and samples and never for anything secret. Std.Time's `Date` is a day on the Gregorian calendar, carried back before 1582, from year 1 to 9999; `days_between` and `add_days` count leap years, and with checks on a date past either end stops the program. SystemClock reads the machine's own time zone; a machine with no clock gives 1 January 1970 at midnight. Whatever is imported, the generated C only carries the runtime functions the program calls.
 
 ```croft
 context Notes
@@ -61,11 +61,25 @@ service Roll(): Int {
     calls { Random }
 } = Random.between(1, 6)   // `Random.between(6, 1)` doesn't compile: it breaks `low <= high`
 
+// Std.Time: Date { year, month, day }, Time { hour, minute, second }, and the Clock port
+use { Date, Time, Clock, days_between, add_days } from Std.Time
+
+service Due(): Int {
+    calls { Clock }
+} = {
+    let today = Clock.today()   // Date { year: 2026, month: 11, day: 27 }
+    let now = Clock.now()       // Time { hour: 9, minute: 30, second: 0 }
+    let due = add_days(today, 30)   // Date { year: 2026, month: 12, day: 27 }
+    add_days(Date { year: 2024, month: 2, day: 28 }, 1)   // 29 February 2024, a leap year
+    days_between(today, Date { year: 2027, month: 1, day: 1 })   // 35, or negative when earlier
+}
+
 // dn.toml
 // [target.desktop.adapters]
 // Files = "StdioFiles"
 // Http = "CurlHttp"          // link with -lcurl
 // Random = "SeededRandom"
+// Clock = "SystemClock"
 
 // without the import:
 // `Files` needs `use { Files } from Std.Files`

@@ -397,6 +397,12 @@ from `low` to `high` with both ends included, and the `SeededRandom` adapter:
 `Random = "SeededRandom"` in `croft.toml`. It is a xorshift32 generator,
 seeded from C's `time` the first time it is used, so it is no good for
 anything secret. `low` above `high` breaks `between`'s contract.
+`Std.Time` has the values `Date`, a `year` from 1 to 9999, `month` and `day`
+on the Gregorian calendar, and `Time`, an `hour`, `minute` and `second` on a
+24-hour clock, the `Clock` port, with `today` and `now`, and the functions
+`days_between` and `add_days`, which count leap years. Its `SystemClock`
+adapter uses C's `time` and `localtime`: `Clock = "SystemClock"` in
+`croft.toml`. A machine with no clock gives 1 January 1970 at midnight.
 
 ## The outside world
 

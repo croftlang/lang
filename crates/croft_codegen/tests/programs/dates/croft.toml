@@ -1,0 +1,8 @@
+[package]
+name = "dates"
+
+[target.test]
+main = "Check"
+
+[target.test.adapters]
+Clock = "FixedClock"
