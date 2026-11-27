@@ -15,7 +15,7 @@ impl zed::Extension for CroftExtension {
         worktree: &zed::Worktree,
     ) -> Result<zed::Command> {
         let command = worktree.which("croft").ok_or_else(|| {
-            "`croft` is not on your PATH. Install it with `cargo install --path crates/croft_cli`."
+            "`croft` is not on your PATH. Install it from https://croftlang.com/install."
                 .to_string()
         })?;
 
