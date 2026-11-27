@@ -10,7 +10,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "croft_analysis"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "croft_std",
  "croft_syntax",
@@ -20,7 +20,7 @@ dependencies = [
 
 [[package]]
 name = "croft_cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "croft_analysis",
  "croft_codegen",
@@ -36,7 +36,7 @@ dependencies = [
 
 [[package]]
 name = "croft_codegen"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "croft_analysis",
  "croft_std",
@@ -45,18 +45,18 @@ dependencies = [
 
 [[package]]
 name = "croft_format"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "croft_syntax",
 ]
 
 [[package]]
 name = "croft_std"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "croft_syntax"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "crossbeam-channel"
