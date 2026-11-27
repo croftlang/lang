@@ -28,7 +28,22 @@ const BUILT_IN_TYPES: [&str; 11] = [
 ];
 
 /// The built-in functions and constraints, offered anywhere.
-const BUILT_IN_FUNCTIONS: [&str; 8] = ["Some", "Ok", "Err", "max", "min", "abs", "Range", "Length"];
+const BUILT_IN_FUNCTIONS: [&str; 14] = [
+    "Some",
+    "Ok",
+    "Err",
+    "max",
+    "min",
+    "abs",
+    "clamp",
+    "pow",
+    "sign",
+    "checked_add",
+    "checked_subtract",
+    "checked_multiply",
+    "Range",
+    "Length",
+];
 
 /// What to offer at `line` and `column` of a file whose text is now `text`.
 pub fn complete(

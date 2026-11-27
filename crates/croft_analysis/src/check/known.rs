@@ -22,6 +22,8 @@ pub(crate) enum Known {
     Bool(bool),
     Text(String),
     List(Vec<Known>),
+    /// `Some(value)`, or `None` when it holds nothing.
+    Option(Option<Box<Known>>),
 }
 
 /// Arithmetic on known whole numbers that has no answer in 32 bits, so the
@@ -41,6 +43,12 @@ pub(crate) enum Outcome {
     DividesByZero,
     /// The answer, which is outside the 32 bits of a whole number.
     DoesNotFit(i128),
+    /// An answer so far outside the 32 bits that it isn't worked out.
+    FarTooBig,
+    /// `pow` with an exponent below zero.
+    ExponentBelowZero,
+    /// `clamp` with its low above its high.
+    LowAboveHigh,
 }
 
 impl Fault {
@@ -58,6 +66,24 @@ impl Fault {
             Outcome::DoesNotFit(answer) => format!(
                 "`{written}` works out `{operation}`, which gives {answer} and doesn't fit in 32 bits"
             ),
+            Outcome::FarTooBig if written == operation => {
+                format!("`{written}` doesn't fit in 32 bits")
+            }
+            Outcome::FarTooBig => {
+                format!("`{written}` works out `{operation}`, which doesn't fit in 32 bits")
+            }
+            Outcome::ExponentBelowZero if written == operation => {
+                format!("`{written}` has an exponent below zero")
+            }
+            Outcome::ExponentBelowZero => {
+                format!("`{written}` works out `{operation}`, which has an exponent below zero")
+            }
+            Outcome::LowAboveHigh if written == operation => {
+                format!("`{written}` has a low above its high")
+            }
+            Outcome::LowAboveHigh => {
+                format!("`{written}` works out `{operation}`, which has a low above its high")
+            }
         }
     }
 }
@@ -110,6 +136,8 @@ impl Known {
 
                 format!("[{}]", items.join(", "))
             }
+            Known::Option(Some(value)) => format!("Some({})", value.describe()),
+            Known::Option(None) => "None".to_string(),
         }
     }
 
@@ -134,6 +162,23 @@ impl Known {
     /// Every binary operator but `&&` and `||`, which `evaluate` works out
     /// itself so that one side can decide the answer without the other.
     pub(crate) fn binary(op: BinaryOp, left: Known, right: Known) -> Option<Known> {
+        if let (Known::Option(a), Known::Option(b)) = (&left, &right) {
+            let same = match (a, b) {
+                (None, None) => true,
+                (Some(a), Some(b)) => {
+                    Known::binary(BinaryOp::Equal, (**a).clone(), (**b).clone())?
+                        == Known::Bool(true)
+                }
+                _ => false,
+            };
+
+            return match op {
+                BinaryOp::Equal => Some(Known::Bool(same)),
+                BinaryOp::NotEqual => Some(Known::Bool(!same)),
+                _ => None,
+            };
+        }
+
         if let Some(ordering) = compare(&left, &right) {
             let answer = match op {
                 BinaryOp::Equal => Some(ordering == Ordering::Equal),

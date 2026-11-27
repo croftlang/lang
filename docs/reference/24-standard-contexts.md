@@ -6,7 +6,7 @@ Two standard contexts need no import: Std.Console, with the `Console`, `Argument
 context Notes
 
 use { trim, split, to_upper, to_bytes, to_text, replace, join } from Std.Text
-use { Decimal, max, min, abs } from Std.Numbers
+use { Decimal, max, min, abs, clamp, pow, sign, checked_add } from Std.Numbers
 use { Files, FileError } from Std.Files
 
 // Std.Console, with no import: Console, Arguments and Process
@@ -29,6 +29,10 @@ names.join(", ")   // a List<String>
 
 // Std.Numbers
 max(a, b)   min(a, b)   abs(n)   Decimal<2>
+clamp(volume, 0, 11)   // volume kept from 0 to 11; a low above the high is a mistake
+pow(2, 10)   // 1024; an exponent below zero, or an answer past 32 bits, is a mistake
+sign(n)   // -1, 0 or 1
+checked_add(a, b)   checked_subtract(a, b)   checked_multiply(a, b)   // Option<Int>: None past 32 bits
 
 // Std.Collections: Map<K, V>, as many entries as its Length constraint allows
 use { Map } from Std.Collections

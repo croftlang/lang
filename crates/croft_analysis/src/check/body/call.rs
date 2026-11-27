@@ -54,6 +54,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let Some(found) = self.checker.resolve(&self.scope, &path) else {
             if let Some(ty) = self.builtin_call(&name, arguments, span, expected) {
                 self.note(Some(id), Meaning::Builtin(name.clone()));
+                self.check_known_number_call(id, &name, arguments, span);
 
                 self.checker.facts.builtins.push(BuiltinName {
                     span: path.last().span,

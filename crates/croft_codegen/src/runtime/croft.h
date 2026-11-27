@@ -76,6 +76,8 @@ typedef struct {
 #define CROFT_MIN(a, b) ((a) < (b) ? (a) : (b))
 /* Only for a number known not to be the lowest; croft_int_abs checks. */
 #define CROFT_ABS(a) ((a) < 0 ? -(a) : (a))
+/* -1, 0 or 1, for a number of any type. */
+#define CROFT_SIGN(a) ((a) > 0 ? 1 : ((a) < 0 ? -1 : 0))
 /* Wraps around in 32 bits, as croft_int_shift_left says. */
 #define CROFT_SHIFT_LEFT(value, amount) croft_int_shift_left(value, amount)
 /* C89 leaves shifting a negative number right up to the compiler, so the
@@ -138,11 +140,18 @@ croft_int croft_int_from_bits(unsigned long bits);
 unsigned long croft_int_magnitude(croft_int value);
 croft_int croft_int_add(croft_int a, croft_int b);
 croft_int croft_int_subtract(croft_int a, croft_int b);
+croft_bool croft_int_multiply_fits(croft_int a, croft_int b);
 croft_int croft_int_multiply(croft_int a, croft_int b);
 croft_int croft_int_divide(croft_int a, croft_int b);
 croft_int croft_int_remainder(croft_int a, croft_int b);
 croft_int croft_int_negate(croft_int a);
 croft_int croft_int_abs(croft_int a);
+croft_int croft_int_pow(croft_int base, croft_int exponent);
+croft_int croft_int_clamp(croft_int number, croft_int low, croft_int high);
+double croft_float_clamp(double number, double low, double high);
+croft_bool croft_int_checked_add(croft_int a, croft_int b, croft_int *out);
+croft_bool croft_int_checked_subtract(croft_int a, croft_int b, croft_int *out);
+croft_bool croft_int_checked_multiply(croft_int a, croft_int b, croft_int *out);
 croft_int croft_int_shift_left(croft_int value, croft_int amount);
 
 croft_int croft_divide_even(croft_int numerator, croft_int denominator);

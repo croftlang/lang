@@ -1,4 +1,5 @@
-//! Built-in functions: `max`, `min`, `abs`, `Some`, `Ok`, `Err`, `Range` and `Length`.
+//! Built-in functions: the numbers of `Std.Numbers`, `Some`, `Ok`, `Err`,
+//! `Range` and `Length`.
 
 use croft_analysis::Type;
 use croft_syntax::ast::{Argument, ExprKind};
@@ -36,6 +37,38 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let second = value(self, 1, ty);
 
                 format!("CROFT_{}({first}, {second})", name.to_uppercase())
+            }
+            "clamp" => {
+                let number = value(self, 0, ty);
+                let low = value(self, 1, ty);
+                let high = value(self, 2, ty);
+                let kind = if *ty == Type::Float { "float" } else { "int" };
+
+                format!("croft_{kind}_clamp({number}, {low}, {high})")
+            }
+            "sign" => {
+                let given = arguments
+                    .first()
+                    .map_or(Type::Int, |a| self.type_of(&a.value, None));
+
+                format!("CROFT_SIGN({})", value(self, 0, &given))
+            }
+            "pow" => {
+                let base = value(self, 0, &Type::Int);
+                let exponent = value(self, 1, &Type::Int);
+
+                format!("croft_int_pow({base}, {exponent})")
+            }
+            "checked_add" | "checked_subtract" | "checked_multiply" => {
+                let a = value(self, 0, &Type::Int);
+                let b = value(self, 1, &Type::Int);
+                let temp = self.place_for(ty, into);
+
+                self.line(format!(
+                    "{temp}.some = croft_int_{name}({a}, {b}, &{temp}.value);"
+                ));
+
+                temp
             }
             "Some" | "Ok" | "Err" => {
                 let (flag, field, on, inner) = match ty {
