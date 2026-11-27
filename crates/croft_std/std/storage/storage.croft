@@ -18,7 +18,9 @@ context Storage {
     error StorageFull
 
     // What was saved can't be read back as this aggregate: it was written by
-    // a different version of the program, or the file is damaged.
+    // a different version of the program, or the file is damaged, so a
+    // number doesn't fit its field, a tag or flag isn't one, or a constraint
+    // or invariant is broken.
     error StorageDamaged
 
     // The machine couldn't read or write the storage, for any other reason.

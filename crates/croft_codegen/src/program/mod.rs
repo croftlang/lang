@@ -19,6 +19,8 @@ mod events;
 mod functions;
 /// Saved value sizes and layout hashes.
 mod layout;
+/// What a value read back from `Storage` must hold.
+mod load_checks;
 /// Facts about declarations that generated code needs.
 mod lookup;
 /// The C `main` function.

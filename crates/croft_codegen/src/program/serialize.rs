@@ -3,6 +3,10 @@
 //! four bytes, least significant first, whatever width it has in memory, so
 //! a save means the same on every machine. Strings, bytes and lists start
 //! with their length in two bytes; an option starts with whether it is set.
+//! Reading checks what it reads: a number that doesn't fit its field, a tag
+//! that names no variant, a flag that is neither 0 nor 1, a map key read
+//! twice or a broken constraint makes it fail, so the repository gives back
+//! `StorageDamaged` rather than a value the program could never have made.
 
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::Type;
@@ -47,7 +51,17 @@ impl<'a> Generator<'a> {
                 format!("static croft_bool croft_read_{name}(const croft_bytes *in, croft_u16 *at, {c} *value)");
             prototypes.push_str(&format!("{write};\n{read};\n"));
 
-            let (write_body, read_body) = self.serializer_bodies(&ty);
+            let (write_body, mut read_body) = self.serializer_bodies(&ty);
+
+            if let Type::Named(named) = &ty {
+                if let Some((prototype, check)) = self.load_check(named, &name) {
+                    prototypes.push_str(&prototype);
+                    bodies.push_str(&check);
+                    read_body.push_str(&format!(
+                        "    if (!croft_kept_{name}(value)) {{\n        return 0;\n    }}\n"
+                    ));
+                }
+            }
 
             bodies.push_str(&format!(
                 "{write}\n{{\n{write_body}    return 1;\n}}\n\n{read}\n{{\n    croft_int number = 0;\n\n{read_body}    (void) number;\n    return 1;\n}}\n\n"
@@ -67,7 +81,8 @@ impl<'a> Generator<'a> {
         match ty {
             Type::List(item) | Type::SizedList(item, _) => {
                 let capacity = self.capacity(ty);
-                let (write, read) = self.serialize_value("value->items[index]", item, "        ");
+                let (write, read) =
+                    self.serialize_value("value->items[index]", item, None, "        ");
 
                 (
                     format!(
@@ -82,10 +97,11 @@ impl<'a> Generator<'a> {
             }
             Type::Map(key, value) => {
                 let capacity = self.sizes.map_capacity(ty);
+                let same = self.same_key("value->keys[index]", "value->keys[other]", key);
                 let (key_write, key_read) =
-                    self.serialize_value("value->keys[index]", key, "        ");
+                    self.serialize_value("value->keys[index]", key, None, "        ");
                 let (value_write, value_read) =
-                    self.serialize_value("value->values[index]", value, "        ");
+                    self.serialize_value("value->values[index]", value, None, "        ");
 
                 (
                     format!(
@@ -93,28 +109,31 @@ impl<'a> Generator<'a> {
                          for (index = 0; index < value->length; index++) {{\n{key_write}{value_write}    }}\n"
                     ),
                     format!(
-                        "    croft_u16 index;\n\n    if (!croft_bytes_take_length(in, at, &value->length) || value->length > {capacity}) {{\n        return 0;\n    }}\n    \
-                         for (index = 0; index < value->length; index++) {{\n{key_read}{value_read}    }}\n"
+                        "    croft_u16 index;\n    croft_u16 other;\n\n    if (!croft_bytes_take_length(in, at, &value->length) || value->length > {capacity}) {{\n        return 0;\n    }}\n    \
+                         for (index = 0; index < value->length; index++) {{\n{key_read}{value_read}        \
+                         for (other = 0; other < index; other++) {{\n            if ({same}) {{\n                return 0;\n            }}\n        }}\n    }}\n"
                     ),
                 )
             }
             Type::Option(item) => {
-                let (write, read) = self.serialize_value("value->value", item, "        ");
+                let (write, read) = self.serialize_value("value->value", item, None, "        ");
 
                 (
                     format!(
                         "    if (!croft_bytes_put_int(out, value->some)) {{\n        return 0;\n    }}\n    if (value->some) {{\n{write}    }}\n"
                     ),
                     format!(
-                        "    if (!croft_bytes_take_int(in, at, &number)) {{\n        return 0;\n    }}\n    value->some = number != 0;\n    \
+                        "    if (!croft_bytes_take_int(in, at, &number) || (number != 0 && number != 1)) {{\n        return 0;\n    }}\n    value->some = number != 0;\n    \
                          if (value->some) {{\n{read}    }}\n"
                     ),
                 )
             }
             Type::Named(named) if named.kind == SymbolKind::Enum => {
+                let tag_test = self.tag_test("number", named);
+
                 let (mut write, mut read) = (
                     "    if (!croft_bytes_put_int(out, value->tag)) {\n        return 0;\n    }\n".to_string(),
-                    "    if (!croft_bytes_take_int(in, at, &number)) {\n        return 0;\n    }\n    value->tag = number;\n".to_string(),
+                    format!("    if (!croft_bytes_take_int(in, at, &number) || !({tag_test})) {{\n        return 0;\n    }}\n    value->tag = (croft_u8) number;\n"),
                 );
 
                 for variant in self.variants(named) {
@@ -123,7 +142,7 @@ impl<'a> Generator<'a> {
 
                     for (field, field_type) in &variant.fields {
                         let place = format!("value->as.{}.{field}", variant.name);
-                        let (w, r) = self.serialize_value(&place, field_type, "        ");
+                        let (w, r) = self.serialize_value(&place, field_type, None, "        ");
                         fields_write.push_str(&w);
                         fields_read.push_str(&r);
                     }
@@ -144,6 +163,12 @@ impl<'a> Generator<'a> {
             Type::Named(named) => {
                 let (mut write, mut read) = (String::new(), String::new());
 
+                let fields = self.struct_fields(named);
+
+                let flags = (fields.iter())
+                    .filter(|(field, _, _)| self.flag_bit(named, field).is_some())
+                    .count();
+
                 for byte in 0..self.flag_bytes(named) {
                     let place = format!("value->croft_flags[{byte}]");
 
@@ -151,12 +176,21 @@ impl<'a> Generator<'a> {
                         "    if (!croft_bytes_put_byte(out, {place})) {{\n        return 0;\n    }}\n"
                     ));
 
+                    // Bits past the last flag are always clear.
+                    let used = (flags - byte * 8).min(8);
+                    let unused = 0xFFu32 & !((1u32 << used) - 1);
+                    let clear = if unused == 0 {
+                        String::new()
+                    } else {
+                        format!(" || ({place} & {unused}) != 0")
+                    };
+
                     read.push_str(&format!(
-                        "    if (!croft_bytes_take_byte(in, at, &{place})) {{\n        return 0;\n    }}\n"
+                        "    if (!croft_bytes_take_byte(in, at, &{place}){clear}) {{\n        return 0;\n    }}\n"
                     ));
                 }
 
-                for (field, field_type, _) in self.struct_fields(named) {
+                for (field, field_type, c_type) in fields {
                     if self.flag_bit(named, &field).is_some() {
                         continue;
                     }
@@ -174,7 +208,7 @@ impl<'a> Generator<'a> {
                         continue;
                     }
 
-                    let (w, r) = self.serialize_value(&place, &field_type, "    ");
+                    let (w, r) = self.serialize_value(&place, &field_type, Some(&c_type), "    ");
                     write.push_str(&w);
                     read.push_str(&r);
                 }
@@ -185,14 +219,33 @@ impl<'a> Generator<'a> {
         }
     }
 
-    /// Statements that write the value at `place`, and read it back.
-    fn serialize_value(&self, place: &str, ty: &Type, indent: &str) -> (String, String) {
+    /// Statements that write the value at `place`, and read it back. A
+    /// field's `c_type` says how narrow a number read into it must be.
+    fn serialize_value(
+        &self,
+        place: &str,
+        ty: &Type,
+        c_type: Option<&str>,
+        indent: &str,
+    ) -> (String, String) {
         let fail = format!(" {{\n{indent}    return 0;\n{indent}}}\n");
 
         if self.is_scalar(ty) {
+            let test = self
+                .number_test("number", ty, c_type)
+                .map_or(String::new(), |test| format!(" || !({test})"));
+
+            let c = c_type.map_or_else(|| self.c_type(ty), str::to_string);
+
+            let number = if c == "croft_int" {
+                "number".to_string()
+            } else {
+                format!("({c}) number")
+            };
+
             return (
                 format!("{indent}if (!croft_bytes_put_int(out, (croft_int) {place})){fail}"),
-                format!("{indent}if (!croft_bytes_take_int(in, at, &number)){fail}{indent}{place} = number;\n"),
+                format!("{indent}if (!croft_bytes_take_int(in, at, &number){test}){fail}{indent}{place} = {number};\n"),
             );
         }
 

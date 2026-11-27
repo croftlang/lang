@@ -1,4 +1,5 @@
-//! Testing a value against a `where` constraint, when checks are on.
+//! Testing a value against a `where` constraint: when checks are on, and
+//! always for a value read back from `Storage`.
 
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::Type;
@@ -22,6 +23,33 @@ impl<'g, 'a> Writer<'g, 'a> {
     ) {
         let message = c_string(&format!("{what} must satisfy {}", constraint.text()));
 
+        self.when_broken(value, ty, constraint, |writer, test| {
+            writer.line(format!("CROFT_CHECK({test}, {message});"));
+        });
+    }
+
+    /// Writes a test that makes the function give back 0 when `value`
+    /// breaks `constraint`, as reading a saved value does: what is read is
+    /// outside the program, so this is written whatever the target's
+    /// `checks` setting.
+    pub fn require_constraint(&mut self, value: &str, ty: &Type, constraint: &ConstraintUse) {
+        self.when_broken(value, ty, constraint, |writer, test| {
+            writer.open(format!("if (!{test})"));
+            writer.line("return 0;");
+            writer.close();
+        });
+    }
+
+    /// Calls `broken` with the C test of `value` against `constraint`, or of
+    /// each of its items in a loop for an `each` constraint, so it can write
+    /// what happens when the test is false.
+    fn when_broken(
+        &mut self,
+        value: &str,
+        ty: &Type,
+        constraint: &ConstraintUse,
+        broken: impl Fn(&mut Self, &str),
+    ) {
         if constraint.each {
             let Some(item) = list_item(ty) else { return };
             let index = self.index_variable();
@@ -32,7 +60,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             if let Some(test) =
                 self.constraint_test(&format!("{value}.items[{index}]"), item, constraint)
             {
-                self.line(format!("CROFT_CHECK({test}, {message});"));
+                broken(self, &test);
             }
 
             self.close();
@@ -40,7 +68,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         if let Some(test) = self.constraint_test(value, ty, constraint) {
-            self.line(format!("CROFT_CHECK({test}, {message});"));
+            broken(self, &test);
         }
     }
 

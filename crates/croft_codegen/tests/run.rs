@@ -336,6 +336,53 @@ fn saves_and_finds_aggregates_in_files() {
     fs::remove_dir_all(output).ok();
 }
 
+/// A saved file changed so that a number no longer fits its field, a tag
+/// names no variant, a flag is neither true nor false, or a constraint or
+/// invariant is broken loads as `StorageDamaged`, even with checks off.
+#[test]
+fn finds_damaged_aggregates_in_files() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/damaged_storage");
+
+    for target in ["test", "unchecked"] {
+        let output = generate(&source, target, "damaged_storage");
+
+        let built = compile(
+            &output,
+            &[
+                "croft_runtime.c",
+                "croft_files.c",
+                "program.c",
+                "-o",
+                "program",
+            ],
+        );
+
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+
+        let ran = std::process::Command::new(output.join("program"))
+            .current_dir(&output)
+            .output()
+            .expect("it runs");
+
+        assert_eq!(
+            String::from_utf8_lossy(&ran.stdout),
+            "ok\n",
+            "{target}: {}",
+            String::from_utf8_lossy(&ran.stderr)
+        );
+        assert!(ran.status.success());
+        fs::remove_dir_all(output).ok();
+    }
+}
+
 #[test]
 fn keeps_aggregates_through_adapters_of_the_programs_own() {
     run_program("repository_adapter");

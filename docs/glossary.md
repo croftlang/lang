@@ -421,7 +421,8 @@ drops them. `MemoryStorage` and `FileStorage` are its built-in adapters.
 ### StorageError
 What loading or saving an aggregate can fail with, built in to every
 program with a repository: `StorageFull`, `StorageDamaged` (written by a
-different version of the program, or damaged) and `StorageUnavailable`.
+different version of the program, or damaged, so that what it reads back
+breaks a field's type or constraints) and `StorageUnavailable`.
 
 ### Arguments
 The port in `Std.Console` that gives a program its command-line arguments,

@@ -1,0 +1,17 @@
+[package]
+name = "damaged_storage"
+
+[target.test.adapters]
+Files = "StdioFiles"
+Crates = "FileStorage"
+Gates = "FileStorage"
+
+# The same program with its constraint checks turned off: loading still
+# checks what it reads.
+[target.unchecked]
+checks = false
+
+[target.unchecked.adapters]
+Files = "StdioFiles"
+Crates = "FileStorage"
+Gates = "FileStorage"

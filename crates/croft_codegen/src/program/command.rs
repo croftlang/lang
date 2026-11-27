@@ -5,7 +5,7 @@
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::Resolved;
 use croft_analysis::Type;
-use croft_syntax::ast::{AggregateDecl, FunctionDecl};
+use croft_syntax::ast::{AggregateDecl, FunctionDecl, Invariant};
 
 use super::constraints::CheckPlace;
 use crate::function::{OwnFields, Returns, Writer};
@@ -205,35 +205,10 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// Fails with an invariant's error when `value` breaks it.
     fn invariants(&mut self, found: &Resolved, aggregate: &AggregateDecl, value: &str) {
         for invariant in &aggregate.invariants {
-            let constraint = self.gen.model.resolve(
-                &found.context,
-                Some(&found.name),
-                &invariant.constraint.name,
-            );
-
-            let Some(constraint) = constraint.filter(|c| c.kind == SymbolKind::Constraint) else {
+            let Some(holds) = self.invariant_holds(found, invariant, value) else {
                 continue;
             };
 
-            let rest: Vec<(String, Type)> = self
-                .gen
-                .parameters_of(&constraint)
-                .into_iter()
-                .skip(1)
-                .collect();
-
-            let arguments: Vec<croft_syntax::ast::Argument> =
-                (invariant.constraint.arguments.iter())
-                    .map(|value| croft_syntax::ast::Argument {
-                        name: None,
-                        value: value.clone(),
-                    })
-                    .collect();
-
-            let mut passed = vec![format!("&{value}")];
-            passed.extend(self.pass_all(&arguments, &rest));
-
-            let holds = self.call_into(&c_name(&constraint), passed, &Type::Bool);
             self.open(format!("if (!{holds})"));
 
             let error = invariant
@@ -244,6 +219,42 @@ impl<'g, 'a> Writer<'g, 'a> {
             self.fail(&error);
             self.close();
         }
+    }
+
+    /// A C expression that is true when the aggregate `value` keeps
+    /// `invariant`, or `None` when it names no constraint.
+    pub(crate) fn invariant_holds(
+        &mut self,
+        found: &Resolved,
+        invariant: &Invariant,
+        value: &str,
+    ) -> Option<String> {
+        let constraint = self.gen.model.resolve(
+            &found.context,
+            Some(&found.name),
+            &invariant.constraint.name,
+        );
+
+        let constraint = constraint.filter(|c| c.kind == SymbolKind::Constraint)?;
+
+        let rest: Vec<(String, Type)> = self
+            .gen
+            .parameters_of(&constraint)
+            .into_iter()
+            .skip(1)
+            .collect();
+
+        let arguments: Vec<croft_syntax::ast::Argument> = (invariant.constraint.arguments.iter())
+            .map(|value| croft_syntax::ast::Argument {
+                name: None,
+                value: value.clone(),
+            })
+            .collect();
+
+        let mut passed = vec![format!("&{value}")];
+        passed.extend(self.pass_all(&arguments, &rest));
+
+        Some(self.call_into(&c_name(&constraint), passed, &Type::Bool))
     }
 
     /// Gives each event a factory raised its source and key, which only
