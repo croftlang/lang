@@ -116,6 +116,21 @@ impl<'g, 'a> Writer<'g, 'a> {
                         .and_then(|(_, owner)| owner.as_ref())
                         .and_then(|owner| self.gen.own_size(owner, &name.name));
 
+                    // Adding to the list being set needs no copy of it.
+                    let place_type = match &kept_in_own_size {
+                        Some(kept @ Type::SizedList(..)) => kept.clone(),
+                        _ => ty.clone(),
+                    };
+
+                    // A `let` added to in place is still checked against its constraints.
+                    if self.append_in_place(&target, &place_type, &name.name, value) {
+                        if own.is_none() {
+                            self.check_let(&name.name);
+                        }
+
+                        continue;
+                    }
+
                     // Any string or `Bytes` can be written into a field of its own size.
                     let c = match &kept_in_own_size {
                         Some(Type::SizedBytes(_)) => self.eval(value, None).0,

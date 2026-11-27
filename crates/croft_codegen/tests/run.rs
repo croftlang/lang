@@ -593,9 +593,14 @@ fn checks_rules_in_every_build_by_default() {
             "Start: let doses must satisfy Length(0, 3)".to_string()
         )
     );
+    assert_eq!(
+        run("checked", "full"),
+        (Some(1), "a list is full".to_string())
+    );
 
     assert_eq!(run("unchecked", "argument"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "let"), (Some(0), String::new()));
+    assert_eq!(run("unchecked", "full"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "name"), (Some(0), String::new()));
     fs::remove_dir_all(output).ok();
     fs::remove_dir_all(unchecked_output).ok();
@@ -910,6 +915,60 @@ fn sizes_lists_from_where_they_come_from() {
     );
     assert!(!header.contains("croft_equal_list4_int"), "{header}");
     fs::remove_dir_all(output).ok();
+}
+
+/// `set items = items.add(item)` and `set items = items + more` add to the
+/// list being set: in a loop, from the list itself, and in a command.
+#[test]
+fn adds_to_a_list_in_place() {
+    run_program("appends");
+}
+
+/// Adding to the list being set copies no whole list, in a service or in a
+/// command: the new items are written straight onto its end.
+#[test]
+fn copies_no_list_to_add_to_it() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/appends");
+    let output = generate(&source, "test", "appends_c");
+    let program = fs::read_to_string(output.join("program.c")).expect("program.c");
+
+    let check = function_body(&program, "void Appends_Check(");
+
+    assert!(
+        check.contains("            t.items[t.length] = (v_i * 2);"),
+        "{check}"
+    );
+
+    // Every list the service keeps, and no line copying one into another.
+    let lists: Vec<&str> = (check.lines())
+        .filter_map(|line| line.trim().strip_prefix("croft_list"))
+        .filter_map(|line| line.split_whitespace().nth(1)?.strip_suffix(';'))
+        .collect();
+
+    for line in check.lines() {
+        let copied = (line.trim().strip_suffix(';'))
+            .and_then(|line| line.split_once(" = "))
+            .is_some_and(|(to, from)| lists.contains(&to) && lists.contains(&from));
+
+        assert!(!copied, "{line}");
+    }
+
+    let pack = function_body(&program, "void Appends_Bag_Pack(");
+    assert!(!pack.contains("croft_list"), "{pack}");
+    assert!(
+        pack.contains("self.names.items[self.names.length] = t;"),
+        "{pack}"
+    );
+
+    fs::remove_dir_all(output).ok();
+}
+
+/// The C of the function whose definition starts with `start`, to its
+/// closing brace.
+fn function_body<'p>(program: &'p str, start: &str) -> &'p str {
+    let from = program.find(start).expect("the function");
+    let length = program[from..].find("\n}\n").expect("its end");
+    &program[from..from + length]
 }
 
 #[test]

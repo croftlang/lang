@@ -1,0 +1,68 @@
+// Adding to the list being set, with `add` or `+`, writes the new items
+// straight onto its end: in a loop, from the list itself, and in a field.
+context Appends
+
+use { to_upper } from Std.Text
+
+error WrongAnswer
+
+identity BagId for Bag: Int where Range(1, 9)
+
+aggregate Bag {
+    id: BagId
+    names: List<String> where Length(0, 4)
+
+    error NotFound
+
+    factory Open(id: BagId) = Bag { id, names: ["rope"] }
+
+    command Pack(name: String) = {
+        set names = names.add(name)
+        set names = names + [name.to_upper()]
+    }
+}
+
+repository Bags for Bag
+
+enum Failure {
+    include WrongAnswer
+    include Bag.Error
+    include StorageError
+}
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn no_numbers(): List<Int> where Length(0, 120) = []
+
+fn no_words(): List<String> where Length(0, 8) = []
+
+service Check(): Result<Unit, Failure> {
+    calls { Bags }
+} = {
+    let numbers: List<Int> where Length(0, 120) = no_numbers()
+    loop (let i where Range(0, 99)) {
+        set numbers = numbers.add(i * 2)
+    }
+    check(numbers.length == 100 && numbers.get(99) == Some(198))?
+    // From the list itself: its own items, and itself.
+    set numbers = numbers.add(numbers.length)
+    set numbers = numbers + [numbers.first.unwrap_or(7), 5]
+    check(numbers.length == 103 && numbers.drop(100) == [100, 0, 5])?
+    let words: List<String> where Length(0, 8) = no_words()
+    set words = words.add("up")
+    set words = words + ["the", "hill"]
+    set words = words + words
+    check(words == ["up", "the", "hill", "up", "the", "hill"])?
+    set words = words + words.take(2).reverse()
+    check(words.length == 8 && words.drop(6) == ["the", "up"])?
+    let bag = Bag.Open(id: 2)?
+    Bags.save(bag)?
+    issue Pack(name: "lamp") on Bag(2)?
+    let found = Bags.find(2)?
+    check(found.names == ["rope", "lamp", "LAMP"])
+}
