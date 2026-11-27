@@ -33,6 +33,11 @@ fn above(n: Int where Range(0, 40000), floor: Int where Range(-5, 5)): Bool = n 
 
 fn half(n: Int where Range(-100, 100)): Int = n / 2
 
+// Worked out once, then divided by its magnitude with the sign put back.
+fn third_below(n: Int where Range(-100, 100), by: Int where Range(-9, -1)): Int = (n - 1) / by
+
+fn left_over(n: Int where Range(-40000, 40000), by: Int where Range(1, 40000)): Int = (n + 1) % by
+
 fn doubled_level(hero: Hero): Int = {
     let doubled = hero.level * 2
     let big = doubled * 1000
@@ -60,6 +65,11 @@ service Check(): Result<Unit, WrongAnswer> = {
     check(above(0, -5))?
     check(!above(0, 5))?
     check(half(-99) == -49)?
+    check(third_below(-99, -3) == 33)?
+    check(third_below(99, -3) == -32)?
+    check(left_over(-39999, 40000) == -39998)?
+    check(left_over(-7, 4) == -2)?
+    check(left_over(39999, 3) == 1)?
     check(doubled_level(Hero { health: 1, level: 99 }) == 198198)?
     check(scaled_length("lighthou") == 80000)?
     check(keeps([1, 2, 3], -1) == 3)?

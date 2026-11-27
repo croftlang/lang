@@ -3,7 +3,7 @@
 use croft_analysis::Type;
 use croft_syntax::ast::{BinaryOp, Expr};
 
-use super::range::{combine, Span};
+use super::range::{combine, is_atom, Span, WHOLE_LOW};
 use super::Writer;
 use crate::types::bounds::{is_bytes, is_string, list_item};
 use crate::types::constant::evaluate;
@@ -38,6 +38,13 @@ pub(super) fn whole_arithmetic(op: BinaryOp, left: &str, right: &str) -> String 
     };
 
     format!("croft_int_{name}({left}, {right})")
+}
+
+/// Whether `c` is a C name or a place in one, such as `hero.level` or
+/// `items[2]`, which can be read twice without working anything out again.
+fn is_place(c: &str) -> bool {
+    c.chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || "_.[]".contains(ch))
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -92,6 +99,12 @@ impl<'g, 'a> Writer<'g, 'a> {
             let ranges = (self.range_of(left), self.range_of(right));
 
             if !always_answers(op, ranges) {
+                let sides = (left, right);
+
+                if let Some(divided) = self.signed_division(op, sides, (&left_c, &right_c)) {
+                    return divided;
+                }
+
                 return whole_arithmetic(op, &left_c, &right_c);
             }
         }
@@ -128,6 +141,86 @@ impl<'g, 'a> Writer<'g, 'a> {
                 format!("({left} {symbol} {right})")
             }
         }
+    }
+
+    /// `left / right` or `left % right` written inline, where the divisor is
+    /// never zero and neither side can be the lowest whole number, but either
+    /// can be below zero. C89 lets a compiler round a quotient below zero
+    /// either way, so the magnitudes are divided and the sign put back after:
+    /// the divisor's sign is known from its range, and the number divided is
+    /// tested, which an 8-bit machine does far faster than a call. `None`
+    /// when the runtime function is needed instead.
+    fn signed_division(
+        &mut self,
+        op: BinaryOp,
+        (left, right): (&Expr, &Expr),
+        (left_c, right_c): (&str, &str),
+    ) -> Option<String> {
+        let (Some(dividend), Some(divisor)) = (self.range_of(left), self.range_of(right)) else {
+            return None;
+        };
+
+        if !matches!(op, BinaryOp::Divide | BinaryOp::Remainder) {
+            return None;
+        }
+
+        let positive = divisor.low >= 1;
+
+        if !positive && divisor.high >= 0 {
+            return None;
+        }
+
+        if dividend.low == WHOLE_LOW || divisor.low == WHOLE_LOW {
+            return None;
+        }
+
+        let widened = self.widened_operation(op, left, right, left_c.to_string());
+
+        // The number divided is read twice, so anything but a name or a
+        // place is worked out once first.
+        let number = if is_place(left_c) {
+            widened
+        } else {
+            let c_type = if widened == left_c {
+                "int"
+            } else {
+                "croft_int"
+            };
+            let number = self.raw_variable("number", c_type);
+            self.line(format!("{number} = {widened};"));
+            number
+        };
+
+        let magnitude = match (positive, is_atom(right_c)) {
+            (true, _) => right_c.to_string(),
+            (false, true) => format!("(-{right_c})"),
+            (false, false) => format!("(-({right_c}))"),
+        };
+
+        let (below, above) = match op {
+            BinaryOp::Divide if positive => (
+                format!("(-((-{number}) / {magnitude}))"),
+                format!("({number} / {magnitude})"),
+            ),
+            BinaryOp::Divide => (
+                format!("((-{number}) / {magnitude})"),
+                format!("(-({number} / {magnitude}))"),
+            ),
+            _ => (
+                format!("(-((-{number}) % {magnitude}))"),
+                format!("({number} % {magnitude})"),
+            ),
+        };
+
+        if dividend.is_natural() {
+            return Some(above);
+        }
+
+        if dividend.high < 0 {
+            return Some(below);
+        }
+
+        Some(format!("({number} < 0 ? {below} : {above})"))
     }
 
     /// `&&` and `||` only work out their right side when it is needed.
