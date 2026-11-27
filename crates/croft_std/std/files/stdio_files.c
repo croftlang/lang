@@ -9,6 +9,7 @@
 #endif
 #endif
 
+#include <errno.h>
 #include <stdio.h>
 #include "program.h"
 
@@ -48,6 +49,35 @@ static void fail(croft_error *error, croft_u16 code)
     error->code = code;
 }
 
+/* Whether the call that just failed, with errno cleared before it, failed
+   because there is nothing at the path. ENOENT and ENOTDIR are POSIX, not
+   C89, so a machine without them can't tell, and counts every failure as a
+   missing file. */
+static croft_bool is_missing(void)
+{
+#ifdef ENOENT
+    if (errno == ENOENT) {
+        return 1;
+    }
+#ifdef ENOTDIR
+    if (errno == ENOTDIR) {
+        return 1;
+    }
+#endif
+    return 0;
+#else
+    return 1;
+#endif
+}
+
+/* The error for a path that couldn't be opened: NotFound when there is
+   nothing there, Unreadable when it is there but can't be opened, such as
+   one the program has no permission for. */
+static croft_u16 open_error(void)
+{
+    return is_missing() ? CROFT_ERROR_Std_Files_NotFound : CROFT_ERROR_Std_Files_Unreadable;
+}
+
 void croft_files_read(croft_string_view path, croft_result_bytes_error *out)
 {
     char name[CROFT_PATH_CAPACITY + 1];
@@ -57,9 +87,10 @@ void croft_files_read(croft_string_view path, croft_result_bytes_error *out)
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
         return;
     }
+    errno = 0;
     file = fopen(name, "rb");
     if (file == 0) {
-        fail(&out->error, CROFT_ERROR_Std_Files_NotFound);
+        fail(&out->error, open_error());
         return;
     }
     out->value.length = (croft_u16) fread(out->value.items, 1, CROFT_BYTES_CAPACITY, file);
@@ -84,9 +115,11 @@ static void put(croft_string_view path, const croft_bytes *data, const char *mod
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
         return;
     }
+    errno = 0;
     file = fopen(name, mode);
     if (file == 0) {
-        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        /* A folder on the way that isn't there makes it NotFound. */
+        fail(&out->error, open_error());
         return;
     }
     written = fwrite(data->items, 1, data->length, file);
@@ -115,11 +148,15 @@ void croft_files_exists(croft_string_view path, croft_bool *out)
         *out = 0;
         return;
     }
+    errno = 0;
     file = fopen(name, "rb");
-    *out = file != 0;
-    if (file != 0) {
-        fclose(file);
+    if (file == 0) {
+        /* A file the program may not read is still there. */
+        *out = !is_missing();
+        return;
     }
+    *out = 1;
+    fclose(file);
 }
 
 void croft_files_remove(croft_string_view path, croft_result_unit_error *out)
@@ -159,15 +196,23 @@ void croft_files_copy(croft_string_view from, croft_string_view to, croft_result
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
         return;
     }
+    errno = 0;
     source = fopen(name, "rb");
     if (source == 0) {
-        fail(&out->error, CROFT_ERROR_Std_Files_NotFound);
+        fail(&out->error, open_error());
         return;
     }
-    copy = to_path(to, name) ? fopen(name, "wb") : 0;
-    if (copy == 0) {
+    if (!to_path(to, name)) {
         fclose(source);
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
+    errno = 0;
+    copy = fopen(name, "wb");
+    if (copy == 0) {
+        /* Worked out before fclose, which may change errno. */
+        fail(&out->error, open_error());
+        fclose(source);
         return;
     }
     while (written && (count = fread(chunk, 1, CROFT_COPY_CHUNK, source)) > 0) {
@@ -276,9 +321,10 @@ void croft_files_list(croft_string_view folder, croft_result_list_string_error *
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
         return;
     }
+    errno = 0;
     dir = opendir(name);
     if (dir == 0) {
-        fail(&out->error, CROFT_ERROR_Std_Files_NotFound);
+        fail(&out->error, open_error());
         return;
     }
     while ((entry = readdir(dir)) != 0) {

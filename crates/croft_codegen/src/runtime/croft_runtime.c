@@ -6,9 +6,14 @@
 static int argument_count = 0;
 static char **argument_values = 0;
 
+/* Prints the failure on standard error, apart from what the program
+   prints, and stops with exit code 1. What the program printed first is
+   flushed first, so the two still come out in order. */
 void croft_fail(const char *message)
 {
-    puts(message);
+    fflush(stdout);
+    fputs(message, stderr);
+    fputc('\n', stderr);
     exit(1);
 }
 

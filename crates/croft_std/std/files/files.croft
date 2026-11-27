@@ -5,7 +5,9 @@
 context Files {
     publish { Files, FileError, NotFound, NoRoom, Unreadable, StdioFiles }
 
-    // There is no file at that path.
+    // There is no file at that path, or, when writing one, no folder to
+    // put it in. One that is there but can't be opened, such as for want of
+    // permission, is `Unreadable` instead.
     error NotFound
 
     // The disk is full, or the file holds more than a `Bytes` can.
@@ -25,12 +27,16 @@ context Files {
         // The whole file.
         fn read(path: String): Result<Bytes, FileError>
 
-        // Replaces the file, or makes it.
+        // Replaces the file, or makes it. Fails with `NotFound` when the
+        // folder it goes in isn't there.
         fn write(path: String, data: Bytes): Result<Unit, FileError>
 
-        // Adds to the end of the file, or makes it.
+        // Adds to the end of the file, or makes it. Fails with `NotFound`
+        // when the folder it goes in isn't there.
         fn append(path: String, data: Bytes): Result<Unit, FileError>
 
+        // Whether there is a file at that path, even one the program may
+        // not read.
         fn exists(path: String): Bool
 
         fn remove(path: String): Result<Unit, FileError>
@@ -46,14 +52,17 @@ context Files {
         fn make_folder(path: String): Result<Unit, FileError>
 
         // Copies the file, however large, replacing the copy or making it.
-        // Fails with `NotFound` when there is nothing to copy.
+        // Fails with `NotFound` when there is nothing to copy, or no folder
+        // to put the copy in.
         fn copy(from: String, to: String): Result<Unit, FileError>
     }
 
     // Files through C89's stdio: fopen, fread, fwrite and remove. Listing
     // and making folders needs POSIX's opendir and mkdir, so on a machine
     // without them, such as an 8-bit one, `list` and `make_folder` fail with
-    // `Unreadable`. A path is never cut short: one longer than 255 bytes, or
+    // `Unreadable`. On a machine whose C has no POSIX `ENOENT`, it can't
+    // tell a missing file from one it may not open, and fails with
+    // `NotFound` for both. A path is never cut short: one longer than 255 bytes, or
     // with a NUL byte in it, makes every operation fail with `Unreadable`,
     // and `exists` give `false`.
     adapter StdioFiles for Files = {

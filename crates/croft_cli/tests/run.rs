@@ -231,6 +231,10 @@ fn exits_with_the_program_exit_code() {
         String::from_utf8_lossy(&ran.stderr)
     );
 
+    // The error's name goes to standard error, apart from what the program prints.
+    assert!(errors(&ran).ends_with("Shop.Closed\n"), "{}", errors(&ran));
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "");
+
     fs::remove_dir_all(folder).ok();
 }
 

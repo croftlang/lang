@@ -52,7 +52,7 @@ fn give(mg: Int where Overdose(4000)): Int = mg
 let given = give(5000)
 ```
 
-A value that is only known while the program runs, such as input or something read from a port, is checked when it reaches the constraint, and a broken one stops the program with a message naming it: `give: mg must satisfy Overdose(4000)`. This happens on every target unless its section of `croft.toml` sets `checks = false`.
+A value that is only known while the program runs, such as input or something read from a port, is checked when it reaches the constraint, and a broken one stops the program with exit code 1 and a message on standard error naming it: `give: mg must satisfy Overdose(4000)`. This happens on every target unless its section of `croft.toml` sets `checks = false`.
 
 ## Failing with an error
 

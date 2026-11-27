@@ -1,0 +1,47 @@
+// Says whether the path named on the command line is there, then reads,
+// lists, copies, writes or appends to it, or copies open.txt to it, as the
+// first argument says, so a failure stops the program with the error's name.
+context Probe {
+    publish { Open }
+
+    use { Files, FileError } from Std.Files
+    use { to_bytes } from Std.Text
+
+    service Open(): Result<Unit, FileError> {
+        calls { Files, Console, Arguments }
+    } = {
+        let arguments = Arguments.all()
+        let operation = arguments.first.unwrap_or("read")
+        let path = arguments.last.unwrap_or("")
+        if Files.exists(path) {
+            Console.print("there")
+        }
+        if operation == "list" {
+            Files.list(path)?
+            Console.print("listed")
+        }
+        if operation == "copy" {
+            Files.copy(path, "copy.bin")?
+            Console.print("copied")
+        }
+        if operation == "copy_to" {
+            Files.copy("open.txt", path)?
+            Console.print("copied")
+        }
+        if operation == "write" {
+            Files.write(path, "x".to_bytes())?
+            Console.print("written")
+        }
+        if operation == "append" {
+            Files.append(path, "x".to_bytes())?
+            Console.print("appended")
+        }
+        Files.read(path)?
+        Console.print("read")
+    }
+}
+
+domain Program {
+    contexts { Probe }
+    use { Open } from Probe
+} = Open()?

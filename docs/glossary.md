@@ -386,8 +386,12 @@ folder on the way, and `copy`, for a file of any size, its errors `NotFound`, `N
 `Unreadable`, the enum `FileError` that includes them, and the `StdioFiles`
 adapter, which uses C's stdio: `Files = "StdioFiles"` in `croft.toml`. Its
 `list` and `make_folder` need POSIX, so they fail with `Unreadable` on
-machines without it. It never cuts a path short: one longer than 255 bytes,
-or with a NUL byte in it, fails with `Unreadable`.
+machines without it. It fails with `NotFound` only when nothing is at the
+path, or a file is written, appended to or copied into a folder that isn't
+there, and with `Unreadable` for a file that is there but can't be opened,
+which `exists` still finds; a machine whose C has no POSIX `ENOENT` can't
+tell the two apart and fails with `NotFound`. It never cuts a path short:
+one longer than 255 bytes, or with a NUL byte in it, fails with `Unreadable`.
 `Std.Http` has the `Http` port, with `get`, `post`, `put` and `delete`. Each
 takes a URL of up to 1024 characters and a map of up to 8 headers to send,
 `[:]` for none, and `post` and `put` take a body after them. Each gives a
@@ -513,7 +517,8 @@ holds the context map, imports what the body needs from the contexts with
 `use`, and names the ports it calls with `calls`. The body runs
 first: it sets up each context's starting data through services those
 contexts publish, then runs the program. It can pass up any error with `?`;
-the program then prints the error's name and stops with exit code 1.
+the program then prints the error's name on standard error and stops with
+exit code 1.
 
 ### Context map
 The `contexts` block of the domain: every context, and arrows from upstream

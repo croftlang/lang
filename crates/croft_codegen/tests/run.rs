@@ -77,8 +77,9 @@ fn reads_and_writes_files() {
 
     assert_eq!(
         String::from_utf8_lossy(&ran.stdout),
-        "first line, then more\nStd.Files.NotFound\n"
+        "first line, then more\n"
     );
+    assert_eq!(String::from_utf8_lossy(&ran.stderr), "Std.Files.NotFound\n");
 
     assert!(!output.join("notes.txt").exists());
     fs::remove_dir_all(output).ok();
@@ -131,7 +132,7 @@ fn rolls_within_range() {
     assert_eq!(reversed.status.code(), Some(1));
 
     assert_eq!(
-        String::from_utf8_lossy(&reversed.stdout),
+        String::from_utf8_lossy(&reversed.stderr),
         "SeededRandom.between: low <= high must hold\n"
     );
 
@@ -199,12 +200,12 @@ fn lists_the_names_in_a_folder() {
 
     let full = run("many");
     assert_eq!(full.status.code(), Some(1));
-    assert_eq!(String::from_utf8_lossy(&full.stdout), "Std.Files.NoRoom\n");
+    assert_eq!(String::from_utf8_lossy(&full.stderr), "Std.Files.NoRoom\n");
 
     let missing = run("missing");
     assert_eq!(missing.status.code(), Some(1));
     assert_eq!(
-        String::from_utf8_lossy(&missing.stdout),
+        String::from_utf8_lossy(&missing.stderr),
         "Std.Files.NotFound\n"
     );
 
@@ -265,10 +266,103 @@ fn makes_folders_and_copies_files() {
     let missing = run("missing.bin");
     assert_eq!(missing.status.code(), Some(1));
     assert_eq!(
-        String::from_utf8_lossy(&missing.stdout),
+        String::from_utf8_lossy(&missing.stderr),
         "Std.Files.NotFound\n"
     );
 
+    fs::remove_dir_all(output).ok();
+}
+
+/// StdioFiles fails with `NotFound` only when there is nothing at the path,
+/// or no folder to write a file into, and with `Unreadable` for a file or
+/// folder that is there but can't be opened, which `exists` still finds.
+#[cfg(unix)]
+#[test]
+fn tells_a_missing_file_from_one_it_may_not_open() {
+    use std::os::unix::fs::PermissionsExt;
+
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/file_errors");
+    let output = generate(&source, "test", "file_errors");
+
+    let built = compile(
+        &output,
+        &[
+            "croft_runtime.c",
+            "croft_files.c",
+            "program.c",
+            "-o",
+            "program",
+        ],
+    );
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    fs::write(output.join("open.txt"), "x").expect("a file");
+    fs::write(output.join("locked.txt"), "x").expect("a file");
+    fs::create_dir_all(output.join("locked")).expect("a folder");
+
+    let locked = fs::Permissions::from_mode(0o000);
+    fs::set_permissions(output.join("locked.txt"), locked.clone()).expect("locked");
+    fs::set_permissions(output.join("locked"), locked).expect("locked");
+
+    let run = |operation: &str, path: &str| {
+        let ran = std::process::Command::new(output.join("program"))
+            .args([operation, path])
+            .current_dir(&output)
+            .output()
+            .expect("it runs");
+
+        (
+            String::from_utf8_lossy(&ran.stdout).into_owned(),
+            String::from_utf8_lossy(&ran.stderr).into_owned(),
+        )
+    };
+
+    let failed = |error: &str| (String::new(), format!("Std.Files.{error}\n"));
+    let there = |error: &str| ("there\n".to_string(), format!("Std.Files.{error}\n"));
+
+    assert_eq!(
+        run("read", "open.txt"),
+        ("there\nread\n".to_string(), String::new())
+    );
+    assert_eq!(run("read", "missing.txt"), failed("NotFound"));
+    assert_eq!(run("read", "missing/inner.txt"), failed("NotFound"));
+    assert_eq!(run("read", "open.txt/inner.txt"), failed("NotFound"));
+    assert_eq!(run("copy", "missing.txt"), failed("NotFound"));
+    assert_eq!(run("list", "missing"), failed("NotFound"));
+    assert_eq!(run("write", "missing/inner.txt"), failed("NotFound"));
+    assert_eq!(run("append", "missing/inner.txt"), failed("NotFound"));
+    assert_eq!(run("copy_to", "missing/inner.txt"), failed("NotFound"));
+    assert_eq!(
+        run("write", "written.txt"),
+        ("written\nread\n".to_string(), String::new())
+    );
+    assert_eq!(
+        run("append", "written.txt"),
+        ("there\nappended\nread\n".to_string(), String::new())
+    );
+
+    // Someone allowed to open anything, such as root, can't see this.
+    if fs::read(output.join("locked.txt")).is_err() {
+        assert_eq!(run("read", "locked.txt"), there("Unreadable"));
+        assert_eq!(run("copy", "locked.txt"), there("Unreadable"));
+        assert_eq!(run("list", "locked"), there("Unreadable"));
+        assert_eq!(run("write", "locked.txt"), there("Unreadable"));
+        assert_eq!(run("append", "locked.txt"), there("Unreadable"));
+        assert_eq!(run("copy_to", "locked.txt"), there("Unreadable"));
+    }
+
+    let open = fs::Permissions::from_mode(0o755);
+    fs::set_permissions(output.join("locked.txt"), open.clone()).ok();
+    fs::set_permissions(output.join("locked"), open).ok();
     fs::remove_dir_all(output).ok();
 }
 
@@ -320,14 +414,14 @@ fn fails_instead_of_cutting_paths_and_arguments_short() {
 
     let with_nul = run(&[]);
     assert_eq!(
-        String::from_utf8_lossy(&with_nul.stdout),
+        String::from_utf8_lossy(&with_nul.stderr),
         "Std.Files.Unreadable\n"
     );
     assert_eq!(with_nul.status.code(), Some(1));
 
     let too_long = run(&["a".repeat(300)]);
     assert_eq!(
-        String::from_utf8_lossy(&too_long.stdout),
+        String::from_utf8_lossy(&too_long.stderr),
         "Std.Files.Unreadable\n"
     );
     assert_eq!(too_long.status.code(), Some(1));
@@ -337,7 +431,7 @@ fn fails_instead_of_cutting_paths_and_arguments_short() {
 
     let long_argument = run(&["c".repeat(301)]);
     assert_eq!(
-        String::from_utf8_lossy(&long_argument.stdout),
+        String::from_utf8_lossy(&long_argument.stderr),
         "an argument is longer than a string can hold\n"
     );
     assert_eq!(long_argument.status.code(), Some(1));
@@ -345,7 +439,7 @@ fn fails_instead_of_cutting_paths_and_arguments_short() {
     let many: Vec<String> = (0..17).map(|index| format!("{index}.txt")).collect();
     let too_many = run(&many);
     assert_eq!(
-        String::from_utf8_lossy(&too_many.stdout),
+        String::from_utf8_lossy(&too_many.stderr),
         "there are more arguments than a list can hold\n"
     );
     assert_eq!(too_many.status.code(), Some(1));
@@ -512,7 +606,7 @@ fn checks_rules_in_every_build_by_default() {
 
         (
             ran.status.code(),
-            String::from_utf8_lossy(&ran.stdout).trim().to_string(),
+            String::from_utf8_lossy(&ran.stderr).trim().to_string(),
         )
     };
 
@@ -627,7 +721,8 @@ fn stops_with_the_error_when_the_domain_fails() {
         .expect("the program runs");
 
     assert_eq!(ran.status.code(), Some(1));
-    assert_eq!(String::from_utf8_lossy(&ran.stdout).trim(), "Shop.Closed");
+    assert_eq!(String::from_utf8_lossy(&ran.stderr), "Shop.Closed\n");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "");
     fs::remove_dir_all(output).ok();
 }
 
@@ -1031,10 +1126,15 @@ fn works_out_whole_numbers_in_32_bits() {
             .output()
             .expect("it runs");
 
-        (
-            ran.status.code(),
-            String::from_utf8_lossy(&ran.stdout).trim().to_string(),
-        )
+        // A failure prints nothing on standard output and its message on
+        // standard error, so the two together are whichever there is.
+        let printed = format!(
+            "{}{}",
+            String::from_utf8_lossy(&ran.stdout),
+            String::from_utf8_lossy(&ran.stderr)
+        );
+
+        (ran.status.code(), printed.trim().to_string())
     };
 
     // A small divisor that is never zero divides inline, with its sign tested.
@@ -1235,7 +1335,12 @@ fn reads_the_system_clock() {
 
     assert_eq!(
         String::from_utf8_lossy(&past.stdout),
-        "today is in 2026 or after\nthe time is in the day\ndate_from_day_number: number must satisfy Range(306, LAST_DAY)\n"
+        "today is in 2026 or after\nthe time is in the day\n"
+    );
+
+    assert_eq!(
+        String::from_utf8_lossy(&past.stderr),
+        "date_from_day_number: number must satisfy Range(306, LAST_DAY)\n"
     );
 
     fs::remove_dir_all(output).ok();
@@ -1340,7 +1445,7 @@ fn fails_with_a_constraints_error() {
     assert!(
         ran.status.success(),
         "a check failed: {}",
-        String::from_utf8_lossy(&ran.stdout)
+        String::from_utf8_lossy(&ran.stderr)
     );
     fs::remove_dir_all(output).ok();
 }
