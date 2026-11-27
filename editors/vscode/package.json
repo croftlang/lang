@@ -1,9 +1,19 @@
 {
-  "name": "croft-language",
+  "name": "croft",
   "displayName": "Croft",
-  "description": "Syntax highlighting, errors as you type, hover and go to definition for the Croft domain language.",
+  "description": "Croft language support: highlighting, errors as you type, hover, go to definition and completion through croft lsp.",
   "version": "0.1.0",
-  "publisher": "briward",
+  "publisher": "croftlang",
+  "icon": "icons/croft.png",
+  "homepage": "https://croftlang.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/croftlang/lang.git",
+    "directory": "editors/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/croftlang/lang/issues"
+  },
   "license": "MIT OR Apache-2.0",
   "engines": {
     "vscode": "^1.82.0"

@@ -16,7 +16,7 @@ function activate(context) {
   client.start().catch((error) => {
     vscode.window.showErrorMessage(
       `Could not start the Croft language server with \`${command} lsp\`: ${error.message}. ` +
-        "Install Croft with `cargo install --path crates/croft_cli`, or set `croft.server.path`.",
+        "Install Croft from https://croftlang.com/install, or set `croft.server.path`.",
     );
   });
   context.subscriptions.push({ dispose: () => client && client.stop() });
