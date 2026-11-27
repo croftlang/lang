@@ -1,9 +1,10 @@
 //! How long a string, a `Bytes` or a list can be. Code generation works out a
 //! bound for each one it builds, from literals, `Length` constraints and the
 //! methods that make one from another, and keeps it in a `croft_text_N`, a
-//! `croft_bytes_N` or a `croft_listN_...` of just that size. One with no
-//! bound below the shared size is a full `croft_string`, `croft_bytes` or
-//! `croft_list_...`.
+//! `croft_bytes_N` or a `croft_listN_...` of just that size. A string or
+//! `Bytes` with no bound is a full `croft_string` or `croft_bytes`, of the
+//! target's `strings_length` or `bytes_length`, and a list with no bound
+//! below the shared size a full `croft_list_...`.
 
 use croft_analysis::Type;
 
@@ -54,14 +55,18 @@ pub fn has_bound(ty: &Type) -> bool {
 }
 
 impl<'a> Generator<'a> {
-    /// A string of at most `length` characters: bounded when that is less
-    /// than the shared size. C has no empty arrays, so it holds at least one.
+    /// A string of at most `length` characters: a full string when that is
+    /// the size a string with no `Length` has, and a size of its own, shorter
+    /// or longer, otherwise. None is kept in more than the most any string
+    /// can need, and as C has no empty arrays, each holds at least one.
     pub fn text_type(&self, length: i64) -> Type {
-        if length >= self.sizes.string_capacity {
+        let length = length.min(self.sizes.string_largest).max(1);
+
+        if length == self.sizes.string_capacity {
             return Type::String;
         }
 
-        Type::Text(length.max(1) as u16)
+        Type::Text(length as u16)
     }
 
     /// `Bytes` of at most `length` values: a full `Bytes` when that is the
@@ -173,6 +178,33 @@ impl<'a> Generator<'a> {
             (Type::Set(a), Type::Set(b)) => Type::set(self.wider(a, b)),
             (Type::Result(av, ae), Type::Result(bv, be)) => {
                 Type::result(self.wider(av, bv), self.wider(ae, be))
+            }
+            (a, _) => a.clone(),
+        }
+    }
+
+    /// A type with room for no more than either `a` or `b` holds, which
+    /// differ only in the bounds of their strings, `Bytes` and lists: what a
+    /// function gives back, kept within its declared result.
+    pub fn narrower(&self, a: &Type, b: &Type) -> Type {
+        if let (Some(a_item), Some(b_item)) = (list_item(a), list_item(b)) {
+            let length = self.capacity(a).min(self.capacity(b));
+            return self.list_type(self.narrower(a_item, b_item), length);
+        }
+
+        match (a, b) {
+            (a, b) if is_string(a) && is_string(b) => {
+                self.text_type(self.bound(a).min(self.bound(b)))
+            }
+            (a, b) if is_bytes(a) && is_bytes(b) => {
+                self.bytes_type(self.bound(a).min(self.bound(b)))
+            }
+            (Type::Option(a), Type::Option(b)) => Type::option(self.narrower(a, b)),
+            (Type::Map(ak, av), Type::Map(bk, bv)) => {
+                Type::map(self.narrower(ak, bk), self.narrower(av, bv))
+            }
+            (Type::Result(av, ae), Type::Result(bv, be)) => {
+                Type::result(self.narrower(av, bv), self.narrower(ae, be))
             }
             (a, _) => a.clone(),
         }

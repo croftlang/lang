@@ -191,12 +191,14 @@ many as it can need: a literal is as long as it is, `trim`, `slice` and each
 part of `split` or `lines` are no longer than the string they come from, a
 joined string is as long as both parts, `repeat` and `pad_left` as long as
 the `Range` of their count or width allows, and a function gives back a
-string as long as the longest it can return. Each part of `split` or
+string as long as the longest it can return, and no longer than its result's
+`Length`, or the target's `strings_length` when it has none. Each part of `split` or
 `lines`, and the result of `trim` or `slice`, borrows its characters from the string it comes from rather than
 copying them, unless that string can change before the function returns. A
-string with nothing to bound it, such as a parameter with no `Length` or a
-`let` that is `set` again later, holds 32 characters, or the longest
-`Length` in the program if that is longer. A string too long for where it
+string with nothing to bound it, such as a field with no `Length` or a
+`let` that is `set` again later, holds the target's `strings_length`, 32
+unless croft.toml sets it, whatever `Length`s the rest of the program has,
+and a parameter borrows what it is given, of any length. A string too long for where it
 goes is cut short; unless the target sets `checks = false`, that stops the
 program and says which field it was. `Bytes` are kept the same way: a field, variant field,
 parameter or result with a `Length` holds that many values, a literal holds

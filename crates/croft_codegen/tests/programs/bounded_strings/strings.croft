@@ -15,7 +15,7 @@ enum Command {
     Wait
 }
 
-// The longest `Length` anywhere, so every unbounded string holds 40.
+// Longer than a string with no `Length` holds, so borrowed in its own size.
 fn shout(text: String where Length(0, 40)): String = text + "!"
 
 fn check(ok: Bool): Result<Unit, WrongAnswer> = {

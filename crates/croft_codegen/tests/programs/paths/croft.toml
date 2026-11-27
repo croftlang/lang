@@ -1,5 +1,9 @@
 [package]
 name = "paths"
 
+# Room in each string for a path longer than StdioFiles can pass on.
+[target.test]
+strings_length = 300
+
 [target.test.adapters]
 Files = "StdioFiles"

@@ -76,7 +76,7 @@ impl<'a> Generator<'a> {
     fn function(&self, found: &Resolved, prototypes: &mut Vec<String>) -> (String, Option<Type>) {
         let context = &self.program.contexts[&found.context];
 
-        let (result, preconditions, body, constraints, return_constraints) = if found.kind
+        let (result, declared, preconditions, body, constraints, return_constraints) = if found.kind
             == SymbolKind::Constraint
         {
             let Some(decl) = context
@@ -87,7 +87,14 @@ impl<'a> Generator<'a> {
                 return (String::new(), None);
             };
 
-            (Type::Bool, &[][..], Some(&decl.body), Vec::new(), &[][..])
+            (
+                Type::Bool,
+                Type::Bool,
+                &[][..],
+                Some(&decl.body),
+                Vec::new(),
+                &[][..],
+            )
         } else {
             let Some(decl) = context.functions.iter().find(|f| f.name.name == found.name) else {
                 return (String::new(), None);
@@ -99,7 +106,7 @@ impl<'a> Generator<'a> {
             }
 
             let declared = self.function_result(&found.context, decl);
-            let result = self.result_of(found).unwrap_or(declared);
+            let result = self.result_of(found).unwrap_or_else(|| declared.clone());
 
             let constraints = decl
                 .parameters
@@ -110,6 +117,7 @@ impl<'a> Generator<'a> {
 
             (
                 result,
+                declared,
                 decl.preconditions.as_slice(),
                 decl.body.as_ref(),
                 constraints,
@@ -157,7 +165,10 @@ impl<'a> Generator<'a> {
             }
         }
 
-        let returned = writer.returned.clone();
+        // A result is never kept in more than its declared type holds, so a
+        // string result with no `Length` stays the target's size.
+        let returned =
+            (writer.returned.clone()).map(|returned| self.narrower(&returned, &declared));
 
         (writer.finish(&signature), returned)
     }

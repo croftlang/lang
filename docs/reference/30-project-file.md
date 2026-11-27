@@ -8,6 +8,8 @@ Every target checks, while the program runs, the constraints without `or` that t
 
 A `Bytes` with no `Length` of its own keeps room for 64 values. `bytes_length` sets how many for a target, from 1 to 65535: fewer on a small machine, more where HTTP bodies are large. A `Bytes` with a `Length`, and what `Files.read(path, most)` gives back, keep their own room either way.
 
+A string with no `Length` of its own, such as a field, a list item, a map key, a `let` that `set` changes or a line read from the console, keeps room for 32 characters. `strings_length` sets how many for a target, from 1 to 65535. A string with a `Length`, shorter or longer, keeps its own room, so one long `Length`, such as the 1024 characters of Std.Http's URL, doesn't make every string as long. A longer value going into a string with no `Length` stops the program, or is cut short when the target sets `checks = false`. A string parameter borrows what it is given, so it takes one of any length.
+
 ```croft
 [package]
 name = "dungeon"
@@ -16,6 +18,7 @@ version = "0.1.0"
 [target.spectrum_48k]
 native = ["platform/spectrum.c"]
 bytes_length = 32
+strings_length = 24
 
 [target.spectrum_48k.adapters]
 Screen = "SpectrumScreen"

@@ -1,4 +1,4 @@
-//! Sizes taken from constraints: how long strings and lists can be, and how many
+//! Sizes taken from constraints and the target: how long strings and lists can be, and how many
 //! bytes a whole number needs.
 
 use std::collections::HashMap;
@@ -11,18 +11,17 @@ use super::constant::evaluate;
 
 /// How many items a list, set or map holds when no `Length` constraint says otherwise.
 pub const DEFAULT_LIST_CAPACITY: i64 = 16;
-/// How many characters a string holds when no `Length` constraint says otherwise.
-pub const DEFAULT_STRING_CAPACITY: i64 = 32;
 
 /// The capacities of strings, bytes, lists, sets and maps for one program.
 pub struct Sizes {
-    /// How many characters a string with no size of its own holds: the default, or the longest
-    /// string any constraint allows if that is longer. A string field with a
-    /// shorter `Length` is kept in a size of its own.
+    /// How many characters a string with no `Length` of its own holds: the
+    /// target's `strings_length`. A string with a `Length`, shorter or
+    /// longer, is kept in a size of its own.
     pub string_capacity: i64,
-    /// What set `string_capacity`, when a constraint did: a field or a
-    /// parameter, such as `Terminal.print: text`.
-    pub string_capacity_from: Option<String>,
+    /// The most characters any string can need: the longest `Length` on
+    /// one, or `string_capacity` if that is more. A string made by joining
+    /// others is never kept in more.
+    pub string_largest: i64,
     /// How many values a `Bytes` with no `Length` of its own holds: the
     /// target's `bytes_length`. A `Bytes` with a `Length`, shorter or longer,
     /// is kept in a size of its own.
@@ -41,11 +40,17 @@ pub struct Sizes {
 
 impl Sizes {
     /// Reads every `Length` in the program to work out its sizes. A `Bytes`
-    /// with none holds `bytes_length` values.
-    pub fn measure(program: &Program, model: &Model, bytes_length: i64) -> Sizes {
+    /// with none holds `bytes_length` values, and a string `strings_length`
+    /// characters.
+    pub fn measure(
+        program: &Program,
+        model: &Model,
+        bytes_length: i64,
+        strings_length: i64,
+    ) -> Sizes {
         let mut sizes = Sizes {
-            string_capacity: 0,
-            string_capacity_from: None,
+            string_capacity: strings_length,
+            string_largest: strings_length,
             bytes_capacity: bytes_length,
             bytes_largest: bytes_length,
             list_capacity: HashMap::new(),
@@ -54,83 +59,69 @@ impl Sizes {
         };
 
         for (name, context) in &program.contexts {
-            let mut fields: Vec<(&TypeExpr, &[ConstraintUse], Option<&str>, String)> = Vec::new();
+            let mut fields: Vec<(&TypeExpr, &[ConstraintUse], Option<&str>)> = Vec::new();
 
             let records = (context.values.iter())
-                .map(|v| (&v.fields, None, v.name.name.clone()))
-                .chain(
-                    context
-                        .errors
-                        .iter()
-                        .map(|e| (&e.fields, None, e.name.name.clone())),
-                );
+                .map(|v| (&v.fields, None))
+                .chain(context.errors.iter().map(|e| (&e.fields, None)));
 
-            let records = records
-                .chain((context.adapters.iter()).map(|a| (&a.fields, None, a.name.name.clone())));
+            let records = records.chain((context.adapters.iter()).map(|a| (&a.fields, None)));
 
-            let records = records.chain(context.enums.iter().flat_map(|e| {
-                (e.variants.iter())
-                    .map(move |v| (&v.fields, None, format!("{}.{}", e.name.name, v.name.name)))
-            }));
+            let records = records.chain(
+                (context.enums.iter()).flat_map(|e| e.variants.iter().map(|v| (&v.fields, None))),
+            );
 
             let aggregates = context.aggregates.iter().flat_map(|a| {
                 let scope = Some(a.name.name.as_str());
-                let owner = a.name.name.clone();
-                let nested = (a.entities.iter())
-                    .map(move |e| (&e.fields, scope, format!("{}.{}", a.name.name, e.name.name)));
+                let nested = a.entities.iter().map(move |e| (&e.fields, scope));
+                let records = (a.errors.iter().chain(&a.events)).map(move |r| (&r.fields, scope));
 
-                let records = (a.errors.iter().chain(&a.events))
-                    .map(move |r| (&r.fields, scope, format!("{}.{}", a.name.name, r.name.name)));
-
-                std::iter::once((&a.fields, scope, owner))
+                std::iter::once((&a.fields, scope))
                     .chain(nested)
                     .chain(records)
             });
 
-            for (list, aggregate, owner) in records.chain(aggregates) {
-                fields.extend(list.iter().map(|f| {
-                    let label = format!("{owner}.{}", f.name.name);
-                    (&f.ty, f.constraints.as_slice(), aggregate, label)
-                }));
+            for (list, aggregate) in records.chain(aggregates) {
+                fields.extend(
+                    list.iter()
+                        .map(|f| (&f.ty, f.constraints.as_slice(), aggregate)),
+                );
             }
 
-            let functions = (context.functions.iter())
-                .map(|f| (f, None, f.name.name.clone()))
-                .chain(context.ports.iter().flat_map(|p| {
-                    (p.operations.iter())
-                        .map(move |f| (f, None, format!("{}.{}", p.name.name, f.name.name)))
-                }));
+            let functions = (context.functions.iter()).map(|f| (f, None)).chain(
+                context
+                    .ports
+                    .iter()
+                    .flat_map(|p| p.operations.iter().map(|f| (f, None))),
+            );
 
             let commands = context.aggregates.iter().flat_map(|a| {
                 let scope = Some(a.name.name.as_str());
-                (a.commands.iter().chain(&a.factories))
-                    .map(move |c| (c, scope, format!("{}.{}", a.name.name, c.name.name)))
+                (a.commands.iter().chain(&a.factories)).map(move |c| (c, scope))
             });
 
             // A `where` on a parameter or on the result counts as much as
             // one on a field does.
-            for (function, aggregate, owner) in functions.chain(commands) {
+            for (function, aggregate) in functions.chain(commands) {
                 for parameter in function.parameters.iter().flatten() {
                     if let Some(ty) = parameter.types.first() {
-                        let label = format!("{owner}: {}", parameter.name.name);
-                        fields.push((ty, &parameter.constraints, aggregate, label));
+                        fields.push((ty, &parameter.constraints, aggregate));
                     }
                 }
 
                 if let Some(ty) = &function.return_type {
-                    let label = format!("{owner}'s result");
-                    fields.push((ty, &function.return_constraints, aggregate, label));
+                    fields.push((ty, &function.return_constraints, aggregate));
                 }
             }
 
-            for (ty, constraints, aggregate, label) in fields {
-                sizes.add(program, model, name, aggregate, ty, constraints, label);
+            for (ty, constraints, aggregate) in fields {
+                sizes.add(program, model, name, aggregate, ty, constraints);
             }
         }
 
         // A `Length` on a `let` counts as much as one on a field does.
-        for (name, ty, longest) in &program.facts.let_lengths {
-            sizes.grow(ty, *longest, format!("let {name}"));
+        for (_, ty, longest) in &program.facts.let_lengths {
+            sizes.grow(ty, *longest);
         }
 
         // A port operation whose result's `Length` names a parameter, such
@@ -140,14 +131,12 @@ impl Sizes {
         }
 
         sizes.bytes_largest = sizes.bytes_largest.min(i64::from(u16::MAX));
-
-        sizes.string_capacity = sizes.string_capacity.max(DEFAULT_STRING_CAPACITY);
+        sizes.string_largest = sizes.string_largest.min(i64::from(u16::MAX));
 
         sizes
     }
 
     /// Grows the capacity for one field, parameter or result by its `Length`.
-    #[allow(clippy::too_many_arguments)]
     fn add(
         &mut self,
         program: &Program,
@@ -156,7 +145,6 @@ impl Sizes {
         aggregate: Option<&str>,
         ty: &TypeExpr,
         constraints: &[ConstraintUse],
-        label: String,
     ) {
         let Some(longest) = constraints
             .iter()
@@ -181,20 +169,14 @@ impl Sizes {
             _ => return,
         };
 
-        self.grow(&lowered, longest, label);
+        self.grow(&lowered, longest);
     }
 
     /// Grows the capacity for strings, bytes, lists, sets or maps of `ty` so it
-    /// holds `longest`, as a `Length` on `label` asks.
-    fn grow(&mut self, ty: &Type, longest: i64, label: String) {
+    /// holds `longest`, as a `Length` asks.
+    fn grow(&mut self, ty: &Type, longest: i64) {
         match ty {
-            Type::String => {
-                if longest > self.string_capacity.max(DEFAULT_STRING_CAPACITY) {
-                    self.string_capacity_from = Some(label);
-                }
-
-                self.string_capacity = self.string_capacity.max(longest);
-            }
+            Type::String => self.string_largest = self.string_largest.max(longest),
             Type::Bytes => self.bytes_largest = self.bytes_largest.max(longest),
             Type::List(item) => {
                 let capacity = self.list_capacity.entry((**item).clone()).or_insert(0);

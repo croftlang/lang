@@ -891,6 +891,86 @@ fn keeps_bytes_without_a_length_in_the_targets_size() {
     fs::remove_dir_all(unchecked_output).ok();
 }
 
+/// A string with no `Length` holds the target's `strings_length`, however
+/// long a `Length` elsewhere is, and one with a `Length` longer than that is
+/// kept in a size of its own. A longer value going into one stops a checked
+/// build, and is cut short when the target turns checks off.
+#[test]
+fn keeps_strings_without_a_length_in_the_targets_size() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/unbounded_strings");
+    let output = generate(&source, "test", "unbounded_strings");
+    let unchecked_output = generate(&source, "unchecked", "unbounded_strings");
+
+    let runtime = fs::read_to_string(output.join("croft.h")).expect("croft.h");
+    assert!(
+        runtime.contains("#define CROFT_STRING_CAPACITY 8"),
+        "{runtime}"
+    );
+
+    let header = fs::read_to_string(output.join("program.h")).expect("program.h");
+    assert!(header.contains("    croft_text_300 text;"), "{header}");
+    assert!(header.contains("    croft_string text;"), "{header}");
+
+    for folder in [&output, &unchecked_output] {
+        let built = compile(folder, &["croft_runtime.c", "program.c", "-o", "program"]);
+
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+    }
+
+    let run = |folder: &Path, argument: &str| {
+        let ran = std::process::Command::new(folder.join("program"))
+            .arg(argument)
+            .output()
+            .expect("it runs");
+
+        (
+            ran.status.code(),
+            String::from_utf8_lossy(&ran.stderr).trim().to_string(),
+        )
+    };
+
+    let stopped = (Some(1), "text is longer than 8 characters".to_string());
+    assert_eq!(run(&output, "none"), (Some(0), String::new()));
+    assert_eq!(run(&output, "long"), stopped);
+    assert_eq!(run(&output, "set"), stopped);
+
+    for argument in ["none", "long", "set"] {
+        assert_eq!(run(&unchecked_output, argument), (Some(0), String::new()));
+    }
+
+    fs::remove_dir_all(output).ok();
+    fs::remove_dir_all(unchecked_output).ok();
+}
+
+/// Std.Http's URL takes up to 1024 characters, but is borrowed for the call,
+/// so every other string, the headers of a `Response` among them, keeps the
+/// target's `strings_length`.
+#[test]
+fn keeps_strings_short_beside_a_long_url() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/http");
+    let output = generate(&source, "test", "http_strings");
+
+    let runtime = fs::read_to_string(output.join("croft.h")).expect("croft.h");
+    assert!(
+        runtime.contains("#define CROFT_STRING_CAPACITY 32"),
+        "{runtime}"
+    );
+
+    let header = fs::read_to_string(output.join("program.h")).expect("program.h");
+    assert!(!header.contains("croft_text_1024"), "{header}");
+    assert!(header.contains("void Std_Http_CurlHttp_get(croft_string_view p_url,"));
+
+    fs::remove_dir_all(output).ok();
+}
+
 #[test]
 fn stops_with_the_error_when_the_domain_fails() {
     if !has_c_compiler() {
