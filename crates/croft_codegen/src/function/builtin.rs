@@ -1,5 +1,6 @@
 //! Built-in functions: the numbers of `Std.Numbers`, `from_code` and
-//! `from_hex` of `Std.Text`, `Some`, `Ok`, `Err`, `Range` and `Length`.
+//! `from_hex` of `Std.Text`, the decoders of `Std.Encoding`, `Some`, `Ok`,
+//! `Err`, `Range` and `Length`.
 
 use croft_analysis::Type;
 use croft_syntax::ast::{Argument, ExprKind};
@@ -80,7 +81,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                 temp
             }
-            "from_hex" => {
+            "from_hex" if *ty == Type::option(Type::Int) => {
                 let text = match arguments.first() {
                     Some(argument) => self.view(&argument.value),
                     None => "croft_string_view_from(\"\", 0)".to_string(),
@@ -90,6 +91,29 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                 self.line(format!(
                     "{temp}.some = croft_string_from_hex({text}, &{temp}.value);"
+                ));
+
+                temp
+            }
+            "from_hex" | "from_base64" => {
+                let Some(argument) = arguments.first() else {
+                    return "0".to_string();
+                };
+
+                let (text, bounded) = self.bounded_view(&argument.value);
+                let length = self.gen.bound(&bounded);
+
+                // One byte for each two digits, or three for each four characters.
+                let most = match name {
+                    "from_hex" => length / 2,
+                    _ => length / 4 * 3,
+                };
+
+                let made = Type::option(self.gen.bytes_type(most));
+                let temp = self.place_for(&made, into);
+
+                self.line(format!(
+                    "{temp}.some = croft_bytes_{name}({text}, CROFT_BYTES_OUT({temp}.value));"
                 ));
 
                 temp

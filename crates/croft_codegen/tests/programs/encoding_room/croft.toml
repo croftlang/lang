@@ -1,0 +1,9 @@
+[package]
+name = "encoding_room"
+
+[target.test]
+main = "Encode"
+
+[target.unchecked]
+main = "Encode"
+checks = false

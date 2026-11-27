@@ -116,6 +116,7 @@ impl<'a> Checker<'a> {
                 self.facts.builtins.push(BuiltinName {
                     span: used.name.span(),
                     name: name.clone(),
+                    from: None,
                 });
 
                 counts.to_vec()

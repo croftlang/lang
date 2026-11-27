@@ -62,6 +62,7 @@ impl<'a> Checker<'a> {
             self.facts.builtins.push(BuiltinName {
                 span,
                 name: name.clone(),
+                from: None,
             });
 
             if *expected != found {

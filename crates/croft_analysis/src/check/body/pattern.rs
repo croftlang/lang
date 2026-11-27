@@ -142,6 +142,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             self.checker.facts.builtins.push(crate::facts::BuiltinName {
                 span: written.span,
                 name: written.name.clone(),
+                from: None,
             });
 
             return;

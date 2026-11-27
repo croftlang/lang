@@ -46,7 +46,8 @@ const RUNTIME_SOURCE: &str = concat!(
     include_str!("../runtime/arithmetic.c"),
     include_str!("../runtime/decimal.c"),
     include_str!("../runtime/bytes.c"),
-    include_str!("../runtime/saving.c")
+    include_str!("../runtime/saving.c"),
+    include_str!("../runtime/encoding.c")
 );
 
 impl<'a> Generator<'a> {

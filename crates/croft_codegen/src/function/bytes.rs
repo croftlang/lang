@@ -76,7 +76,8 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// A method of `bytes`, a C value of type `bounded`. `add` gives back
     /// room for one more value, `add_u16` for two more, and `set` and
-    /// `slice` no more than it had.
+    /// `slice` no more than it had. `to_hex` and `to_base64` give back a
+    /// string with room for all of it.
     pub fn bytes_method(
         &mut self,
         (bytes, bounded): (&str, &Type),
@@ -162,6 +163,18 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.line(format!("croft_bytes_to_text({view}, CROFT_OUT({temp}));"));
                 temp
             }
+            "to_hex" | "to_base64" => {
+                // Two digits for each byte, or four characters for each three.
+                let most = match name {
+                    "to_hex" => held * 2,
+                    _ => (held + 2) / 3 * 4,
+                };
+
+                let temp = self.temp(&self.gen.text_type(most));
+                self.line(format!("croft_bytes_{name}({view}, CROFT_OUT({temp}));"));
+                temp
+            }
+            "crc16" | "crc32" => format!("croft_bytes_{name}({view})"),
             _ => "0".to_string(),
         }
     }

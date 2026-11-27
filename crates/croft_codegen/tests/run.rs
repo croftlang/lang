@@ -1966,3 +1966,52 @@ fn reads_environment_variables() {
 
     fs::remove_dir_all(unchecked).ok();
 }
+
+/// Std.Encoding's hex, base64 and percent-encoding there and back, and the
+/// CRC-16/CCITT-FALSE and CRC-32 check values.
+#[test]
+fn encodes_and_decodes_hex_base64_and_percents() {
+    run_program("encoding");
+}
+
+/// `from_hex` and `to_hex` read and write bytes in a context that imports
+/// them from Std.Encoding, and whole numbers in one that imports them from
+/// Std.Text, in the same program.
+#[test]
+fn reads_hex_as_each_context_imports_it() {
+    run_program("hex_both");
+}
+
+/// Hex longer than the string it goes into stops a checked build, and is
+/// cut short with `checks = false`, as any other string is.
+#[test]
+fn stops_on_hex_longer_than_a_string_holds() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/encoding_room");
+
+    for (target, code, stdout, stderr) in [
+        ("test", 1, "", "hex text is longer than a string can hold\n"),
+        ("unchecked", 0, "0102030405060708090A0B0C0D0E0F10\n", ""),
+    ] {
+        let output = generate(&source, target, &format!("encoding_room_{target}"));
+        let built = compile(&output, &["croft_runtime.c", "program.c", "-o", "program"]);
+
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+
+        let ran = std::process::Command::new(output.join("program"))
+            .output()
+            .expect("it runs");
+
+        assert_eq!(ran.status.code(), Some(code), "{target}");
+        assert_eq!(String::from_utf8_lossy(&ran.stdout), stdout, "{target}");
+        assert_eq!(String::from_utf8_lossy(&ran.stderr), stderr, "{target}");
+        fs::remove_dir_all(output).ok();
+    }
+}

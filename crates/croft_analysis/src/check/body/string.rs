@@ -34,6 +34,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             "replace" => self.fixed(name, arguments, &[s.clone(), s.clone()], s, span),
             "lines" => self.fixed(name, arguments, &[], Type::list(Type::String), span),
             "repeat" => self.fixed(name, arguments, &[Type::Int], s, span),
+            "percent_encode" => self.fixed(name, arguments, &[], s, span),
+            "percent_decode" => self.fixed(name, arguments, &[], Type::option(s), span),
             "pad_left" | "pad_right" => {
                 self.fixed(name, arguments, &[Type::Int, s.clone()], s, span)
             }

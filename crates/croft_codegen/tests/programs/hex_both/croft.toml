@@ -1,0 +1,5 @@
+[package]
+name = "hex_both"
+
+[target.test]
+main = "Check"

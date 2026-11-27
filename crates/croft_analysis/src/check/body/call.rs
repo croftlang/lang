@@ -6,6 +6,7 @@ use croft_syntax::Span;
 
 use super::{BodyChecker, BodyKind};
 use crate::check::data::expr_path;
+use crate::check::publish::imported_standard;
 use crate::facts::{BuiltinName, Meaning};
 use crate::symbols::SymbolKind;
 use crate::types::{Resolved, Type};
@@ -59,6 +60,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 self.checker.facts.builtins.push(BuiltinName {
                     span: path.last().span,
                     name: name.clone(),
+                    from: imported_standard(self.scope.context, &name),
                 });
 
                 return ty;

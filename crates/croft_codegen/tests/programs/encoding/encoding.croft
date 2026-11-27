@@ -1,0 +1,88 @@
+// Std.Encoding: hex, base64 and percent-encoding there and back, on
+// literals, parameters and Bytes with a Length of their own, and the
+// CRC-16/CCITT-FALSE and CRC-32 check values.
+context Encoding
+
+use { to_bytes, to_text } from Std.Text
+use { to_hex, from_hex, to_base64, from_base64, percent_encode, percent_decode, crc16, crc32 } from Std.Encoding
+
+error WrongAnswer
+
+value Packet {
+    payload: Bytes where Length(0, 6)
+}
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn hex_of(data: Bytes): String = data.to_hex()
+
+fn base64_of(text: String): String = text.to_bytes().to_base64()
+
+fn decoded(text: String): String = from_base64(text).map(data -> data.to_text()).unwrap_or("?")
+
+fn query(term: String where Length(0, 20)): String = "q=" + term.percent_encode()
+
+service Check(): Result<Unit, WrongAnswer> = {
+    let header: Bytes = [0x44, 0x4E, 0x00, 0xFF, 0x0A]
+    check(header.to_hex() == "444E00FF0A")?
+    check(hex_of([]) == "")?
+    check(from_hex("444e00ff0A") == Some(header))?
+    check(from_hex("") == Some([]))?
+    check(from_hex("4") == None)?
+    check(from_hex("4G") == None)?
+    check(from_hex("0x44") == None)?
+    check(from_hex("44 4E") == None)?
+
+    // RFC 4648, section 10.
+    check(base64_of("") == "")?
+    check(base64_of("f") == "Zg==")?
+    check(base64_of("fo") == "Zm8=")?
+    check(base64_of("foo") == "Zm9v")?
+    check(base64_of("foob") == "Zm9vYg==")?
+    check(base64_of("fooba") == "Zm9vYmE=")?
+    check(base64_of("foobar") == "Zm9vYmFy")?
+    check(header.to_base64() == "RE4A/wo=")?
+    check(decoded("Zm9vYmFy") == "foobar")?
+    check(decoded("Zm9vYg==") == "foob")?
+    check(decoded("Zm9vYmE=") == "fooba")?
+    check(from_base64("RE4A/wo=") == Some(header))?
+    check(from_base64("") == Some([]))?
+    check(from_base64("Zm9") == None)?
+    check(from_base64("Zm=v") == None)?
+    check(from_base64("Zg=a") == None)?
+    check(from_base64("Z===") == None)?
+    check(from_base64("Zh==") == None)?
+    check(from_base64("Zm9v YmFy") == None)?
+    check(from_base64("Zm9v!mFy") == None)?
+
+    // RFC 3986: letters, digits and -._~ are kept.
+    check("a-b_c.d~e".percent_encode() == "a-b_c.d~e")?
+    check("fish & chips".percent_encode() == "fish%20%26%20chips")?
+    check("50%/x?".percent_encode() == "50%25%2Fx%3F")?
+    check(query("a+b=c") == "q=a%2Bb%3Dc")?
+    check("fish%20%26%20chips".percent_decode() == Some("fish & chips"))?
+    check("%2f%2F+".percent_decode() == Some("//+"))?
+    check("100%".percent_decode() == None)?
+    check("%4".percent_decode() == None)?
+    check("%zz".percent_decode() == None)?
+    check("plain".percent_decode() == Some("plain"))?
+
+    // The check values of each CRC: "123456789".
+    let digits = "123456789".to_bytes()
+    check(digits.crc16() == 0x29B1)?
+    check(digits.crc32() == -873187034)?
+    let none: Bytes = []
+    check(none.crc16() == 0xFFFF)?
+    check(none.crc32() == 0)?
+    check("The quick brown fox jumps over the lazy dog".to_bytes().crc32() == 0x414FA339)?
+
+    let packet = Packet { payload: [1, 2, 3, 4, 5, 6] }
+    check(packet.payload.to_hex() == "010203040506")?
+    check(packet.payload.to_base64() == "AQIDBAUG")?
+    check(from_hex(packet.payload.to_hex()) == Some(packet.payload))
+}

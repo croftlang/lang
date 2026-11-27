@@ -31,7 +31,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     /// write a number from 0 to 65535 in two bytes, the low byte first, as
     /// the Z80 and 6502 keep them; `get_u16_be` and `add_u16_be` put the
     /// high byte first, as the 68000 does. `to_text` is imported from
-    /// `Std.Text`.
+    /// `Std.Text`; `to_hex`, `to_base64`, `crc16` and `crc32` from
+    /// `Std.Encoding`.
     pub(super) fn bytes_method(
         &mut self,
         name: &str,
@@ -50,7 +51,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             "set" => self.fixed(name, arguments, &[int.clone(), int], Type::Bytes, span),
             "slice" => self.fixed(name, arguments, &[int.clone(), int], Type::Bytes, span),
-            "to_text" => self.fixed(name, arguments, &[], Type::String, span),
+            "to_text" | "to_hex" | "to_base64" => {
+                self.fixed(name, arguments, &[], Type::String, span)
+            }
+            "crc16" | "crc32" => self.fixed(name, arguments, &[], Type::Int, span),
             _ => None,
         }
     }
