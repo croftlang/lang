@@ -25,9 +25,9 @@ fn by_key(entries: List<Entry> where Length(0, 500)): List<Entry> = entries.sort
 fn names(words: List<String> where Length(0, 500)): List<String> = words.sort()
 
 service Check(): Result<Unit, WrongAnswer> = {
-    let numbers: List<Int> = []
-    let entries: List<Entry> = []
-    let words: List<String> = []
+    let numbers: List<Int> where Length(0, 500) = []
+    let entries: List<Entry> where Length(0, 500) = []
+    let words: List<String> where Length(0, 500) = []
     loop (let i where Range(0, 499)) {
         set numbers = numbers.add((i * 7919) % 1000 - 500)
         set entries = entries.add(Entry { key: (i * 31) % 10, place: i })
