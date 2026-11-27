@@ -1,6 +1,6 @@
 //! `Bytes` in C: a length and a fixed array of `unsigned char`. Like a string,
 //! each is kept in the most values it can need, a `croft_bytes_N`, or a full
-//! `croft_bytes` as large as the longest `Length` on any `Bytes` allows.
+//! `croft_bytes` of the target's `bytes_length` when nothing bounds it.
 
 use croft_analysis::Type;
 use croft_syntax::ast::{Argument, Expr, ExprKind};

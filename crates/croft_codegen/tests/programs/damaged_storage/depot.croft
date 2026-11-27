@@ -129,7 +129,7 @@ context Depot {
     } = {
         let sample = Crate.Sample(id: 12)?
         Crates.save(sample)?
-        let data = Files.read("crates12.dat")?
+        let data = Files.read("crates12.dat", 128)?
         check(data.length == 79)?
         check(Crates.find(12)? == sample)?
 
@@ -195,7 +195,7 @@ context Depot {
 
         let gate = Gate.Sample(id: 3)?
         Gates.save(gate)?
-        let kept = Files.read("gates3.dat")?
+        let kept = Files.read("gates3.dat", 16)?
         check(kept.length == 13 && Gates.find(3)? == gate)?
 
         Files.write("gates3.dat", kept.set(4, 7))?

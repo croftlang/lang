@@ -63,14 +63,18 @@ impl<'a> Generator<'a> {
         Type::Text(length.max(1) as u16)
     }
 
-    /// `Bytes` of at most `length` values: bounded when that is less than
-    /// the shared size. Like a string, it holds at least one.
+    /// `Bytes` of at most `length` values: a full `Bytes` when that is the
+    /// size a `Bytes` with no `Length` has, and a size of its own, shorter or
+    /// longer, otherwise. None is kept in more than the most any `Bytes` can
+    /// need, and like a string, each holds at least one.
     pub fn bytes_type(&self, length: i64) -> Type {
-        if length >= self.sizes.bytes_capacity {
+        let length = length.min(self.sizes.bytes_largest).max(1);
+
+        if length == self.sizes.bytes_capacity {
             return Type::Bytes;
         }
 
-        Type::SizedBytes(length.max(1) as u16)
+        Type::SizedBytes(length as u16)
     }
 
     /// A list of at most `length` items: sized when that is less than the

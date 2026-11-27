@@ -47,7 +47,7 @@ service Keep(): Result<Unit, FileError> {
     calls { Files }
 } = {
     Files.write("notes.txt", "first line".to_bytes())?
-    let data = Files.read("notes.txt")?
+    let data = Files.read("notes.txt", 4096)?   // at most 4096 bytes; a longer file fails with NoRoom
     let pages = Files.list("docs")?   // ["a.md", "b.md", "drafts/"], in byte order
     Files.make_folder("site/blog")?    // and site, if it isn't there yet
     Files.copy("logo.png", "site/logo.png")?   // any size, not only what a Bytes holds
@@ -55,7 +55,8 @@ service Keep(): Result<Unit, FileError> {
 }
 
 // Std.Http: get(url, headers), post(url, headers, body), put(url, headers, body),
-// delete(url, headers), each a Response { status, headers, body } or an HttpError
+// delete(url, headers), each a Response { status, headers, body } or an HttpError,
+// the body holding at most the target's `bytes_length`, or failing with TooLarge
 use { Response, HttpError } from Std.Http
 
 service Upload(save: Bytes): Result<Unit, HttpError> {

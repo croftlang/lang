@@ -142,10 +142,7 @@ impl<'a> Generator<'a> {
         let storage = c_name(storage);
         let value = self.parameter_value(parameter);
 
-        let loaded = self.c_type(&Type::result(
-            Type::option(Type::Bytes),
-            Type::Errors(Vec::new()),
-        ));
+        let loaded = self.c_type(&self.loaded_type());
 
         let written = self.c_type(&Type::result(Type::Unit, Type::Errors(Vec::new())));
 

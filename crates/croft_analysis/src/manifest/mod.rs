@@ -16,6 +16,10 @@ pub const MANIFEST_FILE: &str = "croft.toml";
 /// The target a project without a `croft.toml` is built for.
 pub const DEFAULT_TARGET: &str = "desktop";
 
+/// How many values a `Bytes` with no `Length` holds when the target doesn't
+/// set `bytes_length`.
+pub const DEFAULT_BYTES_LENGTH: u16 = 64;
+
 /// Where the names of the default project file are said to be written. It is
 /// no file's id: project files count up from 0 and standard contexts count
 /// down from the top, so errors about the default can be told apart.
@@ -43,6 +47,9 @@ pub struct TargetConfig {
     /// could not work out, and stops when one is broken. On unless the target
     /// sets `checks = false`.
     pub checks: bool,
+    /// How many values a `Bytes` with no `Length` of its own holds on this
+    /// target: `bytes_length`, or `DEFAULT_BYTES_LENGTH`.
+    pub bytes_length: u16,
 }
 
 impl Manifest {
@@ -87,6 +94,7 @@ impl Manifest {
                 native: Vec::new(),
                 adapters: Vec::new(),
                 checks: true,
+                bytes_length: DEFAULT_BYTES_LENGTH,
             }],
         }
     }

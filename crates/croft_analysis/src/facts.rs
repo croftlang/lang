@@ -58,6 +58,10 @@ pub struct Facts {
     /// The name and type of each `let` with a `Length`, and the most that
     /// `Length` allows, which sizes lists, maps and strings as a field's does.
     pub let_lengths: Vec<(String, Type, i64)>,
+    /// The most each port operation whose result's `Length` names one of its
+    /// parameters, such as `Files.read(path, most)`, is asked to give back
+    /// by any call, so code generation can keep room for it.
+    pub result_lengths: HashMap<(Resolved, String), i64>,
 }
 
 /// A built-in type, function or constraint, where it is named.

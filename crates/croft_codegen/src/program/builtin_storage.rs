@@ -36,14 +36,16 @@ impl<'a> Generator<'a> {
 
     /// The C result types of `load`, and of `save` and `remove`.
     fn storage_types(&self) -> (String, String) {
-        let loaded = self.c_type(&Type::result(
-            Type::option(Type::Bytes),
-            Type::Errors(Vec::new()),
-        ));
+        let loaded = self.c_type(&self.loaded_type());
 
         let written = self.c_type(&Type::result(Type::Unit, Type::Errors(Vec::new())));
 
         (loaded, written)
+    }
+
+    /// What `Storage.load` gives back: room for the largest save.
+    pub fn loaded_type(&self) -> Type {
+        Type::result(Type::option(self.stored_bytes()), Type::Errors(Vec::new()))
     }
 
     /// The C code of a built-in error such as `StorageFull`, or `0` when the
@@ -99,7 +101,10 @@ impl<'a> Generator<'a> {
     /// `FileStorage`: a file for each key, through the target's `Files` adapter.
     fn file_storage(&self) -> String {
         let (loaded, written) = self.storage_types();
-        let read = self.c_type(&Type::result(Type::Bytes, Type::Errors(Vec::new())));
+        let files_port = self.model.lookup("Std.Files", "Files");
+        let read = files_port.map_or(Type::Unknown, |port| self.operation_result(&port, "read"));
+        let read = self.c_type(&read);
+        let most = self.bound(&self.stored_bytes());
 
         let files = (self.bindings.iter())
             .find(|(port, _)| port.context == "Std.Files" && port.name == "Files")
@@ -114,8 +119,8 @@ impl<'a> Generator<'a> {
             "/* The file for a key: the key and \".dat\". */\nstatic void croft_file_path(croft_string_view key, croft_string *out)\n{{\n    \
              croft_string_join(key, croft_string_view_from(\".dat\", 4), CROFT_OUT(*out));\n}}\n\n\
              void croft_file_storage_load(croft_string_view key, {loaded} *out)\n{{\n    croft_string path;\n    {read} file;\n\n    \
-             croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_read(CROFT_VIEW(path), &file);\n    \
-             if (file.ok) {{\n        out->ok = 1;\n        out->value.some = 1;\n        out->value.value = file.value;\n    }} else if (file.error.code == {missing}) {{\n        out->ok = 1;\n    }} else {{\n        out->error.code = {unavailable};\n    }}\n}}\n\n\
+             croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_read(CROFT_VIEW(path), {most}L, &file);\n    \
+             if (file.ok) {{\n        out->ok = 1;\n        out->value.some = 1;\n        croft_bytes_copy(CROFT_BYTES_VIEW(file.value), CROFT_BYTES_OUT(out->value.value));\n    }} else if (file.error.code == {missing}) {{\n        out->ok = 1;\n    }} else {{\n        out->error.code = {unavailable};\n    }}\n}}\n\n\
              void croft_file_storage_save(croft_string_view key, croft_bytes_view data, {written} *out)\n{{\n    croft_string path;\n    {written} file;\n\n    \
              croft_clear(out, sizeof *out);\n    croft_file_path(key, &path);\n    {files}_write(CROFT_VIEW(path), data, &file);\n    \
              if (file.ok) {{\n        out->ok = 1;\n    }} else {{\n        out->error.code = file.error.code == {no_room} ? {full} : {unavailable};\n    }}\n}}\n\n\

@@ -232,6 +232,28 @@ fn a_target_checks_constraints_unless_it_turns_them_off() {
     assert!(!manifest.target("spectrum_48k").unwrap().checks);
 }
 
+/// A target says how many values a `Bytes` with no `Length` holds, 64 unless
+/// it sets `bytes_length`, from 1 to 65535.
+#[test]
+fn a_target_sizes_bytes_without_a_length() {
+    let text = "[package]\nname = \"game\"\n\n[target.desktop]\n\n[target.spectrum_48k]\nbytes_length = 512\n";
+    let manifest = Manifest::parse(text, SourceId(1)).unwrap();
+
+    assert_eq!(manifest.target("desktop").unwrap().bytes_length, 64);
+    assert_eq!(manifest.target("spectrum_48k").unwrap().bytes_length, 512);
+
+    for wrong in ["0", "65536", "-1"] {
+        let text =
+            format!("[package]\nname = \"game\"\n\n[target.desktop]\nbytes_length = {wrong}\n");
+        let error = Manifest::parse(&text, SourceId(1)).unwrap_err();
+
+        assert_eq!(
+            error.message,
+            format!("`bytes_length` is {wrong}, but a `Bytes` holds from 1 to 65535 values")
+        );
+    }
+}
+
 /// A program's own adapter keeps its name when a standard context has an
 /// adapter called the same, such as `SystemClock` in `Std.Time`: binding it
 /// doesn't bring the standard context, and its `Clock`, in.

@@ -126,7 +126,7 @@ impl<'a> Generator<'a> {
             // Every borrowed string is a `croft_string_view`, however long.
             Type::Borrowed(_) => Type::Borrowed(1),
             Type::Text(length) if i64::from(*length) >= self.sizes.string_capacity => Type::String,
-            Type::SizedBytes(length) if i64::from(*length) >= self.sizes.bytes_capacity => {
+            Type::SizedBytes(length) if i64::from(*length) == self.sizes.bytes_capacity => {
                 Type::Bytes
             }
             other => other.clone(),

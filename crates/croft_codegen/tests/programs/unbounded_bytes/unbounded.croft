@@ -1,0 +1,51 @@
+// `Bytes` with no `Length` hold the target's `bytes_length`, 8 here, while
+// one with a `Length` is kept in a size of its own, longer or shorter.
+context Packets {
+    publish { Check }
+
+    error WrongAnswer
+
+    value Packet {
+        body: Bytes
+    }
+
+    value Page {
+        body: Bytes where Length(0, 300)
+    }
+
+    fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+        if ok {
+            Ok(Unit)
+        }
+        Err(WrongAnswer)
+    }
+
+    // A `Bytes` parameter borrows what it is given, however long.
+    fn size_of(given: Bytes): Int = given.length
+
+    service Check(): Result<Unit, WrongAnswer> {
+        calls { Arguments }
+    } = {
+        let chosen = Arguments.all()
+        let page = Page { body: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
+        check(page.body.length == 10 && page.body.get(9) == Some(10))?
+        let packet = Packet { body: page.body.slice(0, 8) }
+        check(packet.body.length == 8 && size_of(page.body) == 10)?
+        if chosen.contains("long") {
+            let cut = Packet { body: page.body.slice(0, chosen.length * 9) }
+            check(cut.body.length == 8)?
+        }
+        // A `let` that `set` changes keeps room for a `Bytes` with no
+        // `Length`.
+        let kept: Bytes = []
+        if chosen.contains("set") {
+            set kept = page.body.slice(0, chosen.length * 9)
+            check(kept.length == 8)?
+        }
+    }
+}
+
+domain Program {
+    contexts { Packets }
+    use { Check } from Packets
+} = Check()?

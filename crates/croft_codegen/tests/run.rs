@@ -77,7 +77,7 @@ fn reads_and_writes_files() {
 
     assert_eq!(
         String::from_utf8_lossy(&ran.stdout),
-        "first line, then more\n"
+        "first line, then more\n70\nlonger than 50\n"
     );
     assert_eq!(String::from_utf8_lossy(&ran.stderr), "Std.Files.NotFound\n");
 
@@ -700,6 +700,64 @@ fn checks_rules_in_every_build_by_default() {
     fs::remove_dir_all(unchecked_output).ok();
 }
 
+/// A `Bytes` with no `Length` holds the target's `bytes_length`, however long
+/// a `Length` elsewhere is, and one with a `Length` longer than that is kept
+/// in a size of its own. A longer value going into one stops a checked build,
+/// and is cut short when the target turns checks off.
+#[test]
+fn keeps_bytes_without_a_length_in_the_targets_size() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/unbounded_bytes");
+    let output = generate(&source, "test", "unbounded_bytes");
+    let unchecked_output = generate(&source, "unchecked", "unbounded_bytes");
+
+    let runtime = fs::read_to_string(output.join("croft.h")).expect("croft.h");
+    assert!(
+        runtime.contains("#define CROFT_BYTES_CAPACITY 8"),
+        "{runtime}"
+    );
+
+    let header = fs::read_to_string(output.join("program.h")).expect("program.h");
+    assert!(header.contains("    croft_bytes_300 body;"), "{header}");
+
+    for folder in [&output, &unchecked_output] {
+        let built = compile(folder, &["croft_runtime.c", "program.c", "-o", "program"]);
+
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+    }
+
+    let run = |folder: &Path, argument: &str| {
+        let ran = std::process::Command::new(folder.join("program"))
+            .arg(argument)
+            .output()
+            .expect("it runs");
+
+        (
+            ran.status.code(),
+            String::from_utf8_lossy(&ran.stdout).trim().to_string(),
+        )
+    };
+
+    let stopped = (Some(1), "bytes hold at most 8".to_string());
+    assert_eq!(run(&output, "none"), (Some(0), String::new()));
+    assert_eq!(run(&output, "long"), stopped);
+    assert_eq!(run(&output, "set"), stopped);
+
+    for argument in ["none", "long", "set"] {
+        assert_eq!(run(&unchecked_output, argument), (Some(0), String::new()));
+    }
+
+    fs::remove_dir_all(output).ok();
+    fs::remove_dir_all(unchecked_output).ok();
+}
+
 #[test]
 fn stops_with_the_error_when_the_domain_fails() {
     if !has_c_compiler() {
@@ -924,7 +982,7 @@ fn keeps_bytes_in_the_size_they_can_need() {
     run_program("bounded_bytes");
 }
 
-/// A `Bytes` field, parameter or result with a `Length` below the longest is a
+/// A `Bytes` field, parameter or result with a `Length` of its own is a
 /// `croft_bytes_N`, and one with nothing to bound it a full `croft_bytes`.
 #[test]
 fn sizes_bytes_from_where_they_come_from() {
@@ -966,9 +1024,9 @@ fn sizes_saves_and_arguments_by_what_they_hold() {
     );
 
     // A mailbox saves in 13 bytes: its layout's hash, its identity and its
-    // tag of up to 3, though an unbounded `Bytes` holds 200.
+    // tag of up to 3, though a `Bytes` with no `Length` holds 64.
     let runtime = fs::read_to_string(output.join("croft.h")).expect("croft.h");
-    assert!(runtime.contains("#define CROFT_BYTES_CAPACITY 200"));
+    assert!(runtime.contains("#define CROFT_BYTES_CAPACITY 64"));
 
     let start = c.find("void Packets_Mailboxes_save(").expect("save");
     let save = &c[start..start + c[start..].find("\n}\n").expect("its end")];

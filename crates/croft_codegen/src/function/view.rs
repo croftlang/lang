@@ -5,6 +5,7 @@
 use croft_analysis::{Meaning, Type};
 use croft_syntax::ast::{BinaryOp, Expr, ExprKind};
 
+use super::call::gives_bytes;
 use super::Writer;
 use crate::names::{c_name, c_string};
 use crate::types::bounds::{is_bytes, is_string};
@@ -95,6 +96,12 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let c = self.call(value, callee, arguments, &made, Some((target, ty)));
                 let from = self.bounded_type(&c, &made);
                 self.store(target, c, &from, ty);
+            }
+            // A native's `Bytes` are written straight into a target of their
+            // size.
+            ExprKind::Native(function, arguments) if gives_bytes(ty) => {
+                let c = self.native_into(&function.name, arguments, Some(ty), Some((target, ty)));
+                self.store(target, c, ty, ty);
             }
             // Joined text goes straight into a target with room for all of it.
             ExprKind::Binary(BinaryOp::Add, left, right) if is_string(ty) => {
