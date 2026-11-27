@@ -3,7 +3,7 @@
 use croft_analysis::Type;
 use croft_syntax::ast::{Expr, ExprKind, LoopCounter};
 
-use super::range::Span;
+use super::range::{Span, WHOLE_HIGH};
 use super::Writer;
 use crate::types::width::width_for;
 
@@ -15,6 +15,10 @@ impl<'g, 'a> Writer<'g, 'a> {
         };
 
         self.push_scope();
+
+        // A counter that may reach the highest whole number stops there
+        // itself, since one more would go past 32 bits.
+        let mut last = None;
 
         match counter {
             Some(counter) => {
@@ -59,12 +63,21 @@ impl<'g, 'a> Writer<'g, 'a> {
                     "for ({variable} = {low}; {variable} <= {high}; {variable}++)"
                 ));
 
+                if known.is_none_or(|(_, high)| high.high >= WHOLE_HIGH) {
+                    last = Some(format!("if ({variable} == {high}) break;"));
+                }
+
                 self.bind(&counter.name.name, variable, Type::Int);
             }
             None => self.open("for (;;)"),
         }
 
         self.block(statements, &Type::Unit);
+
+        if let Some(last) = last {
+            self.line(last);
+        }
+
         self.close();
         self.pop_scope();
 

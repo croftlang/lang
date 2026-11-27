@@ -41,6 +41,7 @@ const RUNTIME_HEADER: &str = include_str!("../runtime/croft.h");
 /// The runtime's C source, before unused functions are left out.
 const RUNTIME_SOURCE: &str = concat!(
     include_str!("../runtime/croft_runtime.c"),
+    include_str!("../runtime/arithmetic.c"),
     include_str!("../runtime/decimal.c"),
     include_str!("../runtime/bytes.c"),
     include_str!("../runtime/saving.c")

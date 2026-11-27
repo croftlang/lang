@@ -3,6 +3,7 @@
 use croft_analysis::Type;
 use croft_syntax::ast::{Argument, ExprKind};
 
+use super::range::WHOLE_LOW;
 use super::{Into, Writer};
 use crate::types::bounds::{is_string, unbounded};
 
@@ -24,8 +25,12 @@ impl<'g, 'a> Writer<'g, 'a> {
             "max" | "min" | "abs" => {
                 let first = value(self, 0, ty);
 
+                // Only the lowest whole number has no answer, needing 33 bits.
                 if name == "abs" {
-                    return format!("CROFT_ABS({first})");
+                    return match arguments.first().and_then(|a| self.range_of(&a.value)) {
+                        Some(range) if range.low > WHOLE_LOW => format!("CROFT_ABS({first})"),
+                        _ => format!("croft_int_abs({first})"),
+                    };
                 }
 
                 let second = value(self, 1, ty);

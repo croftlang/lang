@@ -3,14 +3,28 @@
 #ifndef CROFT_H
 #define CROFT_H
 
+#include <limits.h>
+
+/* A whole number has exactly 32 bits on every machine: an int where an int
+   has 32 bits, as on most desktops, and a long where it has only 16. */
+#if INT_MAX == 2147483647
+typedef int croft_int;
+#elif LONG_MAX == 2147483647L
 typedef long croft_int;
+#else
+#error "Croft needs an int or a long of exactly 32 bits"
+#endif
+
+#define CROFT_INT_MAX ((croft_int) 2147483647L)
+#define CROFT_INT_MIN (-CROFT_INT_MAX - 1)
+
 typedef unsigned char croft_bool;
 typedef unsigned char croft_unit;
 typedef unsigned char croft_u8;
 typedef signed char croft_i8;
 typedef unsigned short croft_u16;
 typedef short croft_i16;
-typedef long croft_i32;
+typedef croft_int croft_i32;
 
 #ifndef CROFT_STRING_CAPACITY
 #define CROFT_STRING_CAPACITY 32
@@ -60,9 +74,10 @@ typedef struct {
 
 #define CROFT_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define CROFT_MIN(a, b) ((a) < (b) ? (a) : (b))
+/* Only for a number known not to be the lowest; croft_int_abs checks. */
 #define CROFT_ABS(a) ((a) < 0 ? -(a) : (a))
-/* Through unsigned long, since C leaves shifting a negative number left undefined. */
-#define CROFT_SHIFT_LEFT(value, amount) ((croft_int) ((unsigned long) (value) << (amount)))
+/* Wraps around in 32 bits, as croft_int_shift_left says. */
+#define CROFT_SHIFT_LEFT(value, amount) croft_int_shift_left(value, amount)
 /* C89 leaves shifting a negative number right up to the compiler, so the
    sign is kept by hand: ~ makes it positive, and ~ again after the shift. */
 #define CROFT_SHIFT_RIGHT(value, amount) \
@@ -115,6 +130,20 @@ void croft_string_pad(croft_string_view text, croft_int width, croft_string_view
 croft_string_view croft_string_line(croft_string_view text, croft_u16 *at);
 int croft_string_compare(croft_string_view a, croft_string_view b);
 void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u16 capacity);
+
+/* Arithmetic that may go past 32 bits, or divide by zero. With checks on
+   either stops the program; with them off the answer wraps around in 32
+   bits, and dividing by zero gives 0. */
+croft_int croft_int_from_bits(unsigned long bits);
+unsigned long croft_int_magnitude(croft_int value);
+croft_int croft_int_add(croft_int a, croft_int b);
+croft_int croft_int_subtract(croft_int a, croft_int b);
+croft_int croft_int_multiply(croft_int a, croft_int b);
+croft_int croft_int_divide(croft_int a, croft_int b);
+croft_int croft_int_remainder(croft_int a, croft_int b);
+croft_int croft_int_negate(croft_int a);
+croft_int croft_int_abs(croft_int a);
+croft_int croft_int_shift_left(croft_int value, croft_int amount);
 
 croft_int croft_divide_even(croft_int numerator, croft_int denominator);
 croft_int croft_decimal_multiply(croft_int a, croft_int b, croft_int scale);

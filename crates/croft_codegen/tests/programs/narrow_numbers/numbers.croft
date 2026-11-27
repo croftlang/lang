@@ -43,6 +43,11 @@ fn scaled_length(word: String where Length(0, 8)): Int = word.length * 10000
 
 fn keeps(items: List<Int>, count: Int where Range(-3, 3)): Int = items.drop(count).length
 
+// One below the highest whole number, so adding one always fits 32 bits.
+fn next(n: Int where Range(0, 2147483646)): Int = n + 1
+
+fn lowest(): Int = -2147483648
+
 service Check(): Result<Unit, WrongAnswer> = {
     check(squared(1000) == 1000000)?
     check(squared(181) == 32761)?
@@ -63,5 +68,13 @@ service Check(): Result<Unit, WrongAnswer> = {
     loop (let step where Range(0, 255)) {
         set total = total + step
     }
-    check(total == 32640)
+    check(total == 32640)?
+    check(next(2147483646) == 2147483647)?
+    check(lowest() + 1 == -2147483647)?
+    let top = 0
+    // A counter that reaches the highest whole number stops there.
+    loop (let step where Range(2147483645, 2147483647)) {
+        set top = top + 1
+    }
+    check(top == 3)
 }

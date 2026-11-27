@@ -870,6 +870,109 @@ fn works_out_narrow_numbers_as_if_they_had_32_bits() {
     run_program("narrow_numbers");
 }
 
+/// Whole numbers have exactly 32 bits. With checks on, arithmetic past them
+/// and dividing by zero stop the program; with them off the answer wraps
+/// around in 32 bits and dividing by zero gives 0.
+#[test]
+fn works_out_whole_numbers_in_32_bits() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/arithmetic");
+    let checked = generate(&source, "test", "arithmetic");
+    let unchecked = generate(&source, "unchecked", "arithmetic_unchecked");
+
+    for folder in [&checked, &unchecked] {
+        let built = compile(folder, &["croft_runtime.c", "program.c", "-o", "program"]);
+
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+    }
+
+    let run = |folder: &Path, arguments: &str| {
+        let ran = std::process::Command::new(folder.join("program"))
+            .args(arguments.split(' '))
+            .output()
+            .expect("it runs");
+
+        (
+            ran.status.code(),
+            String::from_utf8_lossy(&ran.stdout).trim().to_string(),
+        )
+    };
+
+    let too_big = (Some(1), "a whole number doesn't fit in 32 bits".to_string());
+    let by_zero = (Some(1), "division by zero".to_string());
+
+    // What each gives with checks on, and with them off.
+    let cases = [
+        (
+            "add 2147483646 1",
+            (Some(0), "2147483647".to_string()),
+            "2147483647",
+        ),
+        ("add 2147483647 1", too_big.clone(), "-2147483648"),
+        ("subtract -2147483648 1", too_big.clone(), "2147483647"),
+        (
+            "multiply -65536 32768",
+            (Some(0), "-2147483648".to_string()),
+            "-2147483648",
+        ),
+        ("multiply 46341 46341", too_big.clone(), "-2147479015"),
+        ("multiply 65536 65536", too_big.clone(), "0"),
+        ("divide -7 2", (Some(0), "-3".to_string()), "-3"),
+        ("divide 10 0", by_zero.clone(), "0"),
+        ("divide -2147483648 -1", too_big.clone(), "-2147483648"),
+        ("remainder -7 2", (Some(0), "-1".to_string()), "-1"),
+        ("remainder 5 0", by_zero.clone(), "0"),
+        ("remainder -2147483648 -1", (Some(0), "0".to_string()), "0"),
+        ("negate -2147483648", too_big.clone(), "-2147483648"),
+        ("abs -2147483648", too_big.clone(), "-2147483648"),
+        (
+            "shift 1 31",
+            (Some(0), "-2147483648".to_string()),
+            "-2147483648",
+        ),
+        ("sum 2147483647 1", too_big.clone(), "-2147483648"),
+        ("decimal_add 21474836 1", too_big.clone(), "-21474835.96"),
+        ("decimal_add 30000000 0", too_big.clone(), "-12949672.96"),
+        (
+            "decimal_multiply 50000 50000",
+            too_big.clone(),
+            "8918968.32",
+        ),
+        (
+            "decimal_multiply 40000 500",
+            (Some(0), "20000000.00".to_string()),
+            "20000000.00",
+        ),
+        (
+            "decimal_multiply -3 7",
+            (Some(0), "-21.00".to_string()),
+            "-21.00",
+        ),
+        ("decimal_divide 1 3", (Some(0), "0.33".to_string()), "0.33"),
+        ("decimal_divide 2 0", by_zero.clone(), "0.00"),
+    ];
+
+    for (arguments, with_checks, without) in cases {
+        assert_eq!(run(&checked, arguments), with_checks, "{arguments}");
+
+        assert_eq!(
+            run(&unchecked, arguments),
+            (Some(0), without.to_string()),
+            "{arguments} without checks"
+        );
+    }
+
+    fs::remove_dir_all(checked).ok();
+    fs::remove_dir_all(unchecked).ok();
+}
+
 /// Std.Text's replace, index_of, lines, repeat, padding and join.
 #[test]
 fn runs_more_text_methods() {
