@@ -42,15 +42,18 @@ stock.set("map", 1)         // a copy with map added
 stock.remove("sword")       // a copy without sword
 stock.contains("key")   stock.length   stock.is_empty   stock.keys   stock.values
 
-// Std.Files: read, write, append, exists, remove, list, make_folder, copy
+// Std.Files: read, read_part, size, write, append, exists, remove, list, make_folder, copy, rename
 service Keep(): Result<Unit, FileError> {
     calls { Files }
 } = {
     Files.write("notes.txt", "first line".to_bytes())?
     let data = Files.read("notes.txt", 4096)?   // at most 4096 bytes; a longer file fails with NoRoom
+    let header = Files.read_part("save.bin", 16, 8)?   // up to 8 bytes, skipping the first 16; none past the end
+    let bytes = Files.size("logo.png")?   // however large, up to 2147483647
     let pages = Files.list("docs")?   // ["a.md", "b.md", "drafts/"], in byte order
     Files.make_folder("site/blog")?    // and site, if it isn't there yet
     Files.copy("logo.png", "site/logo.png")?   // any size, not only what a Bytes holds
+    Files.rename("notes.txt", "site/notes.txt")?   // moved, on the same disk
     ...
 }
 

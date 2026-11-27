@@ -66,6 +66,38 @@ fn reads_a_file_of_at_most_a_known_size() {
     );
 }
 
+/// `Files.read_part` says how many bytes it reads, which sizes its result,
+/// so a length not known when the program is compiled is an error, as is
+/// one outside `Range(1, 65535)` or an offset below 0. The offset may be
+/// known only when it runs.
+#[test]
+fn reads_part_of_a_file_of_a_known_length() {
+    let read = |given: &str| NOTES.replace("let data = Files.read(\"notes.txt\", 4096)?", given);
+
+    let offset = "let size = Files.size(\"notes.txt\")?\n\
+                  let data = Files.read_part(\"notes.txt\", size - 16, 16)?";
+    assert_eq!(errors(&read(offset)), Vec::<String>::new());
+
+    assert_error(
+        &read("let data = Files.read_part(\"notes.txt\", 0, 0)?"),
+        "`Files.read_part` is given `0` for `length`, which breaks `Range(1, 65535)`",
+    );
+
+    assert_error(
+        &read("let data = Files.read_part(\"notes.txt\", -1, 16)?"),
+        "`Files.read_part` is given `-1` for `offset`, which breaks `Range(0, 2147483647)`",
+    );
+
+    let measured = "let size = Files.size(\"notes.txt\")?\n\
+                    let data = Files.read_part(\"notes.txt\", 0, size)?";
+
+    assert_error(
+        &read(measured),
+        "`length` must be known when the program is compiled, since it says how much room \
+         `Files.read_part` keeps for its result: use a number or a constant",
+    );
+}
+
 /// A game rolling a die through Std.Random, with `roll` in its body.
 fn dice(roll: &str) -> String {
     format!(

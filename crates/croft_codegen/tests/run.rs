@@ -273,6 +273,91 @@ fn makes_folders_and_copies_files() {
     fs::remove_dir_all(output).ok();
 }
 
+/// `Files.size` gives how many bytes a file holds, `Files.read_part` gives
+/// the bytes from an offset, as many as its length asks even past what a
+/// `Bytes` without a `Length` holds, fewer at the end and none past it, and
+/// `Files.rename` moves a file; each fails with `NotFound` when there is
+/// nothing at the path, `rename` when there is no folder to move it into,
+/// and `size` with `Unreadable` for a folder.
+#[test]
+fn sizes_reads_parts_of_and_renames_files() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/file_parts");
+    let output = generate(&source, "test", "file_parts");
+
+    // An `Int` is never past 2147483647, so that end of `offset`'s range is
+    // not tested: GCC warns the test is always true.
+    let program = fs::read_to_string(output.join("program.c")).expect("the program");
+    assert!(program.contains("CROFT_CHECK((p_offset >= 0L), "));
+
+    let built = compile(
+        &output,
+        &[
+            "croft_runtime.c",
+            "croft_files.c",
+            "program.c",
+            "-o",
+            "program",
+        ],
+    );
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    fs::write(output.join("hello.txt"), "hello world").expect("a file");
+    fs::write(output.join("short.txt"), "hello wo").expect("a file");
+    fs::write(output.join("empty.txt"), "").expect("a file");
+    fs::write(output.join("long.txt"), "x".repeat(200)).expect("a file");
+    fs::write(output.join("tail.txt"), "x".repeat(120)).expect("a file");
+    fs::create_dir_all(output.join("folder")).expect("a folder");
+
+    let run = |operation: &str, path: &str| {
+        let ran = std::process::Command::new(output.join("program"))
+            .args([operation, path])
+            .current_dir(&output)
+            .output()
+            .expect("it runs");
+
+        (
+            String::from_utf8_lossy(&ran.stdout).into_owned(),
+            String::from_utf8_lossy(&ran.stderr).into_owned(),
+        )
+    };
+
+    let printed = |text: &str| (format!("{text}\n"), String::new());
+    let failed = |error: &str| (String::new(), format!("Std.Files.{error}\n"));
+
+    assert_eq!(run("size", "hello.txt"), printed("11"));
+    assert_eq!(run("size", "empty.txt"), printed("0"));
+    assert_eq!(run("size", "missing.txt"), failed("NotFound"));
+    assert_eq!(run("size", "folder"), failed("Unreadable"));
+
+    assert_eq!(run("part", "hello.txt"), printed("wor"));
+    assert_eq!(run("part", "short.txt"), printed("wo"));
+    assert_eq!(run("part", "empty.txt"), printed(""));
+    assert_eq!(run("long", "long.txt"), printed("100"));
+    assert_eq!(run("long", "tail.txt"), printed("70"));
+    assert_eq!(run("past", "hello.txt"), printed("0"));
+    assert_eq!(run("part", "missing.txt"), failed("NotFound"));
+
+    assert_eq!(run("rename", "hello.txt"), printed("renamed"));
+    assert!(!output.join("hello.txt").exists());
+    assert_eq!(
+        fs::read(output.join("moved.txt")).expect("the moved file"),
+        b"hello world"
+    );
+    assert_eq!(run("rename", "missing.txt"), failed("NotFound"));
+    assert_eq!(run("rename_to", "missing/inner.txt"), failed("NotFound"));
+
+    fs::remove_dir_all(output).ok();
+}
+
 /// StdioFiles fails with `NotFound` only when there is nothing at the path,
 /// or no folder to write a file into, and with `Unreadable` for a file or
 /// folder that is there but can't be opened, which `exists` still finds.
