@@ -202,3 +202,35 @@ fn a_date_past_the_calendar_from_known_values_is_an_error_at_the_call() {
         Vec::<String>::new()
     );
 }
+
+/// Games held in leap years, with the rules Std.Time publishes: a
+/// constraint built on `is_leap_year`, and `DayInMonth` on a field.
+fn games(year: &str) -> String {
+    format!(
+        "context Calendar {{\n\
+         publish {{ held }}\n\
+         use {{ Date, DayInMonth, is_leap_year }} from Std.Time\n\
+         constraint LeapYear(year: Int) = is_leap_year(year)\n\
+         value Games {{\n year: Int where LeapYear\n opening: Date where DayInMonth\n}}\n\
+         fn held(): Games = Games {{ year: {year}, opening: Date {{ year: 2024, month: 7, day: 26 }} }}\n\
+         }}\n\
+         domain Program {{\n contexts {{ Calendar }}\n use {{ held }} from Calendar\n}} = {{\n held()\n Unit\n}}"
+    )
+}
+
+/// `DayInMonth` and `is_leap_year` are Std.Time's to share, so a program's
+/// own rules can use them, and a known year that isn't a leap year is an
+/// error.
+#[test]
+fn uses_the_calendar_rules_std_time_publishes() {
+    for year in ["2024", "2000", "1996"] {
+        assert_eq!(errors(&games(year)), Vec::<String>::new(), "{year}");
+    }
+
+    for year in ["2025", "1900", "2100"] {
+        assert_error(
+            &games(year),
+            &format!("`Games` is given `{year}` for `year`, which breaks `LeapYear`"),
+        );
+    }
+}
