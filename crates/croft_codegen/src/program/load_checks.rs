@@ -16,17 +16,18 @@ use crate::types::width::declared_range;
 use crate::Generator;
 
 impl<'a> Generator<'a> {
-    /// A C test, true when `number`, just read for a value of `ty` kept in
-    /// the C type `c_type`, can be one: a flag is 0 or 1, a tag names a
-    /// variant, an identity is in its `Range` and a narrow number fits its
-    /// C type. `None` when every number can be one.
+    /// A C test, true when `number`, just read for a value of `ty`, can be
+    /// one: a whole number field is in its `Range`, which also keeps it in
+    /// its C type, given as `bounds`; a flag is 0 or 1; a tag names a
+    /// variant; and an identity is in its `Range`. `None` when every
+    /// number can be one.
     pub(super) fn number_test(
         &self,
         number: &str,
         ty: &Type,
-        c_type: Option<&str>,
+        bounds: Option<(i64, i64)>,
     ) -> Option<String> {
-        if let Some((low, high)) = c_type.and_then(c_type_bounds) {
+        if let Some((low, high)) = bounds {
             return Some(format!("{number} >= {low}L && {number} <= {high}L"));
         }
 
@@ -122,7 +123,22 @@ impl<'a> Generator<'a> {
                 place = format!("((p_value->croft_flags[{byte}] & {mask}) != 0)");
             }
 
+            // Reading tested the field's `Range` already, and testing a
+            // narrow field again would compare it against what it can't hold.
+            let read_range = (self.field_range(named, field)).map(|span| (span.low, span.high));
+
             for constraint in decl.constraints.iter().filter(|c| c.error.is_none()) {
+                let range = declared_range(
+                    self.program,
+                    &self.model,
+                    &named.context,
+                    std::slice::from_ref(constraint),
+                );
+
+                if read_range.is_some() && range == read_range {
+                    continue;
+                }
+
                 writer.require_constraint(&place, field_type, constraint);
             }
         }
@@ -220,16 +236,5 @@ impl<'a> Generator<'a> {
         writer.bind_parameters(&[("value".to_string(), Type::Named(named.clone()))]);
 
         writer
-    }
-}
-
-/// The lowest and highest values a narrow C integer type holds.
-fn c_type_bounds(c_type: &str) -> Option<(i64, i64)> {
-    match c_type {
-        "croft_u8" => Some((0, 255)),
-        "croft_i8" => Some((-128, 127)),
-        "croft_i16" => Some((-32768, 32767)),
-        "croft_u16" => Some((0, 65535)),
-        _ => None,
     }
 }

@@ -14,6 +14,13 @@ use croft_analysis::Type;
 use crate::names::c_name;
 use crate::Generator;
 
+/// A struct field a number is read into: the C type it is kept in, and
+/// the `Range` it must be in, when it has one.
+struct Field<'f> {
+    c_type: &'f str,
+    range: Option<(i64, i64)>,
+}
+
 impl<'a> Generator<'a> {
     /// The name part of `croft_write_X` and `croft_read_X` for a type, asking for
     /// both functions to be written.
@@ -208,7 +215,12 @@ impl<'a> Generator<'a> {
                         continue;
                     }
 
-                    let (w, r) = self.serialize_value(&place, &field_type, Some(&c_type), "    ");
+                    let kept = Field {
+                        c_type: &c_type,
+                        range: (self.field_range(named, &field)).map(|span| (span.low, span.high)),
+                    };
+
+                    let (w, r) = self.serialize_value(&place, &field_type, Some(kept), "    ");
                     write.push_str(&w);
                     read.push_str(&r);
                 }
@@ -220,22 +232,25 @@ impl<'a> Generator<'a> {
     }
 
     /// Statements that write the value at `place`, and read it back. A
-    /// field's `c_type` says how narrow a number read into it must be.
+    /// struct `field` says what C type a number read into it is kept in,
+    /// and the `Range` it must be in.
     fn serialize_value(
         &self,
         place: &str,
         ty: &Type,
-        c_type: Option<&str>,
+        field: Option<Field>,
         indent: &str,
     ) -> (String, String) {
         let fail = format!(" {{\n{indent}    return 0;\n{indent}}}\n");
 
         if self.is_scalar(ty) {
+            let range = field.as_ref().and_then(|field| field.range);
+
             let test = self
-                .number_test("number", ty, c_type)
+                .number_test("number", ty, range)
                 .map_or(String::new(), |test| format!(" || !({test})"));
 
-            let c = c_type.map_or_else(|| self.c_type(ty), str::to_string);
+            let c = field.map_or_else(|| self.c_type(ty), |field| field.c_type.to_string());
 
             let number = if c == "croft_int" {
                 "number".to_string()
