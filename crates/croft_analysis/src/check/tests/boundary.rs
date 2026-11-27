@@ -217,6 +217,6 @@ fn checks_a_known_argument_against_a_port_parameter() {
 
     assert_error(
         &source,
-        "`roll` is given `1` for `sides`, which breaks `Range(2, 20)`",
+        "`Dice.roll` is given `1` for `sides`, which breaks `Range(2, 20)`",
     );
 }

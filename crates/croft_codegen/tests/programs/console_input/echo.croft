@@ -1,0 +1,35 @@
+// Reads lines until the input ends, printing the length of each and then
+// the line itself, and writing a note on the error output for an empty one.
+// A line saying "stop" stops the program with the exit code named on the
+// command line.
+context Echo {
+    publish { Repeat }
+
+    use { to_int } from Std.Text
+
+    service Repeat(): Unit {
+        calls { Console, Arguments, Process }
+    } = {
+        loop {
+            match Console.read_line() {
+                Some(line) -> {
+                    if line == "stop" {
+                        Process.exit(Arguments.all().first.unwrap_or("0").to_int().unwrap_or(0))
+                    }
+                    if line.is_empty {
+                        Console.print_error("an empty line")
+                    }
+                    Console.print(line.length.to_string())
+                    Console.print(line)
+                }
+                None -> break
+            }
+        }
+        Console.print("the end")
+    }
+}
+
+domain Program {
+    contexts { Echo }
+    use { Repeat } from Echo
+} = Repeat()

@@ -1,0 +1,7 @@
+[package]
+name = "console_input"
+
+[target.test]
+
+[target.unchecked]
+checks = false

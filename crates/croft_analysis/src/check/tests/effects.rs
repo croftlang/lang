@@ -148,6 +148,43 @@ fn gives_services_the_built_in_console() {
 }
 
 #[test]
+fn reads_lines_and_prints_errors_through_the_built_in_console() {
+    let service = "service Echo(): Unit {\n calls { Console }\n} = match Console.read_line() {\n Some(line) -> Console.print_error(line)\n None -> Unit\n}";
+    assert_eq!(errors(&game(service)), Vec::<String>::new());
+
+    let service = "service Echo(): String {\n calls { Console }\n} = Console.read_line()";
+    assert_error(&game(service), "expected `String`, found `Option<String>`");
+}
+
+#[test]
+fn gives_services_the_built_in_process() {
+    let service = "service Quit(): Unit {\n calls { Process }\n} = Process.exit(3)";
+    assert_eq!(errors(&game(service)), Vec::<String>::new());
+
+    let service = "service Quit(): Unit = Process.exit(3)";
+    assert_error(&game(service), "cannot find `Process.exit` here");
+
+    let service = "service Quit(): Unit {\n calls { Process }\n} = Process.exit(256)";
+    assert_error(
+        &game(service),
+        "`Process.exit` is given `256` for `code`, which breaks `Range(0, 255)`",
+    );
+}
+
+#[test]
+fn checks_known_arguments_to_a_port_operation() {
+    let source = game(
+        "port Log {\n fn write(level: Int where Range(1, 3))\n}\n\
+         service Note(): Unit {\n calls { Log }\n} = Log.write(level: 4)",
+    );
+
+    assert_error(
+        &source,
+        "`Log.write` is given `4` for `level`, which breaks `Range(1, 3)`",
+    );
+}
+
+#[test]
 fn gives_back_unit_when_there_is_no_return_type() {
     let source = game(
         "port Log {\n fn write(text: String)\n}\n\

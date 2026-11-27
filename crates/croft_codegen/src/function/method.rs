@@ -102,7 +102,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     ) -> String {
         // Every target supplies `Std.Console`'s ports, so no adapter is bound.
         if port.context == CONSOLE_CONTEXT {
-            return self.builtin_port_call(&port.name, arguments, ty);
+            return self.builtin_port_call(&port.name, name, arguments, ty);
         }
 
         let Some(adapter) = self.gen.bindings.get(port).cloned() else {
@@ -122,14 +122,44 @@ impl<'g, 'a> Writer<'g, 'a> {
         )
     }
 
-    /// An operation of `Console` or `Arguments`, which the runtime supplies on every target.
-    fn builtin_port_call(&mut self, port: &str, arguments: &[Argument], ty: &Type) -> String {
-        if port == "Console" {
-            let passed = self.pass_all(arguments, &[("text".to_string(), Type::String)]);
-            return self.call_into("croft_console_print", passed, ty);
-        }
+    /// An operation of `Console`, `Arguments` or `Process`, which the runtime
+    /// supplies on every target.
+    fn builtin_port_call(
+        &mut self,
+        port: &str,
+        name: &str,
+        arguments: &[Argument],
+        ty: &Type,
+    ) -> String {
+        let text = [("text".to_string(), Type::String)];
 
-        self.all_arguments(ty)
+        match (port, name) {
+            ("Console", "read_line") => self.read_line(ty),
+            ("Console", "print_error") => {
+                let passed = self.pass_all(arguments, &text);
+                self.call_into("croft_console_print_error", passed, ty)
+            }
+            ("Console", _) => {
+                let passed = self.pass_all(arguments, &text);
+                self.call_into("croft_console_print", passed, ty)
+            }
+            ("Process", _) => {
+                let passed = self.pass_all(arguments, &[("code".to_string(), Type::Int)]);
+                self.call_into("croft_process_exit", passed, ty)
+            }
+            _ => self.all_arguments(ty),
+        }
+    }
+
+    /// `Console.read_line()`: the next line of input, or None at its end.
+    fn read_line(&mut self, ty: &Type) -> String {
+        let line = self.temp(ty);
+
+        self.line(format!(
+            "croft_console_read_line(&{line}.some, CROFT_OUT({line}.value));"
+        ));
+
+        line
     }
 
     /// `Arguments.all()`: the program's command-line arguments. With checks

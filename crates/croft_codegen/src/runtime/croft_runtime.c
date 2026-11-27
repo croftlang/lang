@@ -366,3 +366,63 @@ void croft_console_print(croft_string_view text, croft_unit *out)
     putchar('\n');
     *out = 0;
 }
+
+/* Prints a line on the error output, apart from what croft_console_print
+   writes. */
+void croft_console_print_error(croft_string_view text, croft_unit *out)
+{
+    fwrite(text.text, 1, text.length, stderr);
+    fputc('\n', stderr);
+    *out = 0;
+}
+
+/* The next line of input, without its "\n" or "\r\n". At the end of the
+   input, with nothing read, *present is 0. With checks on, a line longer
+   than the string stops the program rather than being cut short; with
+   checks off, the rest of that line is skipped. */
+void croft_console_read_line(croft_bool *present, char *out, croft_u16 *length, croft_u16 capacity)
+{
+    int character;
+    int next;
+    croft_bool read = 0;
+    croft_bool full = 0;
+
+    *length = 0;
+    for (;;) {
+        character = getchar();
+        if (character == EOF) {
+            break;
+        }
+        read = 1;
+        if (character == '\n') {
+            break;
+        }
+        if (character == '\r') {
+            next = getchar();
+            if (next == '\n') {
+                break;
+            }
+            if (next != EOF) {
+                ungetc(next, stdin);
+            }
+        }
+        if (*length == capacity) {
+            full = 1;
+            continue;
+        }
+        out[*length] = (char) character;
+        (*length)++;
+    }
+
+    CROFT_CHECK(!full, "a line is longer than a string can hold");
+    *present = read;
+}
+
+/* Stops the program with an exit code. With checks off, a code outside 0
+   to 255 keeps only its lowest 8 bits, as most systems do. */
+void croft_process_exit(croft_int code, croft_unit *out)
+{
+    CROFT_CHECK(code >= 0 && code <= 255, "Process.exit: code must satisfy Range(0, 255)");
+    *out = 0;
+    exit((int) (code & 255));
+}
