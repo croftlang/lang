@@ -44,24 +44,22 @@ domain Application {
 
   Console.print(output) // Hello, World
 }
-
-// croft.toml
-// [package]
-// name = "hello"
-//
-// [target.desktop]
 ```
+
+Save it as `hello.croft` and run `croft run hello.croft`. With no `croft.toml`,
+the program runs on the `desktop` target. Add one to name adapters, add
+targets or set the program's name.
 
 Source files end in `.croft`, or in `.cro` on machines whose file names are
 limited to 8.3. A project can mix the two, and the compiler reads either in
 capitals too, as in `CARGO.CRO`.
-ƒ
+
 ```sh
 cargo install --path crates/croft_cli
 
 croft check . # compiler check
-croft compile . --target desktop # check and compile to C
-croft run . --target desktop # check, compile and run C
+croft compile . # check and compile to C
+croft run . # check, compile and run C
 croft size . --target spectrum_48k # memory each type and function takes
 croft fmt . # lay out the source files in the Croft style
 ```

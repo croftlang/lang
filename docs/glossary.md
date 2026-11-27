@@ -455,14 +455,16 @@ A file of Croft code, ending in `.croft`, or in `.cro` on machines whose file
 names are limited to 8.3. Either is read in capitals too, as in `CARGO.CRO`.
 
 ### Project
-A folder of source files compiled together as one program, with a `croft.toml`.
+A folder of source files compiled together as one program, with a `croft.toml`
+when it needs more than the default.
 
 ### Project file
 `croft.toml`, beside the source files. Like Rust's `Cargo.toml`, it holds what
 is about the build rather than the domain: the program's name, and for each
 target the adapter that fills each port (`Clock = "SystemClock"`), the C
 files holding its native functions, and optionally a `main` service to run
-instead of the domain.
+instead of the domain. A project without one runs its domain on one
+`desktop` target with no adapters.
 
 ### Domain
 The whole program: `domain Logistics { ... } = { ... }`, one per program, outside

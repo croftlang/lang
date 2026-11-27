@@ -13,12 +13,16 @@ pub struct SourceFile {
 }
 
 /// A project is a folder of source files (`.croft`, or `.cro` on machines with
-/// 8.3 file names) with a `croft.toml`, or a single source file.
+/// 8.3 file names), or a single source file, with the `croft.toml` in that
+/// folder. Without one, it is given the default (`Manifest::default_for`).
 pub struct Project {
     pub folder: PathBuf,
     /// The source files, then `croft.toml` last when there is one.
     pub files: Vec<SourceFile>,
     has_manifest: bool,
+    /// What to call the program when there is no `croft.toml` and no domain:
+    /// the folder's name, or the file's without its extension.
+    fallback_name: String,
 }
 
 impl Project {
@@ -54,7 +58,7 @@ impl Project {
         }
 
         let manifest_path = folder.join(MANIFEST_FILE);
-        let has_manifest = metadata.is_dir() && manifest_path.is_file();
+        let has_manifest = manifest_path.is_file();
 
         if has_manifest {
             let text = fs::read_to_string(&manifest_path)
@@ -66,10 +70,13 @@ impl Project {
             });
         }
 
+        let fallback_name = fallback_name(path, metadata.is_file());
+
         Ok(Project {
             folder,
             files,
             has_manifest,
+            fallback_name,
         })
     }
 
@@ -101,8 +108,27 @@ impl Project {
             return Err(errors);
         }
 
-        croft_analysis::check(modules, manifest)
+        let manifest =
+            manifest.unwrap_or_else(|| Manifest::default_for(&modules, &self.fallback_name));
+
+        croft_analysis::check(modules, Some(manifest))
     }
+}
+
+/// The name of the folder at `path`, or of the file without its extension.
+/// `.` is named after the folder it stands for.
+fn fallback_name(path: &Path, is_file: bool) -> String {
+    let path = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+
+    let name = if is_file {
+        path.file_stem()
+    } else {
+        path.file_name()
+    };
+
+    name.map_or("program".to_string(), |name| {
+        name.to_string_lossy().into_owned()
+    })
 }
 
 /// The source files at a path: the file itself, or every source file in the

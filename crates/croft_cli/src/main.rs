@@ -19,11 +19,11 @@ croft - a domain language that compiles to portable C
 
 Usage:
     croft check [path]      Check the source files in a folder (default: .)
-    croft compile [path] --target <name>
+    croft compile [path] [--target <name>]
                         Check, then write C for one target to target/croft/<name>
-    croft run [path] --target <name> [-- arguments]
+    croft run [path] [--target <name>] [-- arguments]
                         Compile, build the C with $CC (default: cc), and run it
-    croft size [path] --target <name>
+    croft size [path] [--target <name>]
                         Show how much memory types and functions take on a target
     croft fmt [path] [--check]
                         Lay out the source files in the Croft style, or with
@@ -31,6 +31,9 @@ Usage:
     croft lsp               Run the language server, for editors
     croft help              Show this message
     croft version           Show the version
+
+--target can be left out when croft.toml has one target. Without a
+croft.toml, the program runs its domain on the `desktop` target.
 ";
 
 /// Runs the command named by the first argument.

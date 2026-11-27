@@ -1,5 +1,6 @@
 //! Printing diagnostics with the offending source line.
 
+use croft_analysis::{DEFAULT_MANIFEST_SOURCE, DEFAULT_TARGET};
 use croft_syntax::Diagnostic;
 
 use crate::project::Project;
@@ -18,6 +19,13 @@ pub fn print_diagnostics(project: &Project, diagnostics: &[Diagnostic]) {
 /// source line with a `^` under the column.
 fn format_diagnostic(project: &Project, diagnostic: &Diagnostic) -> String {
     let span = diagnostic.span;
+
+    if span.source == DEFAULT_MANIFEST_SOURCE {
+        return format!(
+            "error: {}\n  note: there is no croft.toml, so the program runs its domain on one `{DEFAULT_TARGET}` target with no adapters; add a croft.toml to change that",
+            diagnostic.message
+        );
+    }
 
     let Some(file) = project.files.get(span.source.0 as usize) else {
         return format!("error: {}", diagnostic.message);
