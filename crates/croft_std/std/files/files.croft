@@ -1,4 +1,4 @@
-// Std.Files: reading and writing whole files. A program imports what it
+// Std.Files: reading and writing files. A program imports what it
 // needs with `use { Files, FileError } from Std.Files`, lists it in its
 // contract with `calls { Files }`, and names an adapter for it in croft.toml: `StdioFiles` on machines
 // with C's stdio, or one of its own, such as for a DivMMC.
@@ -10,7 +10,8 @@ context Files {
     // permission, is `Unreadable` instead.
     error NotFound
 
-    // The disk is full, or the file holds more than `read` was asked for.
+    // The disk is full, the file holds more than `read` was asked for, or,
+    // for `size`, more bytes than an `Int` counts.
     error NoRoom
 
     // The machine couldn't read or write it, for any other reason, or the
@@ -29,6 +30,18 @@ context Files {
         // since the result keeps room for that many, such as
         // `Files.read(path, 4096)`.
         fn read(path: String, most: Int where Range(1, 65535)): Result<Bytes, FileError> where Length(0, most)
+
+        // Up to `length` bytes of the file, from `offset` bytes into it:
+        // fewer when the file ends first, and none when `offset` is at or
+        // past its end. `length` must be known when the program is
+        // compiled, since the result keeps room for that many, such as
+        // `Files.read_part(path, offset, 512)`.
+        fn read_part(path: String, offset: Int where Range(0, 2147483647), length: Int where Range(1, 65535)): Result<Bytes, FileError> where Length(0, length)
+
+        // How many bytes the file holds, however many that is. Fails with
+        // `NoRoom` for one of more than 2147483647 bytes, and `Unreadable`
+        // for a folder.
+        fn size(path: String): Result<Int, FileError>
 
         // Replaces the file, or makes it. Fails with `NotFound` when the
         // folder it goes in isn't there.
@@ -58,9 +71,16 @@ context Files {
         // Fails with `NotFound` when there is nothing to copy, or no folder
         // to put the copy in.
         fn copy(from: String, to: String): Result<Unit, FileError>
+
+        // Moves the file to `to`, which may be in another folder on the
+        // same disk. Fails with `NotFound` when there is nothing to move, or
+        // no folder to move it into. Whether a file already at `to` is
+        // replaced depends on the machine: POSIX replaces it, and others,
+        // such as Windows, fail with `Unreadable`.
+        fn rename(from: String, to: String): Result<Unit, FileError>
     }
 
-    // Files through C89's stdio: fopen, fread, fwrite and remove. Listing
+    // Files through C89's stdio: fopen, fread, fwrite, fseek, remove and rename. Listing
     // and making folders needs POSIX's opendir and mkdir, so on a machine
     // without them, such as an 8-bit one, `list` and `make_folder` fail with
     // `Unreadable`. On a machine whose C has no POSIX `ENOENT`, it can't
@@ -70,6 +90,8 @@ context Files {
     // and `exists` give `false`.
     adapter StdioFiles for Files = {
         fn read(path, most) = native croft_files_read(path, most)
+        fn read_part(path, offset, length) = native croft_files_read_part(path, offset, length)
+        fn size(path) = native croft_files_size(path)
         fn write(path, data) = native croft_files_write(path, data)
         fn append(path, data) = native croft_files_append(path, data)
         fn exists(path) = native croft_files_exists(path)
@@ -77,5 +99,6 @@ context Files {
         fn list(folder) = native croft_files_list(folder)
         fn make_folder(path) = native croft_files_make_folder(path)
         fn copy(from, to) = native croft_files_copy(from, to)
+        fn rename(from, to) = native croft_files_rename(from, to)
     }
 }

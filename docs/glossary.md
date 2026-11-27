@@ -381,16 +381,17 @@ Each file of a context sees what any of them imports. Standard contexts need
 no arrow in the domain's `contexts`.
 
 Some standard contexts are written in Croft and join the program when it
-imports from them. `Std.Files` has the `Files` port, with `read`, `write`,
+imports from them. `Std.Files` has the `Files` port, with `read`,
+`read_part`, which reads up to a length from an offset, `size`, `write`,
 `append`, `exists`, `remove`, `list`, which gives the names in a folder in
 byte order, each folder's ending in `/`, `make_folder`, which makes each
-folder on the way, and `copy`, for a file of any size, its errors `NotFound`, `NoRoom` and
+folder on the way, `copy`, for a file of any size, and `rename`, its errors `NotFound`, `NoRoom` and
 `Unreadable`, the enum `FileError` that includes them, and the `StdioFiles`
 adapter, which uses C's stdio: `Files = "StdioFiles"` in `croft.toml`. Its
 `list` and `make_folder` need POSIX, so they fail with `Unreadable` on
 machines without it. It fails with `NotFound` only when nothing is at the
-path, or a file is written, appended to or copied into a folder that isn't
-there, and with `Unreadable` for a file that is there but can't be opened,
+path, or a file is written, appended to, copied or renamed into a folder
+that isn't there, and with `Unreadable` for a file that is there but can't be opened,
 which `exists` still finds; a machine whose C has no POSIX `ENOENT` can't
 tell the two apart and fails with `NotFound`. It never cuts a path short:
 one longer than 255 bytes, or with a NUL byte in it, fails with `Unreadable`.

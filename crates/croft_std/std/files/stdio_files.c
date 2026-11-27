@@ -248,6 +248,105 @@ static croft_bool is_folder_path(const char *path)
 }
 #endif
 
+/* Up to `length` bytes from `offset` bytes into the file, into the Bytes
+   `into` writes, or as many as there is room for. A stream may seek past
+   its end, and then reads nothing, so an offset at or past the end gives
+   no bytes. */
+void croft_files_read_part(croft_string_view path, croft_int offset, croft_int length,
+                           croft_bytes_writer *into, croft_result_unit_error *out)
+{
+    char name[CROFT_PATH_CAPACITY + 1];
+    FILE *file;
+    croft_u16 room = into->capacity;
+    croft_clear(out, sizeof *out);
+    *into->length = 0;
+    if (length < (croft_int) room) {
+        room = length > 0 ? (croft_u16) length : 0;
+    }
+    if (!to_path(path, name)) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
+    errno = 0;
+    file = fopen(name, "rb");
+    if (file == 0) {
+        fail(&out->error, open_error());
+        return;
+    }
+    if (offset < 0 || fseek(file, (long) offset, SEEK_SET) != 0) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        fclose(file);
+        return;
+    }
+    *into->length = (croft_u16) fread(into->items, 1, room, file);
+    if (ferror(file)) {
+        *into->length = 0;
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+    } else {
+        out->ok = 1;
+    }
+    fclose(file);
+}
+
+/* How many bytes the file holds, by seeking to its end: C89 has no other
+   way. A folder, which fopen may open on some machines, is Unreadable. */
+void croft_files_size(croft_string_view path, croft_result_int_error *out)
+{
+    char name[CROFT_PATH_CAPACITY + 1];
+    FILE *file;
+    long end;
+    croft_clear(out, sizeof *out);
+    if (!to_path(path, name)) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
+    errno = 0;
+    file = fopen(name, "rb");
+    if (file == 0) {
+        fail(&out->error, open_error());
+        return;
+    }
+#ifdef CROFT_HAS_FOLDERS
+    if (is_folder_path(name)) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        fclose(file);
+        return;
+    }
+#endif
+    end = fseek(file, 0L, SEEK_END) == 0 ? ftell(file) : -1L;
+    fclose(file);
+    if (end < 0) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
+    if (end > (long) CROFT_INT_MAX) {
+        fail(&out->error, CROFT_ERROR_Std_Files_NoRoom);
+        return;
+    }
+    out->value = (croft_int) end;
+    out->ok = 1;
+}
+
+/* Moves the file with C89's rename. Nothing at `from`, or no folder at
+   `to`, is NotFound; anything else, such as a file at `to` on a machine
+   that won't replace it, or another disk, is Unreadable. */
+void croft_files_rename(croft_string_view from, croft_string_view to, croft_result_unit_error *out)
+{
+    char source[CROFT_PATH_CAPACITY + 1];
+    char target[CROFT_PATH_CAPACITY + 1];
+    croft_clear(out, sizeof *out);
+    if (!to_path(from, source) || !to_path(to, target)) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
+    errno = 0;
+    if (rename(source, target) != 0) {
+        fail(&out->error, open_error());
+        return;
+    }
+    out->ok = 1;
+}
+
 /* Makes each folder on the way, from the first, so `a/b/c` makes `a`, then
    `a/b`, then `a/b/c`. */
 void croft_files_make_folder(croft_string_view path, croft_result_unit_error *out)
