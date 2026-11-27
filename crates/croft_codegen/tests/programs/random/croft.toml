@@ -1,0 +1,5 @@
+[package]
+name = "random"
+
+[target.test.adapters]
+Random = "SeededRandom"

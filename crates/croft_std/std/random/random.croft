@@ -1,0 +1,25 @@
+// Std.Random: whole numbers picked at random. A program imports the port
+// with `use { Random } from Std.Random`, lists it in its contract with
+// `calls { Random }`, and names an adapter for it in croft.toml:
+// `SeededRandom` on any machine with C's `time`, or one of its own, such as
+// one that reads a machine's own noise.
+context Random {
+    publish { Random, SeededRandom }
+
+    port Random {
+        // A whole number from `low` to `high`, both included. A `low` above
+        // `high` is the caller's mistake: an error from `croft check` when
+        // both are known, and otherwise a stop while the program runs.
+        fn between(low: Int, high: Int): Int {
+            low <= high
+        }
+    }
+
+    // A xorshift32 generator, seeded once from C's `time` the first time it
+    // is used, so each run gives different numbers. A machine without a
+    // clock gives the same numbers each run. Fine for games and samples;
+    // never for passwords, keys or anything secret.
+    adapter SeededRandom for Random = {
+        fn between(low, high) = native croft_random_between(low, high)
+    }
+}

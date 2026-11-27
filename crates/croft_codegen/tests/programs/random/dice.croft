@@ -1,0 +1,75 @@
+// Rolls through Std.Random and its SeededRandom adapter many times, and
+// fails if a number falls outside its range or a side of the die never
+// comes up. A first argument, such as `6 1`, rolls once between the two
+// numbers it names, which with `low` above `high` stops the program.
+context Dice {
+    publish { Roll, Wrong }
+
+    use { Random } from Std.Random
+    use { to_int } from Std.Text
+
+    error Wrong
+
+    fn check(ok: Bool): Result<Unit, Wrong> = {
+        if ok {
+            Ok(Unit)
+        }
+        Err(Wrong)
+    }
+
+    // Every roll of a die with `sides` sides, `count` times, is on the die,
+    // and each side comes up at least once.
+    service RollDie(sides: Int, count: Int): Result<Unit, Wrong> {
+        calls { Random }
+    } = {
+        let seen: List<Int> = []
+        loop (let turn where Range(1, 1000)) {
+            if turn <= count {
+                let rolled = Random.between(1, sides)
+                check(rolled >= 1 && rolled <= sides)?
+                if !seen.contains(rolled) {
+                    set seen = seen.add(rolled)
+                }
+            }
+        }
+        check(seen.length == sides)
+    }
+
+    // Every roll between `low` and `high` lands between them.
+    service RollBetween(low: Int, high: Int): Result<Unit, Wrong> {
+        calls { Random }
+    } = {
+        loop (let turn where Range(1, 1000)) {
+            let rolled = Random.between(low, high)
+            check(rolled >= low && rolled <= high)?
+        }
+        Unit
+    }
+
+    service Roll(): Result<Unit, Wrong> {
+        calls { Random, Arguments, Console }
+    } = {
+        let given = Arguments.all()
+        if given.length == 2 {
+            let low = given.get(0).unwrap_or("0").to_int().unwrap_or(0)
+            let high = given.get(1).unwrap_or("0").to_int().unwrap_or(0)
+            Console.print(Random.between(low, high).to_string())
+            Ok(Unit)
+        }
+        RollDie(6, 1000)?
+        RollDie(2, 200)?
+        RollDie(16, 1000)?
+        RollBetween(5, 5)?
+        RollBetween(-3, 3)?
+        RollBetween(-2000000000, 2000000000)?
+        RollBetween(2147483640, 2147483647)?
+        RollBetween(-2147483647, -2147483640)?
+        Console.print("ok")
+        Unit
+    }
+}
+
+domain Program {
+    contexts { Dice }
+    use { Roll } from Dice
+} = Roll()?
