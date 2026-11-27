@@ -5,11 +5,21 @@
 
 mod raw;
 
-use croft_syntax::ast::{Identifier, Path};
+use croft_syntax::ast::{File, Identifier, Path};
+
+use crate::naming::to_snake_case;
 use croft_syntax::{Diagnostic, SourceId, Span};
 
 /// The project file's name.
 pub const MANIFEST_FILE: &str = "croft.toml";
+
+/// The target a project without a `croft.toml` is built for.
+pub const DEFAULT_TARGET: &str = "desktop";
+
+/// Where the names of the default project file are said to be written. It is
+/// no file's id: project files count up from 0 and standard contexts count
+/// down from the top, so errors about the default can be told apart.
+pub const DEFAULT_MANIFEST_SOURCE: SourceId = SourceId(u32::MAX / 2);
 
 /// The project file: the program's name and version, and its targets.
 #[derive(Debug, Clone)]
@@ -44,6 +54,41 @@ impl Manifest {
     /// The target named `name`, if the file has one.
     pub fn target(&self, name: &str) -> Option<&TargetConfig> {
         self.targets.iter().find(|target| target.name.name == name)
+    }
+
+    /// What a project without a `croft.toml` is given: one `desktop` target
+    /// that runs the domain, with checks on and no adapters, named after the
+    /// domain in snake_case. Without a domain there is nothing to run, so it
+    /// has no targets and is named `fallback`; the project can still be checked.
+    pub fn default_for(files: &[File], fallback: &str) -> Manifest {
+        let named = |name: &str| Identifier {
+            name: name.to_string(),
+            span: Span {
+                source: DEFAULT_MANIFEST_SOURCE,
+                line: 1,
+                column: 1,
+            },
+        };
+
+        let Some(domain) = files.iter().flat_map(|file| &file.domains).next() else {
+            return Manifest {
+                name: named(fallback),
+                version: Some("0.1.0".to_string()),
+                targets: Vec::new(),
+            };
+        };
+
+        Manifest {
+            name: named(&to_snake_case(&domain.name.name)),
+            version: Some("0.1.0".to_string()),
+            targets: vec![TargetConfig {
+                name: named(DEFAULT_TARGET),
+                main: None,
+                native: Vec::new(),
+                adapters: Vec::new(),
+                checks: true,
+            }],
+        }
     }
 }
 

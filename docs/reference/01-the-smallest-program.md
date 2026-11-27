@@ -1,6 +1,6 @@
 # The smallest program
 
-One context with one function, and a domain that calls it and prints the answer through the built-in Console port. Beside it, dn.toml needs only the program's name and a target.
+One context with one function, and a domain that calls it and prints the answer through the built-in Console port. It needs no croft.toml: `croft run hello.croft` runs it on the `desktop` target.
 
 ```croft
 context Hello {
@@ -14,10 +14,4 @@ domain Program {
     use { add } from Hello
     calls { Console }
 } = Console.print(add(2, 3).to_string())   // prints 5
-
-// dn.toml
-// [package]
-// name = "hello"
-//
-// [target.desktop]
 ```

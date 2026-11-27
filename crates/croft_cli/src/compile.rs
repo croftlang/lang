@@ -1,4 +1,4 @@
-//! `croft compile`: checks a project and writes C for one target from its `croft.toml`.
+//! `croft compile`: checks a project and writes C for one of its targets.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -7,7 +7,7 @@ use crate::load_and_check;
 
 /// What `croft compile` wrote for one target.
 pub struct Output {
-    /// The package name from `croft.toml`.
+    /// The package name from `croft.toml`, or the default's.
     pub name: String,
     pub target: String,
     /// `target/croft/<target>` in the project folder.
@@ -116,8 +116,8 @@ fn write(path: &Path, contents: &str) -> Result<(), String> {
     fs::write(path, contents).map_err(|error| format!("cannot write `{}`: {error}", path.display()))
 }
 
-/// The target named with `--target`. Fails when there is no `croft.toml`,
-/// or when no target is named, listing the targets `croft.toml` has.
+/// The target named with `--target`, or the only one when there is just one.
+/// Fails when the project has several and none is named, listing them.
 fn choose_target(
     program: &croft_analysis::Program,
     target: Option<String>,
@@ -131,18 +131,28 @@ fn choose_target(
         ));
     };
 
-    let Some(target) = target else {
-        let targets: Vec<&str> = manifest
-            .targets
-            .iter()
-            .map(|t| t.name.name.as_str())
-            .collect();
+    if let Some(target) = target {
+        return Ok(target);
+    }
 
-        return Err(format!(
+    let targets: Vec<&str> = manifest
+        .targets
+        .iter()
+        .map(|t| t.name.name.as_str())
+        .collect();
+
+    let is_default = manifest.name.span.source == croft_analysis::DEFAULT_MANIFEST_SOURCE;
+
+    match targets[..] {
+        [only] => Ok(only.to_string()),
+        [] if is_default => Err(
+            "there is nothing to run: declare a `domain`, or add a croft.toml whose target names a service with `main`"
+                .to_string(),
+        ),
+        [] => Err("croft.toml has no targets: add one, such as `[target.desktop]`".to_string()),
+        _ => Err(format!(
             "choose a target with `--target`; croft.toml has: {}",
             targets.join(", ")
-        ));
-    };
-
-    Ok(target)
+        )),
+    }
 }

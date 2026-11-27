@@ -16,6 +16,8 @@ pub use builtin_members::built_in_members;
 pub use builtins::built_in_doc;
 pub use check::{analyze, check, Analysis, Model, Operation, StorageShape, VariantInfo};
 pub use facts::{BuiltinName, Facts, LocalName, Meaning, Member, MemberKind, Reference};
-pub use manifest::{Manifest, TargetConfig, MANIFEST_FILE};
+pub use manifest::{
+    Manifest, TargetConfig, DEFAULT_MANIFEST_SOURCE, DEFAULT_TARGET, MANIFEST_FILE,
+};
 pub use program::{Context, Program};
 pub use types::{Type, MAX_PLACES, MAX_SHIFT};
