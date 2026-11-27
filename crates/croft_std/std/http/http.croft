@@ -33,20 +33,40 @@ context Http {
         body: Bytes
     }
 
+    // Each request sends the URL, at most 1024 characters, and up to 8
+    // headers, by name and value, such as `["Accept": "text/plain"]`, or
+    // `[:]` for none.
     port Http {
-        fn get(url: String where Length(1, 128)): Result<Response, HttpError>
-        fn post(url: String where Length(1, 128), body: Bytes): Result<Response, HttpError>
-        fn put(url: String where Length(1, 128), body: Bytes): Result<Response, HttpError>
-        fn delete(url: String where Length(1, 128)): Result<Response, HttpError>
+        fn get(
+            url: String where Length(1, 1024),
+            headers: Map<String, String> where Length(0, 8),
+        ): Result<Response, HttpError>
+        fn post(
+            url: String where Length(1, 1024),
+            headers: Map<String, String> where Length(0, 8),
+            body: Bytes,
+        ): Result<Response, HttpError>
+        fn put(
+            url: String where Length(1, 1024),
+            headers: Map<String, String> where Length(0, 8),
+            body: Bytes,
+        ): Result<Response, HttpError>
+        fn delete(
+            url: String where Length(1, 1024),
+            headers: Map<String, String> where Length(0, 8),
+        ): Result<Response, HttpError>
     }
 
     // Requests through libcurl, which also handles HTTPS. It speaks only
     // http and https, on the first request and on every redirect, and
-    // follows at most 10 redirects.
+    // follows at most 10 redirects. A header whose name or value holds a
+    // carriage return, a line feed or a NUL, which could slip another
+    // header or request into this one, or whose name is empty or holds a
+    // colon, fails the request with `Unreachable` before anything is sent.
     adapter CurlHttp for Http = {
-        fn get(url) = native croft_http_get(url)
-        fn post(url, body) = native croft_http_post(url, body)
-        fn put(url, body) = native croft_http_put(url, body)
-        fn delete(url) = native croft_http_delete(url)
+        fn get(url, headers) = native croft_http_get(url, headers)
+        fn post(url, headers, body) = native croft_http_post(url, headers, body)
+        fn put(url, headers, body) = native croft_http_put(url, headers, body)
+        fn delete(url, headers) = native croft_http_delete(url, headers)
     }
 }

@@ -9,6 +9,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 use support::{compile, generate, has_c_compiler};
@@ -115,6 +116,54 @@ fn answer(body: &str, step: &str) -> String {
     )
 }
 
+/// Answers every request it gets, for as long as the test runs, with its
+/// method, its path, or the path's length when that is long, and its `X-`
+/// headers in the order they came, and keeps each request's head in `seen`.
+fn serve_headers(listener: TcpListener, seen: Arc<Mutex<Vec<String>>>) {
+    for stream in listener.incoming() {
+        let mut stream = stream.expect("a connection");
+        let mut request = Vec::new();
+        let mut buffer = [0; 1024];
+
+        while !String::from_utf8_lossy(&request).contains("\r\n\r\n") {
+            let read = stream.read(&mut buffer).expect("a request");
+
+            if read == 0 {
+                break;
+            }
+
+            request.extend_from_slice(&buffer[..read]);
+        }
+
+        let text = String::from_utf8_lossy(&request).to_string();
+        let head = text.split("\r\n\r\n").next().unwrap_or("").to_string();
+        let mut words = head.split(' ');
+        let method = words.next().unwrap_or("");
+        let path = words.next().unwrap_or("");
+
+        let path = if path.len() > 20 {
+            path.len().to_string()
+        } else {
+            path.to_string()
+        };
+
+        let headers: Vec<String> = (head.lines().skip(1))
+            .filter(|line| line.to_lowercase().starts_with("x-"))
+            .map(|line| line.replace(' ', ""))
+            .collect();
+
+        let body = format!("{method} {path} {}", headers.join(","));
+        seen.lock().unwrap().push(head);
+
+        let reply = format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
+
+        stream.write_all(reply.as_bytes()).ok();
+    }
+}
+
 /// Builds the program of that name in `tests/programs`, with SERVER replaced
 /// by `address` in each of its files, and gives back the folder holding it.
 /// Gives back nothing where there is no C compiler or no libcurl headers.
@@ -214,6 +263,43 @@ fn follows_few_redirects_keeps_the_last_headers_and_only_speaks_http() {
         String::from_utf8_lossy(&ran.stdout),
         "200\nhello\nfinal\nnone\n3\nunreachable\nunreachable\n"
     );
+
+    assert!(ran.status.success());
+    fs::remove_dir_all(output).ok();
+    fs::remove_dir_all(folder).ok();
+}
+
+#[test]
+fn sends_headers_and_long_urls_and_refuses_headers_that_break_lines() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("a free port");
+    let address = listener.local_addr().expect("an address").to_string();
+
+    let Some((output, folder)) = build(
+        "http_request_headers",
+        &["croft.toml", "send.croft"],
+        &address,
+    ) else {
+        return;
+    };
+
+    // The server answers for as long as the test runs; it ends with it.
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let kept = Arc::clone(&seen);
+    thread::spawn(move || serve_headers(listener, kept));
+
+    let ran = std::process::Command::new(output.join("program"))
+        .output()
+        .expect("it runs");
+
+    assert_eq!(
+        String::from_utf8_lossy(&ran.stdout),
+        "GET /seen X-Token:abc,X-Empty:\nGET 991 \nPUT /seen X-Kind:save\n\
+         unreachable\nunreachable\nunreachable\nunreachable\n"
+    );
+
+    let seen = seen.lock().unwrap();
+    assert_eq!(seen.len(), 3, "{seen:?}");
+    assert!(seen.iter().all(|head| !head.contains("X-Evil")), "{seen:?}");
 
     assert!(ran.status.success());
     fs::remove_dir_all(output).ok();

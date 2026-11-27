@@ -6,6 +6,9 @@
 /* How many redirects a request follows before it fails with Unreachable. */
 #define CROFT_HTTP_REDIRECTS 10L
 
+/* The most characters a URL can have, as the Http port allows. */
+#define CROFT_HTTP_URL_LENGTH 1024
+
 /* Where libcurl puts the answer, and whether it ran out of room. */
 typedef struct {
     croft_bytes *body;
@@ -84,29 +87,123 @@ static size_t keep_header(char *data, size_t size, size_t count, void *user)
     return length;
 }
 
-static void request(const char *method, croft_string_view url, const croft_bytes *body,
-                    croft_result_Std_Http_Response_error *out)
+/* Whether text holds a carriage return, a line feed or a NUL, any of
+   which would end a header line early and could slip another header, or a
+   whole request, in after it. */
+static croft_bool breaks_line(const croft_string *text)
 {
-    char address[1024];
-    croft_http_answer answer;
-    CURL *curl;
-    CURLcode code;
-    long status = 0;
     croft_u16 index;
-    croft_clear(out, sizeof *out);
-    for (index = 0; index < url.length && index < sizeof address - 1; index++) {
+    for (index = 0; index < text->length; index++) {
+        char c = text->text[index];
+        if (c == '\r' || c == '\n' || c == '\0') {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* Whether a header's name is one libcurl sends as it is: not empty, with
+   no colon to end it early, and nothing that breaks the line. */
+static croft_bool is_header_name(const croft_string *name)
+{
+    croft_u16 index;
+    if (name->length == 0 || breaks_line(name)) {
+        return 0;
+    }
+    for (index = 0; index < name->length; index++) {
+        if (name->text[index] == ':') {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* Each header as a line for libcurl, "Name: value", added to *list. A
+   header with an empty value is written "Name;", since libcurl takes
+   "Name:" to mean the header should not be sent at all. Gives back 0 when
+   a header is unsafe to send or libcurl has no room for it; the caller
+   frees whatever lines were added. */
+static croft_bool add_headers(const croft_map_string_string *headers, struct curl_slist **list)
+{
+    char line[2 * CROFT_STRING_CAPACITY + 3];
+    struct curl_slist *grown;
+    croft_u16 entry;
+    croft_u16 index;
+    size_t at;
+    for (entry = 0; entry < headers->length; entry++) {
+        const croft_string *name = &headers->keys[entry];
+        const croft_string *value = &headers->values[entry];
+        if (!is_header_name(name) || breaks_line(value)) {
+            return 0;
+        }
+        at = 0;
+        for (index = 0; index < name->length; index++) {
+            line[at++] = name->text[index];
+        }
+        if (value->length == 0) {
+            line[at++] = ';';
+        } else {
+            line[at++] = ':';
+            line[at++] = ' ';
+        }
+        for (index = 0; index < value->length; index++) {
+            line[at++] = value->text[index];
+        }
+        line[at] = '\0';
+        grown = curl_slist_append(*list, line);
+        if (grown == 0) {
+            return 0;
+        }
+        *list = grown;
+    }
+    return 1;
+}
+
+/* Copies url into address, ending it with a NUL. Gives back 0 for a URL
+   longer than the port allows or with a NUL in it, which would otherwise
+   reach libcurl cut short. */
+static croft_bool copy_url(croft_string_view url, char *address)
+{
+    croft_u16 index;
+    if (url.length > CROFT_HTTP_URL_LENGTH) {
+        return 0;
+    }
+    for (index = 0; index < url.length; index++) {
+        if (url.text[index] == '\0') {
+            return 0;
+        }
         address[index] = url.text[index];
     }
     address[index] = '\0';
+    return 1;
+}
+
+static void request(const char *method, croft_string_view url, const croft_map_string_string *headers,
+                    const croft_bytes *body, croft_result_Std_Http_Response_error *out)
+{
+    char address[CROFT_HTTP_URL_LENGTH + 1];
+    croft_http_answer answer;
+    struct curl_slist *lines = 0;
+    CURL *curl;
+    CURLcode code;
+    long status = 0;
+    croft_clear(out, sizeof *out);
+    if (!copy_url(url, address) || !add_headers(headers, &lines)) {
+        curl_slist_free_all(lines);
+        out->error.code = CROFT_ERROR_Std_Http_Unreachable;
+        return;
+    }
     answer.body = &out->value.body;
     answer.too_large = 0;
     curl = curl_easy_init();
     if (curl == 0) {
+        curl_slist_free_all(lines);
         out->error.code = CROFT_ERROR_Std_Http_Unreachable;
         return;
     }
     curl_easy_setopt(curl, CURLOPT_URL, address);
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, lines);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, CROFT_HTTP_REDIRECTS);
 #if LIBCURL_VERSION_NUM >= 0x075500
@@ -128,6 +225,7 @@ static void request(const char *method, croft_string_view url, const croft_bytes
     code = curl_easy_perform(curl);
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
     curl_easy_cleanup(curl);
+    curl_slist_free_all(lines);
     if (answer.too_large) {
         croft_clear(out, sizeof *out);
         out->error.code = CROFT_ERROR_Std_Http_TooLarge;
@@ -142,22 +240,26 @@ static void request(const char *method, croft_string_view url, const croft_bytes
     }
 }
 
-void croft_http_get(croft_string_view url, croft_result_Std_Http_Response_error *out)
+void croft_http_get(croft_string_view url, const croft_map_string_string *headers,
+                    croft_result_Std_Http_Response_error *out)
 {
-    request("GET", url, 0, out);
+    request("GET", url, headers, 0, out);
 }
 
-void croft_http_post(croft_string_view url, const croft_bytes *body, croft_result_Std_Http_Response_error *out)
+void croft_http_post(croft_string_view url, const croft_map_string_string *headers, const croft_bytes *body,
+                     croft_result_Std_Http_Response_error *out)
 {
-    request("POST", url, body, out);
+    request("POST", url, headers, body, out);
 }
 
-void croft_http_put(croft_string_view url, const croft_bytes *body, croft_result_Std_Http_Response_error *out)
+void croft_http_put(croft_string_view url, const croft_map_string_string *headers, const croft_bytes *body,
+                    croft_result_Std_Http_Response_error *out)
 {
-    request("PUT", url, body, out);
+    request("PUT", url, headers, body, out);
 }
 
-void croft_http_delete(croft_string_view url, croft_result_Std_Http_Response_error *out)
+void croft_http_delete(croft_string_view url, const croft_map_string_string *headers,
+                       croft_result_Std_Http_Response_error *out)
 {
-    request("DELETE", url, 0, out);
+    request("DELETE", url, headers, 0, out);
 }

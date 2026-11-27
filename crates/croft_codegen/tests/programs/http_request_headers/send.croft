@@ -1,0 +1,43 @@
+// Sends headers and a long URL through Std.Http and CurlHttp, and tries
+// headers that would break the request line by line. The test replaces
+// SERVER with the address of a server it runs for the purpose.
+context Send {
+    publish { Talk }
+
+    use { Http, Response, HttpError, Unreachable, TimedOut, TooLarge } from Std.Http
+    use { repeat, to_bytes, to_text } from Std.Text
+
+    // What a request came to: the error's name, or "answered".
+    fn outcome(answer: Result<Response, HttpError>): String = match answer {
+        Ok(_) -> "answered"
+        Err(e) -> name_of(e)
+    }
+
+    // The name of an error from Std.Http.
+    fn name_of(error: HttpError): String = match error {
+        Unreachable -> "unreachable"
+        TimedOut -> "timed out"
+        TooLarge -> "too large"
+    }
+
+    service Talk(): Result<Unit, HttpError> {
+        calls { Http, Console }
+    } = {
+        let seen = Http.get("http://SERVER/seen", ["X-Token": "abc", "X-Empty": ""])?
+        Console.print(seen.body.to_text())
+        let long = Http.get("http://SERVER/" + "a".repeat(990), [:])?
+        Console.print(long.body.to_text())
+        let posted = Http.put("http://SERVER/seen", ["X-Kind": "save"], "sent".to_bytes())?
+        Console.print(posted.body.to_text())
+        Console.print(outcome(Http.get("http://SERVER/seen", ["X-Bad": "a\r\nX-Evil: 1"])))
+        Console.print(outcome(Http.post("http://SERVER/seen", ["X-Bad": "a\nX-Evil: 1"], "".to_bytes())))
+        Console.print(outcome(Http.get("http://SERVER/seen", ["X-Evil: 1\r\nX-Bad": "a"])))
+        Console.print(outcome(Http.delete("http://SERVER/seen", ["X-Evil: 1": "a"])))
+        Unit
+    }
+}
+
+domain Program {
+    contexts { Send }
+    use { Talk } from Send
+} = Talk()?

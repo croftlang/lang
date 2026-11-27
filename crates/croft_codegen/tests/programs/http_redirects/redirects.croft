@@ -23,14 +23,14 @@ context Fetch {
     service Talk(): Result<Unit, HttpError> {
         calls { Http, Console }
     } = {
-        let page = Http.get("http://SERVER/moved")?
+        let page = Http.get("http://SERVER/moved", [:])?
         Console.print(page.status.to_string())
         Console.print(page.body.to_text())
         Console.print(page.headers.get("x-step").unwrap_or("none"))
         Console.print(page.headers.get("location").unwrap_or("none"))
         Console.print(page.headers.length.to_string())
-        Console.print(outcome(Http.get("http://SERVER/loop")))
-        Console.print(outcome(Http.get("file:///etc/passwd")))
+        Console.print(outcome(Http.get("http://SERVER/loop", [:])))
+        Console.print(outcome(Http.get("file:///etc/passwd", [:])))
         Unit
     }
 }

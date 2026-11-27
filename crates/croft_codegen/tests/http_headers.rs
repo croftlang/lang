@@ -29,8 +29,8 @@ fn serve(listener: TcpListener) {
     let reply = format!(
         "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nX-Short: short\r\nX-{}: v\r\n\
          X-Long: {}\r\nConnection: close\r\n\r\nok",
-        "n".repeat(200),
-        "v".repeat(200)
+        "n".repeat(1100),
+        "v".repeat(1100)
     );
 
     stream.write_all(reply.as_bytes()).expect("an answer");
