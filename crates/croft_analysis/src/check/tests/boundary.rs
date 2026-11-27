@@ -8,7 +8,7 @@ const SCREEN: &str = "port Screen {\n fn clear(): Unit\n fn draw(at: Position): 
 /// The dungeon with `SCREEN` and a `TestScreen` adapter holding `operations`.
 fn with_adapter(operations: &str) -> String {
     dungeon(&format!(
-        "{SCREEN}\nadapter TestScreen for Screen = {{\n{operations}\n}}"
+        "{SCREEN}\nadapter TestScreen for Screen {{\n{operations}\n}}"
     ))
 }
 

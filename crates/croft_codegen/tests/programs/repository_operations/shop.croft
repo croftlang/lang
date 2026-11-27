@@ -43,7 +43,7 @@ context Shop {
         fn holding_over(cash: Int): Result<List<Till>, StorageError>
     }
 
-    adapter ListTills for Tills = {
+    adapter ListTills for Tills {
         tills: List<Till> where Length(0, 4) = []
 
         fn save(till) = {

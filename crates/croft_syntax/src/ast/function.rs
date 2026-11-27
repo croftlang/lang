@@ -53,7 +53,7 @@ pub struct PortDecl {
     pub operations: Vec<FunctionDecl>,
 }
 
-/// `adapter SpectrumScreen for Screen = { ... }`
+/// `adapter SpectrumScreen for Screen { ... }`
 #[derive(Debug, Clone, PartialEq)]
 pub struct AdapterDecl {
     pub doc: Vec<String>,

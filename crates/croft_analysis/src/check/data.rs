@@ -73,6 +73,12 @@ impl<'a> Checker<'a> {
             }
 
             self.check_fields(scope, &variant.fields);
+
+            for value in variant.fields.iter().filter_map(|f| f.value.as_ref()) {
+                let message =
+                    "a variant's fields have no starting values, since they are given like arguments";
+                self.error(message, value.span);
+            }
         }
 
         let kinds = [SymbolKind::Enum, SymbolKind::Error, SymbolKind::ErrorSet];

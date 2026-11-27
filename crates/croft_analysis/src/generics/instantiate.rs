@@ -56,6 +56,10 @@ pub fn instance_file(request: &Request, files: &[File], source: SourceId) -> Opt
             for field in &mut value.fields {
                 substitute(&mut field.ty);
 
+                if let Some(starting) = &mut field.value {
+                    renumber(starting, source, &mut next, &substitute);
+                }
+
                 for constraint in &mut field.constraints {
                     for argument in constraint.arguments.iter_mut().chain(&mut constraint.error) {
                         renumber(argument, source, &mut next, &substitute);

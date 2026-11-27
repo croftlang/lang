@@ -45,7 +45,7 @@ context Storage {
     }
 
     // Kept in memory while the program runs. The compiler writes its C.
-    adapter MemoryStorage for Storage = {
+    adapter MemoryStorage for Storage {
         fn load(key) = native croft_memory_storage_load(key)
         fn save(key, data) = native croft_memory_storage_save(key, data)
         fn remove(key) = native croft_memory_storage_remove(key)
@@ -53,7 +53,7 @@ context Storage {
 
     // A file for each key, such as `rooms12.dat`, through whatever adapter
     // the target binds to `Files`. The compiler writes its C.
-    adapter FileStorage for Storage = {
+    adapter FileStorage for Storage {
         fn load(key) = native croft_file_storage_load(key)
         fn save(key, data) = native croft_file_storage_save(key, data)
         fn remove(key) = native croft_file_storage_remove(key)

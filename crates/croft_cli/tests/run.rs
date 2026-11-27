@@ -112,7 +112,7 @@ context Game {
     fn pressed(): Int
   }
 
-  adapter NativeKeyboard for Keyboard = {
+  adapter NativeKeyboard for Keyboard {
     fn pressed() = native read_key()
   }
 

@@ -30,8 +30,9 @@ impl Parser {
         })
     }
 
-    /// `adapter SpectrumScreen for Screen = { ... }`. Which targets use it is
-    /// chosen in `croft.toml`.
+    /// `adapter SpectrumScreen for Screen { ... }`: fields and operations, like
+    /// an aggregate's members, not a body. Which targets use it is chosen in
+    /// `croft.toml`.
     pub(super) fn parse_adapter(&mut self) -> ParseResult<AdapterDecl> {
         let doc = self.doc();
 
@@ -43,12 +44,17 @@ impl Parser {
 
         let port = self.parse_path()?;
 
-        if self.check(&TokenKind::LeftBrace) {
-            let message = "an adapter's body comes after `=`: `adapter Name for Port = { ... }`";
+        if self.check(&TokenKind::Equal) {
+            let message = format!(
+                "an adapter's fields and operations go straight in braces, with no `=`: \
+                 `adapter {} for {} {{ ... }}`",
+                name.name,
+                port.text()
+            );
+
             return Err(Diagnostic::new(message, self.span()));
         }
 
-        self.expect(&TokenKind::Equal)?;
         self.expect(&TokenKind::LeftBrace)?;
 
         let (mut fields, mut operations) = (Vec::new(), Vec::new());

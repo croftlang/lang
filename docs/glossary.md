@@ -516,13 +516,16 @@ Every target supplies it, through C's `exit`.
 
 ### Adapter
 Implements a port, usually in a `Platform` context: `adapter FixedClock for
-Clock = { ... }`. Must provide every operation the port declares. Which
+Clock { ... }`. Must provide every operation the port declares. Which
 targets use it is chosen in `croft.toml`, so one adapter can serve several.
 
 ### Starting value
-What an adapter's field holds when the program starts, written after its
-type and constraints: `voyages: List<String> where Length(0, 8) = ["V100", "V200"]`. Every
-adapter field needs one; no other field has one.
+What a field holds when it is left out, written after its type and
+constraints: `lives: Int where Range(0, 9) = 3`. Values, entities,
+aggregates, events and errors may give their fields one; every adapter field
+needs one, which it holds when the program starts:
+`voyages: List<String> where Length(0, 8) = ["V100", "V200"]`. An enum
+variant's fields have none, since they are given like arguments.
 
 ### Native
 Calls a C function from an adapter: `native terminal_next_report()`.

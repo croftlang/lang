@@ -1,0 +1,104 @@
+// Starting values: a field left out of a record, event or error holds the
+// value written after its type and constraints.
+context Game
+
+const START_LIVES: Int = 3
+
+error WrongAnswer
+
+error Blocked { reason: String = "a wall"  at: Int }
+
+identity BoardId for Board: Int where Range(1, 9)
+identity TileId for Board.Tile: Int where Range(0, 9)
+
+enum Direction { North, South }
+
+value Speed { x: Int  y: Int = 5 }
+
+value Shelf<T> { items: List<T> where Length(0, 4) = []  name: String }
+
+aggregate Board {
+    id: BoardId
+    lives: Int where Range(0, 9) = START_LIVES
+    facing: Direction = South
+    tiles: List<Tile> where Length(0, 4) = []
+    welcomed: Bool = false
+
+    entity Tile {
+        id: TileId
+        lit: Bool = true
+        label: String where Length(0, 8) = "floor"
+    }
+
+    error NotFound
+
+    event Opened { lives: Int = 3  note: String = "opened" }
+
+    factory Open(id: BoardId) = {
+        emit Opened {}
+        Board { id, tiles: [Tile { id: 1 }] }
+    }
+
+    command Welcome(lives: Int, note: String) = {
+        set welcomed = lives == 3 && note == "opened"
+    }
+}
+
+repository Boards for Board
+
+policy WelcomeOnOpen when Board.Opened {
+    issue Welcome(lives: event.lives, note: event.note) on Board(event.source)
+}
+
+enum GameError {
+    include Board.Error
+    include StorageError
+    include WrongAnswer
+    include Blocked
+}
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn blocked(at: Int): Result<Unit, Blocked> = Err(Blocked { at })
+
+// Opens a board with every starting value and saves it. Its Opened event
+// reaches the policy when this service ends.
+service OpenAndSave(id: BoardId): Result<Unit, GameError> {
+    calls { Boards }
+} = {
+    let board = Board.Open(id: id)?
+    check(board.lives == 3 && board.facing == South && !board.welcomed)?
+    let tile = match board.tiles.first {
+        Some(found) -> found.lit && found.label == "floor"
+        None -> false
+    }
+    check(tile)?
+    Boards.save(board)?
+}
+
+service Start(): Result<Unit, GameError> {
+    calls { Boards }
+} = {
+    let walking = Speed { x: 2 }
+    check(walking.x == 2 && walking.y == 5)?
+    let climbing = Speed { x: 0, y: 1 }
+    check(climbing.y == 1)?
+
+    let shelf: Shelf<Int> = Shelf { name: "top" }
+    check(shelf.items.length == 0 && shelf.name == "top")?
+
+    let refused = match blocked(4) {
+        Ok(done) -> false
+        Err(error) -> true
+    }
+    check(refused)?
+
+    OpenAndSave(1)?
+    let saved = Boards.find(1)?
+    check(saved.welcomed)?
+}

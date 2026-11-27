@@ -1,0 +1,8 @@
+[package]
+name = "starting_values"
+
+[target.test]
+main = "Start"
+
+[target.test.adapters]
+Boards = "MemoryStorage"

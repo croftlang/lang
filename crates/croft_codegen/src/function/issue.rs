@@ -80,6 +80,27 @@ impl<'g, 'a> Writer<'g, 'a> {
         result
     }
 
+    /// Sets each of `fields` on `target`, the queued `event`'s data.
+    fn set_event_fields(&mut self, event: &Resolved, target: &str, fields: &[FieldValue]) {
+        let types = self.field_types(event);
+
+        for given in fields {
+            let field = &given.name.name;
+
+            let field_type = types
+                .iter()
+                .find(|(f, _)| f == field)
+                .map_or(Type::Unknown, |(_, t)| t.clone());
+
+            let value = match &given.value {
+                Some(value) => self.value(value, &field_type),
+                None => self.read_name(field),
+            };
+
+            self.write_field(Some(event), target, field, &value);
+        }
+    }
+
     /// `emit EnemyDamaged { ... }`: queued until its aggregate is saved, and
     /// handed to policies once the service ends.
     pub fn emit(&mut self, event: &Path, fields: &[FieldValue]) -> String {
@@ -99,23 +120,15 @@ impl<'g, 'a> Writer<'g, 'a> {
         let queued = self.raw_variable("event", "croft_event");
         self.line(format!("{queued}.kind = {};", event_kind(&found)));
 
-        let types = self.field_types(&found);
+        let target = format!("{queued}.as.{name}");
+        self.set_event_fields(&found, &target, fields);
 
-        for given in fields {
-            let field = &given.name.name;
+        let starting = self.starting_values(&found, fields);
+        let context = found.context.clone();
 
-            let field_type = types
-                .iter()
-                .find(|(f, _)| f == field)
-                .map_or(Type::Unknown, |(_, t)| t.clone());
-
-            let value = match &given.value {
-                Some(value) => self.value(value, &field_type),
-                None => self.read_name(field),
-            };
-
-            self.write_field(Some(&found), &format!("{queued}.as.{name}"), field, &value);
-        }
+        self.in_context(&context, |writer| {
+            writer.set_event_fields(&found, &target, &starting)
+        });
 
         let owner = Resolved {
             context: self.context.clone(),

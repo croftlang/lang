@@ -753,7 +753,7 @@ mod tests {
         );
 
         assert_eq!(
-            signature("adapter A for Screen = {", SymbolKind::Adapter),
+            signature("adapter A for Screen {", SymbolKind::Adapter),
             "adapter A for Screen"
         );
 

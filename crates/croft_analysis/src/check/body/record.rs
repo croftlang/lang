@@ -64,7 +64,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
-    /// `Position { x: 10, y: 20 }`: every field, each once. A generic value,
+    /// `Position { x: 10, y: 20 }`: every field without a starting value, and
+    /// each field at most once. A generic value,
     /// `Pair { first: 1, second: "a" }`, is the instance its fields, or the
     /// type expected, call for.
     pub(super) fn record(
@@ -97,8 +98,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         let declared = self.checker.fields_of(&found).unwrap_or(&[]);
 
-        let names: Vec<String> = declared
-            .iter()
+        let names: Vec<String> = (declared.iter())
+            .filter(|field| field.value.is_none())
             .map(|field| field.name.name.clone())
             .collect();
 

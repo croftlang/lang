@@ -88,7 +88,7 @@ fn reads_enums_with_data_and_includes() {
 
 #[test]
 fn reads_an_adapter_without_a_target() {
-    let file = parse_ok("context Platform {\n    adapter NullScreen for Screen = {\n        fn clear() = Unit\n    }\n}");
+    let file = parse_ok("context Platform {\n    adapter NullScreen for Screen {\n        fn clear() = Unit\n    }\n}");
 
     let ContextItem::Adapter(adapter) = &only_context(&file).items[0] else {
         panic!("expected an adapter")
@@ -147,7 +147,7 @@ fn reads_a_context_map() {
 
 #[test]
 fn reads_the_starting_value_of_an_adapter_field() {
-    let source = "context Platform {\n    adapter ScriptedKeyboard for Keyboard = {\n        keys: List<Key> where Length(0, 32) = [Up, Fire]\n    }\n}";
+    let source = "context Platform {\n    adapter ScriptedKeyboard for Keyboard {\n        keys: List<Key> where Length(0, 32) = [Up, Fire]\n    }\n}";
     let file = parse_ok(source);
 
     let ContextItem::Adapter(adapter) = &only_context(&file).items[0] else {
@@ -238,12 +238,12 @@ fn explains_that_declarations_go_inside_a_context() {
 }
 
 #[test]
-fn explains_where_an_adapter_body_goes() {
+fn explains_that_an_adapter_has_no_equals() {
     assert_eq!(
         parse_error(
-            "context Platform {\n adapter NullScreen for Screen {\n fn clear() = Unit\n }\n}"
+            "context Platform {\n adapter NullScreen for Screen = {\n fn clear() = Unit\n }\n}"
         ),
-        "an adapter's body comes after `=`: `adapter Name for Port = { ... }`"
+        "an adapter's fields and operations go straight in braces, with no `=`: `adapter NullScreen for Screen { ... }`"
     );
 }
 

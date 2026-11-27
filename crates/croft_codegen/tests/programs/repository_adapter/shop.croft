@@ -16,7 +16,7 @@ context Shop {
 
     repository Shelves for Shelf
 
-    adapter ListShelves for Shelves = {
+    adapter ListShelves for Shelves {
         shelves: List<Shelf> where Length(0, 4) = []
 
         fn find(id) = match shelves.find(shelf -> shelf.id == id) {
@@ -48,7 +48,7 @@ context Shop {
         data: Bytes
     }
 
-    adapter ListStorage for Storage = {
+    adapter ListStorage for Storage {
         entries: List<Entry> where Length(0, 4) = []
 
         fn load(key) = Ok(entries.find(entry -> entry.key == key).map(entry -> entry.data))

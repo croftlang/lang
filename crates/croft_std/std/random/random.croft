@@ -19,7 +19,7 @@ context Random {
     // is used, so each run gives different numbers. A machine without a
     // clock gives the same numbers each run. Fine for games and samples;
     // never for passwords, keys or anything secret.
-    adapter SeededRandom for Random = {
+    adapter SeededRandom for Random {
         fn between(low, high) = native croft_random_between(low, high)
     }
 }

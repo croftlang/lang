@@ -33,7 +33,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         let declared = self.checker.fields_of(&found).unwrap_or(&[]);
 
-        for field in declared {
+        for field in declared.iter().filter(|field| field.value.is_none()) {
             if !fields
                 .iter()
                 .any(|given| given.name.name == field.name.name)

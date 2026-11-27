@@ -113,7 +113,7 @@ context Time {
     // The machine's clock, in its own time zone, through C's time and
     // localtime. A machine that can't tell the time, such as one with no
     // clock, gives 1 January 1970 at midnight. A leap second is given as 59.
-    adapter SystemClock for Clock = {
+    adapter SystemClock for Clock {
         fn today() = native croft_time_today()
         fn now() = native croft_time_now()
     }
