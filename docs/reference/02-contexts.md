@@ -2,7 +2,8 @@
 
 Everything is declared inside a context, a bounded context with its own
 meanings. A context publishes the terms other contexts may use, and imports only
-what it needs with `use { ... } from`. A context can be written in braces, or
+what it needs with `use { ... } from`, and can give a term an alias with
+`as` when another name reads better. A context can be written in braces, or
 opened with a header line at the top of a file, which claims the rest of the
 file. An `aggregate` header does the same for one aggregate. The compiler joins
 every part of a context, and of an aggregate, before checking them. A comment
@@ -24,7 +25,7 @@ context Dungeon {
 context Scoring {
     use {
         EnemyId,
-        Room.EnemyDefeated
+        Room.EnemyDefeated as EnemyDefeated
     } from Dungeon
 }
 

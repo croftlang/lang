@@ -43,21 +43,14 @@ impl<'a> Checker<'a> {
             (None, _) => {}
         }
 
-        if matches!(function.kind, FunctionKind::Service | FunctionKind::Domain) {
-            let kinds = [SymbolKind::Port, SymbolKind::Repository];
-
-            for port in &function.calls {
-                self.expect_kind(scope, port, &kinds, "a port or repository");
-            }
-        } else if let Some(port) = function.calls.first() {
-            self.error("only a service can call ports", port.span());
-        }
+        self.check_calls(scope, function);
 
         if function.body.is_none() {
             self.error(format!("`{}` needs a body after `=`", name.name), span);
         }
     }
 
+    /// A policy's `when` names an event.
     pub(super) fn check_policy(&mut self, scope: &Scope, policy: &PolicyDecl) {
         self.expect_kind(scope, &policy.event, &[SymbolKind::Event], "an event");
     }

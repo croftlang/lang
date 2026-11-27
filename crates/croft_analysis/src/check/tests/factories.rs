@@ -1,3 +1,5 @@
+//! Factories: where aggregates are made, and where they are changed.
+
 use super::{assert_error, errors};
 
 /// A room with one factory, and `extra` beside it in the context.
@@ -21,16 +23,16 @@ fn game(extra: &str) -> String {
 
 #[test]
 fn accepts_a_service_that_makes_and_saves() {
-    let service = "service Start(): Result<Unit, GameError> {\n calls Rooms\n} = {\n\
-                   let room = Room.Open(id: 1, lives: 3)?\n rooms.save(room)?\n}";
+    let service = "service Start(): Result<Unit, GameError> {\n calls { Rooms }\n} = {\n\
+                   let room = Room.Open(id: 1, lives: 3)?\n Rooms.save(room)?\n}";
 
     assert_eq!(errors(&game(service)), Vec::<String>::new());
 }
 
 #[test]
 fn makes_aggregates_only_in_their_factories() {
-    let service = "service Start(): Result<Unit, StorageError> {\n calls Rooms\n} = \
-                   rooms.save(Room { id: 1, lives: 3 })";
+    let service = "service Start(): Result<Unit, StorageError> {\n calls { Rooms }\n} = \
+                   Rooms.save(Room { id: 1, lives: 3 })";
 
     assert_error(
         &game(service),
@@ -49,8 +51,9 @@ fn makes_aggregates_only_in_their_factories() {
 
 #[test]
 fn changes_aggregates_only_through_commands() {
-    let service = "service Revive(id: RoomId): Result<Unit, GameError> {\n calls Rooms\n} = {\n\
-                   let room = rooms.find(id)?\n rooms.save(room with { lives: 3 })?\n}";
+    let service =
+        "service Revive(id: RoomId): Result<Unit, GameError> {\n calls { Rooms }\n} = {\n\
+                   let room = Rooms.find(id)?\n Rooms.save(room with { lives: 3 })?\n}";
 
     assert_error(
         &game(service),

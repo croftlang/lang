@@ -11,31 +11,31 @@ enum ShippingError {
 // Books a cargo from Hong Kong to Helsinki, due in 30 days. It starts
 // unrouted, waiting in Hong Kong to be received.
 service SetUpBooking(): Result<Unit, ShippingError> {
-    calls Cargos
+    calls { Cargos }
 } = {
     let route = RouteSpecification { origin: "CNHKG", destination: "FIHEL", arrival_deadline: 30 }
     let cargo = Cargo.Book(tracking_id: SAMPLE_CARGO, route: route)?
-    cargos.save(cargo)?
+    Cargos.save(cargo)?
 }
 
 // Asks Routing for a path that meets the route specification, and plans
 // the cargo's legs along it.
 service RouteCargo(tracking_id: TrackingId): Result<Unit, ShippingError> {
-    calls Cargos
+    calls { Cargos }
 } = {
-    let cargo = cargos.find(tracking_id)?
+    let cargo = Cargos.find(tracking_id)?
     let route = cargo.route
     let path = find_path(route.origin.value, route.destination.value, route.arrival_deadline.value) or NoRoute
     let routed = issue AssignToRoute(chosen: ItineraryFrom(path)) on cargo?
-    cargos.save(routed)?
+    Cargos.save(routed)?
 }
 
 // Registers every report from the dock terminals until they have no more.
 service RegisterReports(): Result<Unit, ShippingError> {
-    calls HandlingReports
+    calls { HandlingReports }
 } = {
     loop {
-        let next = handling_reports.next()
+        let next = HandlingReports.next()
         if next.is_none {
             break
         }
@@ -48,27 +48,27 @@ service RegisterReports(): Result<Unit, ShippingError> {
 
 // Registers what a dock reported, dated today. The cargo must exist.
 service RegisterHandlingEvent(report: HandlingReport): Result<Unit, ShippingError> {
-    calls Cargos, HandlingEvents, Clock
+    calls { Cargos, HandlingEvents, Clock }
 } = {
-    let cargo = cargos.find(report.tracking_id)?
+    let cargo = Cargos.find(report.tracking_id)?
     let handling = HandlingEvent.Register(
         id: report.number,
         tracking_id: cargo.tracking_id,
         activity: report.activity,
-        completed_on: clock.today()
+        completed_on: Clock.today()
     )?
-    handling_events.save(handling)?
+    HandlingEvents.save(handling)?
 }
 
 // Prints where the cargo is, for a customer asking after it.
 service Track(tracking_id: TrackingId): Result<Unit, ShippingError> {
-    calls Cargos, Console
+    calls { Cargos, Console }
 } = {
-    let cargo = cargos.find(tracking_id)?
-    console.print(transport_text(cargo.delivery))
-    console.print(routing_text(routing_status(cargo.itinerary, cargo.route)))
+    let cargo = Cargos.find(tracking_id)?
+    Console.print(transport_text(cargo.delivery))
+    Console.print(routing_text(routing_status(cargo.itinerary, cargo.route)))
     if cargo.delivery.misdirected {
-        console.print("Misdirected")
+        Console.print("Misdirected")
     }
 }
 

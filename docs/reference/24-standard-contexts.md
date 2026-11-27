@@ -33,23 +33,23 @@ stock.contains("key")   stock.length   stock.is_empty   stock.keys   stock.value
 
 // Std.Files: read, write, append, exists, remove, list, make_folder, copy
 service Keep(): Result<Unit, FileError> {
-    calls Files
+    calls { Files }
 } = {
-    files.write("notes.txt", "first line".to_bytes())?
-    let data = files.read("notes.txt")?
-    let pages = files.list("docs")?   // ["a.md", "b.md", "drafts/"], in byte order
-    files.make_folder("site/blog")?    // and site, if it isn't there yet
-    files.copy("logo.png", "site/logo.png")?   // any size, not only what a Bytes holds
+    Files.write("notes.txt", "first line".to_bytes())?
+    let data = Files.read("notes.txt")?
+    let pages = Files.list("docs")?   // ["a.md", "b.md", "drafts/"], in byte order
+    Files.make_folder("site/blog")?    // and site, if it isn't there yet
+    Files.copy("logo.png", "site/logo.png")?   // any size, not only what a Bytes holds
     ...
 }
 
 // Std.Http: get, post, put, delete, each a Response { status, headers, body } or an HttpError
-use { Http, Response, HttpError } from Std.Http
+use { Response, HttpError } from Std.Http
 
 service Upload(save: Bytes): Result<Unit, HttpError> {
-    calls Http
+    calls { Http } from Std.Http
 } = {
-    let response = http.post("https://example.com/saves", save)?
+    let response = Http.post("https://example.com/saves", save)?
     ...
 }
 

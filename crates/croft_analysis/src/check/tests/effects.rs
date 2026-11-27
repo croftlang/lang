@@ -1,5 +1,10 @@
+//! Where loading, saving, issuing, port calls and loops are allowed, and how
+//! failures are passed up.
+
 use super::{assert_error, errors};
 
+/// A game with a `Screen` port, a `Room` aggregate and its repository, and
+/// `extra` beside them.
 fn game(extra: &str) -> String {
     format!(
         "context Game {{\n\
@@ -21,16 +26,16 @@ fn game(extra: &str) -> String {
 #[test]
 fn accepts_a_service_that_loads_changes_and_saves() {
     let service =
-        "service Play(id: RoomId): Result<Unit, GameError> {\n calls Rooms, Screen\n} = {\n\
-                   let room = rooms.find(id)?\n let healed = issue Heal(amount: 1) on room?\n\
-                   rooms.save(healed)?\n issue Heal(amount: 2) on Room(id)?\n screen.clear()\n}";
+        "service Play(id: RoomId): Result<Unit, GameError> {\n calls { Rooms, Screen }\n} = {\n\
+                   let room = Rooms.find(id)?\n let healed = issue Heal(amount: 1) on room?\n\
+                   Rooms.save(healed)?\n issue Heal(amount: 2) on Room(id)?\n Screen.clear()\n}";
 
     assert_eq!(errors(&game(service)), Vec::<String>::new());
 }
 
 #[test]
 fn checks_failures_are_handled_and_can_be_passed_up() {
-    let service = "service Play(id: RoomId): Result<Unit, Room.Error> {\n calls Rooms\n} = {\n rooms.find(id)\n Unit\n}";
+    let service = "service Play(id: RoomId): Result<Unit, Room.Error> {\n calls { Rooms }\n} = {\n Rooms.find(id)\n Unit\n}";
 
     assert_error(
         &game(service),
@@ -38,14 +43,14 @@ fn checks_failures_are_handled_and_can_be_passed_up() {
     );
 
     let service =
-        "service Play(id: RoomId): Unit {\n calls Rooms\n} = {\n rooms.find(id)?\n Unit\n}";
+        "service Play(id: RoomId): Unit {\n calls { Rooms }\n} = {\n Rooms.find(id)?\n Unit\n}";
 
     assert_error(
         &game(service),
         "this body cannot fail: give it a `Result` return type",
     );
 
-    let service = "service Play(id: RoomId): Result<Unit, Room.Error> {\n calls Rooms\n} = {\n issue Heal(amount: 1) on Room(id)?\n}";
+    let service = "service Play(id: RoomId): Result<Unit, Room.Error> {\n calls { Rooms }\n} = {\n issue Heal(amount: 1) on Room(id)?\n}";
 
     assert_error(
         &game(service),
@@ -109,7 +114,7 @@ fn checks_issued_commands_and_their_arguments() {
 
 #[test]
 fn counts_a_loop_through_a_range() {
-    let service = "service Draw(): Unit {\n calls Screen\n} = {\n loop (let row where Range(0, 23)) {\n screen.clear()\n }\n}";
+    let service = "service Draw(): Unit {\n calls { Screen }\n} = {\n loop (let row where Range(0, 23)) {\n Screen.clear()\n }\n}";
     assert_eq!(errors(&game(service)), Vec::<String>::new());
 
     let service = "service Draw(): Unit = {\n loop (let row where Length(0, 23)) {\n Unit\n }\n}";
@@ -123,22 +128,22 @@ fn counts_a_loop_through_a_range() {
 #[test]
 fn gives_services_their_command_line_arguments() {
     let service =
-        "service Start(): Bool {\n calls Arguments\n} = arguments.all().contains(\"--demo\")";
+        "service Start(): Bool {\n calls { Arguments }\n} = Arguments.all().contains(\"--demo\")";
     assert_eq!(errors(&game(service)), Vec::<String>::new());
 
-    let service = "service Start(): Bool {\n calls Arguments\n} = arguments.all().contains(3)";
+    let service = "service Start(): Bool {\n calls { Arguments }\n} = Arguments.all().contains(3)";
     assert_error(&game(service), "expected `String`, found `Int`");
 }
 
 #[test]
 fn gives_services_the_built_in_console() {
-    let service = "service Greet(): Unit {\n calls Console\n} = console.print(\"hello\")";
+    let service = "service Greet(): Unit {\n calls { Console }\n} = Console.print(\"hello\")";
     assert_eq!(errors(&game(service)), Vec::<String>::new());
 
-    let service = "service Greet(): Unit {\n calls Console\n} = console.print(3)";
+    let service = "service Greet(): Unit {\n calls { Console }\n} = Console.print(3)";
     assert_error(&game(service), "expected `String`, found `Int`");
 
-    let service = "service Greet(): Unit {\n calls Console\n} = console.shout(\"hello\")";
+    let service = "service Greet(): Unit {\n calls { Console }\n} = Console.shout(\"hello\")";
     assert_error(&game(service), "port `Console` has no operation `shout`");
 }
 
@@ -146,7 +151,7 @@ fn gives_services_the_built_in_console() {
 fn gives_back_unit_when_there_is_no_return_type() {
     let source = game(
         "port Log {\n fn write(text: String)\n}\n\
-         service Note(): Unit {\n calls Log\n} = log.write(\"hi\")\n\
+         service Note(): Unit {\n calls { Log }\n} = Log.write(\"hi\")\n\
          fn nothing() = Unit",
     );
 

@@ -1,3 +1,5 @@
+//! Parser tests for declarations.
+
 use super::{only_context, parse_error, parse_ok};
 use crate::ast::{ContextItem, FunctionKind};
 
@@ -57,7 +59,7 @@ fn reads_rules_on_fields_and_parameters() {
 
 #[test]
 fn reads_a_contract_with_constraints_and_calls() {
-    let source = "context Dungeon {\n    service Play(id: RoomId): Unit {\n        calls Keyboard, Screen\n        \
+    let source = "context Dungeon {\n    service Play(id: RoomId): Unit {\n        calls { Keyboard, Screen }\n        \
                   id > 0 or NotFound\n    } = Unit\n}";
     let file = parse_ok(source);
 
@@ -113,7 +115,7 @@ fn keeps_doc_comments() {
 
 #[test]
 fn reads_a_domain() {
-    let source = "domain Game {\n    contexts { Dungeon, Scoring }\n    use { PlayTurn } from Dungeon\n    calls Keyboard\n} = {\n    PlayTurn()?\n}";
+    let source = "domain Game {\n    contexts { Dungeon, Scoring }\n    use { PlayTurn } from Dungeon\n    calls { Keyboard }\n} = {\n    PlayTurn()?\n}";
     let file = parse_ok(source);
 
     let [domain] = &file.domains[..] else {
@@ -123,7 +125,7 @@ fn reads_a_domain() {
     assert_eq!(domain.name.name, "Game");
     assert_eq!(domain.contexts.len(), 2);
     assert_eq!(domain.uses[0].from.text(), "Dungeon");
-    assert_eq!(domain.calls[0].text(), "Keyboard");
+    assert_eq!(domain.calls[0].name.text(), "Keyboard");
 }
 
 #[test]
@@ -249,7 +251,58 @@ fn explains_where_an_adapter_body_goes() {
 fn explains_that_ports_are_listed_with_calls() {
     assert_eq!(
         parse_error("context Dungeon {\n service Play(): Unit {\n uses Screen\n } = Unit\n}"),
-        "the ports a body calls are listed with `calls`: `calls Screen, Keyboard`"
+        "the ports a body calls are listed with `calls`: `calls { Screen, Keyboard }`"
+    );
+}
+
+#[test]
+fn reads_calls_with_names_after_as_and_the_context_after_from() {
+    let source = "context Dungeon {\n    service Play(from: Int, to: Int): Unit {\n        \
+                  calls { Keyboard as keys, Screen } from Platform\n        calls { Console }\n        \
+                  from != to\n    } = Unit\n}";
+    let file = parse_ok(source);
+
+    let ContextItem::Function(play) = &only_context(&file).items[0] else {
+        panic!("expected a service")
+    };
+
+    let written: Vec<String> = play.calls.iter().map(|c| c.name.text()).collect();
+    let from: Vec<Option<String>> = (play.calls.iter())
+        .map(|c| c.from.as_ref().map(|path| path.text()))
+        .collect();
+
+    assert_eq!(written, ["Keyboard as keys", "Screen", "Console"]);
+    assert_eq!(play.calls[0].name.local_name(), "keys");
+    assert_eq!(
+        from,
+        [
+            Some("Platform".to_string()),
+            Some("Platform".to_string()),
+            None
+        ]
+    );
+    assert_eq!(play.preconditions.len(), 1);
+}
+
+#[test]
+fn reads_names_after_as_in_use() {
+    let file = parse_ok(
+        "context Scoring {\n use { Room.EnemyDefeated as Defeated, RoomId } from Dungeon\n}",
+    );
+
+    let ContextItem::Use(use_decl) = &only_context(&file).items[0] else {
+        panic!("expected a use")
+    };
+
+    let local: Vec<String> = use_decl.names.iter().map(|n| n.local_name()).collect();
+    assert_eq!(local, ["Defeated", "RoomId"]);
+}
+
+#[test]
+fn explains_that_called_ports_go_in_braces() {
+    assert_eq!(
+        parse_error("context Dungeon {\n service Play(): Unit {\n calls Screen\n } = Unit\n}"),
+        "the ports a body calls go in braces: `calls { Screen }`"
     );
 }
 

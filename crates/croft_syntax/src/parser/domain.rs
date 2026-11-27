@@ -1,4 +1,4 @@
-//! `domain Game { contexts { Dungeon -> Scoring } use { ... } from X  calls Keyboard } = { ... }`
+//! `domain Game { contexts { Dungeon -> Scoring } use { ... } from X  calls { Keyboard } } = { ... }`
 
 use super::{ParseResult, Parser};
 use crate::ast::{DomainDecl, Identifier};
@@ -6,6 +6,8 @@ use crate::keyword::Keyword;
 use crate::token::TokenKind;
 
 impl Parser {
+    /// The domain: its context map, imports and called ports in braces, then
+    /// its body after `=`.
     pub(super) fn parse_domain(&mut self) -> ParseResult<DomainDecl> {
         let doc = self.doc();
 
@@ -26,14 +28,8 @@ impl Parser {
                 self.parse_context_map(&mut contexts, &mut relations)?;
             } else if self.check_keyword(Keyword::Use) {
                 uses.push(self.parse_use()?);
-            } else if self.eat_keyword(Keyword::Calls) {
-                loop {
-                    calls.push(self.parse_path()?);
-
-                    if !self.eat(&TokenKind::Comma) {
-                        break;
-                    }
-                }
+            } else if self.check_keyword(Keyword::Calls) {
+                calls.extend(self.parse_calls()?);
             } else {
                 return Err(self.unexpected("`contexts`, `use` or `calls`"));
             }

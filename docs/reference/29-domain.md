@@ -1,6 +1,6 @@
 # Domain
 
-The whole program, declared once, outside every context. Like a function, it has a contract and a body. The contract holds the context map: every context, with arrows from upstream to downstream. A context may only use contexts upstream of it, and the arrows may not go round in a circle. The contract also imports what the body needs and names the ports it calls. The body runs first. It only sees what contexts publish, so each sets up its own starting data. Any error passed up with ? stops the program with the error's name.
+The whole program, declared once, outside every context. Like a function, it has a contract and a body. The contract holds the context map: every context, with arrows from upstream to downstream. A context may only use contexts upstream of it, and the arrows may not go round in a circle. The contract also imports what the body needs and names the ports it calls, with the context they come from. The body runs first. It only sees what contexts publish, so each sets up its own starting data. Any error passed up with ? stops the program with the error's name.
 
 ```croft
 // game.dn
@@ -11,10 +11,10 @@ domain Game {
         Dungeon -> Platform
     }
 
-    use { SetUpRooms, PlayTurn, FIRST_ROOM, Keyboard } from Dungeon
+    use { SetUpRooms, PlayTurn, FIRST_ROOM } from Dungeon
     use { SetUpScoring } from Scoring
 
-    calls Keyboard
+    calls { Keyboard as keyboard } from Dungeon
 } = {
     SetUpRooms()?
     SetUpScoring()?
@@ -29,10 +29,10 @@ domain Game {
 
 // in context Dungeon, published for the domain
 service SetUpRooms(): Result<Unit, GameError> {
-    calls Rooms
+    calls { Rooms }
 } = {
     let player = Room.Player { id: 1, position: Position { x: 16, y: 16 }, lives: 3 }
     let room = Room.Open(id: FIRST_ROOM, player: player, exit: Position { x: 232, y: 168 })?
-    rooms.save(room)?
+    Rooms.save(room)?
 }
 ```

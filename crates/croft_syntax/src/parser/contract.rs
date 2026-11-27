@@ -1,19 +1,19 @@
 //! A contract: the braces between a signature and its body.
 
 use super::{ParseResult, Parser};
-use crate::ast::{Expr, Parameter, Path};
+use crate::ast::{CalledPort, Expr, Parameter};
 use crate::keyword::Keyword;
 use crate::span::Diagnostic;
 use crate::token::TokenKind;
 
 impl Parser {
-    /// The braces between a signature and its body: preconditions, one per
-    /// line, constraints for parameters, and the ports a service `calls`. Left out
-    /// when empty.
+    /// The braces between a signature and its body: contract lines such as
+    /// `from != to`, constraints on parameters, and the ports the body `calls`,
+    /// one per line. Left out when empty.
     pub(super) fn parse_contract(
         &mut self,
         mut parameters: Option<&mut Vec<Parameter>>,
-    ) -> ParseResult<(Vec<Expr>, Vec<Path>)> {
+    ) -> ParseResult<(Vec<Expr>, Vec<CalledPort>)> {
         let (mut preconditions, mut calls) = (Vec::new(), Vec::new());
 
         if !self.eat(&TokenKind::LeftBrace) {
@@ -23,14 +23,8 @@ impl Parser {
         while !self.eat(&TokenKind::RightBrace) {
             self.reject_uses()?;
 
-            if self.eat_keyword(Keyword::Calls) {
-                loop {
-                    calls.push(self.parse_path()?);
-
-                    if !self.eat(&TokenKind::Comma) {
-                        break;
-                    }
-                }
+            if self.check_keyword(Keyword::Calls) {
+                calls.extend(self.parse_calls()?);
             } else if self.peek_nth(1).kind == TokenKind::Keyword(Keyword::Where) {
                 self.parse_parameter_constraints(parameters.as_deref_mut())?;
             } else {
@@ -41,12 +35,48 @@ impl Parser {
         Ok((preconditions, calls))
     }
 
+    /// `calls { Keyboard as keyboard } from Dungeon`: the ports a body may
+    /// call, named as `use` names them. `from` is left out for a port the code
+    /// can already see, and must be on the same line, since the next line of a
+    /// contract may start with a parameter called `from`.
+    pub(super) fn parse_calls(&mut self) -> ParseResult<Vec<CalledPort>> {
+        self.expect_keyword(Keyword::Calls)?;
+
+        if !self.check(&TokenKind::LeftBrace) {
+            let example = match &self.peek().kind {
+                TokenKind::Identifier(name) => name.clone(),
+                _ => "Screen, Keyboard".to_string(),
+            };
+
+            let message = format!("the ports a body calls go in braces: `calls {{ {example} }}`");
+            return Err(Diagnostic::new(message, self.span()));
+        }
+
+        let names = self.parse_imported_names()?;
+        let mut from = None;
+
+        if self.check_word("from") && !self.peek().newline_before {
+            self.advance();
+            from = Some(self.parse_path()?);
+        }
+
+        let calls = names
+            .into_iter()
+            .map(|name| CalledPort {
+                name,
+                from: from.clone(),
+            })
+            .collect();
+
+        Ok(calls)
+    }
+
     /// The ports a body calls were once listed with `uses`, which reads too
     /// much like `use`, so the old word gets an error that names the new one.
     pub(super) fn reject_uses(&mut self) -> ParseResult<()> {
         if self.check_word("uses") {
             let message =
-                "the ports a body calls are listed with `calls`: `calls Screen, Keyboard`";
+                "the ports a body calls are listed with `calls`: `calls { Screen, Keyboard }`";
             return Err(Diagnostic::new(message, self.span()));
         }
 

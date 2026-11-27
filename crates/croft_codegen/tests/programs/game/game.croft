@@ -49,9 +49,9 @@ fn check(ok: Bool): Result<Unit, WrongAnswer> = {
 }
 
 service Play(board: Board): Result<Unit, GameError> {
-    calls Boards
+    calls { Boards }
 } = {
-    boards.save(board)?
+    Boards.save(board)?
     issue Score(amount: 5) on Board(board.id)?
     issue Score(amount: 7) on Board(board.id)?
     Unit
@@ -65,7 +65,7 @@ service Tamper(board: Board): Result<Unit, GameError> = {
 }
 
 service Start(): Result<Unit, GameError> {
-    calls Boards
+    calls { Boards }
 } = {
     let spare = Board.Open(id: 2)?
     let scored = issue Score(amount: 10) on spare?
@@ -76,13 +76,13 @@ service Start(): Result<Unit, GameError> {
     }
     check(failed)?
     Play(Board.Open(id: 1)?)?
-    let saved = boards.find(1)?
+    let saved = Boards.find(1)?
     check(saved.points == 12)?
     check(saved.bonus == 2)?
     Tamper(saved)?
-    let after = boards.find(1)?
+    let after = Boards.find(1)?
     check(after.points == 12 && after.bonus == 2)?
-    let missing = match boards.find(2) {
+    let missing = match Boards.find(2) {
         Ok(board) -> false
         Err(error) -> true
     }

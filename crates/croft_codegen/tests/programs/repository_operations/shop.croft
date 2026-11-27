@@ -70,25 +70,25 @@ context Shop {
     }
 
     service Check(): Result<Unit, Failure> {
-        calls Shelves, Tills
+        calls { Shelves, Tills }
     } = {
-        let nothing = shelves.find(4)?
+        let nothing = Shelves.find(4)?
         check(nothing.is_none)?
-        shelves.keep(Shelf.Stock(id: 4, stock: 10)?)?
-        let kept = shelves.find(4)?
+        Shelves.keep(Shelf.Stock(id: 4, stock: 10)?)?
+        let kept = Shelves.find(4)?
         check(kept.map(shelf -> shelf.stock).unwrap_or(0) == 10)?
         issue Restock on Shelf(4)?
-        let restocked = shelves.load(4)?
+        let restocked = Shelves.load(4)?
         check(restocked.stock == 15)?
-        shelves.clear(4)?
-        let missing = match shelves.load(4) {
+        Shelves.clear(4)?
+        let missing = match Shelves.load(4) {
             Ok(shelf) -> false
             Err(error) -> true
         }
         check(missing)?
-        tills.save(Till.Open(id: 1, cash: 20)?)?
-        tills.save(Till.Open(id: 2, cash: 80)?)?
-        let rich = tills.holding_over(50)?
+        Tills.save(Till.Open(id: 1, cash: 20)?)?
+        Tills.save(Till.Open(id: 2, cash: 80)?)?
+        let rich = Tills.holding_over(50)?
         check(rich.length == 1)
     }
 }

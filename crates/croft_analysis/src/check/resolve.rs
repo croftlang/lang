@@ -22,6 +22,7 @@ pub(crate) struct Scope<'a> {
 }
 
 impl<'a> Checker<'a> {
+    /// The declaration `name` in `context`, if that context declares it.
     pub(super) fn lookup(&self, context: &str, name: &str) -> Option<Resolved> {
         let symbol = self.tables.get(context)?.get(name)?;
         let (context, name) = (context.to_string(), name.to_string());
@@ -33,6 +34,7 @@ impl<'a> Checker<'a> {
         })
     }
 
+    /// Whether `context` publishes `name`.
     pub(super) fn is_published(&self, context: &str, name: &str) -> bool {
         let Some(context) = self.program.contexts.get(context) else {
             return false;
@@ -74,6 +76,9 @@ impl<'a> Checker<'a> {
         Some(found)
     }
 
+    /// Finds what a path names, without noting it for editors: in the
+    /// aggregate, the context, its imports, the standard contexts that need no
+    /// import, then a context written in front.
     pub(super) fn find_path(&self, scope: &Scope, path: &Path) -> Option<Resolved> {
         let text = path.text();
         let local = scope.context.name.name.as_str();
@@ -89,8 +94,8 @@ impl<'a> Checker<'a> {
         }
 
         for use_decl in &scope.context.uses {
-            if use_decl.names.iter().any(|name| name.text() == text) {
-                return self.lookup(&use_decl.from.text(), &text);
+            if let Some(name) = use_decl.names.iter().find(|name| name.local_name() == text) {
+                return self.lookup(&use_decl.from.text(), &name.path.text());
             }
         }
 

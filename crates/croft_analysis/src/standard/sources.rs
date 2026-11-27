@@ -17,10 +17,10 @@ pub fn standard_source_id(context: &str) -> SourceId {
 }
 
 /// Adds the standard contexts written in Croft that the program needs:
-/// `Std.Console` always, those any file imports from, `Std.Storage` when
-/// there is a repository, and the
-/// context of any standard adapter croft.toml binds, such as `Std.Files` for
-/// `StdioFiles`. `FileStorage` saves through `Files`, so it brings both.
+/// `Std.Console` always, those any file imports or calls a port from,
+/// `Std.Storage` when there is a repository, and the context of any standard
+/// adapter croft.toml binds, such as `Std.Files` for `StdioFiles`.
+/// `FileStorage` saves through `Files`, so it brings both.
 pub fn add_standard_sources(files: &mut Vec<File>, bound: &[String]) {
     let mut imported: Vec<String> = vec![CONSOLE_CONTEXT.to_string()];
 
@@ -55,9 +55,23 @@ pub fn add_standard_sources(files: &mut Vec<File>, bound: &[String]) {
                 });
 
         let domain_uses = file.domains.iter().flat_map(|d| &d.uses);
+        let uses = context_uses
+            .chain(domain_uses)
+            .map(|use_decl| &use_decl.from);
 
-        for use_decl in context_uses.chain(domain_uses) {
-            let from = use_decl.from.text();
+        let context_calls = (file.contexts.iter())
+            .flat_map(|c| &c.items)
+            .filter_map(|item| match item {
+                ContextItem::Function(function) => Some(&function.calls),
+                _ => None,
+            })
+            .flatten();
+
+        let domain_calls = file.domains.iter().flat_map(|d| &d.calls);
+        let calls = (context_calls.chain(domain_calls)).filter_map(|called| called.from.as_ref());
+
+        for from in uses.chain(calls) {
+            let from = from.text();
 
             if standard_source(&from).is_some() && !imported.contains(&from) {
                 imported.push(from);

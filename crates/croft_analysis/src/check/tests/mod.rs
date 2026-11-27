@@ -1,5 +1,8 @@
+//! Tests for the checker, and helpers that check sources and give back their errors.
+
 mod bodies;
 mod boundary;
+mod calls;
 mod declarations;
 mod domain;
 mod effects;
@@ -28,6 +31,7 @@ fn check_files(sources: &[&str]) -> Result<Program, Vec<String>> {
         .map_err(|errors| errors.into_iter().map(|error| error.message).collect())
 }
 
+/// The errors checking `source` reports, or none.
 fn errors(source: &str) -> Vec<String> {
     match check_files(&[source]) {
         Ok(_) => Vec::new(),

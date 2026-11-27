@@ -6,13 +6,13 @@ context Pages {
     use { Files, FileError } from Std.Files
 
     service Show(): Result<Unit, FileError> {
-        calls Files, Console, Arguments
+        calls { Files, Console, Arguments }
     } = {
-        let folder = arguments.all().first.unwrap_or(".")
-        let names = files.list(folder)?
+        let folder = Arguments.all().first.unwrap_or(".")
+        let names = Files.list(folder)?
         loop (let index where Range(0, 15)) {
             match names.get(index) {
-                Some(name) -> console.print(name)
+                Some(name) -> Console.print(name)
                 None -> Unit
             }
         }

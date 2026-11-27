@@ -81,16 +81,16 @@ context Shop {
     }
 
     service Check(): Result<Unit, Failure> {
-        calls Shelves, Tills
+        calls { Shelves, Tills }
     } = {
-        tills.save(Till.Open(id: 2, cash: -40)?)?
-        let till = tills.find(2)?
+        Tills.save(Till.Open(id: 2, cash: -40)?)?
+        let till = Tills.find(2)?
         check(till.cash == -40)?
-        shelves.save(Shelf.Stock(id: 4, stock: 10)?)?
-        shelves.save(Shelf.Stock(id: 4, stock: 12)?)?
-        let found = shelves.find(4)?
+        Shelves.save(Shelf.Stock(id: 4, stock: 10)?)?
+        Shelves.save(Shelf.Stock(id: 4, stock: 12)?)?
+        let found = Shelves.find(4)?
         check(found.stock == 12)?
-        let missing = match shelves.find(5) {
+        let missing = match Shelves.find(5) {
             Ok(shelf) -> false
             Err(error) -> true
         }

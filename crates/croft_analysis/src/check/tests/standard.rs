@@ -5,9 +5,9 @@ use super::{assert_error, errors};
 const NOTES: &str = "context Notes {\n\
      publish { Keep }\n\
      use { Files, FileError, NotFound } from Std.Files\n\
-     service Keep(): Result<Unit, FileError> {\n calls Files\n} = {\n\
-         let data = files.read(\"notes.txt\")?\n\
-         files.write(\"copy.txt\", data)\n\
+     service Keep(): Result<Unit, FileError> {\n calls { Files }\n} = {\n\
+         let data = Files.read(\"notes.txt\")?\n\
+         Files.write(\"copy.txt\", data)\n\
      }\n\
      }\n\
      domain Program {\n contexts { Notes }\n use { Keep } from Notes\n} = Keep()?";
@@ -25,7 +25,7 @@ fn names_the_import_a_standard_name_needs() {
         errors(&source),
         [
             "`FileError` needs `use { FileError } from Std.Files`",
-            "`Files` needs `use { Files } from Std.Files`",
+            "`Files` needs `calls { Files } from Std.Files`",
         ]
     );
 }

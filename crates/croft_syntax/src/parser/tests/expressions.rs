@@ -1,3 +1,5 @@
+//! Parser tests for expressions.
+
 use super::{function_body, statements};
 use crate::ast::{BinaryOp, ExprKind, Statement};
 
@@ -123,7 +125,7 @@ fn reads_a_loop_that_runs_until_break() {
 
 #[test]
 fn reads_a_counted_loop() {
-    let body = statements("loop (let i where Range(0, 99)) {\n    screen.draw(i)\n}");
+    let body = statements("loop (let i where Range(0, 99)) {\n    Screen.draw(i)\n}");
 
     let Statement::Expr(value) = &body[0] else {
         panic!("expected a loop")

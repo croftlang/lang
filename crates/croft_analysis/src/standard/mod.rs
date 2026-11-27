@@ -56,9 +56,10 @@ pub const CONSOLE_CONTEXT: &str = "Std.Console";
 /// need no import: `StorageError` and its errors.
 pub const STORAGE_CONTEXT: &str = "Std.Storage";
 
-/// The built-in adapters for `Storage`: where a repository keeps its
-/// aggregates when croft.toml names nothing else, and in files.
+/// The built-in adapter for `Storage` that keeps aggregates in memory: where
+/// a repository keeps them when croft.toml names nothing else.
 pub const MEMORY_STORAGE: &str = "MemoryStorage";
+/// The built-in adapter for `Storage` that keeps aggregates in files.
 pub const FILE_STORAGE: &str = "FileStorage";
 
 /// The source of a standard context written in Croft, if `context` is one.
@@ -70,4 +71,6 @@ pub fn standard_source(context: &str) -> Option<&'static str> {
 
 mod sources;
 
-pub use sources::{add_standard_sources, not_found_message, standard_source_id};
+pub use sources::{
+    add_standard_sources, not_found_message, standard_context_publishing, standard_source_id,
+};

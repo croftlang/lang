@@ -100,6 +100,13 @@
           }
         },
         {
+          "comment": "use { Keyboard as keys } from Dungeon",
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s+(as)\\s+(?=[A-Za-z_])",
+          "captures": {
+            "2": { "name": "keyword.control.import.croft" }
+          }
+        },
+        {
           "comment": "issue Move(direction: direction) on room",
           "begin": "\\b(issue)\\b",
           "beginCaptures": { "1": { "name": "keyword.other.issue.croft" } },

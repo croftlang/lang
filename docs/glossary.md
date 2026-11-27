@@ -20,6 +20,8 @@ never published, only their identities, values and events.
 
 ### Use
 How a context imports published terms: `use { Edge, Path } from Routing`.
+An alias after `as` gives a term another name in the importing context, in
+place of its own: `use { Edge as Link } from Routing`.
 
 ### Context level
 Declared directly inside a context rather than inside an aggregate. Values,
@@ -419,12 +421,12 @@ different version of the program, or damaged) and `StorageUnavailable`.
 ### Arguments
 The port in `Std.Console` that gives a program its command-line arguments,
 with no import needed. A service lists it in `calls`, then reads
-`arguments.all()` for a `List<String>`. Every target supplies it; targets
+`Arguments.all()` for a `List<String>`. Every target supplies it; targets
 without a command line, such as the ZX Spectrum, give an empty list.
 
 ### Console
 The port in `Std.Console` that prints a line, with no import needed:
-`console.print("hello")` in a service or domain that lists it in `calls`.
+`Console.print("hello")` in a service or domain that lists it in `calls`.
 Every target supplies it, so `croft.toml` names no adapter for it. A
 program's own port called `Console` replaces it.
 

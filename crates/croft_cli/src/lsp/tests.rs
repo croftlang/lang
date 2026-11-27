@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use super::lookup::{self, Found};
 use super::session::{ProjectState, Session};
 
+/// The folder of the logistics fixture.
 fn logistics() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/logistics")
 }
@@ -24,7 +25,7 @@ fn checked(file: &str, text: Option<&str>) -> (Session, PathBuf) {
     (session, path)
 }
 
-/// What is under the `occurrence`th `word` on the first line containing `line`.
+/// What is under the first `word` on the first line containing `line`.
 fn found_at<'a>(state: &'a ProjectState, path: &Path, line: &str, word: &str) -> Option<Found<'a>> {
     let file = state.file_at(path)?;
 
@@ -60,10 +61,10 @@ fn hover_shows_a_commands_signature_and_doc() {
 }
 
 #[test]
-fn a_port_handle_goes_to_its_port() {
+fn a_called_port_goes_to_its_port() {
     let (session, path) = checked("shipping/booking.croft", None);
     let state = session.project_for(&path).expect("checked");
-    let found = found_at(state, &path, "clock.today()", "clock").expect("clock is found");
+    let found = found_at(state, &path, "Clock.today()", "Clock").expect("Clock is found");
     let (span, _) = lookup::definition(state, &found).expect("a definition");
     let file = state.file(span.source).expect("a project file");
     assert!(file.path.ends_with("shipping/ports.croft"));
@@ -86,7 +87,7 @@ fn a_file_that_stops_parsing_keeps_its_last_tree() {
 #[test]
 fn errors_point_at_the_file_they_are_in() {
     let original = std::fs::read_to_string(logistics().join("shipping/booking.croft")).unwrap();
-    let text = original.replace("cargos.save(routed)?", "cargos.save(rotued)?");
+    let text = original.replace("Cargos.save(routed)?", "Cargos.save(rotued)?");
     let (session, path) = checked("shipping/booking.croft", Some(&text));
     let state = session.project_for(&path).expect("checked");
     let file = state.file_at(&path).expect("booking.croft is checked");
@@ -101,11 +102,13 @@ fn errors_point_at_the_file_they_are_in() {
     assert_eq!(messages, ["cannot find `rotued` here"]);
 }
 
+/// The hover text for the first `word` on the first line containing `line`.
 fn hover_at(state: &ProjectState, path: &Path, line: &str, word: &str) -> String {
     let found = found_at(state, path, line, word).unwrap_or_else(|| panic!("{word} is found"));
     lookup::hover(state, &found).expect("a hover")
 }
 
+/// The file where the first `word` on the first line containing `line` is declared.
 fn definition_file(state: &ProjectState, path: &Path, line: &str, word: &str) -> PathBuf {
     let found = found_at(state, path, line, word).unwrap_or_else(|| panic!("{word} is found"));
     let (span, _) = lookup::definition(state, &found).expect("a definition");
@@ -120,7 +123,7 @@ fn definition_file(state: &ProjectState, path: &Path, line: &str, word: &str) ->
 fn fields_and_operations_after_a_dot() {
     let (session, path) = checked("shipping/booking.croft", None);
     let state = session.project_for(&path).expect("checked");
-    let line = "console.print(transport_text(cargo.delivery))";
+    let line = "Console.print(transport_text(cargo.delivery))";
     let hover = hover_at(state, &path, line, "delivery");
     assert!(hover.contains("delivery: Delivery"), "{hover}");
 
@@ -132,7 +135,7 @@ fn fields_and_operations_after_a_dot() {
     let file = definition_file(state, &path, line, "delivery");
     assert!(file.ends_with("shipping/cargo/cargo.croft"), "{file:?}");
 
-    let line = "completed_on: clock.today()";
+    let line = "completed_on: Clock.today()";
     let hover = hover_at(state, &path, line, "today");
     assert!(hover.contains("fn today("), "{hover}");
     assert!(hover.contains("*An operation of `Clock`"), "{hover}");
@@ -144,7 +147,7 @@ fn fields_and_operations_after_a_dot() {
     let hover = hover_at(
         state,
         &path,
-        "let cargo = cargos.find(tracking_id)?",
+        "let cargo = Cargos.find(tracking_id)?",
         "find",
     );
 
@@ -238,7 +241,7 @@ fn completions(after: &str, typed: &str) -> Vec<String> {
 
 #[test]
 fn completes_what_comes_after_a_dot() {
-    let after = "console.print(transport_text(cargo.delivery))";
+    let after = "Console.print(transport_text(cargo.delivery))";
     let offered = completions(after, "cargo.");
 
     for name in ["route", "itinerary", "delivery"] {
@@ -248,10 +251,10 @@ fn completes_what_comes_after_a_dot() {
     let offered = completions(after, "cargo.route.dest");
     assert!(offered.iter().any(|o| o == "destination"), "{offered:?}");
 
-    let offered = completions(after, "cargos.");
+    let offered = completions(after, "Cargos.");
     assert_eq!(offered, ["find", "save"]);
 
-    let offered = completions(after, "console.");
+    let offered = completions(after, "Console.");
     assert!(offered.iter().any(|o| o == "print"), "{offered:?}");
 
     let offered = completions(after, "HandlingType.");
@@ -266,13 +269,13 @@ fn completes_what_comes_after_a_dot() {
 
 #[test]
 fn completes_names_in_scope() {
-    let offered = completions("console.print(transport_text(cargo.delivery))", "ca");
+    let offered = completions("Console.print(transport_text(cargo.delivery))", "ca");
 
     for name in [
         "cargo",
-        "cargos",
+        "Cargos",
         "tracking_id",
-        "console",
+        "Console",
         "transport_text",
         "Cargo",
         "let",
@@ -315,17 +318,17 @@ fn a_built_in_port_is_shown_as_if_declared() {
     let text = text
         .replace(
             "} from Shipping\n",
-            "} from Shipping\n\n    calls Console\n",
+            "} from Shipping\n\n    calls { Console }\n",
         )
         .replace(
             "    Track(SAMPLE_CARGO)?\n",
-            "    Track(SAMPLE_CARGO)?\n    console.print(\"done\")\n",
+            "    Track(SAMPLE_CARGO)?\n    Console.print(\"done\")\n",
         );
 
     let (session, path) = checked("logistics.croft", Some(&text));
     let state = session.project_for(&path).expect("checked");
 
-    let hover = hover_at(state, &path, "calls Console", "Console");
+    let hover = hover_at(state, &path, "calls { Console }", "Console");
 
     assert!(
         hover.contains("port Console {\n    fn print(text: String): Unit\n}"),
@@ -338,17 +341,17 @@ fn a_built_in_port_is_shown_as_if_declared() {
     );
     assert!(hover.contains("in `Std.Console`*"), "{hover}");
 
-    let file = definition_file(state, &path, "calls Console", "Console");
+    let file = definition_file(state, &path, "calls { Console }", "Console");
     assert!(file.ends_with("Std.Console.croft"), "{}", file.display());
 
-    let hover = hover_at(state, &path, "console.print", "print");
+    let hover = hover_at(state, &path, "Console.print", "print");
     assert!(hover.contains("fn print(text: String): Unit"), "{hover}");
     assert!(
         hover.contains("Prints the text and starts a new line."),
         "{hover}"
     );
 
-    let hover = hover_at(state, &path, "console.print", "console");
+    let hover = hover_at(state, &path, "Console.print", "Console");
     assert!(
         hover.contains("Text for whoever runs the program."),
         "{hover}"

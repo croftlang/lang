@@ -7,17 +7,17 @@ context Notes {
     use { to_bytes, to_text } from Std.Text
 
     service Keep(): Result<Unit, FileError> {
-        calls Files, Console
+        calls { Files, Console }
     } = {
-        files.write("notes.txt", "first line".to_bytes())?
-        files.append("notes.txt", ", then more".to_bytes())?
-        let text = files.read("notes.txt")?
-        console.print(text.to_text())
-        files.remove("notes.txt")?
-        if files.exists("notes.txt") {
-            console.print("still there")
+        Files.write("notes.txt", "first line".to_bytes())?
+        Files.append("notes.txt", ", then more".to_bytes())?
+        let text = Files.read("notes.txt")?
+        Console.print(text.to_text())
+        Files.remove("notes.txt")?
+        if Files.exists("notes.txt") {
+            Console.print("still there")
         }
-        files.read("notes.txt")?
+        Files.read("notes.txt")?
         Unit
     }
 }
