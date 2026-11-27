@@ -46,72 +46,17 @@ domain Application {
 }
 ```
 
-Save it as `hello.croft` and run `croft run hello.croft`. With no `croft.toml`,
-the program runs on the `desktop` target. Add one to name adapters, add
-targets or set the program's name.
-
-`croft run` builds the C with the compiler named by `CC`, or `cc`, as optimised
-strict C89 (`-std=c89 -pedantic -Wall -Wextra -O2`), with every warning an error
-in the C Croft writes. A project's own native C files get the same warnings,
-shown but not stopping the build.
-
-Source files end in `.croft`, or in `.cro` on machines whose file names are
-limited to 8.3. A project can mix the two, and the compiler reads either in
-capitals too, as in `CARGO.CRO`.
+Save it as `hello.croft`, then:
 
 ```sh
 cargo install --path crates/croft_cli
-
-croft check . # compiler check
-croft compile . # check and compile to C
-croft run . # check, compile and run C
-croft size . --target spectrum_48k # memory each type and function takes
-croft fmt . # lay out the source files in the Croft style
-```
-
-Try it on the test fixture, a small cargo shipping system after the one in Eric
-Evans' _Domain-Driven Design_, split across thirteen files:
-
-```sh
-croft check tests/fixtures/logistics
-croft compile tests/fixtures/logistics --target desktop
+croft run hello.croft
 ```
 
 ## Reference
 
-For full reference documentation, see [./docs/reference](./docs/reference)
-
-## Editors
-
-`croft lsp` runs a language server, showing you errors as you type, without
-needing to run the compiler. It also shows you function signatures and comments
-on hover, clicking takes you straight to the definition, and it formats a file
-the same way as `croft fmt`.
-
-- VS Code: [editors/vscode](editors/vscode), with highlighting from a TextMate
-  grammar.
-- Zed: [editors/zed](editors/zed), with highlighting from the Tree-sitter
-  grammar in [editors/tree-sitter-croft](editors/tree-sitter-croft).
-
-## This repository
-
-| Crate            | Responsibility                                                       |
-| ---------------- | -------------------------------------------------------------------- |
-| `croft_syntax`   | Lexer, parser and syntax tree                                        |
-| `croft_std`      | Standard contexts written in Croft, beside the C of their adapters   |
-| `croft_analysis` | Merging files, name resolution, declaration checks and type checking |
-| `croft_codegen`  | C89 generation for one target                                        |
-| `croft_format`   | The formatter, `croft fmt`                                           |
-| `croft_cli`      | The `croft` command, and the language server, `croft lsp`            |
-
-## Development
-
-```sh
-cargo test
-```
-
-The `croft_codegen` tests generate C for small programs, build it with `cc` in
-strict C89 mode with every warning as an error, and run it.
+See [docs/reference](./docs/reference) for the language, the `croft` command
+and `croft.toml`, and [editors](./editors) for VS Code and Zed.
 
 ## Contributing
 
