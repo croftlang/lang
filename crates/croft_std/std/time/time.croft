@@ -8,13 +8,32 @@ context Time {
 
     // A day on the Gregorian calendar, carried back before 1582 as if it had
     // always been used, from 1 January of year 1 to 31 December 9999. The
-    // day is any from 1 to 31, whatever the month: `days_between` and
-    // `add_days` count 30 February as the day after 29 February.
+    // day is one the month has, so 30 February is no date, and 29 February
+    // is one only in a leap year.
     value Date {
         year: Int where Range(1, 9999)
         month: Int where Range(1, 12)
         day: Int where Range(1, 31)
+
+        invariant DayInMonth
     }
+
+    // Whether the month has the day: thirty days have April, June,
+    // September and November, February has 28, or 29 in a leap year, and
+    // the rest have 31.
+    constraint DayInMonth(date: Date) =
+        date.day <= 28 ||
+        date.day <= 30 && date.month != 2 ||
+        date.day == 31 && has_31_days(date.month) ||
+        date.day == 29 && is_leap_year(date.year)
+
+    // Whether the month, 1 to 12, has 31 days.
+    fn has_31_days(month: Int): Bool =
+        month <= 7 && month % 2 == 1 || month >= 8 && month % 2 == 0
+
+    // Whether February has 29 days in the year: one a 4 divides, unless a
+    // 100 does and a 400 doesn't.
+    fn is_leap_year(year: Int): Bool = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
 
     // A time of day on a 24-hour clock.
     value Time {
