@@ -43,9 +43,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         let declared = operation.parameters.as_deref().unwrap_or(&[]);
         let constraints = Self::parameter_constraints(declared);
-        self.check_known_arguments(arguments, &constraints, &scope, &method.name);
-
         let callee = format!("{}.{}", port.name, method.name);
+        self.check_known_arguments(arguments, &constraints, &scope, &callee);
         self.check_known_contract(operation, &scope, arguments, &callee, method.span);
 
         let result = (operation.return_type.as_ref())

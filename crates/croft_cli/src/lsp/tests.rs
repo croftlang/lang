@@ -346,12 +346,16 @@ fn a_built_in_port_is_shown_as_if_declared() {
     let hover = hover_at(state, &path, "calls { Console }", "Console");
 
     assert!(
-        hover.contains("port Console {\n    fn print(text: String): Unit\n}"),
+        hover.contains(
+            "port Console {\n    fn print(text: String): Unit\n    \
+             fn print_error(text: String): Unit\n    \
+             fn read_line(): Option<String>\n}"
+        ),
         "{hover}"
     );
 
     assert!(
-        hover.contains("Text for whoever runs the program."),
+        hover.contains("Text to and from whoever runs the program."),
         "{hover}"
     );
     assert!(hover.contains("in `Std.Console`*"), "{hover}");
@@ -368,7 +372,7 @@ fn a_built_in_port_is_shown_as_if_declared() {
 
     let hover = hover_at(state, &path, "Console.print", "Console");
     assert!(
-        hover.contains("Text for whoever runs the program."),
+        hover.contains("Text to and from whoever runs the program."),
         "{hover}"
     );
 }

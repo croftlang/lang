@@ -99,7 +99,8 @@ impl<'a> Checker<'a> {
             }
         }
 
-        // `StorageError` and its errors, `Console` and `Arguments` need no import.
+        // `StorageError` and its errors, `Console`, `Arguments` and `Process`
+        // need no import.
         for standard in [STORAGE_CONTEXT, CONSOLE_CONTEXT] {
             if self.is_published(standard, &text) {
                 return self.lookup(standard, &text);

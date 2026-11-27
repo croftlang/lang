@@ -1,16 +1,27 @@
 // Std.Console: the command line a program runs from. Every program has it,
 // and its names need no import: a service lists the ports it needs in its
 // contract, as in `calls { Console, Arguments }`, and calls them by name, as
-// in `Console.print("hello")`. Every target supplies both, so croft.toml
-// names no adapter for them; the compiler writes their C. A port the program
-// declares with the same name replaces one of these.
+// in `Console.print("hello")`. Every target supplies all of them, so
+// croft.toml names no adapter for them; the compiler writes their C. A port
+// the program declares with the same name replaces one of these.
 context Console {
-    publish { Console, Arguments }
+    publish { Console, Arguments, Process }
 
-    // Text for whoever runs the program.
+    // Text to and from whoever runs the program.
     port Console {
         // Prints the text and starts a new line.
         fn print(text: String): Unit
+
+        // Prints the text and starts a new line on the error output, kept
+        // apart from what `print` writes.
+        fn print_error(text: String): Unit
+
+        // The next line of input, without its "\n" or "\r\n", or None at the
+        // end of the input. Targets with nothing to read give None. A line is
+        // never cut short with checks on: one longer than a string stops the
+        // program. With checks off, as much of it as a string holds is kept
+        // and the rest of that line is skipped.
+        fn read_line(): Option<String>
     }
 
     // The words the program was run with, after its own name.
@@ -20,5 +31,12 @@ context Console {
         // checks on, an argument longer than a string, or more arguments
         // than the list holds, stops the program.
         fn all(): List<String>
+    }
+
+    // The running program itself.
+    port Process {
+        // Stops the program at once with this exit code: 0 for success,
+        // anything else for a failure. Nothing after the call runs.
+        fn exit(code: Int where Range(0, 255)): Unit
     }
 }

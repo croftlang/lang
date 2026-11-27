@@ -185,7 +185,13 @@ void croft_arguments_set(int count, char **values);
 croft_int croft_argument_count(void);
 void croft_argument(croft_int index, char *out, croft_u16 *length, croft_u16 capacity);
 
-/* The built-in Console port: prints a line. */
+/* The built-in Console port: prints a line, prints a line on the error
+   output, and reads a line. */
 void croft_console_print(croft_string_view text, croft_unit *out);
+void croft_console_print_error(croft_string_view text, croft_unit *out);
+void croft_console_read_line(croft_bool *present, char *out, croft_u16 *length, croft_u16 capacity);
+
+/* The built-in Process port: stops the program with an exit code. */
+void croft_process_exit(croft_int code, croft_unit *out);
 
 #endif

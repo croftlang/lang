@@ -5,6 +5,7 @@
 mod support;
 
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 
 use support::{compile, generate, has_c_compiler, run_program, run_program_at};
@@ -1142,4 +1143,122 @@ fn fails_with_a_constraints_error() {
         String::from_utf8_lossy(&ran.stdout)
     );
     fs::remove_dir_all(output).ok();
+}
+
+/// Builds the `console_input` program for a target, in a folder of its own
+/// named after `folder`, and gives a way to run it with input and arguments.
+fn console_input(
+    target: &str,
+    folder: &str,
+) -> (
+    std::path::PathBuf,
+    impl Fn(&str, &[&str]) -> std::process::Output,
+) {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/console_input");
+    let output = generate(&source, target, folder);
+    let built = compile(&output, &["croft_runtime.c", "program.c", "-o", "program"]);
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    let program = output.join("program");
+
+    let run = move |input: &str, arguments: &[&str]| {
+        let mut child = std::process::Command::new(&program)
+            .args(arguments)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .expect("it runs");
+
+        // A program that stops early may not read all of it.
+        let mut stdin = child.stdin.take().expect("its input");
+        stdin.write_all(input.as_bytes()).ok();
+        drop(stdin);
+
+        child.wait_with_output().expect("it finishes")
+    };
+
+    (output, run)
+}
+
+/// `Console.read_line` gives each line without its "\n" or "\r\n", then
+/// None at the end of the input; `Console.print_error` writes to the error
+/// output; `Process.exit` stops the program with its code.
+#[test]
+fn reads_lines_prints_errors_and_exits() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let (output, run) = console_input("test", "read_lines");
+
+    let lines = run("one\r\ntwo\n\nlast", &[]);
+    assert_eq!(
+        String::from_utf8_lossy(&lines.stdout),
+        "3\none\n3\ntwo\n0\n\n4\nlast\nthe end\n"
+    );
+    assert_eq!(String::from_utf8_lossy(&lines.stderr), "an empty line\n");
+    assert_eq!(lines.status.code(), Some(0));
+
+    let nothing = run("", &[]);
+    assert_eq!(String::from_utf8_lossy(&nothing.stdout), "the end\n");
+
+    let lone_return = run("a\rb\n", &[]);
+    assert_eq!(
+        String::from_utf8_lossy(&lone_return.stdout),
+        "3\na\rb\nthe end\n"
+    );
+
+    let stopped = run("go\nstop\nnever read\n", &["7"]);
+    assert_eq!(String::from_utf8_lossy(&stopped.stdout), "2\ngo\n");
+    assert_eq!(stopped.status.code(), Some(7));
+
+    fs::remove_dir_all(output).ok();
+}
+
+/// With checks on, a line longer than a string and an exit code outside
+/// 0 to 255 stop the program; with checks off, the line keeps what fits and
+/// skips the rest, and the exit code keeps its lowest 8 bits.
+#[test]
+fn never_cuts_a_line_short_with_checks_on() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let long_line = format!("{}\nok\n", "x".repeat(300));
+    let said = |ran: &std::process::Output| {
+        String::from_utf8_lossy(&ran.stdout).to_string() + &String::from_utf8_lossy(&ran.stderr)
+    };
+
+    let (checked, run) = console_input("test", "long_lines");
+
+    let too_long = run(&long_line, &[]);
+    assert_eq!(said(&too_long), "a line is longer than a string can hold\n");
+    assert_eq!(too_long.status.code(), Some(1));
+
+    let bad_code = run("stop\n", &["300"]);
+    assert_eq!(
+        said(&bad_code),
+        "Process.exit: code must satisfy Range(0, 255)\n"
+    );
+    assert_eq!(bad_code.status.code(), Some(1));
+
+    fs::remove_dir_all(checked).ok();
+
+    let (unchecked, run) = console_input("unchecked", "long_lines");
+
+    let kept = run(&long_line, &[]);
+    let expected = format!("32\n{}\n2\nok\nthe end\n", "x".repeat(32));
+    assert_eq!(String::from_utf8_lossy(&kept.stdout), expected);
+    assert_eq!(kept.status.code(), Some(0));
+
+    let wrapped = run("stop\n", &["300"]);
+    assert_eq!(wrapped.status.code(), Some(300 & 255));
+
+    fs::remove_dir_all(unchecked).ok();
 }
