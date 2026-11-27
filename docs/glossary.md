@@ -387,7 +387,8 @@ folder on the way, and `copy`, for a file of any size, its errors `NotFound`, `N
 adapter, which uses C's stdio: `Files = "StdioFiles"` in `croft.toml`. Its
 `list` and `make_folder` need POSIX, so they fail with `Unreadable` on
 machines without it. It fails with `NotFound` only when nothing is at the
-path, and with `Unreadable` for a file that is there but can't be opened,
+path, or a file is written, appended to or copied into a folder that isn't
+there, and with `Unreadable` for a file that is there but can't be opened,
 which `exists` still finds; a machine whose C has no POSIX `ENOENT` can't
 tell the two apart and fails with `NotFound`. It never cuts a path short:
 one longer than 255 bytes, or with a NUL byte in it, fails with `Unreadable`.

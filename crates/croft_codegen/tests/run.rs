@@ -132,7 +132,7 @@ fn rolls_within_range() {
     assert_eq!(reversed.status.code(), Some(1));
 
     assert_eq!(
-        String::from_utf8_lossy(&reversed.stdout),
+        String::from_utf8_lossy(&reversed.stderr),
         "SeededRandom.between: low <= high must hold\n"
     );
 
@@ -274,8 +274,8 @@ fn makes_folders_and_copies_files() {
 }
 
 /// StdioFiles fails with `NotFound` only when there is nothing at the path,
-/// and with `Unreadable` for a file or folder that is there but can't be
-/// opened, which `exists` still finds.
+/// or no folder to write a file into, and with `Unreadable` for a file or
+/// folder that is there but can't be opened, which `exists` still finds.
 #[cfg(unix)]
 #[test]
 fn tells_a_missing_file_from_one_it_may_not_open() {
@@ -338,12 +338,26 @@ fn tells_a_missing_file_from_one_it_may_not_open() {
     assert_eq!(run("read", "open.txt/inner.txt"), failed("NotFound"));
     assert_eq!(run("copy", "missing.txt"), failed("NotFound"));
     assert_eq!(run("list", "missing"), failed("NotFound"));
+    assert_eq!(run("write", "missing/inner.txt"), failed("NotFound"));
+    assert_eq!(run("append", "missing/inner.txt"), failed("NotFound"));
+    assert_eq!(run("copy_to", "missing/inner.txt"), failed("NotFound"));
+    assert_eq!(
+        run("write", "written.txt"),
+        ("written\nread\n".to_string(), String::new())
+    );
+    assert_eq!(
+        run("append", "written.txt"),
+        ("there\nappended\nread\n".to_string(), String::new())
+    );
 
     // Someone allowed to open anything, such as root, can't see this.
     if fs::read(output.join("locked.txt")).is_err() {
         assert_eq!(run("read", "locked.txt"), there("Unreadable"));
         assert_eq!(run("copy", "locked.txt"), there("Unreadable"));
         assert_eq!(run("list", "locked"), there("Unreadable"));
+        assert_eq!(run("write", "locked.txt"), there("Unreadable"));
+        assert_eq!(run("append", "locked.txt"), there("Unreadable"));
+        assert_eq!(run("copy_to", "locked.txt"), there("Unreadable"));
     }
 
     let open = fs::Permissions::from_mode(0o755);

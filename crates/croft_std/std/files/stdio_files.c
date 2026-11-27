@@ -115,9 +115,11 @@ static void put(croft_string_view path, const croft_bytes *data, const char *mod
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
         return;
     }
+    errno = 0;
     file = fopen(name, mode);
     if (file == 0) {
-        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        /* A folder on the way that isn't there makes it NotFound. */
+        fail(&out->error, open_error());
         return;
     }
     written = fwrite(data->items, 1, data->length, file);
@@ -200,10 +202,17 @@ void croft_files_copy(croft_string_view from, croft_string_view to, croft_result
         fail(&out->error, open_error());
         return;
     }
-    copy = to_path(to, name) ? fopen(name, "wb") : 0;
-    if (copy == 0) {
+    if (!to_path(to, name)) {
         fclose(source);
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
+    errno = 0;
+    copy = fopen(name, "wb");
+    if (copy == 0) {
+        /* Worked out before fclose, which may change errno. */
+        fail(&out->error, open_error());
+        fclose(source);
         return;
     }
     while (written && (count = fread(chunk, 1, CROFT_COPY_CHUNK, source)) > 0) {
