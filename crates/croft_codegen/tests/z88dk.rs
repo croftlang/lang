@@ -223,10 +223,15 @@ fn run_on_desktop(folder: &Path, cases: &[&str]) -> Vec<(Option<i32>, String)> {
                 .output()
                 .expect("it runs");
 
-            (
-                ran.status.code(),
-                String::from_utf8_lossy(&ran.stdout).trim().to_string(),
-            )
+            // z88dk-ticks prints the error output with the rest, so the
+            // desktop's two are read together: failures come last.
+            let printed = format!(
+                "{}{}",
+                String::from_utf8_lossy(&ran.stdout),
+                String::from_utf8_lossy(&ran.stderr)
+            );
+
+            (ran.status.code(), printed.trim().to_string())
         })
         .collect()
 }
