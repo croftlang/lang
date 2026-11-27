@@ -9,7 +9,8 @@ use crate::types::Type;
 
 impl<'a> Checker<'a> {
     /// Checks every body in a context: constants, constraints, functions,
-    /// services, commands, factories, policies and adapters.
+    /// services, commands, factories, policies, adapters and the contracts
+    /// of ports.
     pub(in crate::check) fn check_bodies(&mut self, context: &'a Context) {
         let scope = Scope {
             context,
@@ -69,6 +70,16 @@ impl<'a> Checker<'a> {
 
         for adapter in &context.adapters {
             self.check_adapter_bodies(scope, adapter);
+        }
+
+        // A port operation's contract reads only its parameters.
+        for operation in context.ports.iter().flat_map(|port| &port.operations) {
+            let mut body = BodyChecker::new(self, scope, BodyKind::Function, Type::Bool);
+            body.bind_parameters(operation.parameters.as_deref().unwrap_or(&[]));
+
+            for line in &operation.preconditions {
+                body.expect(line, &Type::Bool);
+            }
         }
     }
 

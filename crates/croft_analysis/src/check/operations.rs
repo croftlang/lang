@@ -1,7 +1,7 @@
 //! What an adapter must provide: the operations of a port, or of a
 //! repository for an adapter written for the repository itself.
 
-use croft_syntax::ast::{ConstraintUse, FunctionDecl};
+use croft_syntax::ast::{ConstraintUse, Expr, FunctionDecl};
 
 use super::{Checker, Resolved, Scope};
 use crate::symbols::SymbolKind;
@@ -14,6 +14,9 @@ pub struct Operation<'a> {
     pub parameters: Vec<(String, Type, &'a [ConstraintUse])>,
     pub result: Type,
     pub result_constraints: &'a [ConstraintUse],
+    /// The lines of its contract, such as `low <= high`, which only a port's
+    /// operations have.
+    pub preconditions: &'a [Expr],
 }
 
 impl<'a> Checker<'a> {
@@ -56,6 +59,7 @@ impl<'a> Checker<'a> {
                 result: (operation.return_type.as_ref())
                     .map_or(Type::Unit, |ty| self.lower_type(&scope, ty)),
                 result_constraints: operation.return_constraints.as_slice(),
+                preconditions: operation.preconditions.as_slice(),
             })
             .collect()
     }
@@ -91,12 +95,14 @@ impl<'a> Checker<'a> {
                     Type::Errors(vec![errors, storage.clone()]),
                 ),
                 result_constraints: &[],
+                preconditions: &[],
             },
             Operation {
                 name: "save".to_string(),
                 parameters: vec![("value".to_string(), aggregate_type, &[])],
                 result: Type::result(Type::Unit, storage),
                 result_constraints: &[],
+                preconditions: &[],
             },
         ]
     }

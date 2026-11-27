@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use croft_syntax::ast::{FunctionDecl, PortDecl, RepositoryDecl};
+use croft_syntax::ast::{ExprKind, FunctionDecl, PortDecl, RepositoryDecl};
 
 use super::constraints::ConstraintPlace;
 use super::{Checker, Resolved, Scope};
@@ -10,12 +10,30 @@ use crate::symbols::SymbolKind;
 use crate::types::Type;
 
 impl<'a> Checker<'a> {
-    /// A port declares operations by signature only.
+    /// A port declares operations by signature only, each with a contract
+    /// its callers keep, such as `low <= high`.
     pub(super) fn check_port(&mut self, scope: &Scope, port: &PortDecl) {
         self.check_operations(scope, &port.operations, "a port");
+
+        for operation in &port.operations {
+            for line in &operation.preconditions {
+                let ExprKind::OrElse(_, error) = &line.kind else {
+                    continue;
+                };
+
+                let message = format!(
+                    "a port's contract line must hold, so `{}` can't fail with `{}`; give it a `Result` its adapter fails with",
+                    operation.name.name,
+                    error.text()
+                );
+
+                self.error(message, line.span);
+            }
+        }
     }
 
-    /// Operations declared by signature only, in a port or repository.
+    /// Operations declared by signature only, in a port or repository. Only
+    /// a port's can have a contract.
     fn check_operations(&mut self, scope: &Scope, operations: &[FunctionDecl], owner: &str) {
         let mut seen = HashSet::new();
 
@@ -44,7 +62,9 @@ impl<'a> Checker<'a> {
                 self.check_type(scope, ty, false);
             }
 
-            if operation.body.is_some() || !operation.preconditions.is_empty() {
+            let contract = !operation.preconditions.is_empty() && owner != "a port";
+
+            if operation.body.is_some() || contract {
                 let message = format!(
                     "{owner} only declares `{}`; an adapter gives it a body",
                     name.name

@@ -7,7 +7,8 @@ use crate::facts::MemberKind;
 use crate::types::{Resolved, Type};
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
-    /// A call to a port operation, checked against its signature.
+    /// A call to a port operation, checked against its signature, and its
+    /// known arguments against its parameters' constraints and contract.
     pub(super) fn port_operation(
         &mut self,
         port: &Resolved,
@@ -39,6 +40,13 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             .collect();
 
         self.check_arguments(arguments, &parameters, &method.name, method.span, false);
+
+        let declared = operation.parameters.as_deref().unwrap_or(&[]);
+        let constraints = Self::parameter_constraints(declared);
+        self.check_known_arguments(arguments, &constraints, &scope, &method.name);
+
+        let callee = format!("{}.{}", port.name, method.name);
+        self.check_known_contract(operation, &scope, arguments, &callee, method.span);
 
         let result = (operation.return_type.as_ref())
             .map_or(Type::Unit, |ty| self.checker.lower_type(&scope, ty));

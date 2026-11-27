@@ -163,3 +163,60 @@ fn issues_on_an_identity_only_with_a_find_and_a_save() {
         "{missing:?}"
     );
 }
+
+/// A `Dice` port whose `roll` has `contract` as its contract, and a service
+/// that calls it with `call`.
+fn with_contract(contract: &str, call: &str) -> String {
+    dungeon(&format!(
+        "port Dice {{\n fn roll(low: Int, high: Int): Int {{\n {contract}\n }}\n}}\n\
+         service Play(): Int {{\n calls {{ Dice }}\n}} = {call}"
+    ))
+}
+
+#[test]
+fn checks_a_port_contract_at_each_call() {
+    assert_eq!(
+        errors(&with_contract("low <= high", "Dice.roll(1, 6)")),
+        Vec::<String>::new()
+    );
+
+    assert_error(
+        &with_contract("low <= high", "Dice.roll(6, 1)"),
+        "`Dice.roll(6, 1)` breaks `low <= high`",
+    );
+
+    assert_error(
+        &with_contract("low + 1", "Dice.roll(1, 6)"),
+        "expected `Bool`, found `Int`",
+    );
+
+    assert_error(
+        &with_contract("missing > 0", "Dice.roll(1, 6)"),
+        "cannot find `missing` here",
+    );
+}
+
+#[test]
+fn checks_a_port_contract_only_holds() {
+    let source = with_contract("low <= high or Reversed", "Dice.roll(1, 6)")
+        .replace("port Dice", "error Reversed\nport Dice");
+
+    assert_error(
+        &source,
+        "a port's contract line must hold, so `roll` can't fail with `Reversed`; give it a `Result` its adapter fails with",
+    );
+}
+
+/// A port's parameter constraints are the caller's to keep too.
+#[test]
+fn checks_a_known_argument_against_a_port_parameter() {
+    let source = dungeon(
+        "port Dice {\n fn roll(sides: Int where Range(2, 20)): Int\n}\n\
+         service Play(): Int {\n calls { Dice }\n} = Dice.roll(1)",
+    );
+
+    assert_error(
+        &source,
+        "`roll` is given `1` for `sides`, which breaks `Range(2, 20)`",
+    );
+}

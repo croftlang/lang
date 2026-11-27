@@ -396,7 +396,9 @@ such as `file:///etc/passwd`, and an eleventh redirect fail with `Unreachable`.
 ## The outside world
 
 ### Port
-What the domain needs from the outside world, by signature only.
+What the domain needs from the outside world, by signature only. An
+operation's contract, such as `low <= high`, is kept by each caller, whatever
+adapter fills the port.
 
 ### Repository
 A port for keeping one aggregate. `repository Cargos for Cargo` on its own
