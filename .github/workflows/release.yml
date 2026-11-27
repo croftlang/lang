@@ -24,17 +24,18 @@ jobs:
       matrix:
         include:
           # musl links statically, so one Linux build runs on any distribution.
-          - name: linux x86_64
+          - name: linux-x86_64
             os: ubuntu-latest
             targets: x86_64-unknown-linux-musl
-          - name: linux aarch64
+          - name: linux-aarch64
             os: ubuntu-24.04-arm
             targets: aarch64-unknown-linux-musl
-          # Both macOS builds share one runner: macOS runners are scarce, and
-          # an Apple silicon Mac builds for Intel too.
+          # macOS runners can sit queued for a long time, so the macOS builds
+          # are cross-compiled on Linux, with Zig as the linker.
           - name: macos
-            os: macos-latest
+            os: ubuntu-latest
             targets: aarch64-apple-darwin x86_64-apple-darwin
+            zig: true
           - name: windows
             os: windows-latest
             targets: x86_64-pc-windows-msvc
@@ -49,8 +50,16 @@ jobs:
         run: rustup target add ${{ matrix.targets }}
 
       - name: Install musl
-        if: runner.os == 'Linux'
+        if: contains(matrix.targets, 'musl')
         run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - uses: mlugg/setup-zig@v2
+        if: matrix.zig
+
+      - uses: taiki-e/install-action@v2
+        if: matrix.zig
+        with:
+          tool: cargo-zigbuild
 
       # The tag must name the version in Cargo.toml, so `croft version` agrees
       # with the release it came from.
@@ -67,8 +76,13 @@ jobs:
       - name: Build
         shell: bash
         run: |
+          build=build
+          if [ "${{ matrix.zig }}" = "true" ]; then
+            build=zigbuild
+          fi
+
           for target in ${{ matrix.targets }}; do
-            cargo build --release --locked -p croft_cli --target "$target"
+            cargo "$build" --release --locked -p croft_cli --target "$target"
           done
 
       # Archive names leave out the version, so
@@ -100,25 +114,22 @@ jobs:
             fi
           done
 
-      # Run each packaged binary the runner can run, to catch a broken build.
+      # Run each packaged binary once, to catch a broken build. The macOS
+      # builds can't run on Linux; they are tried on a Mac before a release.
       - name: Smoke test
+        if: ${{ !matrix.zig }}
         shell: bash
         run: |
           printf 'domain Program {\n    calls { Console }\n} = Console.print("Hello, World")\n' > hello.croft
 
           for target in ${{ matrix.targets }}; do
-            if [ "$target" = "x86_64-apple-darwin" ] && ! arch -x86_64 /usr/bin/true 2> /dev/null; then
-              echo "Skipping $target: no Rosetta on this runner"
-              continue
-            fi
-
             "./croft-$target/croft" version
             "./croft-$target/croft" check hello.croft
           done
 
       - uses: actions/upload-artifact@v4
         with:
-          name: croft-${{ matrix.os }}
+          name: croft-${{ matrix.name }}
           path: dist/*
           if-no-files-found: error
 
