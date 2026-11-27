@@ -741,7 +741,7 @@ fn keeps_bytes_without_a_length_in_the_targets_size() {
 
         (
             ran.status.code(),
-            String::from_utf8_lossy(&ran.stdout).trim().to_string(),
+            String::from_utf8_lossy(&ran.stderr).trim().to_string(),
         )
     };
 
