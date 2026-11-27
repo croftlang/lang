@@ -19,7 +19,7 @@ impl<'a> Checker<'a> {
         self.check_aggregate_identity(&scope, aggregate);
 
         for entity in &aggregate.entities {
-            self.check_value(&scope, entity);
+            self.check_entity(&scope, entity);
             let identity = context.identity_for(&aggregate.name.name, Some(&entity.name.name));
             self.check_identity_field("entity", &entity.name, &entity.fields, identity);
         }

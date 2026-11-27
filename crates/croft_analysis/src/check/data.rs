@@ -12,12 +12,33 @@ use crate::program::{identifies, Context};
 use crate::symbols::SymbolKind;
 
 impl<'a> Checker<'a> {
-    /// A value, or an entity's fields and invariants. An entity's identity
-    /// is checked with its aggregate's.
+    /// A value's fields and invariants. Making a value can't fail, so each
+    /// invariant must hold and names no error.
     pub(super) fn check_value(&mut self, scope: &Scope, value: &ValueDecl) {
         self.check_fields(scope, &value.fields);
 
         for invariant in &value.invariants {
+            self.check_constraint_use(scope, &invariant.constraint);
+
+            if invariant.error.is_none() {
+                continue;
+            }
+
+            let message = format!(
+                "making a value can't fail, so its invariant must hold: `invariant {}`, without `or`",
+                invariant.constraint.text()
+            );
+
+            self.error(message, invariant.constraint.name.span());
+        }
+    }
+
+    /// An entity's fields and invariants. Its identity is checked with its
+    /// aggregate's.
+    pub(super) fn check_entity(&mut self, scope: &Scope, entity: &ValueDecl) {
+        self.check_fields(scope, &entity.fields);
+
+        for invariant in &entity.invariants {
             self.check_invariant(scope, invariant);
         }
     }

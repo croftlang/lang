@@ -80,7 +80,7 @@ impl<'a> Generator<'a> {
     }
 
     /// The function that tests a value of `named`, just read, against the
-    /// constraints on its fields and an aggregate's invariants, and its
+    /// constraints on its fields and a value's or aggregate's invariants, and its
     /// prototype, when it has any. The name is `croft_kept_X`.
     pub(super) fn load_check(&self, named: &Resolved, name: &str) -> Option<(String, String)> {
         let ty = Type::Named(named.clone());
@@ -100,8 +100,8 @@ impl<'a> Generator<'a> {
     }
 
     /// A writer that tests each field of a value, entity, aggregate or
-    /// event against its constraints, and an aggregate against its
-    /// invariants. `None` when there is nothing to test.
+    /// event against its constraints, and a value or aggregate against
+    /// its invariants. `None` when there is nothing to test.
     fn field_checks(&self, named: &Resolved) -> Option<Writer<'_, 'a>> {
         let fields = self.model.fields(named);
         let invariants = self.invariants_of(named);
@@ -205,8 +205,13 @@ impl<'a> Generator<'a> {
     }
 
     /// The invariants of an aggregate, which every one the program makes or
-    /// changes keeps. Other types have none that are kept.
+    /// changes keeps, or of a value, which every one it makes keeps. Other
+    /// types have none that are kept.
     fn invariants_of(&self, named: &Resolved) -> Vec<croft_syntax::ast::Invariant> {
+        if named.kind == SymbolKind::Value {
+            return self.value_invariants(named);
+        }
+
         if named.kind != SymbolKind::Aggregate {
             return Vec::new();
         }

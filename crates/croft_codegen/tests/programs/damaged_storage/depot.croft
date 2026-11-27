@@ -1,7 +1,7 @@
 // Saves a crate and a gate in FileStorage, then changes one byte of each
 // saved file at a time and finds them again. Every change that leaves a
 // number too big for its field, an unknown variant, a flag that is neither
-// true nor false, or a broken constraint loads as StorageDamaged.
+// true nor false, or a broken constraint or invariant loads as StorageDamaged.
 context Depot {
     publish { Check }
 
@@ -25,6 +25,16 @@ context Depot {
     constraint Even(number: Int) = number % 2 == 0
 
     constraint Calm(item: Crate) = item.small != 999
+
+    constraint Ordered(span: Span) = span.low <= span.high
+
+    // A value kept in a gate, held to its invariant when it is read back.
+    value Span {
+        low: Int
+        high: Int
+
+        invariant Ordered
+    }
 
     // Byte by byte after the layout's four: id 4, count 8, small 12,
     // colour 16, label 20 and its percent 24, sealed 28, best 32 and its
@@ -65,17 +75,19 @@ context Depot {
     }
 
     // Its two flags share the byte after the layout, so id is at 5 and
-    // label at 9.
+    // label at 9, and its span's low at 13 and high at 17.
     aggregate Gate {
         id: GateId
         open: Bool
         locked: Bool
         label: Label
+        span: Span
 
         error NotFound
 
         // A plain gate that is open and locked.
-        factory Sample(id: GateId) = Gate { id, open: true, locked: true, label: Label.Plain }
+        factory Sample(id: GateId) =
+            Gate { id, open: true, locked: true, label: Label.Plain, span: Span { low: 1, high: 2 } }
     }
 
     repository Crates for Crate
@@ -195,8 +207,8 @@ context Depot {
 
         let gate = Gate.Sample(id: 3)?
         Gates.save(gate)?
-        let kept = Files.read("gates3.dat", 16)?
-        check(kept.length == 13 && Gates.find(3)? == gate)?
+        let kept = Files.read("gates3.dat", 32)?
+        check(kept.length == 21 && Gates.find(3)? == gate)?
 
         Files.write("gates3.dat", kept.set(4, 7))?
         let flags = match Gates.find(3) { Ok(found) -> false  Err(error) -> is_damaged_gate(error) }
@@ -205,6 +217,10 @@ context Depot {
         Files.write("gates3.dat", kept.set(9, 2))?
         let plain = match Gates.find(3) { Ok(found) -> false  Err(error) -> is_damaged_gate(error) }
         check(plain)?
+
+        Files.write("gates3.dat", kept.set(13, 5))?
+        let span = match Gates.find(3) { Ok(found) -> false  Err(error) -> is_damaged_gate(error) }
+        check(span)?
 
         Files.write("gates3.dat", kept.set(4, 1))?
         check(!Gates.find(3)?.locked)?

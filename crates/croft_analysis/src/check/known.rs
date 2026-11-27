@@ -24,6 +24,12 @@ pub(crate) enum Known {
     List(Vec<Known>),
     /// `Some(value)`, or `None` when it holds nothing.
     Option(Option<Box<Known>>),
+    /// A value with every field known, such as `Date { year: 2025, month:
+    /// 2, day: 29 }`: its type as written, and its fields in order.
+    Record {
+        name: String,
+        fields: Vec<(String, Known)>,
+    },
 }
 
 /// Arithmetic on known whole numbers that has no answer in 32 bits, so the
@@ -138,7 +144,25 @@ impl Known {
             }
             Known::Option(Some(value)) => format!("Some({})", value.describe()),
             Known::Option(None) => "None".to_string(),
+            Known::Record { name, fields } => {
+                let fields: Vec<String> = (fields.iter())
+                    .map(|(field, value)| format!("{field}: {}", value.describe()))
+                    .collect();
+
+                format!("{name} {{ {} }}", fields.join(", "))
+            }
         }
+    }
+
+    /// The field of a known record named `name`.
+    pub(crate) fn field(&self, name: &str) -> Option<Known> {
+        let Known::Record { fields, .. } = self else {
+            return None;
+        };
+
+        (fields.iter())
+            .find(|(field, _)| field == name)
+            .map(|(_, value)| value.clone())
     }
 
     /// `!` or `-` applied to a known value, or `None` when it doesn't apply or

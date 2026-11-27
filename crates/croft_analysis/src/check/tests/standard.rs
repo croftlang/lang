@@ -138,3 +138,44 @@ fn reports_a_known_low_above_high() {
         Vec::<String>::new()
     );
 }
+
+/// A calendar that makes `date` from Std.Time.
+fn calendar(date: &str) -> String {
+    format!(
+        "context Calendar {{\n\
+         publish {{ due }}\n\
+         use {{ Date }} from Std.Time\n\
+         fn due(): Date = {date}\n\
+         }}\n\
+         domain Program {{\n contexts {{ Calendar }}\n use {{ due }} from Calendar\n}} = {{\n due()\n Unit\n}}"
+    )
+}
+
+/// A `Date` is a day the calendar has: 30 February is an error, and 29
+/// February only in a leap year.
+#[test]
+fn reports_a_known_date_that_does_not_exist() {
+    let broken = |date: &str| format!("`{date}` breaks `Date`'s invariant `DayInMonth`");
+
+    for date in [
+        "Date { year: 2025, month: 2, day: 29 }",
+        "Date { year: 1900, month: 2, day: 29 }",
+        "Date { year: 2024, month: 2, day: 30 }",
+        "Date { year: 2026, month: 4, day: 31 }",
+        "Date { year: 2026, month: 11, day: 31 }",
+    ] {
+        assert_error(&calendar(date), &broken(date));
+    }
+
+    for date in [
+        "Date { year: 2024, month: 2, day: 29 }",
+        "Date { year: 2000, month: 2, day: 29 }",
+        "Date { year: 2026, month: 2, day: 28 }",
+        "Date { year: 2026, month: 4, day: 30 }",
+        "Date { year: 2026, month: 12, day: 31 }",
+        "Date { year: 2026, month: 7, day: 31 }",
+        "Date { year: 2026, month: 8, day: 31 }",
+    ] {
+        assert_eq!(errors(&calendar(date)), Vec::<String>::new(), "{date}");
+    }
+}

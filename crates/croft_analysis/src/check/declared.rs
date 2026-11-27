@@ -1,6 +1,6 @@
 //! What declared types are made of: their fields, variants and errors.
 
-use croft_syntax::ast::{Field, TypeExpr};
+use croft_syntax::ast::{Field, Invariant, TypeExpr};
 
 use super::{Checker, Resolved, Scope};
 use crate::symbols::SymbolKind;
@@ -109,6 +109,20 @@ impl<'a> Checker<'a> {
         };
 
         Some(fields)
+    }
+
+    /// The invariants of a value declared in its context, which every one
+    /// the program makes must keep. Other types have none kept this way.
+    pub(super) fn value_invariants(&self, named: &Resolved) -> &'a [Invariant] {
+        if named.kind != SymbolKind::Value {
+            return &[];
+        }
+
+        let context = &self.program.contexts[&named.context];
+
+        (context.values.iter())
+            .find(|value| value.name.name == named.name)
+            .map_or(&[], |value| value.invariants.as_slice())
     }
 
     /// The type of one field of a named type.

@@ -1,6 +1,7 @@
 // Reads the machine's clock through Std.Time's SystemClock, then moves the
 // last date a Date holds on by as many days as the program has arguments,
-// which stops it when there is one.
+// which stops it when there is one. Given `february`, it makes 29 February
+// 2025 first, which stops it too.
 context Diary
 
 use { Date, Clock, days_between, add_days } from Std.Time
@@ -16,6 +17,10 @@ service Show(): Unit {
     if now.hour * 3600 + now.minute * 60 + now.second < 86400 {
         Console.print("the time is in the day")
     }
-    let last = add_days(Date { year: 9999, month: 12, day: 31 }, Arguments.all().length)
+    let chosen = Arguments.all()
+    if chosen.contains("february") {
+        let leap = Date { year: 2025, month: 2, day: 28 + chosen.length }
+    }
+    let last = add_days(Date { year: 9999, month: 12, day: 31 }, chosen.length)
     Console.print(last.year.to_string())
 }

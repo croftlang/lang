@@ -226,8 +226,14 @@ Applies a constraint to every item in a list: `where Length(0, MAX_LEGS), each G
 For constraints about being in that list, not about the item itself.
 
 ### Invariant
-A constraint on an aggregate as a whole, declared inside it and checked after
-every factory and command: `invariant ClaimedAtDestination or ClaimedElsewhere`.
+A constraint on a value or an aggregate as a whole, declared inside it. An
+aggregate's names the error it fails with and is checked after every factory
+and command: `invariant ClaimedAtDestination or ClaimedElsewhere`. Making a
+value can't fail, so a value's has no `or` and must hold, as a field's
+constraints must: `invariant DayInMonth` on Std.Time's `Date`. It is an error
+from `croft check` when the compiler knows the value, a stop while the
+program runs otherwise, unless the target sets `checks = false`, and checked
+whenever Storage reads one back.
 
 ### Error
 A named way that working with an aggregate can fail, optionally with fields:
@@ -428,7 +434,8 @@ from `low` to `high` with both ends included, and the `SeededRandom` adapter:
 seeded from C's `time` the first time it is used, so it is no good for
 anything secret. `low` above `high` breaks `between`'s contract.
 `Std.Time` has the values `Date`, a `year` from 1 to 9999, `month` and `day`
-on the Gregorian calendar, and `Time`, an `hour`, `minute` and `second` on a
+on the Gregorian calendar, only ever a day its month has, so 30 February and
+29 February 2025 are no date, and `Time`, an `hour`, `minute` and `second` on a
 24-hour clock, the `Clock` port, with `today` and `now`, and the functions
 `days_between` and `add_days`, which count leap years. Its `SystemClock`
 adapter uses C's `time` and `localtime`: `Clock = "SystemClock"` in

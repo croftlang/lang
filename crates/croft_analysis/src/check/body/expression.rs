@@ -77,8 +77,16 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             }
             ExprKind::List(items) => self.list_literal(items, expected),
             ExprKind::Map(entries) => self.map_literal(entries, expected, span),
-            ExprKind::Record(path, fields) => self.record(path, fields, expected),
-            ExprKind::With(base, fields) => self.with(base, fields),
+            ExprKind::Record(path, fields) => {
+                let ty = self.record(path, fields, expected);
+                self.check_known_invariants(&ty, value);
+                ty
+            }
+            ExprKind::With(base, fields) => {
+                let ty = self.with(base, fields);
+                self.check_known_invariants(&ty, value);
+                ty
+            }
             ExprKind::Unary(op, operand) => {
                 let ty = self.unary(*op, operand, expected);
 

@@ -13,6 +13,16 @@ context Clinic {
 
     fn heal(amount: Int where Range(1, 50)): Int = amount * 2
 
+    constraint Ordered(dosage: Dosage) = dosage.least <= dosage.most
+
+    // Its least must not be above its most, however it is made.
+    value Dosage {
+        least: Int
+        most: Int
+
+        invariant Ordered
+    }
+
     value Score: Int where Range(0, 999)
 
     // Kept in eight characters of its own, not the size of every string.
@@ -51,6 +61,13 @@ context Clinic {
         }
         if chosen.contains("field") {
             let dose = Dose { amount: chosen.length * 70 }
+        }
+        if chosen.contains("invariant") {
+            let dosage = Dosage { least: chosen.length * 20, most: 10 }
+        }
+        if chosen.contains("with") {
+            let usual = Dosage { least: 1, most: 10 }
+            let raised = usual with { least: chosen.length * 20 }
         }
         if chosen.contains("each") {
             let counted = count([2, chosen.length * 2 + 1])

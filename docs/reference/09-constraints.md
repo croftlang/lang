@@ -24,7 +24,16 @@ enemies: List<Enemy> where Length(0, MAX_ENEMIES), each Alive
 // Longer text is cut short, and the program stops and names the field.
 title: String where Length(1, 12)
 
-// on a whole aggregate, relating its fields
+// on a whole value, relating its fields: every one made must keep it
+constraint Ordered(span: Span) = span.low <= span.high
+
+value Span {
+    low: Int
+    high: Int
+    invariant Ordered
+}
+
+// on a whole aggregate, relating its fields: a command that breaks it fails
 constraint ExitClear(room: Room) = room.enemies.all(e -> e.position != room.exit)
 
 aggregate Room {
@@ -41,7 +50,7 @@ let visited: List<RoomId> where Length(0, MAX_ROOMS) = []
 
 ## When constraints are checked
 
-The compiler works out every constraint it can. Wherever a value is known when the program is compiled, a broken constraint is an error from `croft check`, and editors show it as you type. A value is known when it is a literal, a constant, a list of known values, arithmetic or `.length` on them, a `let` name that nothing in the body changes with `set`, or what a function or translation gives back for known arguments. This holds for arguments to functions, services, commands and factories, for fields in records and `with`, for single values, for enum variants, for the result of a function, and for the values a `let` with constraints starts with or is `set` to.
+The compiler works out every constraint it can. Wherever a value is known when the program is compiled, a broken constraint is an error from `croft check`, and editors show it as you type. A value is known when it is a literal, a constant, a list of known values, arithmetic or `.length` on them, a `let` name that nothing in the body changes with `set`, or what a function or translation gives back for known arguments. This holds for arguments to functions, services, commands and factories, for fields in records and `with`, for a value's invariants when all its fields are known, for single values, for enum variants, for the result of a function, and for the values a `let` with constraints starts with or is `set` to.
 
 ```croft
 constraint Overdose(mg: Int, max: Int) = mg <= max
@@ -56,7 +65,7 @@ A value that is only known while the program runs, such as input or something re
 
 ## Failing with an error
 
-A constraint on a parameter can end with `or` and an error. Breaking it is then not a mistake but a failure the domain expects: the call fails with that error, which the caller handles like any other, so `croft check` accepts a call it knows will fail. It is always checked, whatever the target's `checks` setting. Only a parameter's constraint, inline or in the contract, can have `or`; a field, single value, result, loop counter or `let` has nowhere to fail, so its constraints must hold.
+A constraint on a parameter can end with `or` and an error. Breaking it is then not a mistake but a failure the domain expects: the call fails with that error, which the caller handles like any other, so `croft check` accepts a call it knows will fail. It is always checked, whatever the target's `checks` setting. Only a parameter's constraint, inline or in the contract, can have `or`; a field, single value, result, loop counter or `let` has nowhere to fail, so its constraints must hold, as must a value's invariants. An aggregate's invariant is different: it always names the error its command or factory fails with.
 
 ```croft
 error Overdosed

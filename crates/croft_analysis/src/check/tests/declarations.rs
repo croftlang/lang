@@ -143,3 +143,22 @@ fn checks_invariants_name_an_error() {
         "expected an error, but `Position` is a value",
     );
 }
+
+/// Making a value can't fail, so its invariant has no error: it must hold.
+#[test]
+fn checks_a_values_invariant_has_no_error() {
+    let value = |invariant: &str| {
+        dungeon(&format!(
+            "constraint Ordered(span: Span) = span.low <= span.high\n\
+             error Unordered\n\
+             value Span {{\n low: Int\n high: Int\n {invariant}\n}}"
+        ))
+    };
+
+    assert_eq!(errors(&value("invariant Ordered")), Vec::<String>::new());
+
+    assert_error(
+        &value("invariant Ordered or Unordered"),
+        "making a value can't fail, so its invariant must hold: `invariant Ordered`, without `or`",
+    );
+}
