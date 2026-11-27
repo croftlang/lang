@@ -287,6 +287,21 @@ fn completes_names_in_scope() {
 }
 
 #[test]
+fn offers_only_the_words_the_parser_reads() {
+    let offered = completions("Console.print(transport_text(cargo.delivery))", "");
+
+    for word in [
+        "from", "as", "on", "for", "in", "when", "include", "contexts",
+    ] {
+        assert!(offered.iter().any(|o| o == word), "{word} in {offered:?}");
+    }
+
+    for word in ["start", "target"] {
+        assert!(!offered.iter().any(|o| o == word), "{word} in {offered:?}");
+    }
+}
+
+#[test]
 fn a_context_shows_what_it_publishes_and_goes_to_its_declaration() {
     let (session, path) = checked("logistics.croft", None);
     let state = session.project_for(&path).expect("checked");

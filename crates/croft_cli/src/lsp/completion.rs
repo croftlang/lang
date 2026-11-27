@@ -18,8 +18,8 @@ use super::lookup::{self, declared_members};
 use super::session::ProjectState;
 
 /// Words with a meaning in one place only, which the lexer leaves as names.
-const CONTEXTUAL_WORDS: [&str; 10] = [
-    "from", "as", "on", "for", "in", "when", "include", "contexts", "start", "target",
+const CONTEXTUAL_WORDS: [&str; 8] = [
+    "from", "as", "on", "for", "in", "when", "include", "contexts",
 ];
 
 /// The built-in types, offered anywhere.
