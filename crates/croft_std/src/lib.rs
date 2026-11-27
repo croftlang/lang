@@ -31,7 +31,7 @@ pub struct Adapter {
 
 /// Every standard context written in Croft. A context's place in this list
 /// gives its source id, so new contexts go on the end.
-pub const CONTEXTS: [Context; 5] = [
+pub const CONTEXTS: [Context; 6] = [
     Context {
         name: "Std.Files",
         source: include_str!("../std/files/files.croft"),
@@ -69,6 +69,16 @@ pub const CONTEXTS: [Context; 5] = [
             name: "SeededRandom",
             file: "croft_random.c",
             c: include_str!("../std/random/seeded_random.c"),
+            links: &[],
+        }],
+    },
+    Context {
+        name: "Std.Time",
+        source: include_str!("../std/time/time.croft"),
+        adapters: &[Adapter {
+            name: "SystemClock",
+            file: "croft_time.c",
+            c: include_str!("../std/time/system_clock.c"),
             links: &[],
         }],
     },
@@ -164,6 +174,10 @@ mod tests {
         assert_eq!(
             adapter("Std.Http", "CurlHttp").map(|a| a.file),
             Some("croft_http.c")
+        );
+        assert_eq!(
+            adapter("Std.Time", "SystemClock").map(|a| a.file),
+            Some("croft_time.c")
         );
         assert!(adapter("Std.Storage", "MemoryStorage").is_none());
         assert_eq!(links_for("croft_http.c"), ["-lcurl"]);

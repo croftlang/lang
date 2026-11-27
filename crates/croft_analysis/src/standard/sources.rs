@@ -19,8 +19,9 @@ pub fn standard_source_id(context: &str) -> SourceId {
 /// Adds the standard contexts written in Croft that the program needs:
 /// `Std.Console` always, those any file imports or calls a port from,
 /// `Std.Storage` when there is a repository, and the context of any standard
-/// adapter croft.toml binds, such as `Std.Files` for `StdioFiles`.
-/// `FileStorage` saves through `Files`, so it brings both.
+/// adapter croft.toml binds, such as `Std.Files` for `StdioFiles`, unless
+/// the program declares an adapter of that name itself. `FileStorage` saves
+/// through `Files`, so it brings both.
 pub fn add_standard_sources(files: &mut Vec<File>, bound: &[String]) {
     let mut imported: Vec<String> = vec![CONSOLE_CONTEXT.to_string()];
 
@@ -34,9 +35,22 @@ pub fn add_standard_sources(files: &mut Vec<File>, bound: &[String]) {
         imported.push(STORAGE_CONTEXT.to_string());
     }
 
+    let declared: Vec<&str> = (files.iter())
+        .flat_map(|f| &f.contexts)
+        .flat_map(|c| &c.items)
+        .filter_map(|item| match item {
+            ContextItem::Adapter(adapter) => Some(adapter.name.name.as_str()),
+            _ => None,
+        })
+        .collect();
+
     for adapter in bound {
         if adapter == super::FILE_STORAGE {
             imported.push("Std.Files".to_string());
+        }
+
+        if declared.contains(&adapter.as_str()) {
+            continue;
         }
 
         if let Some(context) = standard_context_publishing(adapter) {

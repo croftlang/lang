@@ -1027,6 +1027,67 @@ fn works_out_whole_numbers_in_32_bits() {
     fs::remove_dir_all(unchecked).ok();
 }
 
+/// Std.Time's days_between and add_days, on every date a Date holds, and a
+/// clock written in Croft.
+#[test]
+fn counts_days_on_the_calendar() {
+    run_program("dates");
+}
+
+/// Std.Time's SystemClock reads the machine's clock, and a date past 9999
+/// stops the program.
+#[test]
+fn reads_the_system_clock() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/clock");
+    let output = generate(&source, "test", "clock");
+
+    let built = compile(
+        &output,
+        &[
+            "croft_runtime.c",
+            "croft_time.c",
+            "program.c",
+            "-o",
+            "program",
+        ],
+    );
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    let ran = std::process::Command::new(output.join("program"))
+        .output()
+        .expect("it runs");
+
+    assert_eq!(ran.status.code(), Some(0));
+
+    assert_eq!(
+        String::from_utf8_lossy(&ran.stdout),
+        "today is in 2026 or after\nthe time is in the day\n9999\n"
+    );
+
+    let past = std::process::Command::new(output.join("program"))
+        .arg("one")
+        .output()
+        .expect("it runs");
+
+    assert_eq!(past.status.code(), Some(1));
+
+    assert_eq!(
+        String::from_utf8_lossy(&past.stdout),
+        "today is in 2026 or after\nthe time is in the day\ndate_from_day_number: number must satisfy Range(306, LAST_DAY)\n"
+    );
+
+    fs::remove_dir_all(output).ok();
+}
+
 /// Std.Text's replace, index_of, lines, repeat, padding and join.
 #[test]
 fn runs_more_text_methods() {

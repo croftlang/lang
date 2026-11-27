@@ -1,0 +1,21 @@
+// Reads the machine's clock through Std.Time's SystemClock, then moves the
+// last date a Date holds on by as many days as the program has arguments,
+// which stops it when there is one.
+context Diary
+
+use { Date, Clock, days_between, add_days } from Std.Time
+
+service Show(): Unit {
+    calls { Clock, Console, Arguments }
+} = {
+    let today = Clock.today()
+    let now = Clock.now()
+    if days_between(Date { year: 2026, month: 1, day: 1 }, today) >= 0 {
+        Console.print("today is in 2026 or after")
+    }
+    if now.hour * 3600 + now.minute * 60 + now.second < 86400 {
+        Console.print("the time is in the day")
+    }
+    let last = add_days(Date { year: 9999, month: 12, day: 31 }, Arguments.all().length)
+    Console.print(last.year.to_string())
+}

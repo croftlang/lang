@@ -231,3 +231,21 @@ fn a_target_checks_constraints_unless_it_turns_them_off() {
     assert!(manifest.target("desktop").unwrap().checks);
     assert!(!manifest.target("spectrum_48k").unwrap().checks);
 }
+
+/// A program's own adapter keeps its name when a standard context has an
+/// adapter called the same, such as `SystemClock` in `Std.Time`: binding it
+/// doesn't bring the standard context, and its `Clock`, in.
+#[test]
+fn binds_a_programs_own_adapter_named_like_a_standard_one() {
+    let source = GAME.replace("TestClock", "SystemClock");
+    let file = parse(&source, SourceId(0)).expect("valid syntax");
+    let text = toml("[target.test]\nmain = \"Main\"\n\n[target.test.adapters]\nScreen = \"TestScreen\"\nClock = \"SystemClock\"\n");
+    let manifest = Manifest::parse(&text, SourceId(1)).expect("a valid croft.toml");
+
+    let errors: Vec<String> = match crate::check(vec![file], Some(manifest)) {
+        Ok(_) => Vec::new(),
+        Err(errors) => errors.into_iter().map(|e| e.message).collect(),
+    };
+
+    assert_eq!(errors, Vec::<String>::new());
+}

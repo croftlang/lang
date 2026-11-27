@@ -1,0 +1,101 @@
+// Std.Time: dates on the calendar, times of day, and a clock to read them
+// from. A program imports what it needs with `use { Date, Clock } from
+// Std.Time`, lists the port in its contract with `calls { Clock }`, and names
+// an adapter for it in croft.toml: `SystemClock` on machines with C's time
+// and localtime, or one of its own, such as a fixed date for tests.
+context Time {
+    publish { Date, Time, Clock, days_between, add_days, SystemClock }
+
+    // A day on the Gregorian calendar, carried back before 1582 as if it had
+    // always been used, from 1 January of year 1 to 31 December 9999. The
+    // day is any from 1 to 31, whatever the month: `days_between` and
+    // `add_days` count 30 February as the day after 29 February.
+    value Date {
+        year: Int where Range(1, 9999)
+        month: Int where Range(1, 12)
+        day: Int where Range(1, 31)
+    }
+
+    // A time of day on a 24-hour clock.
+    value Time {
+        hour: Int where Range(0, 23)
+        minute: Int where Range(0, 59)
+        second: Int where Range(0, 59)
+    }
+
+    // Where today's date and the time come from.
+    port Clock {
+        fn today(): Date
+        fn now(): Time
+    }
+
+    // How many days `to` is after `from`: negative when it is before.
+    fn days_between(from: Date, to: Date): Int = day_number(to) - day_number(from)
+
+    // The date that many days after `date`, or before it when `days` is
+    // negative. With checks on, a date before year 1 or after 9999 stops the
+    // program.
+    fn add_days(date: Date, days: Int): Date = date_from_day_number(day_number(date) + days)
+
+    // The last day number, that of 31 December 9999.
+    const LAST_DAY: Int = 3652364
+
+    // Days since 1 March of year 0: 1 January of year 1 is day 306. The
+    // year is counted from March, so a leap day falls at the end of one.
+    fn day_number(date: Date): Int = {
+        let year = year_from_march(date)
+        let era = year / 400
+        let year_of_era = year - era * 400
+        let day_of_year = (153 * month_from_march(date.month) + 2) / 5 + date.day - 1
+        let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year
+        era * 146097 + day_of_era
+    }
+
+    // The date of a day number, the reverse of `day_number`.
+    fn date_from_day_number(number: Int where Range(306, LAST_DAY)): Date = {
+        let era = number / 146097
+        let day_of_era = number - era * 146097
+        let year_of_era = (day_of_era - day_of_era / 1460 + day_of_era / 36524 - day_of_era / 146096) / 365
+        let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100)
+        let month_index = (5 * day_of_year + 2) / 153
+        let day = day_of_year - (153 * month_index + 2) / 5 + 1
+        let month = month_of(month_index)
+        let year = year_of_era + era * 400
+        if month <= 2 {
+            Date { year: year + 1, month: month, day: day }
+        }
+        Date { year: year, month: month, day: day }
+    }
+
+    // The year a date is in, counting each year from 1 March.
+    fn year_from_march(date: Date): Int = {
+        if date.month <= 2 {
+            date.year - 1
+        }
+        date.year
+    }
+
+    // The month counted from March, which is 0, to February, which is 11.
+    fn month_from_march(month: Int): Int = {
+        if month > 2 {
+            month - 3
+        }
+        month + 9
+    }
+
+    // The month of the year, 1 to 12, from one counted from March.
+    fn month_of(index: Int): Int = {
+        if index < 10 {
+            index + 3
+        }
+        index - 9
+    }
+
+    // The machine's clock, in its own time zone, through C's time and
+    // localtime. A machine that can't tell the time, such as one with no
+    // clock, gives 1 January 1970 at midnight. A leap second is given as 59.
+    adapter SystemClock for Clock = {
+        fn today() = native croft_time_today()
+        fn now() = native croft_time_now()
+    }
+}
