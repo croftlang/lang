@@ -1,0 +1,5 @@
+# Left out of the published extension: only what VS Code runs ships.
+.gitignore
+.vscodeignore
+package-lock.json
+*.vsix
