@@ -3,6 +3,7 @@
 use super::{ParseResult, Parser};
 use crate::ast::{Expr, ExprKind, Issue};
 use crate::keyword::Keyword;
+use crate::span::Diagnostic;
 use crate::token::TokenKind;
 
 impl Parser {
@@ -20,7 +21,17 @@ impl Parser {
             TokenKind::LeftParen if self.starts_lambda_in_brackets() => {
                 self.advance();
 
-                let mut parameters = vec![self.expect_identifier()?];
+                let first = self.expect_identifier()?;
+
+                if self.check(&TokenKind::RightParen) {
+                    let message = format!(
+                        "a lambda with one parameter is written without brackets: `{} -> ...`",
+                        first.name
+                    );
+                    return Err(Diagnostic::new(message, first.span));
+                }
+
+                let mut parameters = vec![first];
 
                 while self.eat(&TokenKind::Comma) {
                     parameters.push(self.expect_identifier()?);
@@ -78,6 +89,8 @@ impl Parser {
 
     /// Whether the next tokens are `(total, item) ->`: the parameters of a
     /// lambda in brackets, which a lambda with more than one parameter needs.
+    /// A single name in brackets before `->` counts too, so that it can be
+    /// rejected with the form it should take.
     fn starts_lambda_in_brackets(&self) -> bool {
         let mut offset = 1;
 

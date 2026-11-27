@@ -62,8 +62,6 @@ module.exports = grammar({
     // `calls { Screen }` then `from != to` on the next line: the context the
     // ports come from, or a contract line about a parameter called `from`.
     [$.calls_clause],
-    // `(item)`: a name in brackets, or the parameter of `(item) -> item * 2`.
-    [$._expression, $._lambda_parameters],
   ],
 
   rules: {
@@ -534,11 +532,12 @@ module.exports = grammar({
       field('body', $._expression),
     )),
 
-    // `(total, item)`, before `->`.
+    // `(total, item)`, before `->`. A single parameter is written without
+    // brackets, so `(item) -> item` is not a lambda.
     _lambda_parameters: $ => seq(
       '(',
       field('parameter', $._name),
-      repeat(seq(',', field('parameter', $._name))),
+      repeat1(seq(',', field('parameter', $._name))),
       ')',
     ),
 

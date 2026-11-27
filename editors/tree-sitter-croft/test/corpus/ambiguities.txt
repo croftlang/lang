@@ -234,7 +234,7 @@ A lambda with its parameters in brackets, beside a name in brackets
 
 context A
 fn f(): Int = items.fold((start), (total, item) -> total + item)
-fn g(): List<Int> = items.map((item) -> item * 2)
+fn g(): List<Int> = items.map((item) * 2)
 
 --------------------------------------------------------------------------------
 
@@ -272,8 +272,18 @@ fn g(): List<Int> = items.map((item) -> item * 2)
           (identifier)
           (field_identifier))
         (arguments
-          (lambda_expression
-            (identifier)
-            (binary_expression
-              (identifier)
-              (integer))))))))
+          (binary_expression
+            (parenthesized_expression
+              (identifier))
+            (integer)))))))
+
+================================================================================
+A single lambda parameter in brackets
+:error
+================================================================================
+
+context A
+fn g(): List<Int> = items.map((item) -> item * 2)
+
+--------------------------------------------------------------------------------
+

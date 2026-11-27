@@ -1,6 +1,6 @@
 //! Parser tests for expressions.
 
-use super::{function_body, statements};
+use super::{function_body, parse_error, statements};
 use crate::ast::{BinaryOp, ExprKind, Statement};
 
 #[test]
@@ -52,6 +52,14 @@ fn reads_a_lambda_with_two_parameters() {
         lambda_body.kind,
         ExprKind::Binary(BinaryOp::Add, _, _)
     ));
+}
+
+#[test]
+fn rejects_one_lambda_parameter_in_brackets() {
+    assert_eq!(
+        parse_error("context Test {\nfn f(): List<Int> = [1, 2].map((item) -> item * 2)\n}"),
+        "a lambda with one parameter is written without brackets: `item -> ...`"
+    );
 }
 
 #[test]

@@ -4312,7 +4312,7 @@
           }
         },
         {
-          "type": "REPEAT",
+          "type": "REPEAT1",
           "content": {
             "type": "SEQ",
             "members": [
@@ -4659,10 +4659,6 @@
     ],
     [
       "calls_clause"
-    ],
-    [
-      "_expression",
-      "_lambda_parameters"
     ]
   ],
   "precedences": [],
