@@ -1335,7 +1335,12 @@ fn reads_the_system_clock() {
 
     assert_eq!(
         String::from_utf8_lossy(&past.stdout),
-        "today is in 2026 or after\nthe time is in the day\ndate_from_day_number: number must satisfy Range(306, LAST_DAY)\n"
+        "today is in 2026 or after\nthe time is in the day\n"
+    );
+
+    assert_eq!(
+        String::from_utf8_lossy(&past.stderr),
+        "date_from_day_number: number must satisfy Range(306, LAST_DAY)\n"
     );
 
     fs::remove_dir_all(output).ok();
