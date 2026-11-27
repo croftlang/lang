@@ -1,0 +1,5 @@
+[package]
+name = "text_numbers"
+
+[target.test]
+main = "Check"

@@ -748,6 +748,12 @@ fn runs_more_text_methods() {
     run_program("more_text");
 }
 
+/// to_int on text at the edges of Int's range, and past them.
+#[test]
+fn reads_numbers_only_as_far_as_int_reaches() {
+    run_program("text_numbers");
+}
+
 /// sort, sort_by, reverse, index_of and `+` on lists.
 #[test]
 fn runs_more_list_methods() {
