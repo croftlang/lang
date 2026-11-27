@@ -47,11 +47,38 @@ context Sums {
         0
     }
 
+    // Small numbers that can be below zero, divided without a call by
+    // testing their signs, and still rounded toward zero.
+    fn divide_small(a: Int where Range(-1000, 1000), b: Int where Range(1, 100)): Int = a / b
+
+    fn divide_by_negative(a: Int where Range(-1000, 1000), b: Int where Range(-100, -1)): Int = a / b
+
+    fn remainder_small(a: Int where Range(-1000, 1000), b: Int where Range(-100, -1)): Int = a % b
+
+    fn work_out_small(operation: String, a: Int, b: Int): Int = {
+        if operation == "small_divide" {
+            divide_small(a, b)
+        }
+        if operation == "small_divide_negative" {
+            divide_by_negative(a, b)
+        }
+        remainder_small(a, b)
+    }
+
     // Each whole number becomes a decimal of hundredths, which must fit in
     // 32 bits too.
-    fn work_out_decimal(operation: String, a: Decimal<2>, b: Decimal<2>): Decimal<2> = {
+    fn work_out_decimal(operation: String, a: Decimal<2>, b: Decimal<2>, times: Int): Decimal<2> = {
         if operation == "decimal_add" {
             a + b
+        }
+        if operation == "decimal_subtract" {
+            a - b
+        }
+        if operation == "decimal_negate" {
+            -(a - b)
+        }
+        if operation == "decimal_times" {
+            a * times
         }
         if operation == "decimal_multiply" {
             a * b
@@ -85,12 +112,16 @@ context Sums {
         let b = given.get(2).unwrap_or("0").to_int().unwrap_or(0)
         let c = given.get(3).unwrap_or("0").to_int().unwrap_or(0)
         if operation.starts_with("decimal") {
-            Console.print(work_out_decimal(operation, a, b).to_string())
+            Console.print(work_out_decimal(operation, a, b, b).to_string())
         }
         if operation.starts_with("checked") {
             Console.print(work_out_checked(operation, a, b).map(n -> n.to_string()).unwrap_or("none"))
         }
-        if !operation.starts_with("decimal") && !operation.starts_with("checked") {
+        if operation.starts_with("small") {
+            Console.print(work_out_small(operation, a, b).to_string())
+        }
+        let other = !operation.starts_with("checked") && !operation.starts_with("small")
+        if !operation.starts_with("decimal") && other {
             Console.print(work_out(operation, a, b, c).to_string())
         }
         Unit

@@ -19,15 +19,19 @@ unsigned long croft_int_magnitude(croft_int value)
     return value < 0 ? 0UL - (unsigned long) value : (unsigned long) value;
 }
 
-croft_int croft_int_add(croft_int a, croft_int b)
+/* a + b, saying message when it doesn't fit. */
+static croft_int croft_add_checking(croft_int a, croft_int b, const char *message)
 {
-    CROFT_CHECK(b < 0 ? a >= CROFT_INT_MIN - b : a <= CROFT_INT_MAX - b, "a whole number doesn't fit in 32 bits");
+    CROFT_CHECK(b < 0 ? a >= CROFT_INT_MIN - b : a <= CROFT_INT_MAX - b, message);
+    (void) message;
     return croft_int_from_bits((unsigned long) a + (unsigned long) b);
 }
 
-croft_int croft_int_subtract(croft_int a, croft_int b)
+/* a - b, saying message when it doesn't fit. */
+static croft_int croft_subtract_checking(croft_int a, croft_int b, const char *message)
 {
-    CROFT_CHECK(b < 0 ? a <= CROFT_INT_MAX + b : a >= CROFT_INT_MIN + b, "a whole number doesn't fit in 32 bits");
+    CROFT_CHECK(b < 0 ? a <= CROFT_INT_MAX + b : a >= CROFT_INT_MIN + b, message);
+    (void) message;
     return croft_int_from_bits((unsigned long) a - (unsigned long) b);
 }
 
@@ -40,11 +44,44 @@ croft_bool croft_int_multiply_fits(croft_int a, croft_int b)
     return right == 0 || left <= most / right;
 }
 
-/* The product's low 32 bits are the same however wide unsigned long is. */
+/* a * b, saying message when it doesn't fit. The product's low 32 bits are
+   the same however wide unsigned long is. */
+static croft_int croft_multiply_checking(croft_int a, croft_int b, const char *message)
+{
+    CROFT_CHECK(croft_int_multiply_fits(a, b), message);
+    (void) message;
+    return croft_int_from_bits((unsigned long) a * (unsigned long) b);
+}
+
+/* -a, saying message for the lowest number, whose negative needs 33 bits. */
+static croft_int croft_negate_checking(croft_int a, const char *message)
+{
+    CROFT_CHECK(a != CROFT_INT_MIN, message);
+    (void) message;
+    return croft_int_from_bits(0UL - (unsigned long) a);
+}
+
+/* How far a is from zero, saying message for the lowest number. */
+static croft_int croft_abs_checking(croft_int a, const char *message)
+{
+    CROFT_CHECK(a != CROFT_INT_MIN, message);
+    (void) message;
+    return croft_int_from_bits(croft_int_magnitude(a));
+}
+
+croft_int croft_int_add(croft_int a, croft_int b)
+{
+    return croft_add_checking(a, b, CROFT_WHOLE_TOO_BIG);
+}
+
+croft_int croft_int_subtract(croft_int a, croft_int b)
+{
+    return croft_subtract_checking(a, b, CROFT_WHOLE_TOO_BIG);
+}
+
 croft_int croft_int_multiply(croft_int a, croft_int b)
 {
-    CROFT_CHECK(croft_int_multiply_fits(a, b), "a whole number doesn't fit in 32 bits");
-    return croft_int_from_bits((unsigned long) a * (unsigned long) b);
+    return croft_multiply_checking(a, b, CROFT_WHOLE_TOO_BIG);
 }
 
 /* Rounds toward zero, which C89 leaves up to the compiler for a number
@@ -53,7 +90,7 @@ croft_int croft_int_divide(croft_int a, croft_int b)
 {
     unsigned long quotient;
     CROFT_CHECK(b != 0, "division by zero");
-    CROFT_CHECK(a != CROFT_INT_MIN || b != -1, "a whole number doesn't fit in 32 bits");
+    CROFT_CHECK(a != CROFT_INT_MIN || b != -1, CROFT_WHOLE_TOO_BIG);
     if (b == 0) {
         return 0;
     }
@@ -75,14 +112,12 @@ croft_int croft_int_remainder(croft_int a, croft_int b)
 
 croft_int croft_int_negate(croft_int a)
 {
-    CROFT_CHECK(a != CROFT_INT_MIN, "a whole number doesn't fit in 32 bits");
-    return croft_int_from_bits(0UL - (unsigned long) a);
+    return croft_negate_checking(a, CROFT_WHOLE_TOO_BIG);
 }
 
 croft_int croft_int_abs(croft_int a)
 {
-    CROFT_CHECK(a != CROFT_INT_MIN, "a whole number doesn't fit in 32 bits");
-    return croft_int_from_bits(croft_int_magnitude(a));
+    return croft_abs_checking(a, CROFT_WHOLE_TOO_BIG);
 }
 
 /* The base multiplied by itself exponent times, through croft_int_multiply,
@@ -159,4 +194,28 @@ croft_bool croft_int_checked_multiply(croft_int a, croft_int b, croft_int *out)
 croft_int croft_int_shift_left(croft_int value, croft_int amount)
 {
     return croft_int_from_bits((unsigned long) value << amount);
+}
+
+/* The smallest units of decimals are whole numbers too, but say so when
+   they don't fit. */
+croft_int croft_decimal_add(croft_int a, croft_int b)
+{
+    return croft_add_checking(a, b, CROFT_DECIMAL_TOO_BIG);
+}
+
+croft_int croft_decimal_subtract(croft_int a, croft_int b)
+{
+    return croft_subtract_checking(a, b, CROFT_DECIMAL_TOO_BIG);
+}
+
+/* A decimal times a whole number, or a whole number made a decimal by
+   multiplying it by the units in one. */
+croft_int croft_decimal_scale(croft_int a, croft_int b)
+{
+    return croft_multiply_checking(a, b, CROFT_DECIMAL_TOO_BIG);
+}
+
+croft_int croft_decimal_negate(croft_int a)
+{
+    return croft_negate_checking(a, CROFT_DECIMAL_TOO_BIG);
 }

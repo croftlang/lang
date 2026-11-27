@@ -56,7 +56,7 @@ fn as_long(c: &str) -> String {
 
 /// Whether `c` needs no brackets to be cast whole: a name, a place or one
 /// bracketed group.
-fn is_atom(c: &str) -> bool {
+pub(super) fn is_atom(c: &str) -> bool {
     if c.chars()
         .all(|ch| ch.is_ascii_alphanumeric() || "_.[]".contains(ch))
     {

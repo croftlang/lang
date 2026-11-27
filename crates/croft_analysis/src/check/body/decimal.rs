@@ -30,7 +30,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         });
 
         if units.is_some_and(|units| !fits(units)) {
-            let message = format!("`{text}` doesn't fit in a `Decimal<{places}>`");
+            let message = format!("`{text}` doesn't fit in 32 bits as a `Decimal<{places}>`");
             self.error(message, span);
         }
 

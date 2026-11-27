@@ -360,9 +360,14 @@ void croft_argument(croft_int index, char *out, croft_u16 *length, croft_u16 cap
     CROFT_CHECK(text[*length] == '\0', "an argument is longer than a string can hold");
 }
 
+/* A character at a time, since some machines' C libraries, such as
+   z88dk's for its test machine, write nothing to the screen through fwrite. */
 void croft_console_print(croft_string_view text, croft_unit *out)
 {
-    fwrite(text.text, 1, text.length, stdout);
+    croft_u16 index;
+    for (index = 0; index < text.length; index++) {
+        putchar(text.text[index]);
+    }
     putchar('\n');
     *out = 0;
 }

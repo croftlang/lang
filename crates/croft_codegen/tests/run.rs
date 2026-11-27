@@ -962,11 +962,20 @@ fn works_out_whole_numbers_in_32_bits() {
         )
     };
 
+    // A small divisor that is never zero divides inline, with its sign tested.
+    let body = fs::read_to_string(checked.join("program.c")).expect("the program");
+
+    assert!(
+        body.contains("(*out) = (p_a < 0 ? (-((-p_a) / p_b)) : (p_a / p_b));"),
+        "{body}"
+    );
+
     let too_big = (Some(1), "a whole number doesn't fit in 32 bits".to_string());
     let by_zero = (Some(1), "division by zero".to_string());
     let low_above_high = (Some(1), "clamp's low is above its high".to_string());
     let below_zero = (Some(1), "pow's exponent is below zero".to_string());
     let none = (Some(0), "none".to_string());
+    let decimal_too_big = (Some(1), "a decimal doesn't fit in 32 bits".to_string());
 
     // What each gives with checks on, and with them off.
     let cases = [
@@ -998,11 +1007,49 @@ fn works_out_whole_numbers_in_32_bits() {
             "-2147483648",
         ),
         ("sum 2147483647 1", too_big.clone(), "-2147483648"),
-        ("decimal_add 21474836 1", too_big.clone(), "-21474835.96"),
-        ("decimal_add 30000000 0", too_big.clone(), "-12949672.96"),
+        ("small_divide -7 2", (Some(0), "-3".to_string()), "-3"),
+        ("small_divide 7 2", (Some(0), "3".to_string()), "3"),
+        (
+            "small_divide_negative -7 -2",
+            (Some(0), "3".to_string()),
+            "3",
+        ),
+        (
+            "small_divide_negative 7 -2",
+            (Some(0), "-3".to_string()),
+            "-3",
+        ),
+        ("small_remainder -7 -2", (Some(0), "-1".to_string()), "-1"),
+        ("small_remainder 7 -2", (Some(0), "1".to_string()), "1"),
+        (
+            "decimal_add 21474836 1",
+            decimal_too_big.clone(),
+            "-21474835.96",
+        ),
+        (
+            "decimal_add 30000000 0",
+            decimal_too_big.clone(),
+            "-12949672.96",
+        ),
+        (
+            "decimal_subtract -21474836 1",
+            decimal_too_big.clone(),
+            "21474835.96",
+        ),
+        (
+            "decimal_negate 5 2",
+            (Some(0), "-3.00".to_string()),
+            "-3.00",
+        ),
+        (
+            "decimal_times 1000 -3",
+            (Some(0), "-3000.00".to_string()),
+            "-3000.00",
+        ),
+        ("decimal_times 21474836 2", decimal_too_big.clone(), "-0.96"),
         (
             "decimal_multiply 50000 50000",
-            too_big.clone(),
+            decimal_too_big.clone(),
             "8918968.32",
         ),
         (

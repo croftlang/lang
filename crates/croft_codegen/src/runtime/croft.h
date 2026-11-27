@@ -135,7 +135,11 @@ void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u1
 
 /* Arithmetic that may go past 32 bits, or divide by zero. With checks on
    either stops the program; with them off the answer wraps around in 32
-   bits, and dividing by zero gives 0. */
+   bits, and dividing by zero gives 0. A checked program says which: a
+   whole number, or the smallest units of a decimal, that would need more. */
+#define CROFT_WHOLE_TOO_BIG "a whole number doesn't fit in 32 bits"
+#define CROFT_DECIMAL_TOO_BIG "a decimal doesn't fit in 32 bits"
+
 croft_int croft_int_from_bits(unsigned long bits);
 unsigned long croft_int_magnitude(croft_int value);
 croft_int croft_int_add(croft_int a, croft_int b);
@@ -154,6 +158,12 @@ croft_bool croft_int_checked_subtract(croft_int a, croft_int b, croft_int *out);
 croft_bool croft_int_checked_multiply(croft_int a, croft_int b, croft_int *out);
 croft_int croft_int_shift_left(croft_int value, croft_int amount);
 
+/* Decimals are kept as whole numbers of their smallest units, and checked
+   the same way, but say a decimal is what doesn't fit. */
+croft_int croft_decimal_add(croft_int a, croft_int b);
+croft_int croft_decimal_subtract(croft_int a, croft_int b);
+croft_int croft_decimal_scale(croft_int a, croft_int b);
+croft_int croft_decimal_negate(croft_int a);
 croft_int croft_divide_even(croft_int numerator, croft_int denominator);
 croft_int croft_decimal_multiply(croft_int a, croft_int b, croft_int scale);
 croft_int croft_decimal_divide(croft_int a, croft_int b, croft_int scale);

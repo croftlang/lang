@@ -111,7 +111,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         .describe();
 
         let message = format!(
-            "`{}` gives {answer}, which doesn't fit in a `Decimal<{places}>`",
+            "`{}` gives {answer}, which doesn't fit in 32 bits as a `Decimal<{places}>`",
             whole.text()
         );
 
