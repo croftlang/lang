@@ -32,7 +32,7 @@ npx @vscode/vsce package
 code --install-extension croft-*.vsix
 ```
 
-Pushing a version tag publishes it to the VS Code Marketplace and Open VSX, from
+Pushing a version tag publishes it to the VS Code Marketplace (through Trusted Publishing) and Open VSX, from
 `.github/workflows/release.yml`.
 
 The grammar is `syntaxes/croft.tmLanguage.json`, a TextMate grammar. Editors that read

@@ -168,7 +168,7 @@ jobs:
         run: npm version "${TAG#v}" --no-git-tag-version --allow-same-version
 
       - name: Package
-        run: npx --yes @vscode/vsce@3 package --out ../../croft.vsix
+        run: npx --yes @vscode/vsce@4 package --out ../../croft.vsix
 
       - uses: actions/upload-artifact@v4
         with:
@@ -200,14 +200,19 @@ jobs:
             --title "Croft ${GITHUB_REF_NAME#v}" \
             --generate-notes
 
-  # Each store is skipped until its token is a repository secret: VSCE_PAT for
-  # the VS Code Marketplace (publisher croftlang), OVSX_PAT for Open VSX
-  # (namespace croftlang).
+  # The VS Code Marketplace trusts this workflow through the croftlang
+  # publisher's Trusted Publishing policy, so it needs no secret: the job's
+  # GitHub OIDC token is exchanged for a short-lived Marketplace one. Open VSX
+  # is skipped until OVSX_PAT is a repository secret (namespace croftlang).
   publish-vscode:
     name: publish the VS Code extension
     needs: [vscode, release]
     if: always() && needs.vscode.result == 'success' && (needs.release.result == 'success' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - uses: actions/setup-node@v4
@@ -219,15 +224,7 @@ jobs:
           name: croft-vscode
 
       - name: Publish to the VS Code Marketplace
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: |
-          if [ -z "$VSCE_PAT" ]; then
-            echo "No VSCE_PAT secret, so the Marketplace is skipped."
-            exit 0
-          fi
-
-          npx --yes @vscode/vsce@3 publish --packagePath croft.vsix
+        run: npx --yes @vscode/vsce@4 publish --oidc --packagePath croft.vsix
 
       - name: Publish to Open VSX
         env:
