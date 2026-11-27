@@ -60,6 +60,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         passed
     }
 
+    /// Passes `c`, a value of `ty`, the way a parameter takes it: a string as
+    /// a view, a number by value, and anything else by pointer.
     pub fn pass(&self, c: String, ty: &Type) -> String {
         if is_string(ty) {
             return self.view_of(&c);

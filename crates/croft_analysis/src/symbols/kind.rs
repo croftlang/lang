@@ -1,5 +1,6 @@
 //! The kinds of thing a name can refer to.
 
+/// What kind of declaration a name refers to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SymbolKind {
     Value,
@@ -24,6 +25,7 @@ pub enum SymbolKind {
 }
 
 impl SymbolKind {
+    /// Whether a name of this kind can be used as a type.
     pub fn is_type(self) -> bool {
         use SymbolKind::*;
 
@@ -33,6 +35,7 @@ impl SymbolKind {
         )
     }
 
+    /// The kind with its article, for messages, such as `a value`.
     pub fn describe(self) -> &'static str {
         use SymbolKind::*;
 

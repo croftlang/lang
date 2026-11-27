@@ -5,6 +5,7 @@ use crate::symbols::SymbolKind;
 use crate::types::{Resolved, Type};
 
 impl<'a> Model<'a> {
+    /// The variants of an enum or error set, with their fields' types.
     pub fn variants(&self, named: &Resolved) -> Vec<VariantInfo> {
         let variants = self.checker.variants_of(named);
 
@@ -35,6 +36,8 @@ impl<'a> Model<'a> {
         }
     }
 
+    /// The errors a type stands for: an error is itself, `Room.Error` is every
+    /// error of `Room`, and an enum is every error it includes.
     pub fn error_members(&self, named: &Resolved) -> Vec<Resolved> {
         self.checker.error_members(named)
     }

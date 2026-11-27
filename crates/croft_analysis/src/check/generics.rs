@@ -83,7 +83,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// The template an instance's type was made from, if it is one.
+    /// Whether `ty` is an instance made from `template`.
     pub(super) fn is_instance_of(&self, ty: &Type, template: &Resolved) -> bool {
         matches!(ty, Type::Named(named) if named.name.starts_with(&format!("{}<", template.name)))
     }

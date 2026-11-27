@@ -18,6 +18,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.block_to(statements, want, Some(target))
     }
 
+    /// Writes a block's statements, its last line's value into `into` when
+    /// given, and gives back that value.
     fn block_to(&mut self, statements: &[Statement], want: &Type, into: Option<&str>) -> String {
         self.push_scope();
 
@@ -190,6 +192,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.close();
     }
 
+    /// Whether a block ends in a step, such as an `if`, a loop or an `emit`,
+    /// rather than a value.
     fn is_steps(&self, statements: &[Statement]) -> bool {
         match statements.last() {
             Some(Statement::Expr(value)) => {

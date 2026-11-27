@@ -59,6 +59,8 @@ fn record_path(value: &Expr) -> Option<Path> {
     starts_upper.then_some(path)
 }
 
+/// The dotted name an expression spells, such as `Room.Enemy`, when it is
+/// made only of names and field access.
 pub(super) fn expr_to_path(value: &Expr) -> Option<Path> {
     match &value.kind {
         ExprKind::Name(name) => {

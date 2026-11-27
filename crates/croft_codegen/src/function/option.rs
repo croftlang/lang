@@ -7,6 +7,7 @@ use super::Writer;
 use crate::names::c_string;
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// A method of `option`, an option of `item`.
     pub(super) fn option_method(
         &mut self,
         option: &str,

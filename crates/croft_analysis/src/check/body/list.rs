@@ -104,6 +104,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         }
     }
 
+    /// The single lambda argument of a list method, which must give back `result`.
     pub(super) fn lambda_returning(
         &mut self,
         name: &str,

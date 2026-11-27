@@ -1,4 +1,5 @@
-//! Turning values into bytes and back, for `FileStorage`. Every number is
+//! Turning values into bytes and back, for repositories that keep their
+//! aggregates through `Storage`. Every number is
 //! four bytes, least significant first, whatever width it has in memory, so
 //! a save means the same on every machine. Strings, bytes and lists start
 //! with their length in two bytes; an option starts with whether it is set.
@@ -60,6 +61,8 @@ impl<'a> Generator<'a> {
         format!("{prototypes}\n{bodies}")
     }
 
+    /// The bodies of the functions that write a value of `ty` and read it
+    /// back.
     fn serializer_bodies(&self, ty: &Type) -> (String, String) {
         match ty {
             Type::List(item) | Type::SizedList(item, _) => {

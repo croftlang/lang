@@ -9,6 +9,7 @@ use crate::keyword::Keyword;
 use crate::token::TokenKind;
 
 impl Parser {
+    /// A whole expression, `or` included.
     pub(super) fn parse_expression(&mut self) -> ParseResult<Expr> {
         let mut value = self.parse_or_operand()?;
 
@@ -28,6 +29,7 @@ impl Parser {
         self.parse_binary(1)
     }
 
+    /// Binary operators that bind at least as tightly as `min_precedence`.
     fn parse_binary(&mut self, min_precedence: u8) -> ParseResult<Expr> {
         let mut left = self.parse_unary()?;
 
@@ -46,6 +48,8 @@ impl Parser {
         Ok(left)
     }
 
+    /// The binary operator next, with its precedence. None when a new line
+    /// comes first, since a new line ends the expression.
     fn binary_operator(&self) -> Option<(BinaryOp, u8)> {
         if self.peek().newline_before {
             return None;
@@ -78,6 +82,7 @@ impl Parser {
         Some(operator)
     }
 
+    /// `!`, `-` or `~` before an operand, or a postfix expression.
     fn parse_unary(&mut self) -> ParseResult<Expr> {
         let span = self.span();
 

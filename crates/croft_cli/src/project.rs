@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use croft_analysis::{Manifest, Program, MANIFEST_FILE};
 use croft_syntax::{parse, Diagnostic, SourceId};
 
+/// A file of the project, and its text.
 pub struct SourceFile {
     pub path: PathBuf,
     pub text: String,
@@ -21,6 +22,7 @@ pub struct Project {
 }
 
 impl Project {
+    /// Reads the project at `path`: a folder, or a single source file.
     pub fn load(path: &Path) -> Result<Project, String> {
         let metadata = fs::metadata(path)
             .map_err(|error| format!("cannot open `{}`: {error}", path.display()))?;
@@ -123,6 +125,8 @@ pub fn source_paths(path: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(paths)
 }
 
+/// Adds every source file under `dir` to `found`, skipping names that
+/// start with `.` and folders called `target`.
 fn find_source_files(dir: &Path, found: &mut Vec<PathBuf>) -> std::io::Result<()> {
     for entry in fs::read_dir(dir)? {
         let path = entry?.path();

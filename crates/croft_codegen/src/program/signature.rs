@@ -12,6 +12,7 @@ use crate::types::width::{declared_range, width_for};
 use crate::Generator;
 
 impl<'a> Generator<'a> {
+    /// The Croft type of each parameter, each bounded by its `Length`.
     pub(super) fn lower_parameters(
         &self,
         context: &str,

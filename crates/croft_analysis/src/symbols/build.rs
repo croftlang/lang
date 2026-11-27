@@ -1,3 +1,5 @@
+//! Building a context's symbol table from its declarations.
+
 use croft_syntax::ast::{FunctionKind, Identifier};
 use croft_syntax::Diagnostic;
 

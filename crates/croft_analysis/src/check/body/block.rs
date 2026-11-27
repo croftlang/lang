@@ -27,6 +27,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         })
     }
 
+    /// `let`: names a value, with the type written or the value's own. Only a
+    /// service's `let` can be changed with `set`.
     pub(super) fn check_let(
         &mut self,
         name: &Identifier,

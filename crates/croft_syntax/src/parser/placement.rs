@@ -1,7 +1,8 @@
 //! Explains where a declaration belongs when it turns up in the wrong place.
 //!
 //! A file holds contexts and domains; a context holds most declarations; an
-//! aggregate holds fields, entities, invariants, errors, events and commands.
+//! aggregate holds fields, entities, invariants, errors, events, commands and
+//! factories.
 
 use super::Parser;
 use crate::keyword::Keyword;
@@ -101,6 +102,7 @@ impl Parser {
         Some(Diagnostic::new(message, self.span()))
     }
 
+    /// The next token, when it is a keyword.
     fn peeked_keyword(&self) -> Option<Keyword> {
         match self.peek().kind {
             TokenKind::Keyword(keyword) => Some(keyword),

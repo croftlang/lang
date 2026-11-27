@@ -172,6 +172,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             .insert(name.to_string(), (c, ty));
     }
 
+    /// What a Croft name refers to, from the innermost scope out.
     pub fn lookup(&self, name: &str) -> Option<(String, Type)> {
         self.scopes
             .iter()
@@ -190,10 +191,12 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.parameters.push(name.to_string());
     }
 
+    /// Starts a new innermost scope.
     pub fn push_scope(&mut self) {
         self.scopes.push(HashMap::new());
     }
 
+    /// Ends the innermost scope, and the names it held.
     pub fn pop_scope(&mut self) {
         self.scopes.pop();
     }

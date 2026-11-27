@@ -134,6 +134,7 @@ impl<'a> Checker<'a> {
     }
 }
 
+/// A dotted name as a path, with no place in the source.
 fn path_of(name: &str) -> Path {
     Path {
         segments: name

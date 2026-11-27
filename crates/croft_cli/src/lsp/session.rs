@@ -22,6 +22,7 @@ pub struct CheckedFile {
     pub text: String,
 }
 
+/// A project as it was last checked.
 pub struct ProjectState {
     pub analysis: Analysis,
     pub files: Vec<CheckedFile>,
@@ -30,10 +31,12 @@ pub struct ProjectState {
 }
 
 impl ProjectState {
+    /// The checked file with source id `id`.
     pub fn file(&self, id: SourceId) -> Option<&CheckedFile> {
         self.files.iter().find(|file| file.id == id)
     }
 
+    /// The checked file at `path`.
     pub fn file_at(&self, path: &Path) -> Option<&CheckedFile> {
         self.files.iter().find(|file| file.path == path)
     }
@@ -51,6 +54,7 @@ impl ProjectState {
     }
 }
 
+/// Every open file and checked project the server knows about.
 #[derive(Default)]
 pub struct Session {
     /// The workspace folder: the search for `croft.toml` stops here.
@@ -66,6 +70,7 @@ pub struct Session {
 }
 
 impl Session {
+    /// A session with nothing open yet, for the workspace folder `root`.
     pub fn new(root: Option<PathBuf>) -> Session {
         Session {
             root,
@@ -73,10 +78,12 @@ impl Session {
         }
     }
 
+    /// Records the text of a file open in the editor.
     pub fn open(&mut self, path: PathBuf, text: String) {
         self.open.insert(path, text);
     }
 
+    /// Forgets a file the editor has closed, so it is read from disk again.
     pub fn close(&mut self, path: &Path) {
         self.open.remove(path);
     }
@@ -112,11 +119,14 @@ impl Session {
         path.to_path_buf()
     }
 
+    /// The source id of a file, the same for the whole session.
     fn id_for(&mut self, path: &Path) -> SourceId {
         let next = SourceId(self.ids.len() as u32);
         *self.ids.entry(path.to_path_buf()).or_insert(next)
     }
 
+    /// Parses and checks the project at `key`. A file the editor has open is
+    /// read as it is there, and `changed` is included even when it is not saved.
     fn check(&mut self, key: &Path, changed: &Path) -> Result<ProjectState, String> {
         let mut paths: Vec<PathBuf> = match Project::load(key) {
             Ok(project) => project.files.into_iter().map(|file| file.path).collect(),

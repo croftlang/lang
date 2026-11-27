@@ -20,6 +20,7 @@ pub(crate) enum Known {
 }
 
 impl Known {
+    /// A known whole number.
     pub(crate) fn int(value: i64) -> Known {
         Known::Number {
             units: i128::from(value),
@@ -69,6 +70,8 @@ impl Known {
         }
     }
 
+    /// `!` or `-` applied to a known value, or `None` when it doesn't apply or
+    /// the result overflows.
     pub(crate) fn unary(op: UnaryOp, operand: Known) -> Option<Known> {
         match (op, operand) {
             (UnaryOp::Not, Known::Bool(value)) => Some(Known::Bool(!value)),

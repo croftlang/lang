@@ -41,6 +41,8 @@ impl Request {
     }
 }
 
+/// The name of an instance: the template's name with its type arguments,
+/// such as `Pair<Int, String>`.
 pub fn instance_name(template: &str, arguments: &[TypeExpr]) -> String {
     let arguments: Vec<String> = arguments.iter().map(TypeExpr::text).collect();
     format!("{template}<{}>", arguments.join(", "))

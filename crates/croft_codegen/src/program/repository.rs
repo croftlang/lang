@@ -17,7 +17,8 @@ use crate::Generator;
 /// Keys fit the eight characters of a FAT file name.
 const KEY_LENGTH: usize = 8;
 
-/// What a repository operation `Storage` provides works on.
+/// The repository, aggregate and `Storage` adapter that one operation
+/// `Storage` provides works on.
 struct Stored<'r> {
     repository: &'r Resolved,
     aggregate: &'r Resolved,

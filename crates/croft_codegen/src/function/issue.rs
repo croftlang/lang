@@ -9,6 +9,7 @@ use super::{Into, Writer};
 use crate::names::{aggregate_kind, c_name, event_kind};
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// Issues a command on an aggregate, given as a value or by its identity.
     pub fn issue(&mut self, value: &Expr, issue: &Issue, ty: &Type, into: Into<'_>) -> String {
         let meaning = self.gen.facts.meaning(value.id).cloned();
 
@@ -80,7 +81,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// `emit EnemyDamaged { ... }`: queued until its aggregate is saved, and
-    /// handled once the service ends.
+    /// handed to policies once the service ends.
     pub fn emit(&mut self, event: &Path, fields: &[FieldValue]) -> String {
         let Some(aggregate) = self.aggregate.clone() else {
             return "0".to_string();

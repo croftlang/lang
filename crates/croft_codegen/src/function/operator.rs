@@ -7,9 +7,12 @@ use super::Writer;
 use crate::types::bounds::{is_bytes, is_string, list_item};
 use crate::types::constant::evaluate;
 
+/// Every shift amount is below this: the bits in the smallest `Int` on any
+/// target.
 const MAX_SHIFT: i64 = croft_analysis::MAX_SHIFT;
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// `left op right`, giving a value of `ty`.
     pub(super) fn binary(&mut self, op: BinaryOp, left: &Expr, right: &Expr, ty: &Type) -> String {
         use BinaryOp::*;
 

@@ -8,10 +8,10 @@ use crate::roles::{ends_value, is_name, Role};
 /// side by side on one line. `inside` is the bracket they are in, when it
 /// was opened earlier on the same line.
 ///
-/// Words and operators get one space between them. There is none inside
-/// brackets, before `,`, `:`, `.` and `?`, after `.` and a `-`, `!` or `~`
-/// that comes before a value, around type arguments, or before the `(` of a
-/// call or parameter list. Fields written side by side without commas,
+/// Words and operators get one space between them. There is none just
+/// inside `()` and `[]`, in an empty `{}`, before `,`, `:`, `.` and `?`,
+/// after `.`, after a `-`, `!` or `~` that comes before a value, around type
+/// arguments, or before the `(` of a call or parameter list. Fields written side by side without commas,
 /// `{ first: A  second: B }`, are kept apart with two spaces.
 pub(crate) fn space_between(
     tokens: &[Token],

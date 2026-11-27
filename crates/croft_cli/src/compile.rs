@@ -16,6 +16,7 @@ pub struct Output {
     pub sources: Vec<String>,
 }
 
+/// `croft compile`: writes C for one target and says where it went.
 pub fn compile(arguments: &[String]) -> Result<(), String> {
     let (path, target) = parse_arguments(arguments)?;
     let output = write_c(&path, target)?;
@@ -110,12 +111,13 @@ pub fn write_c(path: &Path, target: Option<String>) -> Result<Output, String> {
     })
 }
 
+/// Writes `contents` to the file at `path`.
 fn write(path: &Path, contents: &str) -> Result<(), String> {
     fs::write(path, contents).map_err(|error| format!("cannot write `{}`: {error}", path.display()))
 }
 
-/// The target named with `--target`, or an error listing the targets
-/// croft.toml has.
+/// The target named with `--target`. Fails when there is no `croft.toml`,
+/// or when no target is named, listing the targets `croft.toml` has.
 fn choose_target(
     program: &croft_analysis::Program,
     target: Option<String>,

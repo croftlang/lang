@@ -40,6 +40,8 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// An enum's variants are each declared once, and what it includes is an
+    /// enum, an error or an error set.
     pub(super) fn check_enum(&mut self, scope: &Scope, enum_decl: &EnumDecl) {
         let mut seen = HashSet::new();
 

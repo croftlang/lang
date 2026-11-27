@@ -54,6 +54,7 @@ impl<'a> Generator<'a> {
         })
     }
 
+    /// A `#define` for each error's code, then the `croft_error` struct.
     pub fn error_definition(&self) -> String {
         let mut out = String::new();
         let mut cases = String::new();

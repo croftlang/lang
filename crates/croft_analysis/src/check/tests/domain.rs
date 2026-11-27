@@ -1,9 +1,14 @@
+//! The domain and its context map.
+
 use super::check_files;
 
+/// A context that publishes a service that fails.
 const SHOP: &str = "context Shop {\n publish { Open }\n error Closed\n service Open(): Result<Unit, Closed> = Err(Closed)\n}";
+/// A context with an aggregate and nothing published.
 const STOCK: &str =
     "context Stock {\n identity ItemId for Item: Int\n aggregate Item { id: ItemId }\n}";
 
+/// A `Market` domain listing `contexts`, that runs `body`.
 fn domain(contexts: &str, body: &str) -> String {
     format!("domain Market {{\n contexts {{ {contexts} }}\n use {{ Open }} from Shop\n}} = {{\n{body}\n}}")
 }
@@ -35,6 +40,7 @@ fn reports_an_unknown_context() {
     assert_eq!(errors, vec!["cannot find a context named `Till`"]);
 }
 
+/// A context that uses `Shop`.
 const TILL: &str = "context Till {\n use { Open } from Shop\n}";
 
 #[test]

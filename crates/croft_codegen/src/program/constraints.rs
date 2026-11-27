@@ -157,12 +157,14 @@ impl<'a> Generator<'a> {
         Some(name)
     }
 
+    /// A writer for the body of a check function at `place`.
     fn check_writer(&self, place: &CheckPlace) -> Writer<'_, 'a> {
         let mut writer = Writer::new(self, place.context, Returns::Nothing);
         writer.aggregate = place.aggregate.map(str::to_string);
         writer
     }
 
+    /// Keeps a finished check function and its prototype.
     fn add_check(&self, writer: Writer, signature: &str) {
         self.checks
             .borrow_mut()

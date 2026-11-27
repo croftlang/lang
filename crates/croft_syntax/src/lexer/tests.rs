@@ -1,12 +1,16 @@
+//! Tests for the lexer.
+
 use super::{tokenize, tokenize_with_comments};
 use crate::keyword::Keyword;
 use crate::span::SourceId;
 use crate::token::{Token, TokenKind};
 
+/// The tokens of `source`, which must tokenize.
 fn tokens(source: &str) -> Vec<Token> {
     tokenize(source, SourceId(0)).expect("source should tokenize")
 }
 
+/// The kinds of the tokens of `source`.
 fn token_kinds(source: &str) -> Vec<TokenKind> {
     tokens(source).into_iter().map(|token| token.kind).collect()
 }

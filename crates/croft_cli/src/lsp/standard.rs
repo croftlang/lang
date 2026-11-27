@@ -16,6 +16,7 @@ pub fn folder() -> PathBuf {
     std::env::temp_dir().join(format!("croft-{}-standard", env!("CARGO_PKG_VERSION")))
 }
 
+/// The name of the file a standard context is written to.
 fn file_name(context: &str) -> String {
     format!("{context}.croft")
 }

@@ -1,5 +1,5 @@
 //! Generates C for small Croft programs, builds it with the system C compiler
-//! in strict C89 mode, and runs it. Each program's start service fails, and
+//! in strict C89 mode, and runs it. Each program's main service fails, and
 //! so exits with 1, if any of its checks gives the wrong answer.
 
 mod support;
@@ -284,8 +284,8 @@ fn makes_aggregates_through_factories() {
     run_program("factories");
 }
 
-/// Each broken constraint stops a debug build with a message naming it, and a
-/// release build doesn't check.
+/// Each broken constraint stops the program with a message naming it, and a
+/// target that sets `checks = false` doesn't check.
 #[test]
 fn checks_rules_in_every_build_by_default() {
     if !has_c_compiler() {
@@ -439,6 +439,7 @@ fn runs_the_logistics_fixture() {
     run_program_at(&logistics(), "logistics_run");
 }
 
+/// The folder of the Logistics fixture.
 fn logistics() -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/logistics")
 }
@@ -759,8 +760,8 @@ fn runs_result_methods() {
     run_program("results");
 }
 
-/// A parameter's constraint with `or` fails the call with its error, with
-/// checks on and with the target's checks turned off.
+/// A constraint with `or`, on a parameter or in the contract, fails the call
+/// with its error, with checks on and with the target's checks turned off.
 #[test]
 fn fails_with_a_constraints_error() {
     run_program("failing_constraints");

@@ -2,36 +2,65 @@
 //! and every variable declared first, so each value is worked out into a
 //! temporary and the declarations are gathered at the top.
 
+/// Passing call arguments.
 mod arguments;
+/// Blocks and their statements.
 mod block;
+/// Built-in functions.
 mod builtin;
+/// `Bytes` literals and methods.
 mod bytes;
+/// Calls to declared functions, variants and native C.
 mod call;
+/// Testing values against constraints.
 mod constraint;
+/// `Decimal` arithmetic.
 mod decimal;
+/// Turning expressions into C.
 mod expression;
+/// `?` and `or`.
 mod failure;
+/// Issuing commands and raising events.
 mod issue;
+/// List methods and literals.
 mod list;
+/// List methods that take a lambda.
 mod list_lambda;
+/// Map literals and methods.
 mod map;
+/// `match`.
 mod matching;
+/// Method calls.
 mod method;
+/// Operators.
 mod operator;
+/// Option methods.
 mod option;
+/// Writing lines and the finished function.
 mod output;
+/// Names and properties.
 mod property;
+/// Which whole numbers an expression can be.
 pub(crate) mod range;
+/// Records, `with` and variants with data.
 mod record;
+/// Loops.
 mod repeat;
+/// Result methods.
 mod result;
+/// Names, variables and temporaries in a function.
 mod scope;
+/// String methods.
 mod string;
+/// Fields kept in a size of their own.
 mod text;
+/// Tidying the finished C.
 mod unused;
+/// Borrowed strings.
 mod view;
 
 pub(crate) use unused::mentions;
+/// Whether a name is read or set.
 mod usage;
 
 use std::collections::{HashMap, HashSet};
@@ -62,6 +91,8 @@ pub struct OwnFields {
     pub owner: Option<croft_analysis::types::Resolved>,
 }
 
+/// Writes the C for one function: its declarations, its lines, and what
+/// each Croft name in scope refers to.
 pub struct Writer<'g, 'a> {
     pub gen: &'g Generator<'a>,
     pub context: String,
@@ -101,6 +132,8 @@ pub struct Writer<'g, 'a> {
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// A writer for a function in `context` that gives back its value as
+    /// `returns` says.
     pub fn new(gen: &'g Generator<'a>, context: &str, returns: Returns) -> Self {
         Writer {
             gen,

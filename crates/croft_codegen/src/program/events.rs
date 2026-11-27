@@ -9,7 +9,9 @@ use crate::function::{Returns, Writer};
 use crate::names::{aggregate_kind, c_name, event_kind};
 use crate::Generator;
 
+/// How many events the queue holds at once.
 const EVENT_CAPACITY: usize = 16;
+/// The C source of the event queue, with a placeholder for the policies.
 const EVENT_QUEUE: &str = include_str!("../runtime/events.c");
 
 impl<'a> Generator<'a> {

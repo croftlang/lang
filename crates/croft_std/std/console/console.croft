@@ -1,8 +1,9 @@
 // Std.Console: the command line a program runs from. Every program has it,
-// and its names need no import: a service lists `Console` or `Arguments` in
-// `calls` and uses them. Every target supplies both, so croft.toml names no
-// adapter for them; the compiler writes their C. A port the program declares
-// with the same name replaces one of these.
+// and its names need no import: a service lists the ports it needs in its
+// contract, as in `calls { Console, Arguments }`, and calls them by name, as
+// in `Console.print("hello")`. Every target supplies both, so croft.toml
+// names no adapter for them; the compiler writes their C. A port the program
+// declares with the same name replaces one of these.
 context Console {
     publish { Console, Arguments }
 

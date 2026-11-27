@@ -1,3 +1,5 @@
+//! Function shapes and naming conventions.
+
 use super::{assert_error, dungeon};
 
 #[test]

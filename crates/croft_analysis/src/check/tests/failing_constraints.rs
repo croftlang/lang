@@ -1,5 +1,6 @@
-//! Constraints with `or`: a parameter's constraint that, when broken, fails
-//! the call with an error the caller handles, instead of being a mistake.
+//! Constraints with `or`: a parameter's constraint or a contract line that,
+//! when broken, fails the call with an error the caller handles, instead of
+//! being a mistake.
 
 use super::{assert_error, errors};
 

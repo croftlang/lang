@@ -9,20 +9,24 @@ use croft_syntax::ast::{ConstraintUse, TypeExpr};
 use super::bounds::unbounded;
 use super::constant::evaluate;
 
-/// Used when no `Length` constraint says otherwise.
+/// How many items a list or map holds when no `Length` constraint says otherwise.
 pub const DEFAULT_LIST_CAPACITY: i64 = 16;
+/// How many characters a string holds when no `Length` constraint says otherwise.
 pub const DEFAULT_STRING_CAPACITY: i64 = 32;
+/// How many bytes a `Bytes` holds when no `Length` constraint says otherwise.
 pub const DEFAULT_BYTES_CAPACITY: i64 = 64;
 
+/// The capacities of strings, bytes, lists and maps for one program.
 pub struct Sizes {
-    /// The room every working string has: the default, or the longest
+    /// How many characters a string with no size of its own holds: the default, or the longest
     /// string any constraint allows if that is longer. A string field with a
     /// shorter `Length` is kept in a size of its own.
     pub string_capacity: i64,
     /// What set `string_capacity`, when a constraint did: a field or a
     /// parameter, such as `Terminal.print: text`.
     pub string_capacity_from: Option<String>,
-    /// The most bytes any constraint allows. Every `Bytes` has room for them.
+    /// The most bytes any constraint allows, or the default. Every `Bytes`
+    /// has room for them.
     pub bytes_capacity: i64,
     /// The longest list of each item type any constraint allows.
     list_capacity: HashMap<Type, i64>,
@@ -31,6 +35,7 @@ pub struct Sizes {
 }
 
 impl Sizes {
+    /// Reads every `Length` in the program to work out its sizes.
     pub fn measure(program: &Program, model: &Model) -> Sizes {
         let mut sizes = Sizes {
             string_capacity: 0,
@@ -94,8 +99,8 @@ impl Sizes {
                     .map(move |c| (c, scope, format!("{}.{}", a.name.name, c.name.name)))
             });
 
-            // A `where` on a parameter or on the result sizes the list as
-            // much as one on a field does.
+            // A `where` on a parameter or on the result counts as much as
+            // one on a field does.
             for (function, aggregate, owner) in functions.chain(commands) {
                 for parameter in function.parameters.iter().flatten() {
                     if let Some(ty) = parameter.types.first() {
@@ -124,6 +129,7 @@ impl Sizes {
         sizes
     }
 
+    /// Grows the capacity for one field, parameter or result by its `Length`.
     #[allow(clippy::too_many_arguments)]
     fn add(
         &mut self,
@@ -197,6 +203,7 @@ impl Sizes {
             .unwrap_or(DEFAULT_LIST_CAPACITY)
     }
 
+    /// The most items a list of this item type can hold.
     pub fn list_capacity(&self, item: &Type) -> i64 {
         self.list_capacity
             .get(&unbounded(item))

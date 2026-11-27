@@ -1,8 +1,11 @@
+//! Parses every source file under `tests/fixtures`.
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::parse_ok;
 
+/// Adds every source file in `folder` and its subfolders to `found`.
 fn find_source_files(folder: &Path, found: &mut Vec<PathBuf>) {
     for entry in fs::read_dir(folder).expect("a folder of Croft files") {
         let path = entry.expect("folder entry").path();

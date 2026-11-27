@@ -1,3 +1,6 @@
+//! Naming conventions: converting a name to snake_case, and checking which
+//! case a name is in.
+
 /// Converts `InvoiceRepository` to `invoice_repository`.
 pub fn to_snake_case(name: &str) -> String {
     let mut result = String::new();
@@ -22,10 +25,13 @@ pub fn to_snake_case(name: &str) -> String {
     result
 }
 
+/// Whether a name is in PascalCase: a capital first letter and no underscores.
 pub fn is_pascal_case(name: &str) -> bool {
     name.chars().next().is_some_and(|c| c.is_uppercase()) && !name.contains('_')
 }
 
+/// Whether a name is in snake_case: lower-case letters, digits and underscores,
+/// starting with a letter or an underscore.
 pub fn is_snake_case(name: &str) -> bool {
     name.chars()
         .all(|c| c.is_lowercase() || c.is_ascii_digit() || c == '_')
@@ -35,6 +41,8 @@ pub fn is_snake_case(name: &str) -> bool {
             .is_some_and(|c| c.is_lowercase() || c == '_')
 }
 
+/// Whether a name is in UPPER_SNAKE_CASE: capital letters, digits and
+/// underscores, starting with a capital.
 pub fn is_upper_snake_case(name: &str) -> bool {
     name.chars()
         .all(|c| c.is_uppercase() || c.is_ascii_digit() || c == '_')

@@ -1,7 +1,10 @@
+//! Tests for the formatter.
+
 use std::path::{Path, PathBuf};
 
 use crate::format_source;
 
+/// `source` formatted, which must succeed.
 fn formatted(source: &str) -> String {
     format_source(source).expect("the source formats")
 }
@@ -123,6 +126,7 @@ fn repository_sources() -> Vec<PathBuf> {
     found
 }
 
+/// Adds every source file in `folder` and its subfolders to `found`.
 fn collect_sources(folder: &Path, found: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(folder) else {
         return;

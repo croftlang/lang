@@ -1,5 +1,5 @@
-//! Method calls: port operations through the target's adapter, repositories,
-//! and the built-in methods of numbers, options and results.
+//! Method calls: port operations through the target's adapter, repository
+//! operations, and the built-in methods of every other type.
 
 use croft_analysis::standard::CONSOLE_CONTEXT;
 use croft_analysis::types::Resolved;
@@ -13,6 +13,7 @@ use crate::names::c_name;
 const INT_DIGITS: i64 = 20;
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// `receiver.name(arguments)`, chosen by the type of `receiver`.
     pub fn method(
         &mut self,
         receiver: &Expr,
@@ -131,7 +132,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.all_arguments(ty)
     }
 
-    /// `arguments.all()`: the program's command-line arguments.
+    /// `Arguments.all()`: the program's command-line arguments.
     fn all_arguments(&mut self, ty: &Type) -> String {
         let list = self.temp(ty);
         let index = self.index_variable();

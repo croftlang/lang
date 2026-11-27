@@ -9,6 +9,7 @@ use croft_syntax::ast::{Argument, Expr};
 use super::Writer;
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// `["CNHKG": 4]`: a map holding these entries.
     pub fn map_literal(&mut self, entries: &[(Expr, Expr)], ty: &Type) -> String {
         let Type::Map(key, value) = ty else {
             return "0".to_string();
@@ -26,6 +27,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         map
     }
 
+    /// A method of `map`, a map from `key` to `value`.
     pub fn map_method(
         &mut self,
         map: &str,

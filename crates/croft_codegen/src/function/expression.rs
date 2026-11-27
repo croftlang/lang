@@ -50,6 +50,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         (c, ty)
     }
 
+    /// The value of an expression as a C expression, and the type the
+    /// checker gave it, without the bounds of its strings.
     fn eval_unbounded(&mut self, value: &Expr, want: Option<&Type>) -> (String, Type) {
         let ty = self.type_of(value, want);
 
@@ -404,6 +406,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 }
 
+/// Whether `ty` has a type the checker could not know anywhere in it.
 fn has_unknown(ty: &Type) -> bool {
     match ty {
         Type::Unknown => true,

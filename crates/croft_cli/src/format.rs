@@ -88,6 +88,8 @@ fn format_file(path: &Path, only_check: bool) -> Result<bool, String> {
     Ok(true)
 }
 
+/// Prints how many files were formatted or, with `--check`, which files
+/// need formatting.
 fn report(paths: &[PathBuf], unformatted: &[PathBuf], only_check: bool) {
     let files = paths.len();
     let changed = unformatted.len();

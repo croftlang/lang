@@ -5,6 +5,7 @@ use crate::span::{Diagnostic, Span};
 use crate::token::TokenKind;
 
 impl Lexer<'_> {
+    /// Reads the next character if it is `expected`, and says whether it did.
     fn advance_if(&mut self, expected: char) -> bool {
         let matches = self.peek() == Some(expected);
 
@@ -15,6 +16,7 @@ impl Lexer<'_> {
         matches
     }
 
+    /// Reads the rest of the token that starts with `current`.
     pub(super) fn read_token(
         &mut self,
         current: char,

@@ -1,6 +1,9 @@
+//! Tokens and comments, as the lexer reads them.
+
 use crate::keyword::Keyword;
 use crate::span::Span;
 
+/// What kind of token it is.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
     Identifier(String),
@@ -92,6 +95,7 @@ impl TokenKind {
     }
 }
 
+/// One token, where it was written, and the comment lines above it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub kind: TokenKind,

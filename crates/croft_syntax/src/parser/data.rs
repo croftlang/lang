@@ -1,4 +1,4 @@
-//! Values, entities, aggregates, enums, identities, constants, errors and events.
+//! Values, entities, enums, constants and identities.
 
 use super::{ParseResult, Parser};
 use crate::ast::{ConstDecl, EnumDecl, Field, Identifier, IdentityDecl, RecordDecl, ValueDecl};
@@ -78,6 +78,8 @@ impl Parser {
         })
     }
 
+    /// `enum Item { include Room.Error  Coins(count: Int)  Flask }`: variants,
+    /// each with optional fields, and any `include` lines.
     pub(super) fn parse_enum(&mut self) -> ParseResult<EnumDecl> {
         let doc = self.doc();
 
@@ -117,6 +119,7 @@ impl Parser {
         })
     }
 
+    /// `const MAX_ENEMIES: Int = 16`
     pub(super) fn parse_const(&mut self) -> ParseResult<ConstDecl> {
         let doc = self.doc();
 
@@ -140,6 +143,7 @@ impl Parser {
         })
     }
 
+    /// `identity RoomId for Room: Int where Range(1, 20)`
     pub(super) fn parse_identity(&mut self) -> ParseResult<IdentityDecl> {
         let doc = self.doc();
 

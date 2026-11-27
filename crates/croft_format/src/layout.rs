@@ -168,10 +168,12 @@ fn group_lines(tokenized: &TokenizedSource, texts: &[&str]) -> Vec<SourceLine> {
     lines
 }
 
+/// Where the token starts, as line and column.
 fn position(token: &Token) -> (u32, u32) {
     (token.span.line, token.span.column)
 }
 
+/// Whether the token is `{`, `(` or `[`.
 fn is_opener(kind: &TokenKind) -> bool {
     matches!(
         kind,
@@ -179,6 +181,7 @@ fn is_opener(kind: &TokenKind) -> bool {
     )
 }
 
+/// Whether the token is `}`, `)` or `]`.
 fn is_closer(kind: &TokenKind) -> bool {
     matches!(
         kind,

@@ -13,6 +13,8 @@ use crate::names::{c_name, event_kind};
 use crate::Generator;
 
 impl<'a> Generator<'a> {
+    /// Every factory and command of every aggregate, as C. Adds their
+    /// prototypes to `prototypes`.
     pub fn commands(&self, prototypes: &mut Vec<String>) -> String {
         let mut out = String::new();
 
@@ -39,6 +41,9 @@ impl<'a> Generator<'a> {
         out
     }
 
+    /// A command as a C function taking its aggregate as `p_self`: runs the
+    /// body on a copy, and gives back the changed copy only if every
+    /// constraint and invariant holds.
     fn command(
         &self,
         found: &Resolved,

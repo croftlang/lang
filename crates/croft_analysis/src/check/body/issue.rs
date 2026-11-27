@@ -1,4 +1,4 @@
-//! Issuing commands, raising events, native calls, and failing with `?` and `or`.
+//! Issuing commands: on an aggregate value held, or on one loaded by its identity.
 
 use croft_syntax::ast::{Argument, Expr, ExprId, ExprKind, Identifier, Issue};
 use croft_syntax::Span;
@@ -141,6 +141,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         Some(aggregate)
     }
 
+    /// Checks a command's arguments against its parameters and its contract,
+    /// and notes the command for editors.
     pub(super) fn issue_arguments(
         &mut self,
         aggregate: &Resolved,

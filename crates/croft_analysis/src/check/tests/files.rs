@@ -1,8 +1,11 @@
+//! Programs split across files, and the logistics fixture.
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::check_files;
 
+/// Adds every source file in `folder`, however deep, to `found`.
 fn find_source_files(folder: &Path, found: &mut Vec<PathBuf>) {
     for entry in fs::read_dir(folder).expect("fixture folder") {
         let path = entry.expect("folder entry").path();

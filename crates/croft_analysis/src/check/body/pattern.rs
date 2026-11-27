@@ -8,6 +8,8 @@ use crate::symbols::SymbolKind;
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
+    /// The type of a `match`: its arms give back the same type, and every
+    /// variant is handled once.
     pub(super) fn check_match(
         &mut self,
         subject: &Expr,
@@ -223,6 +225,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 /// The pattern that matches every variant not handled above it.
 const WILDCARD: &str = "_";
 
+/// Each name in backticks, joined with commas.
 fn quote_all(names: &[&str]) -> String {
     let quoted: Vec<String> = names.iter().map(|name| format!("`{name}`")).collect();
     quoted.join(", ")

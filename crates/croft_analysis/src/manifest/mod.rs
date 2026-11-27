@@ -8,8 +8,10 @@ mod raw;
 use croft_syntax::ast::{Identifier, Path};
 use croft_syntax::{Diagnostic, SourceId, Span};
 
+/// The project file's name.
 pub const MANIFEST_FILE: &str = "croft.toml";
 
+/// The project file: the program's name and version, and its targets.
 #[derive(Debug, Clone)]
 pub struct Manifest {
     pub name: Identifier,
@@ -34,10 +36,12 @@ pub struct TargetConfig {
 }
 
 impl Manifest {
+    /// Reads `croft.toml`, reporting the first error and where it is.
     pub fn parse(text: &str, source: SourceId) -> Result<Manifest, Diagnostic> {
         raw::parse(text, source)
     }
 
+    /// The target named `name`, if the file has one.
     pub fn target(&self, name: &str) -> Option<&TargetConfig> {
         self.targets.iter().find(|target| target.name.name == name)
     }

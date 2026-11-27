@@ -64,6 +64,7 @@ impl<'a> Checker<'a> {
         answer
     }
 
+    /// `known_value`, `depth` references deep: past `MAX_DEPTH` it gives up.
     fn known_at(
         &self,
         scope: &Scope,
@@ -140,6 +141,7 @@ impl<'a> Checker<'a> {
         self.known_call_at(scope, bindings, found, arguments, 0)
     }
 
+    /// `known_call`, `depth` references deep: past `MAX_DEPTH` it gives up.
     fn known_call_at(
         &self,
         scope: &Scope,

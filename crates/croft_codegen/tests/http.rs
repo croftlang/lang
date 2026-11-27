@@ -1,7 +1,7 @@
 //! Std.Http through CurlHttp, against a small server the test runs itself.
 //! Skipped where there is no C compiler or no libcurl to build against.
 
-// Shared with run.rs, which uses the rest.
+// Shared with run.rs; this file uses only part of it.
 #[allow(dead_code)]
 mod support;
 

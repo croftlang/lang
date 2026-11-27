@@ -17,9 +17,10 @@ use crate::types::bounds::is_string;
 use crate::types::constant::evaluate;
 use crate::types::width::declared_range;
 
-/// The fewest values a C `int` holds: `INT_MIN` and `INT_MAX` with 16 bits,
-/// leaving out -32768, which one's complement machines cannot hold.
+/// The lowest value a C `int` holds on every machine: `INT_MIN` with 16
+/// bits, leaving out -32768, which one's complement machines cannot hold.
 const INT_LOW: i64 = -32767;
+/// The highest value a C `int` holds on every machine: `INT_MAX` with 16 bits.
 const INT_HIGH: i64 = 32767;
 
 /// A whole number as a C literal: an `int` when it fits one, else a `long`.
@@ -41,6 +42,8 @@ fn as_long(c: &str) -> String {
     }
 }
 
+/// Whether `c` needs no brackets to be cast whole: a name, a place or one
+/// bracketed group.
 fn is_atom(c: &str) -> bool {
     if c.chars()
         .all(|ch| ch.is_ascii_alphanumeric() || "_.[]".contains(ch))
@@ -74,6 +77,7 @@ pub struct Span {
 }
 
 impl Span {
+    /// The values from `low` to `high`.
     pub fn new(low: i64, high: i64) -> Span {
         Span { low, high }
     }
@@ -83,6 +87,7 @@ impl Span {
         self.low >= INT_LOW && self.high <= INT_HIGH
     }
 
+    /// Whether no value is below zero.
     pub fn is_natural(self) -> bool {
         self.low >= 0
     }

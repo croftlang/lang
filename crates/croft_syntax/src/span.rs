@@ -1,3 +1,5 @@
+//! Source positions, and the errors reported at them.
+
 /// Identifies one source file within a compilation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct SourceId(pub u32);
@@ -18,6 +20,7 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
+    /// A diagnostic with `message` at `span`.
     pub fn new(message: impl Into<String>, span: Span) -> Self {
         Self {
             message: message.into(),

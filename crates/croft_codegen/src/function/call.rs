@@ -37,6 +37,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
     }
 
+    /// A call to a function, translation, constraint, service or
+    /// single-value type declared in Croft.
     fn call_declared(
         &mut self,
         found: &Resolved,
@@ -68,7 +70,8 @@ impl<'g, 'a> Writer<'g, 'a> {
             return self.call_to(&c_name(found), passed, &result, into);
         }
 
-        // The events the service raises, and kept, are handled once it ends.
+        // The events the service raises and keeps are handed to policies
+        // once it ends.
         let mark = self.raw_variable("mark", "croft_u16");
         self.line(format!("{mark} = croft_events_mark();"));
 

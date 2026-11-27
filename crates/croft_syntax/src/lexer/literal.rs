@@ -6,6 +6,8 @@ use crate::span::{Diagnostic, Span};
 use crate::token::TokenKind;
 
 impl<'a> Lexer<'a> {
+    /// Reads a string after its opening `"`, turning escapes such as `\n`
+    /// into the characters they stand for.
     pub(crate) fn read_string(&mut self, start: Span) -> Result<TokenKind, Diagnostic> {
         let mut value = String::new();
 
@@ -31,6 +33,8 @@ impl<'a> Lexer<'a> {
         Err(Diagnostic::new("unterminated string", start))
     }
 
+    /// Reads a number: decimal, hex after `0x` or binary after `0b`, with `_`
+    /// separators allowed, or a `Float` when a `.` and digits follow.
     pub(crate) fn read_number(
         &mut self,
         first: char,
@@ -88,6 +92,7 @@ impl<'a> Lexer<'a> {
         digits
     }
 
+    /// Reads a name, or a keyword when the word is reserved.
     pub(crate) fn read_word(&mut self, first: char) -> TokenKind {
         let mut word = first.to_string();
 

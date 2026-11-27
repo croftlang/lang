@@ -11,6 +11,8 @@ use crate::manifest::{to_path, Manifest, TargetConfig};
 use crate::symbols::SymbolKind;
 
 impl<'a> Checker<'a> {
+    /// Each target in `croft.toml` has something to run, and an adapter for
+    /// every port the services call.
     pub(super) fn check_manifest(&mut self, manifest: &Manifest) {
         let needed = self.ports_used_by_services();
 
@@ -53,6 +55,8 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Each adapter a target binds is for the port it is bound to, no port is
+    /// bound twice, and every port in `needed` has an adapter.
     fn check_target(&mut self, target: &TargetConfig, needed: &BTreeSet<(String, String)>) {
         let mut bound = BTreeSet::new();
 
@@ -218,6 +222,7 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// A declaration of `kind` from any context, without reporting it when there is none.
     fn find_quietly(&self, name: &Identifier, kind: SymbolKind) -> Option<Resolved> {
         let path = to_path(name);
 

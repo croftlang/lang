@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use croft_syntax::Span;
 use lsp_types::{Position, Range, Uri};
 
+/// Line `line` of the text, counting from 0, or an empty string past the end.
 fn line_text(text: &str, line: u32) -> &str {
     text.lines().nth(line as usize).unwrap_or("")
 }
@@ -90,6 +91,7 @@ pub fn path_to_uri(path: &Path) -> Option<Uri> {
         .ok()
 }
 
+/// The text of a `file://` URI for a path, written for Windows when `windows`.
 fn text_to_uri(path: &str, windows: bool) -> Option<String> {
     let mut path = path.to_string();
 
@@ -110,12 +112,13 @@ fn text_to_uri(path: &str, windows: bool) -> Option<String> {
     Some(format!("file://{}", encode(&path)))
 }
 
-/// Does a path start with a drive letter, as in `C:/code`?
+/// Whether a path starts with a drive letter, as in `C:/code`.
 fn is_drive(path: &str) -> bool {
     let bytes = path.as_bytes();
     bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
 }
 
+/// Percent-encodes a path for a URI, keeping the colon after a drive letter.
 fn encode(path: &str) -> String {
     let mut encoded = String::new();
 
@@ -140,6 +143,8 @@ pub fn uri_to_path(uri: &Uri) -> Option<PathBuf> {
     uri_text_to_path(uri.as_str(), cfg!(windows)).map(PathBuf::from)
 }
 
+/// The path of a `file://` URI's text, written for Windows when `windows`.
+/// Off Windows, a URI whose host is not this machine has no path.
 fn uri_text_to_path(uri: &str, windows: bool) -> Option<String> {
     let rest = uri.strip_prefix("file://")?;
 
@@ -171,6 +176,8 @@ fn uri_text_to_path(uri: &str, windows: bool) -> Option<String> {
     }
 }
 
+/// Turns each `%` and two hex digits back into its byte. None when the
+/// result is not UTF-8.
 fn decode(encoded: &str) -> Option<String> {
     let encoded = encoded.as_bytes();
     let mut bytes = Vec::with_capacity(encoded.len());
@@ -199,6 +206,7 @@ fn decode(encoded: &str) -> Option<String> {
     String::from_utf8(bytes).ok()
 }
 
+/// Tests for converting positions, paths and URIs.
 #[cfg(test)]
 mod tests {
     use super::*;

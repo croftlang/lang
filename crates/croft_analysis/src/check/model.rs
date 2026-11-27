@@ -22,11 +22,13 @@ pub struct VariantInfo {
     pub declared_in: Resolved,
 }
 
+/// A checked program's declarations, for code generation to ask about.
 pub struct Model<'a> {
     pub(super) checker: Checker<'a>,
 }
 
 impl<'a> Model<'a> {
+    /// The view of a checked program.
     pub fn new(program: &'a Program) -> Model<'a> {
         let mut errors = Vec::new();
 
@@ -60,14 +62,17 @@ impl<'a> Model<'a> {
         }
     }
 
+    /// The type a written type stands for, looked up from `context` and `aggregate`.
     pub fn lower_type(&self, context: &str, aggregate: Option<&str>, ty: &TypeExpr) -> Type {
         self.checker.lower_type(&self.scope(context, aggregate), ty)
     }
 
+    /// What a path names, looked up from `context` and `aggregate`.
     pub fn resolve(&self, context: &str, aggregate: Option<&str>, path: &Path) -> Option<Resolved> {
         self.checker.resolve(&self.scope(context, aggregate), path)
     }
 
+    /// The declaration `name` in `context`, if there is one.
     pub fn lookup(&self, context: &str, name: &str) -> Option<Resolved> {
         self.checker.lookup(context, name)
     }
@@ -99,14 +104,17 @@ impl<'a> Model<'a> {
         self.checker.operations_of(port)
     }
 
+    /// The type of an aggregate's identity field.
     pub fn identity_of(&self, aggregate: &Resolved) -> Type {
         self.checker.identity_of(aggregate)
     }
 
+    /// The repository that stores an aggregate, if its context has one.
     pub fn repository_for(&self, aggregate: &Resolved) -> Option<Resolved> {
         self.checker.repository_for(aggregate)
     }
 
+    /// The aggregate a repository stores.
     pub fn repository_aggregate(&self, repository: &Resolved) -> Option<Resolved> {
         self.checker.repository_aggregate(repository)
     }

@@ -1,3 +1,5 @@
+//! Declaration checks: types, constraints, identities and invariants.
+
 use super::{assert_error, dungeon, errors};
 
 #[test]

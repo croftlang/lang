@@ -71,8 +71,8 @@ impl Parser {
         result
     }
 
-    /// `[a, b, c]`: items separated by commas, across lines if need be.
-    /// `[a, b]` or `[]` for a list, and `[key: value, ...]` or `[:]` for a map.
+    /// A list, `[a, b]` or `[]`, or a map, `[key: value, ...]` or `[:]`. Items
+    /// are separated by commas and may run across lines.
     pub(super) fn parse_list_or_map(&mut self) -> ParseResult<crate::ast::ExprKind> {
         use crate::ast::ExprKind;
 

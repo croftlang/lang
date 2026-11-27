@@ -8,6 +8,8 @@ use crate::program::Context;
 use crate::types::Type;
 
 impl<'a> Checker<'a> {
+    /// Checks every body in a context: constants, constraints, functions,
+    /// services, commands, factories, policies and adapters.
     pub(in crate::check) fn check_bodies(&mut self, context: &'a Context) {
         let scope = Scope {
             context,
@@ -70,6 +72,8 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Checks a function, service, command or factory body against the type it
+    /// gives back and the errors it can fail with.
     pub(super) fn check_function_body(
         &mut self,
         scope: Scope<'a>,
@@ -139,6 +143,7 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// The type of a parameter, from its first written type.
     pub(crate) fn parameter_type(&self, scope: &Scope, parameter: &Parameter) -> Type {
         parameter
             .types

@@ -10,6 +10,8 @@ use crate::names::c_name;
 use crate::Generator;
 
 impl<'a> Generator<'a> {
+    /// The C definitions of every type used so far, each after the types
+    /// it contains.
     pub fn type_definitions(&self) -> String {
         let mut done = HashSet::new();
         let mut out = String::new();
@@ -41,6 +43,8 @@ impl<'a> Generator<'a> {
         texts + &byte_sizes + &out
     }
 
+    /// Adds the definition of one type to `out`, after its dependencies,
+    /// unless it is already there.
     fn define(&self, ty: &Type, done: &mut HashSet<Type>, out: &mut String) {
         let ty = self.canonical(ty);
 
@@ -55,6 +59,7 @@ impl<'a> Generator<'a> {
         out.push_str(&self.definition(&ty));
     }
 
+    /// The types a type's definition contains.
     fn dependencies(&self, ty: &Type) -> Vec<Type> {
         match ty {
             Type::List(item) | Type::SizedList(item, _) | Type::Option(item) => {
@@ -86,6 +91,7 @@ impl<'a> Generator<'a> {
         }
     }
 
+    /// The C definition of one type.
     fn definition(&self, ty: &Type) -> String {
         match ty {
             Type::Errors(_) => self.error_definition(),

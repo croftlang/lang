@@ -149,6 +149,7 @@ impl<'a> Generator<'a> {
             .unwrap_or(name)
     }
 
+    /// Records that the program uses `ty`, so its definition is generated.
     fn use_type(&self, ty: &Type) {
         let mut used = self.used_types.borrow_mut();
 
