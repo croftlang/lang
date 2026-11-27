@@ -2,7 +2,7 @@
 // with the same key in the order they came.
 context Sorting
 
-use { repeat } from Std.Text
+import { repeat } from Std.Text
 
 error WrongAnswer
 

@@ -6,7 +6,7 @@ use croft_syntax::Span;
 
 use super::{BodyChecker, BodyKind};
 use crate::check::data::expr_path;
-use crate::check::publish::imported_standard;
+use crate::check::export::imported_standard;
 use crate::facts::{BuiltinName, Meaning};
 use crate::symbols::SymbolKind;
 use crate::types::{Resolved, Type};

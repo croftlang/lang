@@ -2,12 +2,12 @@
 // it came back the same; then finds one that was never saved, and one whose
 // file is damaged.
 context Shop {
-    publish { Check }
+    export { Check }
 
-    use { Files, FileError } from Std.Files
-    use { Decimal } from Std.Numbers
-    use { Map, Set } from Std.Collections
-    use { to_bytes } from Std.Text
+    import { Files, FileError } from Std.Files
+    import { Decimal } from Std.Numbers
+    import { Map, Set } from Std.Collections
+    import { to_bytes } from Std.Text
 
     identity ShelfId for Shelf: Int where Range(1, 99)
     identity ItemId for Item: Int where Range(0, 9)
@@ -117,5 +117,5 @@ context Shop {
 
 domain Program {
     contexts { Shop }
-    use { Check } from Shop
+    import { Check } from Shop
 } = Check()?

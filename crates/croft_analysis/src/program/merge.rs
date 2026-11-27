@@ -10,8 +10,8 @@ impl Context {
         Context {
             doc: Vec::new(),
             name,
-            publish: Vec::new(),
-            uses: Vec::new(),
+            exports: Vec::new(),
+            imports: Vec::new(),
             values: Vec::new(),
             enums: Vec::new(),
             errors: Vec::new(),
@@ -33,8 +33,8 @@ impl Context {
     pub(super) fn add_items(&mut self, items: Vec<ContextItem>) {
         for item in items {
             match item {
-                ContextItem::Publish(paths) => self.publish.extend(paths),
-                ContextItem::Use(use_decl) => self.uses.push(use_decl),
+                ContextItem::Export(paths) => self.exports.extend(paths),
+                ContextItem::Import(import) => self.imports.push(import),
                 ContextItem::Value(value) => self.values.push(value),
                 ContextItem::Enum(enum_decl) => self.enums.push(enum_decl),
                 ContextItem::Error(error) => self.errors.push(error),
@@ -82,7 +82,7 @@ impl Context {
         let mut context = Context::new(domain.name.clone());
         context.is_domain = true;
         context.doc = domain.doc.clone();
-        context.uses = domain.uses.clone();
+        context.imports = domain.imports.clone();
 
         context.functions.push(FunctionDecl {
             type_parameters: Vec::new(),

@@ -3,9 +3,9 @@
 // A line saying "stop" stops the program with the exit code named on the
 // command line.
 context Echo {
-    publish { Repeat }
+    export { Repeat }
 
-    use { to_int } from Std.Text
+    import { to_int } from Std.Text
 
     service Repeat(): Unit {
         calls { Console, Arguments, Process }
@@ -31,5 +31,5 @@ context Echo {
 
 domain Program {
     contexts { Echo }
-    use { Repeat } from Echo
+    import { Repeat } from Echo
 } = Repeat()

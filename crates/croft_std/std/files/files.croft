@@ -1,9 +1,9 @@
 // Std.Files: reading and writing files. A program imports what it
-// needs with `use { Files, FileError } from Std.Files`, lists it in its
+// needs with `import { Files, FileError } from Std.Files`, lists it in its
 // contract with `calls { Files }`, and names an adapter for it in croft.toml: `StdioFiles` on machines
 // with C's stdio, or one of its own, such as for a DivMMC.
 context Files {
-    publish { Files, FileError, NotFound, NoRoom, Unreadable, StdioFiles }
+    export { Files, FileError, NotFound, NoRoom, Unreadable, StdioFiles }
 
     // There is no file at that path, or, when writing one, no folder to
     // put it in. One that is there but can't be opened, such as for want of

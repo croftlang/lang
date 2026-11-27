@@ -24,7 +24,7 @@ pub enum Found<'a> {
     Declaration(Resolved, Span),
     /// The name of a field or operation where it is declared.
     MemberDeclaration(DeclaredMember<'a>),
-    /// A context's name: in `use { ... } from Greeter`, the domain's
+    /// A context's name: in `import { ... } from Greeter`, the domain's
     /// `contexts`, or `context Greeter` itself.
     Context(String, Span),
     /// A built-in type, function or constraint, such as `Int`, `Range` or `max`.
@@ -210,8 +210,8 @@ fn context_names(state: &ProjectState) -> impl Iterator<Item = (String, Span)> +
     let declared = (program.contexts.values()).map(|c| (c.name.name.clone(), c.name.span));
 
     let used = (program.contexts.values())
-        .flat_map(|c| &c.uses)
-        .map(|use_decl| (use_decl.from.text(), use_decl.from.span()));
+        .flat_map(|c| &c.imports)
+        .map(|import| (import.from.text(), import.from.span()));
 
     let listed = (program.domains.iter()).flat_map(|domain| {
         let arrows = (domain.relations.iter()).flat_map(|(from, to)| [from, to]);
@@ -443,13 +443,13 @@ fn describe_builtin(name: &str, from: Option<&str>) -> Option<String> {
     Some(format!("```croft\n{written}\n```\n\n{doc}\n\n*{what}*"))
 }
 
-/// A context: what it publishes, or what a standard context provides.
+/// A context: what it exports, or what a standard context provides.
 fn describe_context(state: &ProjectState, name: &str) -> Option<String> {
     let program = &state.analysis.program;
 
     let (names, doc, what) = match program.contexts.get(name) {
         Some(context) => {
-            let names: Vec<String> = context.publish.iter().map(|path| path.text()).collect();
+            let names: Vec<String> = context.exports.iter().map(|path| path.text()).collect();
 
             let what = if context.is_standard {
                 "A standard context"
@@ -476,7 +476,7 @@ fn describe_context(state: &ProjectState, name: &str) -> Option<String> {
         Some(domain) => domain_outline(domain),
         None if names.is_empty() => format!("context {name}"),
         None => format!(
-            "context {name} {{\n    publish {{ {} }}\n}}",
+            "context {name} {{\n    export {{ {} }}\n}}",
             names.join(", ")
         ),
     };
@@ -490,7 +490,7 @@ fn describe_context(state: &ProjectState, name: &str) -> Option<String> {
     markdown.push_str(&format!("\n\n*{what}*"));
 
     let users: Vec<&str> = (program.contexts.values())
-        .filter(|c| !c.is_domain && c.uses.iter().any(|u| u.from.text() == name))
+        .filter(|c| !c.is_domain && c.imports.iter().any(|u| u.from.text() == name))
         .map(|c| c.name.name.as_str())
         .collect();
 
@@ -524,13 +524,13 @@ fn domain_outline(domain: &DomainDecl) -> String {
     lines.extend(alone.iter().map(|name| format!("        {name}")));
     lines.push("    }".to_string());
 
-    for use_decl in &domain.uses {
-        let names: Vec<String> = use_decl.names.iter().map(|name| name.text()).collect();
+    for import in &domain.imports {
+        let names: Vec<String> = import.names.iter().map(|name| name.text()).collect();
 
         lines.push(format!(
-            "    use {{ {} }} from {}",
+            "    import {{ {} }} from {}",
             names.join(", "),
-            use_decl.from.text()
+            import.from.text()
         ));
     }
 

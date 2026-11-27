@@ -32,7 +32,7 @@ impl Parser {
     }
 
     /// `{ RoomId, Room.EnemyDefeated as Defeated }`, with optional commas: the
-    /// names a `use` or `calls` brings in, each with an optional alias after `as`.
+    /// names a `import` or `calls` brings in, each with an optional alias after `as`.
     pub(super) fn parse_imported_names(&mut self) -> ParseResult<Vec<ImportedName>> {
         self.expect(&TokenKind::LeftBrace)?;
 

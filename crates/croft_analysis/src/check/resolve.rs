@@ -1,8 +1,8 @@
 //! Finding what a name refers to.
 //!
 //! A name is looked up in the current aggregate, then the context, then the
-//! names the context imports with `use`. A name can also be written with its
-//! context in front, `Dungeon.Room.EnemyDefeated`, if that context publishes it.
+//! names the context imports with `import`. A name can also be written with its
+//! context in front, `Dungeon.Room.EnemyDefeated`, if that context exports it.
 
 use crate::standard::{CONSOLE_CONTEXT, STORAGE_CONTEXT};
 use croft_syntax::ast::Path;
@@ -34,13 +34,13 @@ impl<'a> Checker<'a> {
         })
     }
 
-    /// Whether `context` publishes `name`.
-    pub(super) fn is_published(&self, context: &str, name: &str) -> bool {
+    /// Whether `context` exports `name`.
+    pub(super) fn is_exported(&self, context: &str, name: &str) -> bool {
         let Some(context) = self.program.contexts.get(context) else {
             return false;
         };
 
-        context.publish.iter().any(|path| path.text() == name)
+        context.exports.iter().any(|path| path.text() == name)
     }
 
     /// Finds what a path names, and notes it for editors. In `Room.Error`,
@@ -93,16 +93,16 @@ impl<'a> Checker<'a> {
             return Some(found);
         }
 
-        for use_decl in &scope.context.uses {
-            if let Some(name) = use_decl.names.iter().find(|name| name.local_name() == text) {
-                return self.lookup(&use_decl.from.text(), &name.path.text());
+        for import in &scope.context.imports {
+            if let Some(name) = import.names.iter().find(|name| name.local_name() == text) {
+                return self.lookup(&import.from.text(), &name.path.text());
             }
         }
 
         // `StorageError` and its errors, and `Console`, `Arguments`,
         // `Environment` and `Process`, need no import.
         for standard in [STORAGE_CONTEXT, CONSOLE_CONTEXT] {
-            if self.is_published(standard, &text) {
+            if self.is_exported(standard, &text) {
                 return self.lookup(standard, &text);
             }
         }
@@ -111,7 +111,7 @@ impl<'a> Checker<'a> {
         let rest: Vec<&str> = rest.iter().map(|segment| segment.name.as_str()).collect();
         let rest = rest.join(".");
 
-        if !rest.is_empty() && self.is_published(&first.name, &rest) {
+        if !rest.is_empty() && self.is_exported(&first.name, &rest) {
             return self.lookup(&first.name, &rest);
         }
 

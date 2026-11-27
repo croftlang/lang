@@ -1,5 +1,5 @@
 //! The standard contexts: built-in names a context imports before using,
-//! such as `use { trim, split } from Std.Text`. The core types, list and
+//! such as `import { trim, split } from Std.Text`. The core types, list and
 //! option methods, `Range` and `Length` need no import, and nor do the names
 //! of `Std.Storage` and `Std.Console`.
 
@@ -126,5 +126,5 @@ pub fn standard_source(context: &str) -> Option<&'static str> {
 mod sources;
 
 pub use sources::{
-    add_standard_sources, not_found_message, standard_context_publishing, standard_source_id,
+    add_standard_sources, not_found_message, standard_context_exporting, standard_source_id,
 };

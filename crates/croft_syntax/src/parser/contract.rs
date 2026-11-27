@@ -36,7 +36,7 @@ impl Parser {
     }
 
     /// `calls { Keyboard as keyboard } from Dungeon`: the ports a body may
-    /// call, named as `use` names them. `from` is left out for a port the code
+    /// call, named as `import` names them. `from` is left out for a port the code
     /// can already see, and must be on the same line, since the next line of a
     /// contract may start with a parameter called `from`.
     pub(super) fn parse_calls(&mut self) -> ParseResult<Vec<CalledPort>> {
@@ -71,8 +71,8 @@ impl Parser {
         Ok(calls)
     }
 
-    /// The ports a body calls were once listed with `uses`, which reads too
-    /// much like `use`, so the old word gets an error that names the new one.
+    /// The ports a body calls were once listed with `uses`, so the old
+    /// word gets an error that names the new one.
     pub(super) fn reject_uses(&mut self) -> ParseResult<()> {
         if self.check_word("uses") {
             let message =

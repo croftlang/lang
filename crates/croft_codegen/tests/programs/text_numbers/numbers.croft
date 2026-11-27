@@ -2,7 +2,7 @@
 // gives None instead of wrapping round.
 context Numbers
 
-use { to_int } from Std.Text
+import { to_int } from Std.Text
 
 error WrongAnswer
 

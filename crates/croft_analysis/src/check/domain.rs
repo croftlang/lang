@@ -60,7 +60,7 @@ impl<'a> Checker<'a> {
             self.error(message, domain.name.span);
         }
 
-        for from in domain.uses.iter().map(|use_decl| &use_decl.from).chain(
+        for from in domain.imports.iter().map(|import| &import.from).chain(
             domain
                 .calls
                 .iter()
@@ -88,7 +88,7 @@ impl<'a> Checker<'a> {
             .is_some_and(|context| !context.is_domain && !context.is_standard)
     }
 
-    /// A context may only `use` contexts directly upstream of it.
+    /// A context may only import from contexts directly upstream of it.
     fn check_relations(&mut self, domain: &DomainDecl) {
         let mut upstream: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
 
@@ -112,12 +112,12 @@ impl<'a> Checker<'a> {
             self.error(message, domain.name.span);
         }
 
-        // Where each context imports from: its `use`s, and the `from` of
+        // Where each context imports from: its `import`s, and the `from` of
         // each port its services call.
         let imports: Vec<(String, &Path)> = (self.program.contexts.values())
             .filter(|c| !c.is_domain)
             .flat_map(|c| {
-                let uses = c.uses.iter().map(|use_decl| &use_decl.from);
+                let uses = c.imports.iter().map(|import| &import.from);
                 let calls = (c.functions.iter())
                     .flat_map(|function| &function.calls)
                     .filter_map(|called| called.from.as_ref());

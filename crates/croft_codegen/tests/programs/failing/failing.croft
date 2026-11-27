@@ -1,6 +1,6 @@
 // A domain whose body fails, so the program stops with the error's name.
 context Shop {
-    publish { Open }
+    export { Open }
 
     error Closed
 
@@ -9,7 +9,7 @@ context Shop {
 
 domain Market {
     contexts { Shop }
-    use { Open } from Shop
+    import { Open } from Shop
 } = {
     Open()?
 }

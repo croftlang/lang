@@ -3,10 +3,10 @@
 // comes up. A first argument, such as `6 1`, rolls once between the two
 // numbers it names, which with `low` above `high` stops the program.
 context Dice {
-    publish { Roll, Wrong }
+    export { Roll, Wrong }
 
-    use { Random } from Std.Random
-    use { to_int } from Std.Text
+    import { Random } from Std.Random
+    import { to_int } from Std.Text
 
     error Wrong
 
@@ -71,5 +71,5 @@ context Dice {
 
 domain Program {
     contexts { Dice }
-    use { Roll } from Dice
+    import { Roll } from Dice
 } = Roll()?

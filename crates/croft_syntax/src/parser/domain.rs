@@ -1,4 +1,4 @@
-//! `domain Game { contexts { Dungeon -> Scoring } use { ... } from X  calls { Keyboard } } = { ... }`
+//! `domain Game { contexts { Dungeon -> Scoring } import { ... } from X  calls { Keyboard } } = { ... }`
 
 use super::{ParseResult, Parser};
 use crate::ast::{DomainDecl, Identifier};
@@ -18,20 +18,21 @@ impl Parser {
         self.expect(&TokenKind::LeftBrace)?;
 
         let (mut contexts, mut relations) = (Vec::new(), Vec::new());
-        let (mut uses, mut calls) = (Vec::new(), Vec::new());
+        let (mut imports, mut calls) = (Vec::new(), Vec::new());
 
         while !self.eat(&TokenKind::RightBrace) {
             self.reject_uses()?;
+            self.reject_old_term_list()?;
 
             if self.check_word("contexts") {
                 self.advance();
                 self.parse_context_map(&mut contexts, &mut relations)?;
-            } else if self.check_keyword(Keyword::Use) {
-                uses.push(self.parse_use()?);
+            } else if self.check_keyword(Keyword::Import) {
+                imports.push(self.parse_import()?);
             } else if self.check_keyword(Keyword::Calls) {
                 calls.extend(self.parse_calls()?);
             } else {
-                return Err(self.unexpected("`contexts`, `use` or `calls`"));
+                return Err(self.unexpected("`contexts`, `import` or `calls`"));
             }
         }
 
@@ -44,7 +45,7 @@ impl Parser {
             name,
             contexts,
             relations,
-            uses,
+            imports,
             calls,
             body,
         })

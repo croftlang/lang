@@ -2,7 +2,7 @@
 // speaks of nodes and edges; Shipping speaks of locations, voyages and legs.
 context Shipping
 
-use { Edge, Path, find_path } from Routing
+import { Edge, Path, find_path } from Routing
 
 translation ItineraryFrom(path: Path): Itinerary = Itinerary {
     legs: path.edges.map(edge -> LegFrom(edge))

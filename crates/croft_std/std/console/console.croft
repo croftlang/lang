@@ -5,7 +5,7 @@
 // croft.toml names no adapter for them; the compiler writes their C. A port
 // the program declares with the same name replaces one of these.
 context Console {
-    publish { Console, Arguments, Environment, Process }
+    export { Console, Arguments, Environment, Process }
 
     // Text to and from whoever runs the program.
     port Console {

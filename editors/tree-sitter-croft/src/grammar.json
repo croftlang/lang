@@ -135,11 +135,11 @@
       "members": [
         {
           "type": "SYMBOL",
-          "name": "publish_declaration"
+          "name": "export_declaration"
         },
         {
           "type": "SYMBOL",
-          "name": "use_declaration"
+          "name": "import_declaration"
         },
         {
           "type": "SYMBOL",
@@ -191,12 +191,12 @@
         }
       ]
     },
-    "publish_declaration": {
+    "export_declaration": {
       "type": "SEQ",
       "members": [
         {
           "type": "STRING",
-          "value": "publish"
+          "value": "export"
         },
         {
           "type": "SYMBOL",
@@ -204,12 +204,12 @@
         }
       ]
     },
-    "use_declaration": {
+    "import_declaration": {
       "type": "SEQ",
       "members": [
         {
           "type": "STRING",
-          "value": "use"
+          "value": "import"
         },
         {
           "type": "SYMBOL",
@@ -399,7 +399,7 @@
                 },
                 {
                   "type": "SYMBOL",
-                  "name": "use_declaration"
+                  "name": "import_declaration"
                 },
                 {
                   "type": "SYMBOL",
@@ -2764,7 +2764,7 @@
                   "type": "ALIAS",
                   "content": {
                     "type": "STRING",
-                    "value": "publish"
+                    "value": "export"
                   },
                   "named": true,
                   "value": "field_identifier"
@@ -2773,7 +2773,7 @@
                   "type": "ALIAS",
                   "content": {
                     "type": "STRING",
-                    "value": "use"
+                    "value": "import"
                   },
                   "named": true,
                   "value": "field_identifier"
@@ -3367,7 +3367,7 @@
                   "type": "ALIAS",
                   "content": {
                     "type": "STRING",
-                    "value": "publish"
+                    "value": "export"
                   },
                   "named": true,
                   "value": "field_identifier"
@@ -3376,7 +3376,7 @@
                   "type": "ALIAS",
                   "content": {
                     "type": "STRING",
-                    "value": "use"
+                    "value": "import"
                   },
                   "named": true,
                   "value": "field_identifier"

@@ -9,7 +9,7 @@ use super::{assert_error, errors};
 fn numbers(extra: &str) -> String {
     format!(
         "context Sums {{\n\
-         use {{ Decimal, abs, max, min, clamp, pow, sign, checked_add, checked_subtract, checked_multiply }} from Std.Numbers\n\
+         import {{ Decimal, abs, max, min, clamp, pow, sign, checked_add, checked_subtract, checked_multiply }} from Std.Numbers\n\
          const MOST: Int = 2147483647\n\
          fn heal(amount: Int where Range(1, 50)): Int = amount\n\
          {extra}\n}}"
@@ -23,9 +23,9 @@ fn each_function_needs_its_import() {
     assert_eq!(
         errors(source),
         vec![
-            "`clamp` needs `use { clamp } from Std.Numbers`".to_string(),
-            "`pow` needs `use { pow } from Std.Numbers`".to_string(),
-            "`sign` needs `use { sign } from Std.Numbers`".to_string(),
+            "`clamp` needs `import { clamp } from Std.Numbers`".to_string(),
+            "`pow` needs `import { pow } from Std.Numbers`".to_string(),
+            "`sign` needs `import { sign } from Std.Numbers`".to_string(),
         ]
     );
 }

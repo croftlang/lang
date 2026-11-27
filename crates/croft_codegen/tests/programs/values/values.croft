@@ -1,9 +1,9 @@
 // Values, enums, lists, strings and matching, checked at run time.
 context Checks
 
-use { starts_with, to_upper, to_int, split, to_bytes, to_text } from Std.Text
-use { Decimal, abs, max, min } from Std.Numbers
-use { Map } from Std.Collections
+import { starts_with, to_upper, to_int, split, to_bytes, to_text } from Std.Text
+import { Decimal, abs, max, min } from Std.Numbers
+import { Map } from Std.Collections
 
 error WrongAnswer
 

@@ -53,25 +53,25 @@ pub fn add_standard_sources(files: &mut Vec<File>, bound: &[String]) {
             continue;
         }
 
-        if let Some(context) = standard_context_publishing(adapter) {
+        if let Some(context) = standard_context_exporting(adapter) {
             imported.push(context.to_string());
         }
     }
 
     for file in files.iter() {
-        let context_uses =
-            file.contexts
-                .iter()
-                .flat_map(|c| &c.items)
-                .filter_map(|item| match item {
-                    ContextItem::Use(use_decl) => Some(use_decl),
-                    _ => None,
-                });
+        let context_imports = file
+            .contexts
+            .iter()
+            .flat_map(|c| &c.items)
+            .filter_map(|item| match item {
+                ContextItem::Import(import) => Some(import),
+                _ => None,
+            });
 
-        let domain_uses = file.domains.iter().flat_map(|d| &d.uses);
-        let uses = context_uses
-            .chain(domain_uses)
-            .map(|use_decl| &use_decl.from);
+        let domain_imports = file.domains.iter().flat_map(|d| &d.imports);
+        let uses = context_imports
+            .chain(domain_imports)
+            .map(|import| &import.from);
 
         let context_calls = (file.contexts.iter())
             .flat_map(|c| &c.items)
@@ -111,26 +111,26 @@ pub fn add_standard_sources(files: &mut Vec<File>, bound: &[String]) {
     }
 }
 
-/// The standard context written in Croft that publishes `name`, if one does,
+/// The standard context written in Croft that exports `name`, if one does,
 /// so a missing import can be named in the error.
-pub fn standard_context_publishing(name: &str) -> Option<&'static str> {
+pub fn standard_context_exporting(name: &str) -> Option<&'static str> {
     croft_std::CONTEXTS.iter().find_map(|standard| {
         let context = standard.name;
         let file = parse(standard.source, standard_source_id(context)).ok()?;
 
-        let publishes = file.contexts.iter().flat_map(|c| &c.items).any(|item| {
-            matches!(item, ContextItem::Publish(paths) if paths.iter().any(|p| p.text() == name))
+        let exports = file.contexts.iter().flat_map(|c| &c.items).any(|item| {
+            matches!(item, ContextItem::Export(paths) if paths.iter().any(|p| p.text() == name))
         });
 
-        publishes.then_some(context)
+        exports.then_some(context)
     })
 }
 
 /// "cannot find ..." for a name that wasn't found, or the import it needs
-/// when a standard context publishes it.
+/// when a standard context exports it.
 pub fn not_found_message(expected: &str, name: &str) -> String {
-    match standard_context_publishing(name) {
-        Some(context) => format!("`{name}` needs `use {{ {name} }} from {context}`"),
+    match standard_context_exporting(name) {
+        Some(context) => format!("`{name}` needs `import {{ {name} }} from {context}`"),
         None => format!("cannot find {expected} named `{name}`"),
     }
 }

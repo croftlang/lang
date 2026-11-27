@@ -2,8 +2,8 @@
 // that has them from Std.Text: each context's import decides.
 context Encoding
 
-use { from_hex, to_hex } from Std.Encoding
-use { number_of, hex_of_number } from Numbers
+import { from_hex, to_hex } from Std.Encoding
+import { number_of, hex_of_number } from Numbers
 
 error WrongAnswer
 

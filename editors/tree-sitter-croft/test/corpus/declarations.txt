@@ -69,7 +69,7 @@ Ports, adapters and repositories
 
 context Platform
 
-use { Screen, Keyboard } from Dungeon
+import { Screen, Keyboard } from Dungeon
 
 port Keyboard {
     fn pressed(): Option<Key>
@@ -86,7 +86,7 @@ repository Rooms for Room
 (source_file
   (context_declaration
     (type_identifier)
-    (use_declaration
+    (import_declaration
       (import_list
         (imported_name
           (path
@@ -350,11 +350,11 @@ fn give(mg: Int where Overdose(4000) or Overdosed): Result<Int, Overdosed> {
       (identifier))))
 
 ================================================================================
-Calls and use with names given by as
+Calls and import with names given by as
 ================================================================================
 
 context Arcade {
-    use { Room.EnemyDefeated as Defeated } from Dungeon
+    import { Room.EnemyDefeated as Defeated } from Dungeon
 
     service Play(from: Int, to: Int) {
         calls { Keyboard as keys, Screen } from Dungeon
@@ -369,7 +369,7 @@ context Arcade {
   (context_declaration
     (type_identifier)
     (declaration_list
-      (use_declaration
+      (import_declaration
         (import_list
           (imported_name
             (path

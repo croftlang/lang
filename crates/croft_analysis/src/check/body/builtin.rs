@@ -6,8 +6,8 @@ use croft_syntax::ast::Argument;
 use croft_syntax::Span;
 
 use super::BodyChecker;
+use crate::check::export::imported_standard;
 use crate::check::known::Known;
-use crate::check::publish::imported_standard;
 use crate::standard::{ENCODING_CONTEXT, SHARED_FUNCTIONS, TEXT_CONTEXT};
 use crate::types::Type;
 

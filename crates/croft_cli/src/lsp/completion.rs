@@ -449,9 +449,9 @@ fn in_scope(
         }
     }
 
-    // Names brought in with `use`.
+    // Names brought in with `import`.
     if let Some(declared) = state.analysis.program.contexts.get(context) {
-        for name in declared.uses.iter().flat_map(|u| &u.names) {
+        for name in declared.imports.iter().flat_map(|u| &u.names) {
             let written = match &name.alias {
                 Some(alias) => Path {
                     segments: vec![alias.clone()],

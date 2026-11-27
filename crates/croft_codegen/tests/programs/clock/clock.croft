@@ -4,7 +4,7 @@
 // 2025 first, which stops it too.
 context Diary
 
-use { Date, Clock, days_between, add_days } from Std.Time
+import { Date, Clock, days_between, add_days } from Std.Time
 
 service Show(): Unit {
     calls { Clock, Console, Arguments }

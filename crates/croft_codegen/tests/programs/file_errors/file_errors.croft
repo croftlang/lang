@@ -2,10 +2,10 @@
 // lists, copies, writes or appends to it, or copies open.txt to it, as the
 // first argument says, so a failure stops the program with the error's name.
 context Probe {
-    publish { Open }
+    export { Open }
 
-    use { Files, FileError } from Std.Files
-    use { to_bytes } from Std.Text
+    import { Files, FileError } from Std.Files
+    import { to_bytes } from Std.Text
 
     service Open(): Result<Unit, FileError> {
         calls { Files, Console, Arguments }
@@ -43,5 +43,5 @@ context Probe {
 
 domain Program {
     contexts { Probe }
-    use { Open } from Probe
+    import { Open } from Probe
 } = Open()?

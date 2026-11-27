@@ -92,7 +92,7 @@
       "comment": "Words the lexer leaves as identifiers, special only in one place.",
       "patterns": [
         {
-          "comment": "use { Screen, Key } from Dungeon",
+          "comment": "import { Screen, Key } from Dungeon",
           "match": "(\\})\\s*(from)\\b",
           "captures": {
             "1": { "name": "punctuation.section.braces.end.croft" },
@@ -100,7 +100,7 @@
           }
         },
         {
-          "comment": "use { Keyboard as keys } from Dungeon",
+          "comment": "import { Keyboard as keys } from Dungeon",
           "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s+(as)\\s+(?=[A-Za-z_])",
           "captures": {
             "2": { "name": "keyword.control.import.croft" }
@@ -157,7 +157,7 @@
           "match": "\\b(context|domain|value|entity|aggregate|enum|const|constraint|invariant|command|factory|policy|fn|service|port|adapter|repository|translation)\\b"
         },
         { "name": "storage.modifier.identity.croft", "match": "\\bidentity\\b" },
-        { "name": "keyword.control.import.croft", "match": "\\b(use|publish)\\b" },
+        { "name": "keyword.control.import.croft", "match": "\\b(import|export)\\b" },
         { "name": "keyword.control.croft", "match": "\\b(if|match|loop|break|or)\\b" },
         { "name": "keyword.other.croft", "match": "\\b(let|set|emit|issue|with|where|each|calls|native)\\b" },
         { "name": "constant.language.boolean.croft", "match": "\\b(true|false)\\b" },

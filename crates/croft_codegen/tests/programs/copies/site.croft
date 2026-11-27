@@ -1,10 +1,10 @@
 // Makes the folders of a site, copies the file named on the command line
 // into it, and prints what the folder then holds.
 context Site {
-    publish { Build }
+    export { Build }
 
-    use { Files, FileError } from Std.Files
-    use { join } from Std.Text
+    import { Files, FileError } from Std.Files
+    import { join } from Std.Text
 
     service Build(): Result<Unit, FileError> {
         calls { Files, Console, Arguments }
@@ -21,5 +21,5 @@ context Site {
 
 domain Program {
     contexts { Site }
-    use { Build } from Site
+    import { Build } from Site
 } = Build()?

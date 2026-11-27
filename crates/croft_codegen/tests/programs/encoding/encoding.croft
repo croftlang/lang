@@ -3,8 +3,8 @@
 // CRC-16/CCITT-FALSE and CRC-32 check values.
 context Encoding
 
-use { to_bytes, to_text } from Std.Text
-use { to_hex, from_hex, to_base64, from_base64, percent_encode, percent_decode, crc16, crc32 } from Std.Encoding
+import { to_bytes, to_text } from Std.Text
+import { to_hex, from_hex, to_base64, from_base64, percent_encode, percent_decode, crc16, crc32 } from Std.Encoding
 
 error WrongAnswer
 

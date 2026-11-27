@@ -1,9 +1,9 @@
 // Lists the folder named on the command line, printing each name in order,
 // through Std.Files and its StdioFiles adapter.
 context Pages {
-    publish { Show }
+    export { Show }
 
-    use { Files, FileError } from Std.Files
+    import { Files, FileError } from Std.Files
 
     service Show(): Result<Unit, FileError> {
         calls { Files, Console, Arguments }
@@ -21,5 +21,5 @@ context Pages {
 
 domain Program {
     contexts { Pages }
-    use { Show } from Pages
+    import { Show } from Pages
 } = Show()?

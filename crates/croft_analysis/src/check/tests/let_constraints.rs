@@ -7,7 +7,7 @@ use super::{assert_error, errors};
 fn service(body: &str) -> String {
     format!(
         "context Counting {{\n\
-         use {{ Map }} from Std.Collections\n\
+         import {{ Map }} from Std.Collections\n\
          error Missing\n\
          service Count(extra: Int): Int = {{\n\
          {body}\n\

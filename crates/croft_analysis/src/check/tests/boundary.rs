@@ -1,4 +1,4 @@
-//! Ports, adapters, repositories, and what contexts publish and use.
+//! Ports, adapters, repositories, and what contexts export and import.
 
 use super::{assert_error, dungeon, errors};
 
@@ -65,20 +65,21 @@ fn checks_services_use_ports() {
 }
 
 #[test]
-fn checks_publish_and_use() {
-    let scoring = |names: &str| format!("context Scoring {{\n use {{ {names} }} from Dungeon\n}}");
-    let dungeon = dungeon("publish { RoomId }");
+fn checks_export_and_import() {
+    let scoring =
+        |names: &str| format!("context Scoring {{\n import {{ {names} }} from Dungeon\n}}");
+    let dungeon = dungeon("export { RoomId }");
     let checked = |names: &str| super::check_files(&[&dungeon, &scoring(names)]);
     assert!(checked("RoomId").is_ok());
 
     assert_eq!(
         checked("Position").err().unwrap(),
-        vec!["context `Dungeon` does not publish `Position`"]
+        vec!["context `Dungeon` does not export `Position`"]
     );
 
     assert_error(
-        &super::dungeon("publish { Door }"),
-        "cannot publish `Door`: context `Dungeon` does not declare it",
+        &super::dungeon("export { Door }"),
+        "cannot export `Door`: context `Dungeon` does not declare it",
     );
 }
 

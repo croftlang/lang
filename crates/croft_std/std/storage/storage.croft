@@ -4,7 +4,7 @@
 // bytes live. croft.toml binds one to each repository, `MemoryStorage` when it
 // names none.
 context Storage {
-    publish {
+    export {
         Storage,
         StorageError,
         StorageFull,

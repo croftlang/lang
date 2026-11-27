@@ -24,7 +24,7 @@ its compiler, standard library and language server.
 
 ```croft
 context Greeter {
-  publish { greet }
+  export { greet }
 
   fn greet(): String where Length(0, 12) = {
     "Hello, World"
@@ -36,7 +36,7 @@ domain Application {
     Greeter
   }
 
-  use { greet } from Greeter
+  import { greet } from Greeter
 
   calls { Console }
 } = {

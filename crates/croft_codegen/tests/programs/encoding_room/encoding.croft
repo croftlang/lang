@@ -2,7 +2,7 @@
 // Length holds: a checked build stops, and an unchecked one cuts it short.
 context Encoding
 
-use { to_hex } from Std.Encoding
+import { to_hex } from Std.Encoding
 
 service Encode(): Unit {
     calls { Console }

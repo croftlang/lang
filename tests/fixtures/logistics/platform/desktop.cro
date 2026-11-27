@@ -1,7 +1,7 @@
 // Adapters for a desktop computer, in C from platform/desktop.c.
 context Platform
 
-use { HandlingReports, HandlingReport, HandlingActivity, HandlingType, VoyageNumber, Clock } from Shipping
+import { HandlingReports, HandlingReport, HandlingActivity, HandlingType, VoyageNumber, Clock } from Shipping
 
 adapter SystemClock for Clock = {
     fn today() = native clock_today()

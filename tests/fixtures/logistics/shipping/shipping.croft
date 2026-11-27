@@ -2,7 +2,7 @@
 // of the business, in the words the company's own people use.
 context Shipping
 
-publish {
+export {
     SetUpBooking,
     RouteCargo,
     RegisterReports,

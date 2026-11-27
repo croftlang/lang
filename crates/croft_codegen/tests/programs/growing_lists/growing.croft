@@ -2,7 +2,7 @@
 // items as its `Length` says, well past the 16 of a list with no `Length`.
 context Counting
 
-use { Map } from Std.Collections
+import { Map } from Std.Collections
 
 error WrongAnswer
 

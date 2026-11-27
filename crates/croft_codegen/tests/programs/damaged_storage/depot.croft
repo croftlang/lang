@@ -3,10 +3,10 @@
 // number too big for its field, an unknown variant, a flag that is neither
 // true nor false, or a broken constraint or invariant loads as StorageDamaged.
 context Depot {
-    publish { Check }
+    export { Check }
 
-    use { Files, FileError } from Std.Files
-    use { Map } from Std.Collections
+    import { Files, FileError } from Std.Files
+    import { Map } from Std.Collections
 
     identity CrateId for Crate: Int where Range(1, 99)
     identity GateId for Gate: Int where Range(1, 9)
@@ -233,5 +233,5 @@ context Depot {
 
 domain Program {
     contexts { Depot }
-    use { Check } from Depot
+    import { Check } from Depot
 } = Check()?

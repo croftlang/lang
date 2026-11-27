@@ -2,15 +2,15 @@
 
 use super::check_files;
 
-/// A context that publishes a service that fails.
-const SHOP: &str = "context Shop {\n publish { Open }\n error Closed\n service Open(): Result<Unit, Closed> = Err(Closed)\n}";
-/// A context with an aggregate and nothing published.
+/// A context that exports a service that fails.
+const SHOP: &str = "context Shop {\n export { Open }\n error Closed\n service Open(): Result<Unit, Closed> = Err(Closed)\n}";
+/// A context with an aggregate and nothing exported.
 const STOCK: &str =
     "context Stock {\n identity ItemId for Item: Int\n aggregate Item { id: ItemId }\n}";
 
 /// A `Market` domain listing `contexts`, that runs `body`.
 fn domain(contexts: &str, body: &str) -> String {
-    format!("domain Market {{\n contexts {{ {contexts} }}\n use {{ Open }} from Shop\n}} = {{\n{body}\n}}")
+    format!("domain Market {{\n contexts {{ {contexts} }}\n import {{ Open }} from Shop\n}} = {{\n{body}\n}}")
 }
 
 #[test]
@@ -41,10 +41,10 @@ fn reports_an_unknown_context() {
 }
 
 /// A context that uses `Shop`.
-const TILL: &str = "context Till {\n use { Open } from Shop\n}";
+const TILL: &str = "context Till {\n import { Open } from Shop\n}";
 
 #[test]
-fn lets_a_context_use_only_contexts_upstream_of_it() {
+fn lets_a_context_import_only_from_contexts_upstream_of_it() {
     assert!(check_files(&[SHOP, STOCK, TILL, &domain("Shop -> Till, Stock", "Open()?")]).is_ok());
 
     let errors = check_files(&[SHOP, STOCK, TILL, &domain("Shop, Stock, Till", "Open()?")])
@@ -92,7 +92,8 @@ fn reports_a_second_domain() {
 fn lets_the_domain_pass_up_any_error_but_not_reach_inside_contexts() {
     assert!(check_files(&[SHOP, STOCK, &domain("Shop, Stock", "Open()?\n Open()?")]).is_ok());
 
-    let market = "domain Market {\n contexts { Shop, Stock }\n use { Closed } from Shop\n} = Unit";
+    let market =
+        "domain Market {\n contexts { Shop, Stock }\n import { Closed } from Shop\n} = Unit";
     let errors = check_files(&[SHOP, STOCK, market]).err().unwrap();
-    assert_eq!(errors, vec!["context `Shop` does not publish `Closed`"]);
+    assert_eq!(errors, vec!["context `Shop` does not export `Closed`"]);
 }

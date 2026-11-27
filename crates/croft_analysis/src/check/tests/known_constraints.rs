@@ -66,7 +66,7 @@ fn a_built_in_range_is_checked() {
 #[test]
 fn a_decimal_range_is_checked() {
     let source = "context Till {\n\
-                  use { Decimal } from Std.Numbers\n\
+                  import { Decimal } from Std.Numbers\n\
                   fn pay(amount: Decimal<2> where Range(0.01, 99.99)): Decimal<2> = amount\n\
                   fn sell(): Decimal<2> = pay(120.50)\n}";
 
@@ -121,12 +121,12 @@ fn a_value_only_known_while_running_is_left_to_runtime() {
 #[test]
 fn a_call_from_the_domain_is_checked_against_the_context_constraint() {
     let source = "context Clinic {\n\
-                  publish { administer }\n\
+                  export { administer }\n\
                   constraint Overdose(milligrams: Int, limit: Int) = milligrams <= limit\n\
                   fn administer(milligrams: Int where Overdose(4000)): Int = milligrams\n}\n\
                   domain App {\n\
                   contexts { Clinic }\n\
-                  use { administer } from Clinic\n\
+                  import { administer } from Clinic\n\
                   calls { Console }\n} = {\n\
                   administer(5000)\n\
                   Console.print(\"OK\")\n}";

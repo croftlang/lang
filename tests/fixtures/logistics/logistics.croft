@@ -8,7 +8,7 @@ domain Logistics {
         Shipping -> Platform
     }
 
-    use { SetUpBooking, RouteCargo, RegisterReports, Track, SAMPLE_CARGO } from Shipping
+    import { SetUpBooking, RouteCargo, RegisterReports, Track, SAMPLE_CARGO } from Shipping
 } = {
     SetUpBooking()?
     RouteCargo(SAMPLE_CARGO)?

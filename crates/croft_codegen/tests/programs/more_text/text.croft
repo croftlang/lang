@@ -2,7 +2,7 @@
 // literals, parameters and strings with a Length of their own.
 context Text
 
-use { replace, index_of, lines, repeat, pad_left, pad_right, join, split, trim } from Std.Text
+import { replace, index_of, lines, repeat, pad_left, pad_right, join, split, trim } from Std.Text
 
 error WrongAnswer
 

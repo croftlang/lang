@@ -1,8 +1,8 @@
 // `from_hex` and `to_hex` from Std.Text read and write whole numbers.
 context Numbers {
-    publish { number_of, hex_of_number }
+    export { number_of, hex_of_number }
 
-    use { from_hex, to_hex } from Std.Text
+    import { from_hex, to_hex } from Std.Text
 
     fn number_of(text: String): Option<Int> = from_hex(text)
 
