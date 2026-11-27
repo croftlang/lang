@@ -8,8 +8,11 @@ pub const STANDARD_CONTEXTS: [(&str, &[&str]); 3] = [
     (
         "Std.Text",
         &[
+            "code_at",
             "contains",
             "ends_with",
+            "from_code",
+            "from_hex",
             "index_of",
             "join",
             "lines",
@@ -20,6 +23,8 @@ pub const STANDARD_CONTEXTS: [(&str, &[&str]); 3] = [
             "slice",
             "split",
             "starts_with",
+            "to_decimal",
+            "to_hex",
             "to_int",
             "to_bytes",
             "to_text",

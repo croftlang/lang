@@ -101,6 +101,66 @@ croft_int croft_decimal_divide(croft_int a, croft_int b, croft_int scale)
     return with_sign(quotient, (a < 0) != (b < 0), over);
 }
 
+/* A decimal written with an optional "-", digits, and optionally a point
+   and up to places more digits, as a whole number of its smallest units.
+   Text that isn't one, has more places, or doesn't fit in 32 bits gives 0. */
+croft_bool croft_string_to_decimal(croft_string_view text, croft_int places, croft_int *out)
+{
+    unsigned long value = 0;
+    unsigned long limit;
+    unsigned long digit;
+    croft_int given = 0;
+    croft_u16 index = 0;
+    croft_u16 whole = 0;
+    croft_bool point = 0;
+    croft_bool negative = text.length > 0 && text.text[0] == '-';
+    if (negative) {
+        index = 1;
+    }
+
+    /* As croft_string_to_int does, the units are read as an unsigned long
+       and refused as soon as they go past what 32 bits hold. */
+    limit = negative ? 2147483648UL : 2147483647UL;
+    for (; index < text.length; index++) {
+        if (text.text[index] == '.' && !point) {
+            point = 1;
+            continue;
+        }
+        if (text.text[index] < '0' || text.text[index] > '9') {
+            return 0;
+        }
+        if (point) {
+            given++;
+        } else {
+            whole++;
+        }
+        if (given > places) {
+            return 0;
+        }
+        digit = (unsigned long) (text.text[index] - '0');
+        if (value > (limit - digit) / 10) {
+            return 0;
+        }
+        value = value * 10 + digit;
+    }
+    if (whole == 0 || (point && given == 0)) {
+        return 0;
+    }
+    for (; given < places; given++) {
+        if (value > limit / 10) {
+            return 0;
+        }
+        value *= 10;
+    }
+
+    if (negative && value > 0) {
+        *out = -(croft_int) (value - 1) - 1;
+        return 1;
+    }
+    *out = (croft_int) value;
+    return 1;
+}
+
 void croft_decimal_to_string(croft_int value, croft_int places, char *out, croft_u16 *length, croft_u16 capacity)
 {
     unsigned long scale = 1;

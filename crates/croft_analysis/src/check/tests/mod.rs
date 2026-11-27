@@ -17,6 +17,7 @@ mod manifest;
 mod numbers;
 mod references;
 mod standard;
+mod text;
 
 use croft_syntax::{parse, SourceId};
 

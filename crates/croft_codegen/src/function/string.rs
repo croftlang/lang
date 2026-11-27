@@ -80,6 +80,33 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                 temp
             }
+            "code_at" => {
+                let index = number(self, 0);
+                let temp = self.temp(ty);
+
+                self.line(format!(
+                    "{temp}.some = croft_string_code_at({text}, {index}, &{temp}.value);"
+                ));
+
+                temp
+            }
+            "to_decimal" => {
+                let places = match ty {
+                    Type::Option(item) => match **item {
+                        Type::Decimal(places) => places,
+                        _ => 0,
+                    },
+                    _ => 0,
+                };
+
+                let temp = self.temp(ty);
+
+                self.line(format!(
+                    "{temp}.some = croft_string_to_decimal({text}, {places}, &{temp}.value);"
+                ));
+
+                temp
+            }
             "to_bytes" => {
                 // As many values as the string has characters, when it has a
                 // bound of its own; a full string can be a longer literal.

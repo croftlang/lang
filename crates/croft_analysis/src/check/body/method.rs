@@ -44,7 +44,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             Type::String => {
                 let context = self.scope.context;
                 self.checker.check_standard(context, name, span);
-                self.string_method(name, arguments, span)
+                self.string_method(name, arguments, span, expected)
+            }
+            Type::Int if name == "to_hex" => {
+                let context = self.scope.context;
+                self.checker.check_standard(context, name, span);
+                self.fixed(name, arguments, &[], Type::String, span)
             }
             Type::Int | Type::Float | Type::Decimal(_) if name == "to_string" => {
                 self.fixed(name, arguments, &[], Type::String, span)

@@ -28,7 +28,7 @@ const BUILT_IN_TYPES: [&str; 11] = [
 ];
 
 /// The built-in functions and constraints, offered anywhere.
-const BUILT_IN_FUNCTIONS: [&str; 14] = [
+const BUILT_IN_FUNCTIONS: [&str; 16] = [
     "Some",
     "Ok",
     "Err",
@@ -41,6 +41,8 @@ const BUILT_IN_FUNCTIONS: [&str; 14] = [
     "checked_add",
     "checked_subtract",
     "checked_multiply",
+    "from_code",
+    "from_hex",
     "Range",
     "Length",
 ];

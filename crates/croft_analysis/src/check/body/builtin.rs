@@ -1,10 +1,12 @@
-//! Built-in functions: the numbers of `Std.Numbers`, `Some`, `Ok`, `Err`,
-//! and the built-in constraints `Range` and `Length` called directly.
+//! Built-in functions: the numbers of `Std.Numbers`, `from_code` and
+//! `from_hex` of `Std.Text`, `Some`, `Ok`, `Err`, and the built-in
+//! constraints `Range` and `Length` called directly.
 
 use croft_syntax::ast::Argument;
 use croft_syntax::Span;
 
 use super::BodyChecker;
+use crate::check::known::Known;
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
@@ -64,6 +66,17 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     _ => Type::option(Type::Int),
                 }
             }
+            "from_code" => {
+                self.one_argument(name, arguments, 0, 1, span, Some(&Type::Int));
+                self.check_known_code(arguments);
+
+                Type::String
+            }
+            "from_hex" => {
+                self.one_argument(name, arguments, 0, 1, span, Some(&Type::String));
+
+                Type::option(Type::Int)
+            }
             "Some" => {
                 let item = match expected {
                     Some(Type::Option(item)) => Some((**item).clone()),
@@ -118,6 +131,26 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         };
 
         Some(ty)
+    }
+
+    /// Reports a character code given to `from_code` that is known when the
+    /// program is compiled and isn't from 0 to 255.
+    fn check_known_code(&mut self, arguments: &[Argument]) {
+        let Some(argument) = arguments.first() else {
+            return;
+        };
+
+        let Some(Known::Number { units, places: 0 }) = self.known_local_value(&argument.value)
+        else {
+            return;
+        };
+
+        if (0..=255).contains(&units) {
+            return;
+        }
+
+        let message = format!("a character code is from 0 to 255, found {units}");
+        self.error(message, argument.value.span);
     }
 
     /// Checks argument `index` of `count`, reporting a wrong count once.

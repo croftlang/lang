@@ -1532,6 +1532,49 @@ fn reads_numbers_only_as_far_as_int_reaches() {
     run_program("text_numbers");
 }
 
+/// Std.Text's code_at, from_code, to_hex, from_hex, to_decimal and trim,
+/// and a character code past 255 stopping the program.
+#[test]
+fn reads_and_writes_character_codes_and_hexadecimal() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/text_codes");
+    let output = generate(&source, "test", "text_codes");
+    let built = compile(&output, &["croft_runtime.c", "program.c", "-o", "program"]);
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    let ran = std::process::Command::new(output.join("program"))
+        .output()
+        .expect("it runs");
+
+    assert!(
+        ran.status.success(),
+        "a check failed: {}",
+        String::from_utf8_lossy(&ran.stderr)
+    );
+
+    let past = std::process::Command::new(output.join("program"))
+        .arg("one")
+        .output()
+        .expect("it runs");
+
+    assert_eq!(past.status.code(), Some(1));
+
+    assert_eq!(
+        String::from_utf8_lossy(&past.stderr),
+        "a character code is from 0 to 255\n"
+    );
+
+    fs::remove_dir_all(output).ok();
+}
+
 /// sort, sort_by, reverse, index_of and `+` on lists.
 #[test]
 fn runs_more_list_methods() {

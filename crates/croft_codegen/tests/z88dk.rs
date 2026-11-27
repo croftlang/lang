@@ -74,7 +74,7 @@ done < cases.txt";
 /// that zsdcc builds in a minute or two. `values`, `more_lists`, `more_text`,
 /// `bounded_lists` and `bounded_bytes` run too, but take zsdcc from several
 /// minutes to a quarter of an hour each.
-const PROGRAMS: [&str; 14] = [
+const PROGRAMS: [&str; 15] = [
     "borrowed_strings",
     "bounded_strings",
     "early_returns",
@@ -88,6 +88,7 @@ const PROGRAMS: [&str; 14] = [
     "repository_operations",
     "results",
     "sizes",
+    "text_codes",
     "text_numbers",
 ];
 

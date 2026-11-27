@@ -1,0 +1,102 @@
+// Character codes, hexadecimal and decimal text, and trim, on literals and
+// on parameters whose values are only known when the program runs. Given an
+// argument, it asks for a character code past 255, which stops it.
+context Codes
+
+use { code_at, from_code, to_hex, from_hex, to_decimal, trim } from Std.Text
+use { Decimal } from Std.Numbers
+
+error WrongAnswer
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn code(text: String, index: Int): Option<Int> = text.code_at(index)
+
+fn character(code: Int): String = from_code(code)
+
+fn hex(number: Int): String = number.to_hex()
+
+fn number(text: String): Option<Int> = from_hex(text)
+
+fn price(text: String): Option<Decimal<2>> = text.to_decimal()
+
+fn tenths(text: String): Option<Decimal<1>> = text.to_decimal()
+
+fn tidy(text: String): String = text.trim()
+
+service Check(): Result<Unit, WrongAnswer> {
+    calls { Arguments }
+} = {
+    let given = Arguments.all().length
+    if given > 0 {
+        check(character(given * 300) == "")?
+    }
+
+    check(code("AZ", 0) == Some(65))?
+    check(code("AZ", 1) == Some(90))?
+    check(code("AZ", 2).is_none)?
+    check(code("AZ", -1).is_none)?
+    check(code("", 0).is_none)?
+    check(code(from_code(255), 0) == Some(255))?
+    check("\t".code_at(0) == Some(9))?
+
+    check(character(65) == "A")?
+    check(character(97) + character(98) == "ab")?
+    check(character(10) == "\n")?
+    check(character(200).length == 1)?
+    check(code(character(200), 0) == Some(200))?
+    check(code(character(0), 0) == Some(0))?
+
+    check(hex(0) == "0")?
+    check(hex(255) == "FF")?
+    check(hex(4096) == "1000")?
+    check(hex(2147483647) == "7FFFFFFF")?
+    check(hex(-1) == "FFFFFFFF")?
+    check(hex(-2147483647 - 1) == "80000000")?
+    check(hex(-256) == "FFFFFF00")?
+    check(48879.to_hex() == "BEEF")?
+
+    check(number("FF") == Some(255))?
+    check(number("ff") == Some(255))?
+    check(number("0") == Some(0))?
+    check(number("7FFFFFFF") == Some(2147483647))?
+    check(number("FFFFFFFF") == Some(-1))?
+    check(number("80000000") == Some(-2147483647 - 1))?
+    check(number("000000000BEEF") == Some(48879))?
+    check(number("100000000").is_none)?
+    check(number("").is_none)?
+    check(number("0x10").is_none)?
+    check(number("-1").is_none)?
+    check(number("G").is_none)?
+    check(number(hex(-12345)) == Some(-12345))?
+
+    check(price("12.50") == Some(12.50))?
+    check(price("12.5") == Some(12.50))?
+    check(price("12") == Some(12.00))?
+    check(price("-0.05") == Some(-0.05))?
+    check(price("21474836.47") == Some(21474836.47))?
+    check(price("-21474836.48").is_some)?
+    check(price("21474836.48").is_none)?
+    check(price("1.234").is_none)?
+    check(price("1.").is_none)?
+    check(price(".5").is_none)?
+    check(price("").is_none)?
+    check(price("-").is_none)?
+    check(price("1.2.3").is_none)?
+    check(price("+1").is_none)?
+    check(price("1e3").is_none)?
+    check(tenths("4.2") == Some(4.2))?
+    check(tenths("42") == Some(42.0))?
+    check(tenths("4.25").is_none)?
+
+    check(tidy(" \t a b \r\n") == "a b")?
+    check(tidy("\n\n") == "")?
+    check(tidy("a") == "a")?
+    check("  padded  ".trim() == "padded")?
+    Ok(Unit)
+}
