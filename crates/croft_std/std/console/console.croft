@@ -1,11 +1,11 @@
 // Std.Console: the command line a program runs from. Every program has it,
 // and its names need no import: a service lists the ports it needs in its
-// contract, as in `calls { Console, Arguments }`, and calls them by name, as
+// contract, as in `calls { Console, Environment }`, and calls them by name, as
 // in `Console.print("hello")`. Every target supplies all of them, so
 // croft.toml names no adapter for them; the compiler writes their C. A port
 // the program declares with the same name replaces one of these.
 context Console {
-    publish { Console, Arguments, Process }
+    publish { Console, Arguments, Environment, Process }
 
     // Text to and from whoever runs the program.
     port Console {
@@ -31,6 +31,17 @@ context Console {
         // checks on, an argument longer than a string, or more arguments
         // than the list holds, stops the program.
         fn all(): List<String>
+    }
+
+    // The variables the program was run with, such as HOME or PATH.
+    port Environment {
+        // The value of the variable with this name, or None when it isn't
+        // set. Targets without variables give None. A name that no variable
+        // can have, being empty, longer than 127 characters, or holding "="
+        // or a NUL byte, gives None. A value is never cut short with checks
+        // on: one longer than a string stops the program. With checks off,
+        // as much of it as a string holds is kept.
+        fn get(name: String): Option<String>
     }
 
     // The running program itself.

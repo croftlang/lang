@@ -63,7 +63,8 @@ pub fn standard_context_of(name: &str) -> Option<&'static str> {
 }
 
 /// The standard context every program has, whose names need no import:
-/// the `Console`, `Arguments` and `Process` ports, which every target supplies.
+/// the `Console`, `Arguments`, `Environment` and `Process` ports, which
+/// every target supplies.
 pub const CONSOLE_CONTEXT: &str = "Std.Console";
 
 /// The standard context every program with a repository has, whose names

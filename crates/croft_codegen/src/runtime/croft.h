@@ -219,6 +219,10 @@ void croft_console_print(croft_string_view text, croft_unit *out);
 void croft_console_print_error(croft_string_view text, croft_unit *out);
 void croft_console_read_line(croft_bool *present, char *out, croft_u16 *length, croft_u16 capacity);
 
+/* The built-in Environment port: the value of an environment variable. */
+void croft_environment_get(croft_string_view name, croft_bool *present, char *out, croft_u16 *length,
+                           croft_u16 capacity);
+
 /* The built-in Process port: stops the program with an exit code. */
 void croft_process_exit(croft_int code, croft_unit *out);
 

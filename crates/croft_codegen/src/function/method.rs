@@ -122,8 +122,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         )
     }
 
-    /// An operation of `Console`, `Arguments` or `Process`, which the runtime
-    /// supplies on every target.
+    /// An operation of `Console`, `Arguments`, `Environment` or `Process`,
+    /// which the runtime supplies on every target.
     fn builtin_port_call(
         &mut self,
         port: &str,
@@ -143,6 +143,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let passed = self.pass_all(arguments, &text);
                 self.call_into("croft_console_print", passed, ty)
             }
+            ("Environment", _) => self.environment_get(arguments, ty),
             ("Process", _) => {
                 let passed = self.pass_all(arguments, &[("code".to_string(), Type::Int)]);
                 self.call_into("croft_process_exit", passed, ty)
@@ -160,6 +161,19 @@ impl<'g, 'a> Writer<'g, 'a> {
         ));
 
         line
+    }
+
+    /// `Environment.get(name)`: the variable's value, or None when it isn't set.
+    fn environment_get(&mut self, arguments: &[Argument], ty: &Type) -> String {
+        let passed = self.pass_all(arguments, &[("name".to_string(), Type::String)]);
+        let name = passed.first().cloned().unwrap_or_default();
+        let value = self.temp(ty);
+
+        self.line(format!(
+            "croft_environment_get({name}, &{value}.some, CROFT_OUT({value}.value));"
+        ));
+
+        value
     }
 
     /// `Arguments.all()`: the program's command-line arguments. With checks
