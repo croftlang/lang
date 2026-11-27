@@ -34,13 +34,18 @@ pow(2, 10)   // 1024; an exponent below zero, or an answer past 32 bits, is a mi
 sign(n)   // -1, 0 or 1
 checked_add(a, b)   checked_subtract(a, b)   checked_multiply(a, b)   // Option<Int>: None past 32 bits
 
-// Std.Collections: Map<K, V>, as many entries as its Length constraint allows
-use { Map } from Std.Collections
+// Std.Collections: Map<K, V> and Set<T>, as many entries as their Length constraints allow
+use { Map, Set } from Std.Collections
 let stock: Map<String, Int> = ["sword": 1, "key": 2]
 stock.get("key")            // Some(2)
 stock.set("map", 1)         // a copy with map added
 stock.remove("sword")       // a copy without sword
 stock.contains("key")   stock.length   stock.is_empty   stock.keys   stock.values
+let seen: Set<Int> = [3, 1]   // or [] when empty; an item listed twice is a mistake
+seen.add(2)                 // a copy with 2 added; adding 3 again changes nothing
+seen.remove(3)              // a copy without 3
+seen.contains(1)   seen.length   seen.is_empty
+seen.items                  // List<Int>: [3, 1, 2], in the order they were added
 
 // Std.Files: read, write, append, exists, remove, list, make_folder, copy
 service Keep(): Result<Unit, FileError> {
