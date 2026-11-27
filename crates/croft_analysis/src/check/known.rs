@@ -5,6 +5,11 @@ use std::cmp::Ordering;
 
 use croft_syntax::ast::{BinaryOp, UnaryOp};
 
+/// The lowest whole number: an `Int` has exactly 32 bits on every machine.
+pub(crate) const INT_LOW: i128 = i32::MIN as i128;
+/// The highest whole number.
+pub(crate) const INT_HIGH: i128 = i32::MAX as i128;
+
 /// A value known when the program is compiled.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Known {
@@ -17,6 +22,44 @@ pub(crate) enum Known {
     Bool(bool),
     Text(String),
     List(Vec<Known>),
+}
+
+/// Arithmetic on known whole numbers that has no answer in 32 bits, so the
+/// program would stop there: `2147483647 + 1`, or `10 / 0`.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct Fault {
+    /// The operation on the known values, as written: `100000 * 100000`.
+    pub(crate) operation: String,
+    /// What goes wrong.
+    pub(crate) outcome: Outcome,
+}
+
+/// Why a [`Fault`] has no answer.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum Outcome {
+    /// `/` or `%` by zero.
+    DividesByZero,
+    /// The answer, which is outside the 32 bits of a whole number.
+    DoesNotFit(i128),
+}
+
+impl Fault {
+    /// The fault as the end of a message about `written`, the expression or
+    /// call it happens in: "divides by zero".
+    pub(crate) fn describe(&self, written: &str) -> String {
+        let Fault { operation, outcome } = self;
+
+        match outcome {
+            Outcome::DividesByZero if written == operation => format!("`{written}` divides by zero"),
+            Outcome::DividesByZero => format!("`{written}` divides by zero, in `{operation}`"),
+            Outcome::DoesNotFit(answer) if written == operation => {
+                format!("`{written}` gives {answer}, which doesn't fit in 32 bits")
+            }
+            Outcome::DoesNotFit(answer) => format!(
+                "`{written}` works out `{operation}`, which gives {answer} and doesn't fit in 32 bits"
+            ),
+        }
+    }
 }
 
 impl Known {
@@ -75,6 +118,7 @@ impl Known {
     pub(crate) fn unary(op: UnaryOp, operand: Known) -> Option<Known> {
         match (op, operand) {
             (UnaryOp::Not, Known::Bool(value)) => Some(Known::Bool(!value)),
+            (UnaryOp::Negate, Known::Number { units, places: 0 }) if !fits(-units) => None,
             (UnaryOp::Negate, Known::Number { units, places }) => Some(Known::Number {
                 units: units.checked_neg()?,
                 places,
@@ -110,6 +154,10 @@ impl Known {
             return None;
         };
 
+        if fault(op, &left, &right).is_some() {
+            return None;
+        }
+
         let (left, right, places) = aligned(&left, &right)?;
 
         let units = match op {
@@ -121,13 +169,83 @@ impl Known {
             BinaryOp::BitAnd if places == 0 => left & right,
             BinaryOp::BitOr if places == 0 => left | right,
             BinaryOp::BitXor if places == 0 => left ^ right,
-            BinaryOp::ShiftLeft if places == 0 => left.checked_shl(u32::try_from(right).ok()?)?,
-            BinaryOp::ShiftRight if places == 0 => left.checked_shr(u32::try_from(right).ok()?)?,
+            BinaryOp::ShiftLeft if places == 0 => shifted(left, right, i32::wrapping_shl)?,
+            BinaryOp::ShiftRight if places == 0 => shifted(left, right, i32::wrapping_shr)?,
             _ => return None,
         };
 
         Some(Known::Number { units, places })
     }
+}
+
+/// Whether a whole number fits in 32 bits.
+pub(crate) fn fits(units: i128) -> bool {
+    (INT_LOW..=INT_HIGH).contains(&units)
+}
+
+/// What `left op right`, on two known whole numbers, does that has no
+/// answer in 32 bits, if anything: `+`, `-` and `*` past them, `/` of the
+/// lowest number by -1, or `/` and `%` by zero.
+pub(crate) fn fault(op: BinaryOp, left: &Known, right: &Known) -> Option<Fault> {
+    let (
+        Known::Number {
+            units: a,
+            places: 0,
+        },
+        Known::Number {
+            units: b,
+            places: 0,
+        },
+    ) = (left, right)
+    else {
+        return None;
+    };
+
+    let operation = format!("{} {} {}", left.describe(), op.symbol(), right.describe());
+
+    if matches!(op, BinaryOp::Divide | BinaryOp::Remainder) && *b == 0 {
+        return Some(Fault {
+            operation,
+            outcome: Outcome::DividesByZero,
+        });
+    }
+
+    let answer = match op {
+        BinaryOp::Add => a.checked_add(*b)?,
+        BinaryOp::Subtract => a.checked_sub(*b)?,
+        BinaryOp::Multiply => a.checked_mul(*b)?,
+        BinaryOp::Divide => a.checked_div(*b)?,
+        _ => return None,
+    };
+
+    (!fits(answer)).then_some(Fault {
+        operation,
+        outcome: Outcome::DoesNotFit(answer),
+    })
+}
+
+/// What `-operand`, on a known whole number, does that has no answer in 32
+/// bits: only `-(-2147483648)` does.
+pub(crate) fn negate_fault(operand: &Known) -> Option<Fault> {
+    let Known::Number { units, places: 0 } = operand else {
+        return None;
+    };
+
+    let answer = units.checked_neg()?;
+
+    (!fits(answer)).then(|| Fault {
+        operation: format!("-({})", operand.describe()),
+        outcome: Outcome::DoesNotFit(answer),
+    })
+}
+
+/// `value` shifted by `amount` as the 32 bits of an `Int` are, through
+/// `shift`; `None` for an amount outside 0 to 31.
+fn shifted(value: i128, amount: i128, shift: fn(i32, u32) -> i32) -> Option<i128> {
+    let amount = u32::try_from(amount).ok().filter(|amount| *amount < 32)?;
+    let value = i32::try_from(value).ok()?;
+
+    Some(i128::from(shift(value, amount)))
 }
 
 /// Two numbers in the same number of places, so `2.5` and `3` compare and add.
@@ -190,6 +308,31 @@ mod tests {
         let actual = actual.and_then(|big| Known::binary(BinaryOp::Multiply, big, Known::int(4)));
 
         assert_eq!(actual, None);
+    }
+
+    #[test]
+    fn arithmetic_past_32_bits_is_a_fault() {
+        let actual = fault(BinaryOp::Add, &Known::int(2_147_483_647), &Known::int(1));
+
+        assert_eq!(
+            actual.map(|fault| fault.describe("2147483647 + 1")),
+            Some("`2147483647 + 1` gives 2147483648, which doesn't fit in 32 bits".to_string())
+        );
+    }
+
+    #[test]
+    fn dividing_the_lowest_number_by_minus_one_is_a_fault() {
+        let lowest = Known::int(-2_147_483_648);
+
+        assert!(fault(BinaryOp::Divide, &lowest, &Known::int(-1)).is_some());
+        assert!(fault(BinaryOp::Remainder, &lowest, &Known::int(-1)).is_none());
+    }
+
+    #[test]
+    fn shifting_works_in_32_bits() {
+        let actual = Known::binary(BinaryOp::ShiftLeft, Known::int(1), Known::int(31));
+
+        assert_eq!(actual, Some(Known::int(-2_147_483_648)));
     }
 
     #[test]

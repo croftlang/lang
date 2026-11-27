@@ -4,6 +4,7 @@ use croft_syntax::ast::{BinaryOp, Expr};
 use croft_syntax::Span;
 
 use super::BodyChecker;
+use crate::check::known::{fits, Known};
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
@@ -17,6 +18,19 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         if written > *places as usize {
             let message = format!("`{text}` has more than {places} decimal places");
+            self.error(message, span);
+        }
+
+        let units = Known::decimal(text).and_then(|known| match known {
+            Known::Number {
+                units,
+                places: given,
+            } => units.checked_mul(10_i128.checked_pow(places.checked_sub(given)?)?),
+            _ => None,
+        });
+
+        if units.is_some_and(|units| !fits(units)) {
+            let message = format!("`{text}` doesn't fit in a `Decimal<{places}>`");
             self.error(message, span);
         }
 

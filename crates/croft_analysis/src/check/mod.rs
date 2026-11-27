@@ -61,6 +61,8 @@ pub(crate) struct Checker<'a> {
     /// Names resolved so far, with where each was written. `resolve` takes
     /// `&self`, so they are kept here until checking ends.
     references: RefCell<Vec<crate::facts::Reference>>,
+    /// Arithmetic with no 32-bit answer, found in bodies and through calls.
+    faults: RefCell<evaluate::Faults>,
 }
 
 impl<'a> Checker<'a> {

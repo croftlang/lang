@@ -3,6 +3,7 @@
 
 mod adapter;
 mod arguments;
+mod arithmetic;
 mod block;
 mod builtin;
 mod bytes;

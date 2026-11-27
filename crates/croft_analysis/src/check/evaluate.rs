@@ -3,12 +3,15 @@
 //! `croft check`; one that depends on what happens while the program runs is
 //! left to the check in the generated C.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use croft_syntax::ast::{Argument, BinaryOp, ConstraintUse, Expr, ExprKind, Path, Statement};
+use croft_syntax::ast::{
+    Argument, BinaryOp, ConstraintUse, Expr, ExprId, ExprKind, Path, Statement, UnaryOp,
+};
+use croft_syntax::Span;
 
 use super::data::expr_path;
-use super::known::Known;
+use super::known::{fault, negate_fault, Fault, Known};
 use super::{Checker, Scope};
 use crate::symbols::SymbolKind;
 use crate::types::Resolved;
@@ -19,6 +22,48 @@ const MAX_DEPTH: u32 = 32;
 
 /// The known values of the names in scope, such as a constraint's parameters.
 pub(crate) type Bindings = HashMap<String, Known>;
+
+/// Arithmetic with no 32-bit answer, found while checking. One in a body is
+/// reported where it is written. One found only by working out a call with
+/// known arguments is reported at the call, once every body is checked, and
+/// only when it was not reported in its body already.
+#[derive(Default)]
+pub(crate) struct Faults {
+    /// The first fault found while a call is worked out, when one is.
+    recording: Option<Option<(ExprId, Fault)>>,
+    /// The expressions whose fault has been reported where it is written.
+    reported: HashSet<ExprId>,
+    /// Faults found through calls: the call as written, where it is, and
+    /// the expression that faults.
+    through_calls: Vec<(String, Span, ExprId, Fault)>,
+}
+
+impl Faults {
+    /// Notes that the fault in `id` has been reported where it is written;
+    /// false when it already had been.
+    pub(crate) fn report(&mut self, id: ExprId) -> bool {
+        self.reported.insert(id)
+    }
+
+    /// Keeps a fault found by working out `call`, written at `span`.
+    pub(crate) fn add_through_call(&mut self, call: String, span: Span, found: (ExprId, Fault)) {
+        let (id, fault) = found;
+        self.through_calls.push((call, span, id, fault));
+    }
+
+    /// Each fault found through a call and not reported in its body, as a
+    /// message and where to report it, once each.
+    pub(crate) fn unreported(&mut self) -> Vec<(String, Span)> {
+        let mut seen = HashSet::new();
+
+        std::mem::take(&mut self.through_calls)
+            .into_iter()
+            .filter(|(_, _, id, _)| !self.reported.contains(id))
+            .map(|(call, span, _, fault)| (fault.describe(&call), span))
+            .filter(|(message, span)| seen.insert((message.clone(), span.line, span.column)))
+            .collect()
+    }
+}
 
 impl<'a> Checker<'a> {
     /// The value of `value`, when it is known without running the program.
@@ -64,6 +109,33 @@ impl<'a> Checker<'a> {
         answer
     }
 
+    /// The first arithmetic with no 32-bit answer that calling `found` with
+    /// these arguments works out, and the expression it is in.
+    pub(super) fn call_fault(
+        &self,
+        scope: &Scope,
+        bindings: &Bindings,
+        found: &Resolved,
+        arguments: &[Argument],
+    ) -> Option<(ExprId, Fault)> {
+        self.faults.borrow_mut().recording = Some(None);
+        self.known_call_at(scope, bindings, found, arguments, 0);
+
+        self.faults.borrow_mut().recording.take().flatten()
+    }
+
+    /// Keeps `fault`, in the expression `id`, when a call is being worked
+    /// out and it is the first found.
+    fn note_fault(&self, id: ExprId, fault: Option<Fault>) {
+        let (mut faults, Some(fault)) = (self.faults.borrow_mut(), fault) else {
+            return;
+        };
+
+        if let Some(first @ None) = &mut faults.recording {
+            *first = Some((id, fault));
+        }
+    }
+
     /// `known_value`, `depth` references deep: past `MAX_DEPTH` it gives up.
     fn known_at(
         &self,
@@ -102,12 +174,25 @@ impl<'a> Checker<'a> {
                 Known::binary(BinaryOp::Equal, length, Known::int(0))
             }
             ExprKind::Field(..) => self.constant_value(scope, &expr_path(value)?, depth),
-            ExprKind::Unary(op, operand) => Known::unary(*op, known(operand)?),
+            ExprKind::Unary(op, operand) => {
+                let operand = known(operand)?;
+
+                if *op == UnaryOp::Negate {
+                    self.note_fault(value.id, negate_fault(&operand));
+                }
+
+                Known::unary(*op, operand)
+            }
             ExprKind::Binary(BinaryOp::And, left, right) => {
                 both(known(left), || known(right), false)
             }
             ExprKind::Binary(BinaryOp::Or, left, right) => both(known(left), || known(right), true),
-            ExprKind::Binary(op, left, right) => Known::binary(*op, known(left)?, known(right)?),
+            ExprKind::Binary(op, left, right) => {
+                let (left, right) = (known(left)?, known(right)?);
+                self.note_fault(value.id, fault(*op, &left, &right));
+
+                Known::binary(*op, left, right)
+            }
             ExprKind::Block(statements) => self.known_block(scope, bindings, statements, depth),
             ExprKind::Call(callee, arguments) => {
                 let path = expr_path(callee)?;
