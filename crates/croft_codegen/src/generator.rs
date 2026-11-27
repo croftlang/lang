@@ -141,7 +141,7 @@ impl<'a> Generator<'a> {
 
         for repository in self.storages.keys() {
             if let Some(aggregate) = self.model.repository_aggregate(repository) {
-                largest = largest.max(4 + self.serialized_size(&Type::Named(aggregate)));
+                largest = largest.max(self.saved_size(&aggregate));
             }
         }
 

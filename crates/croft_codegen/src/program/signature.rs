@@ -1,13 +1,14 @@
 //! Parameters and C signatures of generated functions. Numbers are passed by
-//! value, strings as a borrowed `croft_string_view`, everything else by
-//! pointer, and every result through `out`.
+//! value, strings as a borrowed `croft_string_view`, `Bytes` as a borrowed
+//! `croft_bytes_view`, everything else by pointer, and every result through
+//! `out`.
 
 use croft_analysis::Type;
 use croft_syntax::ast::{ConstraintUse, Parameter};
 
 use crate::function::range::Span;
 use crate::function::Writer;
-use crate::types::bounds::is_string;
+use crate::types::bounds::{is_bytes, is_string};
 use crate::types::width::{declared_range, width_for};
 use crate::Generator;
 
@@ -68,6 +69,8 @@ impl<'a> Generator<'a> {
 
             list.push(if is_string(ty) {
                 format!("croft_string_view p_{parameter}")
+            } else if is_bytes(ty) {
+                format!("croft_bytes_view p_{parameter}")
             } else if self.is_scalar(ty) {
                 format!("{c_type} p_{parameter}")
             } else {
@@ -131,11 +134,11 @@ impl<'g, 'a> Writer<'g, 'a> {
             let c = format!("p_{name}");
             self.parameter(&c);
 
-            if is_string(ty) {
+            if is_string(ty) || is_bytes(ty) {
                 self.views.insert(c.clone());
             }
 
-            let value = if self.gen.is_scalar(ty) || is_string(ty) {
+            let value = if self.gen.is_scalar(ty) || is_string(ty) || is_bytes(ty) {
                 c
             } else {
                 format!("(*{c})")

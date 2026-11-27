@@ -41,7 +41,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.map_method(&map, key, value, name, arguments, ty)
             }
             Type::Bytes => {
-                let (bytes, bounded) = self.eval(receiver, None);
+                let (bytes, bounded) = self.bytes_place(receiver);
                 self.bytes_method((&bytes, &bounded), name, arguments, ty)
             }
             Type::Decimal(places) if name == "to_string" => {

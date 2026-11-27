@@ -179,7 +179,7 @@ static croft_bool copy_url(croft_string_view url, char *address)
 }
 
 static void request(const char *method, croft_string_view url, const croft_map_string_string *headers,
-                    const croft_bytes *body, croft_result_Std_Http_Response_error *out)
+                    const croft_bytes_view *body, croft_result_Std_Http_Response_error *out)
 {
     char address[CROFT_HTTP_URL_LENGTH + 1];
     croft_http_answer answer;
@@ -246,16 +246,16 @@ void croft_http_get(croft_string_view url, const croft_map_string_string *header
     request("GET", url, headers, 0, out);
 }
 
-void croft_http_post(croft_string_view url, const croft_map_string_string *headers, const croft_bytes *body,
+void croft_http_post(croft_string_view url, const croft_map_string_string *headers, croft_bytes_view body,
                      croft_result_Std_Http_Response_error *out)
 {
-    request("POST", url, headers, body, out);
+    request("POST", url, headers, &body, out);
 }
 
-void croft_http_put(croft_string_view url, const croft_map_string_string *headers, const croft_bytes *body,
+void croft_http_put(croft_string_view url, const croft_map_string_string *headers, croft_bytes_view body,
                     croft_result_Std_Http_Response_error *out)
 {
-    request("PUT", url, headers, body, out);
+    request("PUT", url, headers, &body, out);
 }
 
 void croft_http_delete(croft_string_view url, const croft_map_string_string *headers,

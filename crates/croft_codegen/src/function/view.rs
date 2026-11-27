@@ -57,14 +57,20 @@ impl<'g, 'a> Writer<'g, 'a> {
         format!("CROFT_VIEW({c})")
     }
 
-    /// `c` as a string of its own, of type `ty`: a borrowed parameter is
-    /// copied only when it is kept or passed on as a whole value.
+    /// `c` as a string or `Bytes` of its own, of type `ty`: a borrowed
+    /// parameter is copied only when it is kept or passed on as a whole value.
     pub fn owned(&mut self, c: String, ty: &Type) -> String {
         if !self.views.contains(&c) {
             return c;
         }
 
         let temp = self.temp(ty);
+
+        if is_bytes(ty) {
+            self.line(format!("croft_bytes_copy({c}, CROFT_BYTES_OUT({temp}));"));
+            return temp;
+        }
+
         self.line(format!("croft_string_copy({c}, CROFT_OUT({temp}));"));
 
         temp

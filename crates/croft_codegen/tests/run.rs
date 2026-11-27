@@ -940,14 +940,45 @@ fn sizes_bytes_from_where_they_come_from() {
     assert!(header.contains("    croft_bytes_3 tag;"), "{header}");
 
     assert!(header.contains("void Packets_magic(croft_bytes_2 *out);"));
-    assert!(
-        header.contains("void Packets_framed(const croft_bytes_6 *p_payload, croft_bytes_7 *out);")
-    );
+    assert!(header.contains("void Packets_framed(croft_bytes_view p_payload, croft_bytes_7 *out);"));
     assert!(header
         .contains("void Packets_token_of(const Packets_Message *p_given, croft_bytes_2 *out);"));
-    assert!(header.contains("void Packets_body_length(const croft_bytes *p_body, croft_int *out);"));
-    assert!(header
-        .contains("void Packets_wrapped(const croft_bytes_4 *p_payload, croft_bytes_6 *out);"));
+    assert!(header.contains("void Packets_body_length(croft_bytes_view p_body, croft_int *out);"));
+    assert!(
+        header.contains("void Packets_wrapped(croft_bytes_view p_payload, croft_bytes_6 *out);")
+    );
+    fs::remove_dir_all(output).ok();
+}
+
+/// A `Bytes` parameter borrows what it is given, so a short `Bytes` is never
+/// copied into a full one to be passed. A save, and `MemoryStorage`, hold as
+/// much as the aggregate's save needs, not as much as the longest `Bytes`.
+#[test]
+fn sizes_saves_and_arguments_by_what_they_hold() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/bounded_bytes");
+    let output = generate(&source, "test", "bounded_bytes_saves_c");
+    let c = fs::read_to_string(output.join("program.c")).expect("program.c");
+
+    // The magic of a copied header goes to `body_length` where it is.
+    assert!(
+        c.contains("Packets_body_length(CROFT_BYTES_VIEW(t_43.magic), &t_45);"),
+        "{c}"
+    );
+
+    // A mailbox saves in 13 bytes: its layout's hash, its identity and its
+    // tag of up to 3, though an unbounded `Bytes` holds 200.
+    let runtime = fs::read_to_string(output.join("croft.h")).expect("croft.h");
+    assert!(runtime.contains("#define CROFT_BYTES_CAPACITY 200"));
+
+    let start = c.find("void Packets_Mailboxes_save(").expect("save");
+    let save = &c[start..start + c[start..].find("\n}\n").expect("its end")];
+    assert!(save.contains("    croft_bytes_13 data;"), "{save}");
+    assert!(!save.contains("croft_bytes data;"), "{save}");
+
+    assert!(
+        c.contains("static croft_bytes_13 croft_memory_values[8];"),
+        "{c}"
+    );
     fs::remove_dir_all(output).ok();
 }
 

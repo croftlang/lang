@@ -104,7 +104,7 @@ void croft_files_read(croft_string_view path, croft_result_bytes_error *out)
     fclose(file);
 }
 
-static void put(croft_string_view path, const croft_bytes *data, const char *mode,
+static void put(croft_string_view path, croft_bytes_view data, const char *mode,
                 croft_result_unit_error *out)
 {
     char name[CROFT_PATH_CAPACITY + 1];
@@ -122,20 +122,20 @@ static void put(croft_string_view path, const croft_bytes *data, const char *mod
         fail(&out->error, open_error());
         return;
     }
-    written = fwrite(data->items, 1, data->length, file);
-    if (fclose(file) != 0 || written != data->length) {
+    written = fwrite(data.items, 1, data.length, file);
+    if (fclose(file) != 0 || written != data.length) {
         fail(&out->error, CROFT_ERROR_Std_Files_NoRoom);
         return;
     }
     out->ok = 1;
 }
 
-void croft_files_write(croft_string_view path, const croft_bytes *data, croft_result_unit_error *out)
+void croft_files_write(croft_string_view path, croft_bytes_view data, croft_result_unit_error *out)
 {
     put(path, data, "wb", out);
 }
 
-void croft_files_append(croft_string_view path, const croft_bytes *data, croft_result_unit_error *out)
+void croft_files_append(croft_string_view path, croft_bytes_view data, croft_result_unit_error *out)
 {
     put(path, data, "ab", out);
 }

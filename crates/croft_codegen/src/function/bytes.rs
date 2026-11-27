@@ -3,11 +3,42 @@
 //! `croft_bytes` as large as the longest `Length` on any `Bytes` allows.
 
 use croft_analysis::Type;
-use croft_syntax::ast::{Argument, Expr};
+use croft_syntax::ast::{Argument, Expr, ExprKind};
 
 use super::Writer;
 
 impl<'g, 'a> Writer<'g, 'a> {
+    /// Where `value` can be read from as `Bytes`, and its bounded type. A
+    /// borrowed parameter is read where it is, never copied just to be
+    /// looked at; anything else is worked out in the size it has.
+    pub fn bytes_place(&mut self, value: &Expr) -> (String, Type) {
+        if let ExprKind::Name(name) = &value.kind {
+            if let Some((c, ty)) = self.lookup(name) {
+                if self.views.contains(&c) {
+                    return (c, ty);
+                }
+            }
+        }
+
+        self.eval(value, None)
+    }
+
+    /// `value` as a `croft_bytes_view`, as a `Bytes` parameter takes it.
+    pub fn bytes_view(&mut self, value: &Expr) -> String {
+        let (c, _) = self.bytes_place(value);
+        self.bytes_view_of(&c)
+    }
+
+    /// A view of `c`: any `Bytes`, or a borrowed parameter, which is a view
+    /// already.
+    pub fn bytes_view_of(&self, c: &str) -> String {
+        if self.views.contains(c) {
+            return c.to_string();
+        }
+
+        format!("CROFT_BYTES_VIEW({c})")
+    }
+
     /// `[1, 2, 3]` as `Bytes`, in a size of exactly that many values.
     pub fn bytes_literal(&mut self, items: &[Expr]) -> String {
         let values: Vec<String> = items

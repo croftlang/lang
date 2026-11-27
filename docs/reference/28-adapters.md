@@ -1,6 +1,6 @@
 # Adapters
 
-A port implemented in dn or with native C, usually in a Platform context. dn.toml chooses which targets use it, so one adapter can serve several. An adapter's body comes after =, like a function's. It provides every operation its port declares; the types come from the port. Only adapters may call native C functions, and they may hold state changed with set. Every adapter field has a starting value, written after its type and constraints. A native function gets numbers by value, each string as a `croft_string_view` (its characters and length, borrowed for the call), anything else by pointer, and a pointer for its result last.
+A port implemented in dn or with native C, usually in a Platform context. dn.toml chooses which targets use it, so one adapter can serve several. An adapter's body comes after =, like a function's. It provides every operation its port declares; the types come from the port. Only adapters may call native C functions, and they may hold state changed with set. Every adapter field has a starting value, written after its type and constraints. A native function gets numbers by value, each string as a `croft_string_view` (its characters and length, borrowed for the call), each `Bytes` as a `croft_bytes_view` (its values and length, borrowed the same way), anything else by pointer, and a pointer for its result last.
 
 ```croft
 // platform/spectrum.dn

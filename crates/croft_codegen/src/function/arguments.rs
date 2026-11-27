@@ -4,7 +4,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::{Argument, Expr};
 
 use super::{Into, Writer};
-use crate::types::bounds::is_string;
+use crate::types::bounds::{is_bytes, is_string};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// The argument for each parameter, by name or position.
@@ -47,6 +47,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         for ((_, ty), value) in parameters.iter().zip(values) {
             let passed_value = match value {
                 Some(value) if is_string(ty) => self.view(value),
+                Some(value) if is_bytes(ty) => self.bytes_view(value),
                 Some(value) => {
                     let c = self.value(value, ty);
                     self.pass(c, ty)
@@ -60,11 +61,15 @@ impl<'g, 'a> Writer<'g, 'a> {
         passed
     }
 
-    /// Passes `c`, a value of `ty`, the way a parameter takes it: a string as
-    /// a view, a number by value, and anything else by pointer.
+    /// Passes `c`, a value of `ty`, the way a parameter takes it: a string or
+    /// `Bytes` as a view, a number by value, and anything else by pointer.
     pub fn pass(&self, c: String, ty: &Type) -> String {
         if is_string(ty) {
             return self.view_of(&c);
+        }
+
+        if is_bytes(ty) {
+            return self.bytes_view_of(&c);
         }
 
         if self.gen.is_scalar(ty) {

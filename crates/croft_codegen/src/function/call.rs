@@ -8,7 +8,7 @@ use croft_syntax::ast::{Argument, Expr, ExprKind};
 
 use super::{Into, Writer};
 use crate::names::c_name;
-use crate::types::bounds::unbounded;
+use crate::types::bounds::{is_bytes, unbounded};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// A call, giving back its value in `into` when it can be written there.
@@ -99,6 +99,12 @@ impl<'g, 'a> Writer<'g, 'a> {
             if ty == Type::String {
                 parameters.push("croft_string_view".to_string());
                 passed.push(self.view(&argument.value));
+                continue;
+            }
+
+            if is_bytes(&ty) {
+                parameters.push("croft_bytes_view".to_string());
+                passed.push(self.bytes_view(&argument.value));
                 continue;
             }
 

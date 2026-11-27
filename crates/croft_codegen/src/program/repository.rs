@@ -183,8 +183,8 @@ impl<'a> Generator<'a> {
                      croft_clear(out, sizeof *out);\n    croft_storage_key({prefix}, (croft_int) {value}, &key);\n    {storage}_load(CROFT_VIEW(key), &kept);\n    \
                      if (!kept.ok) {{\n        out->error = kept.error;\n        return;\n    }}\n    \
                      if (!kept.value.some) {{\n        {missing}\n    }}\n    \
-                     if (!croft_bytes_take_int(&kept.value.value, &at, &layout) || layout != {hash}L\n        \
-                     || !croft_read_{serializer}(&kept.value.value, &at, &{into}) || at != kept.value.value.length) {{\n        \
+                     if (!croft_bytes_take_int(CROFT_BYTES_VIEW(kept.value.value), &at, &layout) || layout != {hash}L\n        \
+                     || !croft_read_{serializer}(CROFT_BYTES_VIEW(kept.value.value), &at, &{into}) || at != kept.value.value.length) {{\n        \
                      croft_clear(out, sizeof *out);\n        out->error.code = {damaged};\n        return;\n    }}{found}\n    out->ok = 1;\n"
                 )
             }
@@ -192,12 +192,16 @@ impl<'a> Generator<'a> {
                 let kind = aggregate_kind(aggregate);
                 let key = self.event_key(aggregate, &format!("{value}.{field}"));
 
+                // Room for this aggregate's save, however large a `Bytes`
+                // elsewhere in the program can be.
+                let data = self.c_type(&self.saved_bytes(aggregate));
+
                 format!(
-                    "    croft_string key;\n    croft_bytes data;\n    {written} kept;\n\n    \
-                     croft_clear(out, sizeof *out);\n    data.length = 0;\n    \
-                     if (!croft_bytes_put_int(&data, {hash}L) || !croft_write_{serializer}(&{value}, &data)) {{\n        \
+                    "    croft_string key;\n    {data} data;\n    croft_bytes_writer writer;\n    {written} kept;\n\n    \
+                     croft_clear(out, sizeof *out);\n    writer = croft_bytes_writer_to(CROFT_BYTES_OUT(data));\n    \
+                     if (!croft_bytes_put_int(&writer, {hash}L) || !croft_write_{serializer}(&{value}, &writer)) {{\n        \
                      out->error.code = {full};\n        return;\n    }}\n    \
-                     croft_storage_key({prefix}, (croft_int) {value}.{field}, &key);\n    {storage}_save(CROFT_VIEW(key), &data, &kept);\n    \
+                     croft_storage_key({prefix}, (croft_int) {value}.{field}, &key);\n    {storage}_save(CROFT_VIEW(key), CROFT_BYTES_VIEW(data), &kept);\n    \
                      if (!kept.ok) {{\n        out->error = kept.error;\n        return;\n    }}\n    \
                      out->ok = 1;\n    croft_events_keep({kind}, {key});\n"
                 )
