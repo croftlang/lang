@@ -97,6 +97,9 @@ pub struct OwnFields {
 pub struct Writer<'g, 'a> {
     pub gen: &'g Generator<'a>,
     pub context: String,
+    /// What runtime checks call the function in their messages, such as
+    /// `heal` or `Room.enter`, or nothing for code outside one.
+    pub label: String,
     pub aggregate: Option<String>,
     pub own: Option<OwnFields>,
     pub returns: Returns,
@@ -142,6 +145,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         Writer {
             gen,
             context: context.to_string(),
+            label: String::new(),
             aggregate: None,
             own: None,
             returns,

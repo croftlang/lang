@@ -587,7 +587,10 @@ fn checks_rules_in_every_build_by_default() {
 
     assert_eq!(
         run("checked", "let"),
-        (Some(1), "let doses must satisfy Length(0, 3)".to_string())
+        (
+            Some(1),
+            "Start: let doses must satisfy Length(0, 3)".to_string()
+        )
     );
 
     assert_eq!(run("unchecked", "argument"), (Some(0), String::new()));

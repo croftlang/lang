@@ -2,7 +2,7 @@
 
 Services and adapters can repeat a block; domain bodies can't, and iterate with list operations instead. `loop` runs until `break`. A counted loop runs once for each value its counter's constraints allow, in order, and `Range` includes both ends. In a service, `set` can change the service's own `let` names. A loop gives back `Unit`, and `?` inside it leaves the whole service.
 
-A `let` list or map that `set` changes must say with a `Length` how many items it can hold, since the program keeps room for that many: without one, `croft check` reports an error. The `let` keeps its constraints whatever `set` gives it; a value known when the program is compiled that breaks one is an error, and so is a counted loop that is known to add more items than the `Length` allows. One only known while the program runs stops it with a message such as `let items must satisfy Length(0, 200)`, unless the target sets `checks = false`.
+A `let` list or map that `set` changes must say with a `Length` how many items it can hold, since the program keeps room for that many: without one, `croft check` reports an error. The `let` keeps its constraints whatever `set` gives it; a value known when the program is compiled that breaks one is an error, and so is a counted loop that is known to add more items than the `Length` allows. One only known while the program runs stops it with a message naming the service or function, as a parameter's does, such as `Build: let items must satisfy Length(0, 200)`, unless the target sets `checks = false`.
 
 ```croft
 // Plays turn after turn until the player quits or a turn fails.

@@ -175,8 +175,14 @@ impl<'g, 'a> Writer<'g, 'a> {
             return;
         };
 
+        let what = if self.label.is_empty() {
+            format!("let {name}")
+        } else {
+            format!("{}: let {name}", self.label)
+        };
+
         for constraint in &constraints {
-            self.check_constraint(&value, &ty, constraint, &format!("let {name}"));
+            self.check_constraint(&value, &ty, constraint, &what);
         }
     }
 
