@@ -55,31 +55,29 @@ impl Parser {
             return None;
         }
 
-        // Bit operators bind tighter than comparisons, so `bits & FIRE != 0`
-        // means `(bits & FIRE) != 0`, unlike in C.
-        let operator = match self.peek().kind {
-            TokenKind::Or => (BinaryOp::Or, 1),
-            TokenKind::And => (BinaryOp::And, 2),
-            TokenKind::EqualEqual => (BinaryOp::Equal, 3),
-            TokenKind::NotEqual => (BinaryOp::NotEqual, 3),
-            TokenKind::Less => (BinaryOp::Less, 4),
-            TokenKind::LessEqual => (BinaryOp::LessEqual, 4),
-            TokenKind::Greater => (BinaryOp::Greater, 4),
-            TokenKind::GreaterEqual => (BinaryOp::GreaterEqual, 4),
-            TokenKind::Pipe => (BinaryOp::BitOr, 5),
-            TokenKind::Caret => (BinaryOp::BitXor, 6),
-            TokenKind::Ampersand => (BinaryOp::BitAnd, 7),
-            TokenKind::ShiftLeft => (BinaryOp::ShiftLeft, 8),
-            TokenKind::ShiftRight => (BinaryOp::ShiftRight, 8),
-            TokenKind::Plus => (BinaryOp::Add, 9),
-            TokenKind::Minus => (BinaryOp::Subtract, 9),
-            TokenKind::Star => (BinaryOp::Multiply, 10),
-            TokenKind::Slash => (BinaryOp::Divide, 10),
-            TokenKind::Percent => (BinaryOp::Remainder, 10),
+        let op = match self.peek().kind {
+            TokenKind::Or => BinaryOp::Or,
+            TokenKind::And => BinaryOp::And,
+            TokenKind::EqualEqual => BinaryOp::Equal,
+            TokenKind::NotEqual => BinaryOp::NotEqual,
+            TokenKind::Less => BinaryOp::Less,
+            TokenKind::LessEqual => BinaryOp::LessEqual,
+            TokenKind::Greater => BinaryOp::Greater,
+            TokenKind::GreaterEqual => BinaryOp::GreaterEqual,
+            TokenKind::Pipe => BinaryOp::BitOr,
+            TokenKind::Caret => BinaryOp::BitXor,
+            TokenKind::Ampersand => BinaryOp::BitAnd,
+            TokenKind::ShiftLeft => BinaryOp::ShiftLeft,
+            TokenKind::ShiftRight => BinaryOp::ShiftRight,
+            TokenKind::Plus => BinaryOp::Add,
+            TokenKind::Minus => BinaryOp::Subtract,
+            TokenKind::Star => BinaryOp::Multiply,
+            TokenKind::Slash => BinaryOp::Divide,
+            TokenKind::Percent => BinaryOp::Remainder,
             _ => return None,
         };
 
-        Some(operator)
+        Some((op, op.precedence()))
     }
 
     /// `!`, `-` or `~` before an operand, or a postfix expression.

@@ -186,3 +186,10 @@ fn a_range_past_32_bits_is_an_error() {
         "`4000000000` doesn't fit in 32 bits, the size of an `Int`",
     );
 }
+
+#[test]
+fn a_message_keeps_the_brackets_written() {
+    let source = sums("fn rest(n: Int): Int = n % (2 - 2)");
+
+    assert_error(&source, "`n % (2 - 2)` divides by zero");
+}
