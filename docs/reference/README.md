@@ -1,36 +1,7 @@
 # Reference
 
-One page for each part of the language, in reading order.
+The reference has moved to [croftlang.com/learn](https://croftlang.com/learn), one page for
+each part of the language.
 
-1. [The smallest program](01-the-smallest-program.md)
-2. [Contexts](02-contexts.md)
-3. [Constants](03-constants.md)
-4. [Identities](04-identities.md)
-5. [Enums](05-enums.md)
-6. [Values](06-values.md)
-7. [Single-value types](07-single-value-types.md)
-8. [Generics](08-generics.md)
-9. [Constraints](09-constraints.md)
-10. [Aggregates and entities](10-aggregates-and-entities.md)
-11. [Events](11-events.md)
-12. [Contracts](12-contracts.md)
-13. [Factories](13-factories.md)
-14. [Commands](14-commands.md)
-15. [Issuing commands](15-issuing-commands.md)
-16. [Errors](16-errors.md)
-17. [Handling failure](17-handling-failure.md)
-18. [Policies](18-policies.md)
-19. [Functions](19-functions.md)
-20. [Numbers](20-numbers.md)
-21. [Body expressions](21-body-expressions.md)
-22. [Loops](22-loops.md)
-23. [Built-ins](23-built-ins.md)
-24. [Standard contexts](24-standard-contexts.md)
-25. [Ports](25-ports.md)
-26. [Repositories](26-repositories.md)
-27. [Services](27-services.md)
-28. [Adapters](28-adapters.md)
-29. [Domain](29-domain.md)
-30. [Project file](30-project-file.md)
-31. [Translations](31-translations.md)
-32. [Putting it together](32-putting-it-together.md)
+Its Markdown lives in [croftlang/docs](https://github.com/croftlang/docs). To fix or change a
+page, open a pull request there.

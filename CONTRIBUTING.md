@@ -56,8 +56,8 @@ cargo install --path crates/croft_cli
   usually a program under `crates/croft_codegen/tests/programs`
 - **Follow the style** - Run `cargo fmt --all` and
   `cargo clippy --workspace --all-targets -- -D warnings` before committing
-- **Update docs** - If you change the language, update
-  [docs/reference](docs/reference) to match
+- **Update docs** - If you change the language, open a matching pull request on
+  [croftlang/docs](https://github.com/croftlang/docs), which holds the reference
 - **Update the editors** - If you change the syntax, update the Tree-sitter
   grammar in [editors/tree-sitter-croft](editors/tree-sitter-croft) and the
   TextMate grammar in [editors/vscode](editors/vscode)
@@ -176,6 +176,6 @@ dual licensed as above, without any additional terms or conditions.
 
 ## Questions?
 
-- Read the [reference documentation](docs/reference)
+- Read the [reference](https://croftlang.com/learn)
 - Browse [existing issues](https://github.com/croftlang/lang/issues)
 - Open a [new issue](https://github.com/croftlang/lang/issues/new)

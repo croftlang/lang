@@ -28,7 +28,7 @@ body:
     attributes:
       label: Documentation Location
       description: Where is this documentation located?
-      placeholder: "e.g., README.md, docs/reference/09-constraints.md, docs/glossary.md"
+      placeholder: "e.g., README.md, croftlang.com/learn/constraints, docs/glossary.md"
     validations:
       required: true
 
