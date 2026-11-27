@@ -369,7 +369,8 @@ A set of built-ins a context imports before using, like any other context:
 `slice`, `split`, `lines`, `replace`, `repeat`, `pad_left`, `pad_right`,
 `to_int` and `to_bytes` for strings, `join` for a list of strings, and
 `to_text` for bytes. `Std.Numbers`
-has `Decimal`, `max`, `min` and `abs`. `Std.Collections` has `Map`.
+has `Decimal`, `max`, `min`, `abs`, `clamp`, `pow`, `sign`, `checked_add`,
+`checked_subtract` and `checked_multiply`. `Std.Collections` has `Map`.
 Each file of a context sees what any of them imports. Standard contexts need
 no arrow in the domain's `contexts`.
 
