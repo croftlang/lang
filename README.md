@@ -50,6 +50,11 @@ Save it as `hello.croft` and run `croft run hello.croft`. With no `croft.toml`,
 the program runs on the `desktop` target. Add one to name adapters, add
 targets or set the program's name.
 
+`croft run` builds the C with the compiler named by `CC`, or `cc`, as optimised
+strict C89 (`-std=c89 -pedantic -Wall -Wextra -O2`), with every warning an error
+in the C Croft writes. A project's own native C files get the same warnings,
+shown but not stopping the build.
+
 Source files end in `.croft`, or in `.cro` on machines whose file names are
 limited to 8.3. A project can mix the two, and the compiler reads either in
 capitals too, as in `CARGO.CRO`.
