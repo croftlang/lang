@@ -266,7 +266,9 @@ impl<'g, 'a> Writer<'g, 'a> {
     fn sort(&mut self, list: &str, item: &Type, arguments: &[Argument], ty: &Type) -> String {
         let sorted = self.temp(ty);
         let index = self.index_variable();
-        let capacity = format!("sizeof {sorted}.items / sizeof {sorted}.items[0]");
+        // Written as a number, the list's own capacity, so `croft size` can
+        // count the arrays in the function's stack frame.
+        let capacity = self.gen.capacity(ty).to_string();
         let order = self.array_variable("order", "croft_u16", &capacity);
         let room = self.array_variable("room", "croft_u16", &capacity);
 

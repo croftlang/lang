@@ -101,7 +101,8 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// A new C array of `length` items of `c_type`, whose name starts with
-    /// `base`. `length` is a constant C expression.
+    /// `base`. `length` is a whole number, so `croft size` can count the
+    /// array in the function's stack frame.
     pub fn array_variable(&mut self, base: &str, c_type: &str, length: &str) -> String {
         let mut name = base.to_string();
         let mut count = 1;

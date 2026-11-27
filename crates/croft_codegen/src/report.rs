@@ -234,7 +234,9 @@ impl<'a> Generator<'a> {
 }
 
 /// Each function in generated C with the bytes of the variables it
-/// declares at its top, using `size` for each C type.
+/// declares at its top, using `size` for each C type: a pointer takes
+/// `POINTER_SIZE` bytes, and an array such as `croft_u16 order[500]` as
+/// many items as it holds.
 fn frames(c: &str, size: impl Fn(&str) -> Option<i64>) -> Vec<(String, i64)> {
     let lines: Vec<&str> = c.lines().collect();
     let mut frames = Vec::new();
@@ -275,13 +277,32 @@ fn frames(c: &str, size: impl Fn(&str) -> Option<i64>) -> Vec<(String, i64)> {
                 break;
             }
 
-            total += size(c_type).unwrap_or(0);
+            total += variable_size(variable, size(c_type).unwrap_or(0));
         }
 
         frames.push((name.trim_start_matches('*').to_string(), total));
     }
 
     frames
+}
+
+/// The bytes a variable declared as `variable`, such as `t`, `*from` or
+/// `order[500]`, takes when one of its C type takes `item` bytes.
+fn variable_size(variable: &str, item: i64) -> i64 {
+    if variable.starts_with('*') {
+        return POINTER_SIZE;
+    }
+
+    let Some((_, length)) = variable.split_once('[') else {
+        return item;
+    };
+
+    let count = length
+        .strip_suffix(']')
+        .and_then(|count| count.parse::<i64>().ok())
+        .unwrap_or(1);
+
+    item * count
 }
 
 /// Tests for working out function frame sizes.
@@ -304,6 +325,28 @@ mod tests {
         assert_eq!(
             frames(c, sizes),
             vec![("Shop_open".to_string(), 5), ("croft_check".to_string(), 0)]
+        );
+    }
+
+    /// An array counts each item it holds, and a pointer its own size
+    /// whatever it points to, as a sort's index arrays and its places do.
+    #[test]
+    fn counts_each_item_of_an_array_and_a_pointer_as_a_pointer() {
+        let c = "void Shop_sort(croft_list_int *out)\n{\n    croft_u16 index;\n    \
+                 croft_u16 order[500];\n    croft_int keys[500];\n    croft_int *from;\n\n    index = 0;\n}\n";
+
+        let sizes = |c_type: &str| match c_type {
+            "croft_int" => Some(4),
+            "croft_u16" => Some(2),
+            _ => None,
+        };
+
+        assert_eq!(
+            frames(c, sizes),
+            vec![(
+                "Shop_sort".to_string(),
+                2 + 1000 + 2000 + super::POINTER_SIZE
+            )]
         );
     }
 }

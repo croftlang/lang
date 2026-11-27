@@ -1235,6 +1235,19 @@ fn sorts_with_one_merge_sort_function_for_each_item_type() {
     fs::remove_dir_all(output).ok();
 }
 
+/// `croft size` counts the arrays a sort keeps in its function's frame:
+/// two of item places and, for `sort_by`, one of keys, each as long as the
+/// list. `by_key` sorts a list of 500 three-byte entries, so its frame holds
+/// the list, an index, 2000 bytes of places and 2000 of keys.
+#[test]
+fn counts_the_arrays_a_sort_takes_in_the_frame() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/sorting");
+    let program = support::check_program(&source);
+    let report = croft_codegen::size_report(&program, "test").expect("a report");
+
+    assert!(report.contains("    5504  Sorting_by_key\n"), "{report}");
+}
+
 /// is_ok, is_err, map, map_err and unwrap_or on results.
 #[test]
 fn runs_result_methods() {
