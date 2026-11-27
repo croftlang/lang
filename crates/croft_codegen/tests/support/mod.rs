@@ -124,7 +124,7 @@ pub fn run_program_at(source: &Path, name: &str) {
     assert!(
         ran.status.success(),
         "a check failed: {}",
-        String::from_utf8_lossy(&ran.stdout)
+        String::from_utf8_lossy(&ran.stderr)
     );
 
     fs::remove_dir_all(output).ok();

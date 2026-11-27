@@ -1,6 +1,6 @@
 # Domain
 
-The whole program, declared once, outside every context. Like a function, it has a contract and a body. The contract holds the context map: every context, with arrows from upstream to downstream. A context may only use contexts upstream of it, and the arrows may not go round in a circle. The contract also imports what the body needs and names the ports it calls, with the context they come from. The body runs first. It only sees what contexts publish, so each sets up its own starting data. Any error passed up with ? stops the program with the error's name.
+The whole program, declared once, outside every context. Like a function, it has a contract and a body. The contract holds the context map: every context, with arrows from upstream to downstream. A context may only use contexts upstream of it, and the arrows may not go round in a circle. The contract also imports what the body needs and names the ports it calls, with the context they come from. The body runs first. It only sees what contexts publish, so each sets up its own starting data. Any error passed up with ? stops the program with exit code 1, printing the error's name on standard error.
 
 ```croft
 // game.dn
