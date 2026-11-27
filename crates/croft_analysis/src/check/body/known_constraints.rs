@@ -232,7 +232,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
     /// The arguments of a call as their known values, `...` where one is not
     /// known, for messages: `move_bed(3, ...)`.
-    fn written_arguments(&self, arguments: &[Argument]) -> String {
+    pub(super) fn written_arguments(&self, arguments: &[Argument]) -> String {
         let written: Vec<String> = (arguments.iter())
             .map(|argument| {
                 let value = (self.known_local_value(&argument.value))
@@ -256,7 +256,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     }
 
     /// The local names in scope whose values are known.
-    fn known_locals(&self) -> Bindings {
+    pub(super) fn known_locals(&self) -> Bindings {
         (self.locals.iter())
             .flat_map(|scope| scope.iter())
             .filter_map(|(name, local)| Some((name.clone(), local.known.clone()?)))

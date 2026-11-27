@@ -9,7 +9,7 @@ pub fn evaluate(program: &Program, model: &Model, context: &str, value: &Expr) -
     match &value.kind {
         ExprKind::Int(number) => Some(*number),
         ExprKind::Unary(UnaryOp::Negate, operand) => {
-            Some(-evaluate(program, model, context, operand)?)
+            whole(-evaluate(program, model, context, operand)?)
         }
         ExprKind::Unary(UnaryOp::BitNot, operand) => {
             Some(!evaluate(program, model, context, operand)?)
@@ -21,16 +21,16 @@ pub fn evaluate(program: &Program, model: &Model, context: &str, value: &Expr) -
             );
 
             match op {
-                BinaryOp::Add => left.checked_add(right),
-                BinaryOp::Subtract => left.checked_sub(right),
-                BinaryOp::Multiply => left.checked_mul(right),
-                BinaryOp::Divide => left.checked_div(right),
+                BinaryOp::Add => whole(left.checked_add(right)?),
+                BinaryOp::Subtract => whole(left.checked_sub(right)?),
+                BinaryOp::Multiply => whole(left.checked_mul(right)?),
+                BinaryOp::Divide => whole(left.checked_div(right)?),
                 BinaryOp::Remainder => left.checked_rem(right),
                 BinaryOp::BitAnd => Some(left & right),
                 BinaryOp::BitOr => Some(left | right),
                 BinaryOp::BitXor => Some(left ^ right),
-                BinaryOp::ShiftLeft => u32::try_from(right).ok().and_then(|r| left.checked_shl(r)),
-                BinaryOp::ShiftRight => u32::try_from(right).ok().and_then(|r| left.checked_shr(r)),
+                BinaryOp::ShiftLeft => shifted(left, right, i32::wrapping_shl),
+                BinaryOp::ShiftRight => shifted(left, right, i32::wrapping_shr),
                 _ => None,
             }
         }
@@ -53,6 +53,20 @@ pub fn evaluate(program: &Program, model: &Model, context: &str, value: &Expr) -
         }
         _ => None,
     }
+}
+
+/// `number` when it fits the 32 bits of an `Int`. Arithmetic that goes past
+/// them is an error `croft check` reports, so it has no value here.
+fn whole(number: i64) -> Option<i64> {
+    i32::try_from(number).ok().map(i64::from)
+}
+
+/// `value` shifted by `amount` as the 32 bits of an `Int` are, through
+/// `shift`; `None` for an amount outside 0 to 31.
+fn shifted(value: i64, amount: i64, shift: fn(i32, u32) -> i32) -> Option<i64> {
+    let amount = u32::try_from(amount).ok().filter(|amount| *amount < 32)?;
+
+    Some(i64::from(shift(i32::try_from(value).ok()?, amount)))
 }
 
 /// What one whole unit is in a `Decimal` with this many places: 100 for two.

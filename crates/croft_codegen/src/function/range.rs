@@ -6,7 +6,10 @@
 //! Arithmetic whose operands and result all fit a C `int`, which has at
 //! least 16 bits, is written in `int`, which an 8-bit machine works out far
 //! faster than a `long`. Arithmetic on narrow numbers whose result may not
-//! fit is widened to `croft_int` first.
+//! fit is widened to `croft_int`, of exactly 32 bits, first. A range is only
+//! ever one 32 bits can hold: arithmetic that may go past them is worked out
+//! by a runtime function that checks, or wraps around, so its result has no
+//! range.
 
 use croft_analysis::types::Resolved;
 use croft_analysis::{Meaning, Type};
@@ -23,10 +26,19 @@ const INT_LOW: i64 = -32767;
 /// The highest value a C `int` holds on every machine: `INT_MAX` with 16 bits.
 const INT_HIGH: i64 = 32767;
 
+/// The lowest whole number: an `Int` has exactly 32 bits.
+pub const WHOLE_LOW: i64 = i32::MIN as i64;
+/// The highest whole number.
+pub const WHOLE_HIGH: i64 = i32::MAX as i64;
+
 /// A whole number as a C literal: an `int` when it fits one, else a `long`.
+/// The lowest is written as one more, less one, since `2147483648L` alone
+/// is past a 32-bit `long`.
 pub fn c_number(number: i64) -> String {
     if (INT_LOW..=INT_HIGH).contains(&number) {
         number.to_string()
+    } else if number < -WHOLE_HIGH {
+        format!("({}L - 1)", number + 1)
     } else {
         format!("{number}L")
     }
@@ -85,6 +97,12 @@ impl Span {
     /// Whether every value fits a C `int` on every machine.
     pub fn fits_int(self) -> bool {
         self.low >= INT_LOW && self.high <= INT_HIGH
+    }
+
+    /// Whether every value fits the 32 bits of a whole number, so the
+    /// arithmetic that gives them never goes past those bits.
+    pub fn fits_whole(self) -> bool {
+        self.low >= WHOLE_LOW && self.high <= WHOLE_HIGH
     }
 
     /// Whether no value is below zero.
@@ -196,7 +214,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             ExprKind::Unary(UnaryOp::Negate, operand) => {
                 let inner = self.range_of(operand)?;
-                Some(Span::new(-inner.high, -inner.low))
+                Some(Span::new(-inner.high, -inner.low)).filter(|span| span.fits_whole())
             }
             ExprKind::Unary(UnaryOp::BitNot, operand) => {
                 let inner = self.range_of(operand)?;
@@ -204,6 +222,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             }
             ExprKind::Binary(op, left, right) => {
                 combine(*op, self.range_of(left)?, self.range_of(right)?)
+                    .filter(|span| span.fits_whole())
             }
             _ => None,
         }
@@ -239,7 +258,7 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// `c`, the left of `left op right`, as a `croft_int` when the
     /// operation must be widened to one. A number with no known range is a
-    /// `croft_int` already, so the work is done in `long` anyway. Otherwise
+    /// `croft_int` already, so the work is done in 32 bits anyway. Otherwise
     /// both sides are narrow and C works in `int`, which is too small unless
     /// both sides fit one, and the result does too.
     pub fn widened_operation(&self, op: BinaryOp, left: &Expr, right: &Expr, c: String) -> String {

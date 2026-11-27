@@ -1,6 +1,6 @@
 //! `where` clauses and the constraints they apply.
 
-use croft_syntax::ast::{ConstraintUse, TypeExpr};
+use croft_syntax::ast::{ConstraintUse, Expr, ExprKind, TypeExpr, UnaryOp};
 
 use super::{Checker, Scope};
 use crate::facts::BuiltinName;
@@ -123,6 +123,11 @@ impl<'a> Checker<'a> {
             }
         };
 
+        for number in used.arguments.iter().filter_map(whole_literal_past_32_bits) {
+            let message = format!("`{number}` doesn't fit in 32 bits, the size of an `Int`");
+            self.error(message, used.name.span());
+        }
+
         let found = used.arguments.len();
 
         if !expected.contains(&found) {
@@ -144,4 +149,19 @@ impl<'a> Checker<'a> {
 
         constraint.map_or(0, |constraint| constraint.parameters.len())
     }
+}
+
+/// A whole-number literal argument, such as the `4000000000` in
+/// `Range(0, 4000000000)`, that doesn't fit in 32 bits. `-2147483648` does.
+fn whole_literal_past_32_bits(argument: &Expr) -> Option<i128> {
+    let number = match &argument.kind {
+        ExprKind::Int(number) => i128::from(*number),
+        ExprKind::Unary(UnaryOp::Negate, operand) => match operand.kind {
+            ExprKind::Int(number) => -i128::from(number),
+            _ => return None,
+        },
+        _ => return None,
+    };
+
+    (!super::known::fits(number)).then_some(number)
 }

@@ -9,8 +9,8 @@ use croft_syntax::ast::{Argument, Expr, ExprKind};
 use super::{Into, Writer};
 use crate::names::c_name;
 
-/// The most characters a whole number takes as text: a 64-bit `long` and its sign.
-const INT_DIGITS: i64 = 20;
+/// The most characters a whole number takes as text: `-2147483648`.
+const INT_DIGITS: i64 = 11;
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// `receiver.name(arguments)`, chosen by the type of `receiver`.

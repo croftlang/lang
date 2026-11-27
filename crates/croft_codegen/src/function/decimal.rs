@@ -1,9 +1,11 @@
 //! Arithmetic on `Decimal`s. Adding and subtracting work on the whole numbers
-//! underneath; multiplying and dividing rescale and round half to even.
+//! underneath; multiplying and dividing rescale and round half to even. Each
+//! is checked for going past the 32 bits those whole numbers have.
 
 use croft_analysis::Type;
 use croft_syntax::ast::{BinaryOp, Expr};
 
+use super::operator::whole_arithmetic;
 use super::Writer;
 use crate::types::constant::scale;
 
@@ -26,7 +28,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             BinaryOp::Multiply if !both => {
                 let left = self.value(left, &left_type);
                 let right = self.value(right, &right_type);
-                format!("({left} * {right})")
+                format!("croft_int_multiply({left}, {right})")
             }
             BinaryOp::Multiply => {
                 let left = self.value(left, &decimal);
@@ -44,10 +46,9 @@ impl<'g, 'a> Writer<'g, 'a> {
                 format!("croft_decimal_divide({left}, {right}, {unit}L)")
             }
             _ => {
-                let symbol = if op == BinaryOp::Add { "+" } else { "-" };
                 let left = self.value(left, &decimal);
                 let right = self.value(right, &decimal);
-                format!("({left} {symbol} {right})")
+                whole_arithmetic(op, &left, &right)
             }
         }
     }

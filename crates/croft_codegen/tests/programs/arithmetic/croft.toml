@@ -1,0 +1,11 @@
+[package]
+name = "arithmetic"
+
+[target.test]
+main = "Start"
+
+# The same program with its checks turned off: arithmetic past 32 bits wraps
+# around, and dividing by zero gives 0.
+[target.unchecked]
+main = "Start"
+checks = false

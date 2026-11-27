@@ -4,11 +4,11 @@
 use croft_analysis::{Meaning, Type};
 use croft_syntax::ast::{Expr, ExprKind, UnaryOp};
 
-use super::range::c_number;
+use super::range::{c_number, WHOLE_LOW};
 use super::Writer;
 use crate::names::c_string;
 use crate::types::bounds::{is_bytes, is_string, list_item, unbounded};
-use crate::types::constant::{scale, scaled};
+use crate::types::constant::{evaluate, scale, scaled};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// The value of `value`, as a C expression of the C type for `want`.
@@ -92,10 +92,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             ExprKind::Unary(UnaryOp::Not, operand) => {
                 format!("(!{})", self.value(operand, &Type::Bool))
             }
-            ExprKind::Unary(UnaryOp::Negate, operand) => {
-                let inner = self.value(operand, &ty);
-                format!("(-{})", self.widened(inner, value, operand))
-            }
+            ExprKind::Unary(UnaryOp::Negate, operand) => self.negate(value, operand, &ty),
             ExprKind::Unary(UnaryOp::BitNot, operand) => {
                 let inner = self.value(operand, &Type::Int);
                 format!("(~{})", self.widened(inner, value, operand))
@@ -123,11 +120,33 @@ impl<'g, 'a> Writer<'g, 'a> {
         (c, ty)
     }
 
+    /// `-operand`, which goes past 32 bits only for the lowest whole number.
+    /// A constant is written as its value, so the lowest can be written at
+    /// all; one whose range leaves out the lowest is plain C.
+    fn negate(&mut self, whole: &Expr, operand: &Expr, ty: &Type) -> String {
+        if *ty == Type::Int {
+            if let Some(constant) =
+                evaluate(self.gen.program, &self.gen.model, &self.context, whole)
+            {
+                return c_number(constant);
+            }
+        }
+
+        let inner = self.value(operand, ty);
+
+        match self.range_of(operand) {
+            Some(range) if *ty == Type::Int && range.low > WHOLE_LOW => {
+                format!("(-{})", self.widened(inner, whole, operand))
+            }
+            _ => format!("croft_int_negate({inner})"),
+        }
+    }
+
     /// Converts a value to another type with the same meaning: a plain value
     /// into a successful `Result`. Every error is already `croft_error`.
     pub fn convert(&mut self, c: String, from: &Type, to: &Type) -> String {
         if let (Type::Decimal(places), Type::Int) = (to, from) {
-            return format!("({c} * {}L)", scale(*places));
+            return format!("croft_int_multiply({c}, {}L)", scale(*places));
         }
 
         if let Some(inner) = self.gen.model.single_value_inner(to) {

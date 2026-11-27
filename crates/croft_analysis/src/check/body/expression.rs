@@ -6,6 +6,9 @@ use super::BodyChecker;
 use crate::facts::Meaning;
 use crate::types::{Type, MAX_SHIFT};
 
+/// `2147483648`, which is a whole number only as `-2147483648`.
+const LOWEST_MAGNITUDE: i64 = 1 << 31;
+
 impl<'c, 'a> BodyChecker<'c, 'a> {
     /// The type of an expression. `expected`, when known, lets bare enum
     /// variants such as `North` be found.
@@ -57,7 +60,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let span = value.span;
 
         match &value.kind {
-            ExprKind::Int(_) => Type::Int,
+            ExprKind::Int(number) => {
+                self.check_int_literal(*number, span);
+                Type::Int
+            }
             ExprKind::Float(text) => self.float(text, span, expected),
             ExprKind::String(_) => Type::String,
             ExprKind::Bool(_) => Type::Bool,
@@ -70,8 +76,20 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             ExprKind::Map(entries) => self.map_literal(entries, expected, span),
             ExprKind::Record(path, fields) => self.record(path, fields, expected),
             ExprKind::With(base, fields) => self.with(base, fields),
-            ExprKind::Unary(op, operand) => self.unary(*op, operand, expected),
-            ExprKind::Binary(op, left, right) => self.binary(*op, left, right),
+            ExprKind::Unary(op, operand) => {
+                let ty = self.unary(*op, operand, expected);
+
+                if *op == UnaryOp::Negate {
+                    self.check_known_negation(value, operand, &ty);
+                }
+
+                ty
+            }
+            ExprKind::Binary(op, left, right) => {
+                let ty = self.binary(*op, left, right);
+                self.check_known_arithmetic(value, (*op, left, right), &ty);
+                ty
+            }
             ExprKind::OrElse(value, error) => self.or_else(value, error),
             ExprKind::Try(inner) => self.try_value(inner),
             ExprKind::Lambda(..) => {
@@ -105,6 +123,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             UnaryOp::Not => {
                 self.expect(operand, &Type::Bool);
                 Type::Bool
+            }
+            // The lowest whole number is written as `-2147483648`, and only
+            // there is `2147483648` allowed.
+            UnaryOp::Negate if operand.kind == ExprKind::Int(LOWEST_MAGNITUDE) => {
+                self.checker.facts.types.insert(operand.id, Type::Int);
+                Type::Int
             }
             UnaryOp::Negate => {
                 let ty = self.expr(operand, expected);

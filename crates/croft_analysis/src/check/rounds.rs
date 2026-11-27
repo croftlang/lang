@@ -108,6 +108,7 @@ fn check_round(files: Vec<File>, manifest: Option<Manifest>) -> (Analysis, Vec<R
         facts: Facts::default(),
         requests: RefCell::default(),
         references: RefCell::default(),
+        faults: RefCell::default(),
     };
 
     for context in program.contexts.values() {
@@ -123,6 +124,10 @@ fn check_round(files: Vec<File>, manifest: Option<Manifest>) -> (Analysis, Vec<R
     if checker.errors.is_empty() {
         for context in program.contexts.values() {
             checker.check_bodies(context);
+        }
+
+        for (message, span) in checker.faults.get_mut().unreported() {
+            checker.error(message, span);
         }
     }
 

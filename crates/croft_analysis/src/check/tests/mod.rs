@@ -1,5 +1,6 @@
 //! Tests for the checker, and helpers that check sources and give back their errors.
 
+mod arithmetic;
 mod bodies;
 mod boundary;
 mod calls;

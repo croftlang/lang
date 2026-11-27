@@ -49,7 +49,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             "all" => self.line(format!("if (!{value}) {temp} = 0;")),
             "any" => self.line(format!("if ({value}) {temp} = 1;")),
             "count" => self.line(format!("if ({value}) {temp}++;")),
-            "sum" => self.line(format!("{temp} += {value};")),
+            "sum" => self.line(format!("{temp} = croft_int_add({temp}, {value});")),
             "find" => self.line(format!(
                 "if (!{temp}.some && {value}) {{ {temp}.some = 1; {temp}.value = {current}; }}"
             )),

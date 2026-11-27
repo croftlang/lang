@@ -264,6 +264,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         if matches!(found.kind, SymbolKind::Function | SymbolKind::Translation) {
             self.check_known_result(found, arguments, span);
+            self.check_known_call_faults(found, arguments, span);
         }
 
         let function = (scope.context.functions.iter()).find(|f| f.name.name == found.name);

@@ -3,13 +3,42 @@
 use croft_analysis::Type;
 use croft_syntax::ast::{BinaryOp, Expr};
 
+use super::range::{combine, Span};
 use super::Writer;
 use crate::types::bounds::{is_bytes, is_string, list_item};
 use crate::types::constant::evaluate;
 
-/// Every shift amount is below this: the bits in the smallest `Int` on any
-/// target.
+/// Every shift amount is below this: the bits in an `Int`.
 const MAX_SHIFT: i64 = croft_analysis::MAX_SHIFT;
+
+/// Whether `left op right`, for `+`, `-`, `*`, `/` and `%` on whole numbers
+/// with these ranges, always has an answer in 32 bits, so it can be written
+/// as plain C. Dividing is plain only when neither side is below zero, since
+/// C89 leaves how a quotient below zero rounds up to the compiler.
+pub(super) fn always_answers(op: BinaryOp, ranges: (Option<Span>, Option<Span>)) -> bool {
+    let (Some(left), Some(right)) = ranges else {
+        return false;
+    };
+
+    match op {
+        BinaryOp::Divide | BinaryOp::Remainder => left.is_natural() && right.low >= 1,
+        _ => combine(op, left, right).is_some_and(Span::fits_whole),
+    }
+}
+
+/// `left op right` on whole numbers through the runtime function that
+/// checks it goes past 32 bits or divides by zero: `croft_int_add(a, b)`.
+pub(super) fn whole_arithmetic(op: BinaryOp, left: &str, right: &str) -> String {
+    let name = match op {
+        BinaryOp::Add => "add",
+        BinaryOp::Subtract => "subtract",
+        BinaryOp::Multiply => "multiply",
+        BinaryOp::Divide => "divide",
+        _ => "remainder",
+    };
+
+    format!("croft_int_{name}({left}, {right})")
+}
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// `left op right`, giving a value of `ty`.
@@ -58,6 +87,15 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         let left_c = self.value(left, &left_type);
         let right_c = self.value(right, &left_type);
+
+        if left_type == Type::Int && matches!(op, Add | Subtract | Multiply | Divide | Remainder) {
+            let ranges = (self.range_of(left), self.range_of(right));
+
+            if !always_answers(op, ranges) {
+                return whole_arithmetic(op, &left_c, &right_c);
+            }
+        }
+
         let (left, right) = (self.widened_operation(op, left, right, left_c), right_c);
 
         match op {
@@ -115,7 +153,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     }
 
     /// A shift. Left shifts go through `unsigned long`, so shifting a negative
-    /// number is defined in C. An amount that is not a constant is checked in
+    /// number is defined in C, and keep only 32 bits. An amount that is not a constant is checked in
     /// checked builds, since C leaves shifting by too much undefined.
     fn shift(&mut self, is_left: bool, left: &Expr, right: &Expr) -> String {
         let value = self.value(left, &Type::Int);

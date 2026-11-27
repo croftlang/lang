@@ -1,0 +1,71 @@
+// Works out the arithmetic the arguments name on the two numbers after it,
+// such as `add 2147483647 1`, and prints the answer. The numbers come from the
+// arguments, so they are only known while running; a whole number has
+// exactly 32 bits, and an answer past them, or dividing by zero, stops the
+// program when its checks are on.
+context Sums {
+    use { Decimal, abs } from Std.Numbers
+    use { starts_with, to_int } from Std.Text
+
+    fn work_out(operation: String, a: Int, b: Int): Int = {
+        if operation == "add" {
+            a + b
+        }
+        if operation == "subtract" {
+            a - b
+        }
+        if operation == "multiply" {
+            a * b
+        }
+        if operation == "divide" {
+            a / b
+        }
+        if operation == "remainder" {
+            a % b
+        }
+        if operation == "negate" {
+            -a
+        }
+        if operation == "abs" {
+            abs(a)
+        }
+        if operation == "shift" {
+            a << b
+        }
+        if operation == "sum" {
+            [a, b].sum(n -> n)
+        }
+        0
+    }
+
+    // Each whole number becomes a decimal of hundredths, which must fit in
+    // 32 bits too.
+    fn work_out_decimal(operation: String, a: Decimal<2>, b: Decimal<2>): Decimal<2> = {
+        if operation == "decimal_add" {
+            a + b
+        }
+        if operation == "decimal_multiply" {
+            a * b
+        }
+        if operation == "decimal_divide" {
+            a / b
+        }
+        a
+    }
+
+    service Start(): Unit {
+        calls { Arguments, Console }
+    } = {
+        let given = Arguments.all()
+        let operation = given.first.unwrap_or("")
+        let a = given.get(1).unwrap_or("0").to_int().unwrap_or(0)
+        let b = given.get(2).unwrap_or("0").to_int().unwrap_or(0)
+        if operation.starts_with("decimal") {
+            Console.print(work_out_decimal(operation, a, b).to_string())
+        }
+        if !operation.starts_with("decimal") {
+            Console.print(work_out(operation, a, b).to_string())
+        }
+        Unit
+    }
+}
