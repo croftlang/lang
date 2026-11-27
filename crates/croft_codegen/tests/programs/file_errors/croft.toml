@@ -1,0 +1,5 @@
+[package]
+name = "file_errors"
+
+[target.test.adapters]
+Files = "StdioFiles"
