@@ -76,6 +76,7 @@
   "publish"
   "use"
   "from"
+  "as"
   "value"
   "entity"
   "aggregate"
