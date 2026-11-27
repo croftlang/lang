@@ -1097,6 +1097,14 @@ fn runs_operations_a_repository_declares() {
     run_program("repository_operations");
 }
 
+/// A repository that only saves, and one that only finds: each gets the
+/// serializer it calls and no other, so the strict build has no unused
+/// function to reject.
+#[test]
+fn builds_repositories_that_only_save_or_only_find() {
+    run_program("one_way_repositories");
+}
+
 /// Literals and string parameters passed as borrowed views, and copied only
 /// when kept.
 #[test]

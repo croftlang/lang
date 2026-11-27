@@ -30,7 +30,7 @@ mod repository;
 /// The runtime functions a program calls.
 mod runtime;
 /// Turning values into bytes and back.
-mod serialize;
+pub(crate) mod serialize;
 /// Parameters and C signatures.
 mod signature;
 /// Sort functions.
