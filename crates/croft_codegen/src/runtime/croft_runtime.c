@@ -561,11 +561,11 @@ void croft_environment_get(croft_string_view name, croft_bool *present, char *ou
     *present = 1;
 }
 
-/* Stops the program with an exit code. With checks off, a code outside 0
-   to 255 keeps only its lowest 8 bits, as most systems do. */
+/* Stops the program with an exit code. The call checks the code against
+   its Range(0, 255) when checks are on; with them off, a code outside 0 to
+   255 keeps only its lowest 8 bits, as most systems do. */
 void croft_process_exit(croft_int code, croft_unit *out)
 {
-    CROFT_CHECK(code >= 0 && code <= 255, "Process.exit: code must satisfy Range(0, 255)");
     *out = 0;
     exit((int) (code & 255));
 }

@@ -1,7 +1,8 @@
 //! Debug-build checks of `where` constraints: on a function's arguments when it
-//! starts, on its result before it returns, on a value's fields when it is
-//! built and against its invariants, and of a port's contract when an adapter's operation starts. Each
-//! check is its own function, compiled only with `CROFT_CHECKS`.
+//! starts, on a port or repository operation's arguments when it is called, on
+//! its result before it returns, on a value's fields when it is built and
+//! against its invariants, and of a port's contract when an adapter's operation
+//! starts. Each check is its own function, compiled only with `CROFT_CHECKS`.
 
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::Resolved;
@@ -28,6 +29,25 @@ impl<'a> Generator<'a> {
         place: &CheckPlace,
         parameters: &[(String, Type, &[ConstraintUse])],
     ) -> Option<String> {
+        let arguments: Vec<String> = (parameters.iter())
+            .map(|(name, _, _)| format!("p_{name}"))
+            .collect();
+
+        self.operation_check(function, place, parameters, &arguments)
+    }
+
+    /// A function that checks each argument of a port or repository operation
+    /// against the constraints of its parameters, and the call to it with
+    /// `arguments`, when any parameter has constraints. The messages read the
+    /// operation's names for the parameters, whatever an adapter calls them.
+    /// Each operation's function is written once, however many places call it.
+    pub fn operation_check(
+        &self,
+        function: &str,
+        place: &CheckPlace,
+        parameters: &[(String, Type, &[ConstraintUse])],
+        arguments: &[String],
+    ) -> Option<String> {
         // A constraint with `or` fails the call instead; `constraint_failures` writes it.
         let must_hold =
             |constraints: &[ConstraintUse]| constraints.iter().any(|c| c.error.is_none());
@@ -46,6 +66,16 @@ impl<'a> Generator<'a> {
             .map(|(n, t, _)| (n.clone(), t.clone()))
             .collect();
 
+        let signature = self.signature(&name, &[], &typed, None);
+        let call = format!("{name}({});", arguments.join(", "));
+
+        let written = (self.checks.borrow().iter())
+            .any(|(prototype, _)| prototype.strip_suffix(';') == Some(signature.as_str()));
+
+        if written {
+            return Some(call);
+        }
+
         let mut writer = self.check_writer(place);
         writer.bind_parameters(&typed);
 
@@ -62,11 +92,9 @@ impl<'a> Generator<'a> {
             }
         }
 
-        self.add_check(writer, &self.signature(&name, &[], &typed, None));
+        self.add_check(writer, &signature);
 
-        let arguments: Vec<String> = typed.iter().map(|(n, _)| format!("p_{n}")).collect();
-
-        Some(format!("{name}({});", arguments.join(", ")))
+        Some(call)
     }
 
     /// A function that checks the lines of a port operation's contract, such

@@ -10,7 +10,7 @@ mod command;
 /// Constants and adapters' starting values.
 mod constant;
 /// Debug-build constraint checks.
-mod constraints;
+pub(crate) mod constraints;
 /// Equality functions.
 mod equality;
 /// Events and policies.

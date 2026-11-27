@@ -9,7 +9,9 @@
 use croft_analysis::symbols::SymbolKind;
 use croft_analysis::types::Resolved;
 use croft_analysis::{StorageShape, Type};
+use croft_syntax::ast::ConstraintUse;
 
+use super::constraints::CheckPlace;
 use super::layout::layout_hash;
 use crate::names::{aggregate_kind, c_name, c_string, error_code};
 use crate::Generator;
@@ -25,6 +27,9 @@ struct Stored<'r> {
     storage: &'r Resolved,
     /// Its one parameter: the aggregate or its identity.
     parameter: &'r (String, Type),
+    /// The check of that parameter against its constraints when checks are
+    /// on, written after the declarations, or nothing when it has none.
+    check: String,
 }
 
 impl<'a> Generator<'a> {
@@ -63,11 +68,33 @@ impl<'a> Generator<'a> {
                         continue;
                     };
 
+                    // An adapter written for the repository checks the
+                    // arguments in its own operation, so only these need it here.
+                    let label = format!("{}.{}", repository.name, operation.name);
+
+                    let place = CheckPlace {
+                        context: &repository.context,
+                        aggregate: None,
+                        label: &label,
+                    };
+
+                    let checked: Vec<(String, Type, &[ConstraintUse])> = (operation.parameters)
+                        .iter()
+                        .map(|(name, ty, constraints)| (name.clone(), ty.clone(), *constraints))
+                        .collect();
+
+                    let check = self
+                        .argument_check(&function, &place, &checked)
+                        .map_or(String::new(), |call| {
+                            format!("#ifdef CROFT_CHECKS\n    {call}\n#endif\n")
+                        });
+
                     let stored = Stored {
                         repository: &repository,
                         aggregate: &aggregate,
                         storage,
                         parameter: &parameters[0],
+                        check,
                     };
 
                     self.stored(&stored, shape)
@@ -132,6 +159,7 @@ impl<'a> Generator<'a> {
             aggregate,
             storage,
             parameter,
+            ref check,
         } = *stored;
 
         let aggregate_type = Type::Named(aggregate.clone());
@@ -176,7 +204,7 @@ impl<'a> Generator<'a> {
                 };
 
                 format!(
-                    "    croft_string key;\n    {loaded} kept;\n    croft_u16 at = 0;\n    croft_int layout = 0;\n\n    \
+                    "    croft_string key;\n    {loaded} kept;\n    croft_u16 at = 0;\n    croft_int layout = 0;\n\n{check}    \
                      croft_clear(out, sizeof *out);\n    croft_storage_key({prefix}, (croft_int) {value}, &key);\n    {storage}_load(CROFT_VIEW(key), &kept);\n    \
                      if (!kept.ok) {{\n        out->error = kept.error;\n        return;\n    }}\n    \
                      if (!kept.value.some) {{\n        {missing}\n    }}\n    \
@@ -194,7 +222,7 @@ impl<'a> Generator<'a> {
                 let data = self.c_type(&self.saved_bytes(aggregate));
 
                 format!(
-                    "    croft_string key;\n    {data} data;\n    croft_bytes_writer writer;\n    {written} kept;\n\n    \
+                    "    croft_string key;\n    {data} data;\n    croft_bytes_writer writer;\n    {written} kept;\n\n{check}    \
                      croft_clear(out, sizeof *out);\n    writer = croft_bytes_writer_to(CROFT_BYTES_OUT(data));\n    \
                      if (!croft_bytes_put_int(&writer, {hash}L) || !croft_write_{serializer}(&{value}, &writer)) {{\n        \
                      out->error.code = {full};\n        return;\n    }}\n    \
@@ -204,7 +232,7 @@ impl<'a> Generator<'a> {
                 )
             }
             StorageShape::Remove => format!(
-                "    croft_string key;\n    {written} kept;\n\n    \
+                "    croft_string key;\n    {written} kept;\n\n{check}    \
                  croft_clear(out, sizeof *out);\n    croft_storage_key({prefix}, (croft_int) {value}, &key);\n    {storage}_remove(CROFT_VIEW(key), &kept);\n    \
                  if (!kept.ok) {{\n        out->error = kept.error;\n        return;\n    }}\n    out->ok = 1;\n"
             ),

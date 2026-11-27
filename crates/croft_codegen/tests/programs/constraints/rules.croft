@@ -49,8 +49,35 @@ context Clinic {
     // Room for two numbers, and no more.
     fn pair(): List<Int> where Length(0, 2) = []
 
+    // A port whose adapter names its parameters its own way: a check names
+    // them as the port does, and the adapter's operation.
+    port Pharmacy {
+        fn dispense(amount: Int where Range(1, 50), doses: List<Int> where Length(0, 4), each Even): Int
+    }
+
+    adapter CountingPharmacy for Pharmacy = {
+        fn dispense(given, taken) = given + taken.length
+    }
+
+    identity BedId for Bed: Int where Range(1, 9)
+
+    constraint Made(bed: Bed) = bed.sheets >= 1
+
+    aggregate Bed {
+        id: BedId
+        sheets: Int where Range(0, 4)
+
+        factory Strip(id: BedId, sheets: Int) = Bed { id, sheets }
+    }
+
+    // `Storage` saves a bed, after checking it against the constraint.
+    repository Beds for Bed {
+        fn find(id: BedId): Result<Option<Bed>, StorageError>
+        fn keep(bed: Bed where Made): Result<Unit, StorageError>
+    }
+
     service Start(): Unit {
-        calls { Arguments }
+        calls { Arguments, Pharmacy, Beds }
     } = {
         let chosen = Arguments.all()
         if chosen.contains("argument") {
@@ -93,6 +120,18 @@ context Clinic {
                 if dose <= chosen.length * 5 {
                     set doses = doses.add(dose)
                 }
+            }
+        }
+        if chosen.contains("port") {
+            let dispensed = Pharmacy.dispense(chosen.length * 70, [2])
+        }
+        if chosen.contains("port_each") {
+            let dispensed = Pharmacy.dispense(5, [2, chosen.length * 2 + 1])
+        }
+        if chosen.contains("repository") {
+            let kept = match Bed.Strip(id: 1, sheets: chosen.length - 1) {
+                Ok(bed) -> Beds.keep(bed).is_ok
+                Err(_) -> false
             }
         }
         if chosen.contains("shift") {
