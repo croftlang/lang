@@ -46,12 +46,13 @@ domain Application {
 }
 ```
 
-Save it as `hello.croft`, then:
+[Install `croft`](https://croftlang.com/install), save the program as `hello.croft`, then:
 
 ```sh
-cargo install --path crates/croft_cli
 croft run hello.croft
 ```
+
+To build it from this repository instead, run `cargo install --path crates/croft_cli`.
 
 ## Reference
 
