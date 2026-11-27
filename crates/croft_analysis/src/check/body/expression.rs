@@ -97,7 +97,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 ty
             }
             ExprKind::Binary(op, left, right) => {
-                let ty = self.binary(*op, left, right);
+                let ty = self.binary(*op, left, right, expected);
                 self.check_known_arithmetic(value, (*op, left, right), &ty);
                 ty
             }
@@ -158,7 +158,15 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     }
 
     /// The type of a binary operator's result, after checking both sides.
-    pub(super) fn binary(&mut self, op: BinaryOp, left: &Expr, right: &Expr) -> Type {
+    /// Arithmetic where a `Decimal` is expected reads its literals as one, so
+    /// `0.01 - 0.02` is a `Decimal<2>` there.
+    pub(super) fn binary(
+        &mut self,
+        op: BinaryOp,
+        left: &Expr,
+        right: &Expr,
+        expected: Option<&Type>,
+    ) -> Type {
         use BinaryOp::*;
 
         match op {
@@ -190,12 +198,14 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                     return self.join_onto_literal(left, right);
                 }
 
+                let decimal = expected.filter(|ty| matches!(ty, Type::Decimal(_)));
+
                 let ty = match op {
                     Add if is_list_literal(left) => self.expr(left, Some(&Type::Bytes)),
-                    _ => self.expr(left, None),
+                    _ => self.expr(left, decimal),
                 };
 
-                if let Some(ty) = self.decimal_arithmetic(op, &ty, left, right) {
+                if let Some(ty) = self.decimal_arithmetic(op, &ty, (left, right), decimal) {
                     return ty;
                 }
 

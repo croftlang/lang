@@ -57,6 +57,8 @@ fn with_tax(price: Decimal<2>): Decimal<2> = price * 1.20
 
 fn share(total: Decimal<2>, people: Int): Decimal<2> = total / people
 
+fn literal_change(): Decimal<2> = 2 - 0.01
+
 fn first_long(words: List<String>): Option<String> = words.find(w -> w.length > 3)
 
 service Start(): Result<Unit, WrongAnswer> {
@@ -111,5 +113,7 @@ service Start(): Result<Unit, WrongAnswer> {
     check("DN".to_bytes() == header.slice(0, 2) && header.slice(0, 2).to_text() == "DN")?
     let owed: Decimal<2> = -0.05
     check(price.to_string() == "2.50" && owed.to_string() == "-0.05")?
+    let change: Decimal<2> = 0.01 - 0.02
+    check(change == -0.01 && change.to_string() == "-0.01" && literal_change() == 1.99)?
     Unit
 }

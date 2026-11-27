@@ -40,19 +40,21 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     /// Arithmetic where either side is a `Decimal`, or `None` if neither is.
     /// A `Decimal` works with an `Int` or a `Decimal` of the same places, and
     /// gives the `Decimal` back. Multiplying and dividing two `Decimal`s, or
-    /// dividing by an `Int`, rounds half to even.
+    /// dividing by an `Int`, rounds half to even. `decimal` is the `Decimal`
+    /// expected of the whole, which a literal on the right is read as when
+    /// the left is an `Int`: `2 - 0.01`.
     pub(super) fn decimal_arithmetic(
         &mut self,
         op: BinaryOp,
         left_type: &Type,
-        left: &Expr,
-        right: &Expr,
+        (left, right): (&Expr, &Expr),
+        decimal: Option<&Type>,
     ) -> Option<Type> {
-        let right_expected = matches!(left_type, Type::Decimal(_)).then_some(left_type);
-
-        if right_expected.is_none() && *left_type != Type::Int {
-            return None;
-        }
+        let right_expected = match left_type {
+            Type::Decimal(_) => Some(left_type),
+            Type::Int => decimal,
+            _ => return None,
+        };
 
         let right_type = self.expr(right, right_expected);
 
