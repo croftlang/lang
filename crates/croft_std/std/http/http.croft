@@ -7,7 +7,8 @@ context Http {
 
     use { Map } from Std.Collections
 
-    // The server couldn't be reached, or the connection broke.
+    // The server couldn't be reached, the connection broke, the URL isn't
+    // http or https, or it redirected more than 10 times.
     error Unreachable
 
     // The server took longer than 30 seconds to answer.
@@ -23,7 +24,8 @@ context Http {
     }
 
     // What the server answered: its status, such as 200 or 404, its headers,
-    // with names in lower case, and the body.
+    // with names in lower case, and the body. After redirects, all three come
+    // from the last answer.
     value Response {
         status: Int where Range(0, 999)
         headers: Map<String, String> where Length(0, 16)
@@ -37,7 +39,9 @@ context Http {
         fn delete(url: String where Length(1, 128)): Result<Response, HttpError>
     }
 
-    // Requests through libcurl, which also handles HTTPS.
+    // Requests through libcurl, which also handles HTTPS. It speaks only
+    // http and https, on the first request and on every redirect, and
+    // follows at most 10 redirects.
     adapter CurlHttp for Http = {
         fn get(url) = native croft_http_get(url)
         fn post(url, body) = native croft_http_post(url, body)

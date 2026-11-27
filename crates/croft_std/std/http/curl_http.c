@@ -3,6 +3,9 @@
 #include <curl/curl.h>
 #include "program.h"
 
+/* How many redirects a request follows before it fails with Unreachable. */
+#define CROFT_HTTP_REDIRECTS 10L
+
 /* Where libcurl puts the answer, and whether it ran out of room. */
 typedef struct {
     croft_bytes *body;
@@ -25,14 +28,28 @@ static size_t collect(char *data, size_t size, size_t count, void *user)
     return length;
 }
 
-/* Each header line, "Name: value", kept with its name in lower case. */
+/* Whether a header line is a status line, such as "HTTP/1.1 301 Moved",
+   which starts each response of a redirect chain. */
+static croft_bool starts_response(const char *data, size_t length)
+{
+    return length >= 5 && data[0] == 'H' && data[1] == 'T' && data[2] == 'T'
+        && data[3] == 'P' && data[4] == '/';
+}
+
+/* Each header line, "Name: value", kept with its name in lower case. A new
+   status line starts the headers again, so only the last response's are kept. */
 static size_t keep_header(char *data, size_t size, size_t count, void *user)
 {
     croft_result_Std_Http_Response_error *out = (croft_result_Std_Http_Response_error *) user;
     size_t length = size * count;
     size_t colon = 0;
     size_t index;
-    croft_u16 at = out->value.headers.length;
+    croft_u16 at;
+    if (starts_response(data, length)) {
+        croft_clear(&out->value.headers, sizeof out->value.headers);
+        return length;
+    }
+    at = out->value.headers.length;
     while (colon < length && data[colon] != ':') {
         colon++;
     }
@@ -83,6 +100,14 @@ static void request(const char *method, croft_string_view url, const croft_bytes
     curl_easy_setopt(curl, CURLOPT_URL, address);
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, CROFT_HTTP_REDIRECTS);
+#if LIBCURL_VERSION_NUM >= 0x075500
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "http,https");
+    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS_STR, "http,https");
+#else
+    curl_easy_setopt(curl, CURLOPT_PROTOCOLS, (long) (CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, (long) (CURLPROTO_HTTP | CURLPROTO_HTTPS));
+#endif
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, collect);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &answer);

@@ -387,6 +387,9 @@ giving a `Response` (its `status`, its `headers` as a map with names in
 lower case, and its `body`) or an `HttpError`:
 `Unreachable`, `TimedOut` or `TooLarge`. Its `CurlHttp` adapter uses libcurl,
 which also handles HTTPS, so a program that binds it is linked with `-lcurl`.
+It follows at most 10 redirects and gives the last answer's status, headers
+and body. It speaks only http and https, redirects included: any other URL,
+such as `file:///etc/passwd`, and an eleventh redirect fail with `Unreachable`.
 
 ## The outside world
 
