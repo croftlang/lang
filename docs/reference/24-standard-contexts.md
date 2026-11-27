@@ -1,6 +1,6 @@
 # Standard contexts
 
-Two standard contexts need no import: Std.Console, with the `Console` and `Arguments` ports, and Std.Storage, for repositories. The rest of the built-ins are imported, like names from any other context, so each context says what it relies on and the standard library can grow without filling every namespace. An import covers every file of the context, and needs no arrow in the domain's contexts. Std.Files and Std.Http are written in dn: a port, its errors, and an adapter that dn.toml can bind, StdioFiles on any machine with C's stdio and CurlHttp wherever libcurl is, which also brings HTTPS. CurlHttp speaks only http and https, redirects included, and follows at most 10 redirects, giving the last answer's status, headers and body; any other URL, such as `file:///etc/passwd`, and an eleventh redirect fail with `Unreachable`. Whatever is imported, the generated C only carries the runtime functions the program calls.
+Two standard contexts need no import: Std.Console, with the `Console` and `Arguments` ports, and Std.Storage, for repositories. The rest of the built-ins are imported, like names from any other context, so each context says what it relies on and the standard library can grow without filling every namespace. An import covers every file of the context, and needs no arrow in the domain's contexts. Std.Files, Std.Http and Std.Random are written in dn: a port, its errors, and an adapter that dn.toml can bind, StdioFiles on any machine with C's stdio, CurlHttp wherever libcurl is, which also brings HTTPS, and SeededRandom on any machine. CurlHttp speaks only http and https, redirects included, and follows at most 10 redirects, giving the last answer's status, headers and body; any other URL, such as `file:///etc/passwd`, and an eleventh redirect fail with `Unreachable`. SeededRandom is a xorshift32 generator, seeded once from C's `time` the first time it is used, so each run gives different numbers, and a machine without a clock the same ones; it is fine for games and samples and never for anything secret. Whatever is imported, the generated C only carries the runtime functions the program calls.
 
 ```croft
 context Notes
@@ -54,10 +54,18 @@ service Upload(save: Bytes): Result<Unit, HttpError> {
     ...
 }
 
+// Std.Random: between(low, high), a whole number with both ends included
+use { Random } from Std.Random
+
+service Roll(): Int {
+    calls { Random }
+} = Random.between(1, 6)   // `Random.between(6, 1)` doesn't compile: it breaks `low <= high`
+
 // dn.toml
 // [target.desktop.adapters]
 // Files = "StdioFiles"
 // Http = "CurlHttp"          // link with -lcurl
+// Random = "SeededRandom"
 
 // without the import:
 // `Files` needs `use { Files } from Std.Files`

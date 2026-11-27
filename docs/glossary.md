@@ -392,11 +392,18 @@ which also handles HTTPS, so a program that binds it is linked with `-lcurl`.
 It follows at most 10 redirects and gives the last answer's status, headers
 and body. It speaks only http and https, redirects included: any other URL,
 such as `file:///etc/passwd`, and an eleventh redirect fail with `Unreachable`.
+`Std.Random` has the `Random` port, with `between(low, high)`, a whole number
+from `low` to `high` with both ends included, and the `SeededRandom` adapter:
+`Random = "SeededRandom"` in `croft.toml`. It is a xorshift32 generator,
+seeded from C's `time` the first time it is used, so it is no good for
+anything secret. `low` above `high` breaks `between`'s contract.
 
 ## The outside world
 
 ### Port
-What the domain needs from the outside world, by signature only.
+What the domain needs from the outside world, by signature only. An
+operation's contract, such as `low <= high`, is kept by each caller, whatever
+adapter fills the port.
 
 ### Repository
 A port for keeping one aggregate. `repository Cargos for Cargo` on its own

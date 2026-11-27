@@ -1,10 +1,11 @@
 //! Debug-build checks of `where` constraints: on a function's arguments when it
-//! starts, on its result before it returns, and on a value's fields when it
-//! is built. Each check is its own function, compiled only with `CROFT_CHECKS`.
+//! starts, on its result before it returns, on a value's fields when it is
+//! built, and of a port's contract when an adapter's operation starts. Each
+//! check is its own function, compiled only with `CROFT_CHECKS`.
 
 use croft_analysis::types::Resolved;
 use croft_analysis::Type;
-use croft_syntax::ast::ConstraintUse;
+use croft_syntax::ast::{ConstraintUse, Expr};
 
 use crate::function::{Returns, Writer};
 use crate::names::c_name;
@@ -63,6 +64,33 @@ impl<'a> Generator<'a> {
         self.add_check(writer, &self.signature(&name, &[], &typed, None));
 
         let arguments: Vec<String> = typed.iter().map(|(n, _)| format!("p_{n}")).collect();
+
+        Some(format!("{name}({});", arguments.join(", ")))
+    }
+
+    /// A function that checks the lines of a port operation's contract, such
+    /// as `low <= high`, and the call to it with `arguments`, when it has any.
+    /// The lines read the port's names for the parameters, whatever the
+    /// adapter calls them.
+    pub fn contract_check(
+        &self,
+        function: &str,
+        place: &CheckPlace,
+        parameters: &[(String, Type)],
+        preconditions: &[Expr],
+        arguments: &[String],
+    ) -> Option<String> {
+        if preconditions.is_empty() {
+            return None;
+        }
+
+        let name = format!("croft_check_contract_{function}");
+
+        let mut writer = self.check_writer(place);
+        writer.bind_parameters(parameters);
+        writer.preconditions(preconditions, place.label);
+
+        self.add_check(writer, &self.signature(&name, &[], parameters, None));
 
         Some(format!("{name}({});", arguments.join(", ")))
     }

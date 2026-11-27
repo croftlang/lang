@@ -141,6 +141,18 @@ impl<'a> Generator<'a> {
                     writer.checked_call(&call);
                 }
 
+                let passed: Vec<String> = renamed.iter().map(|(n, _)| format!("p_{n}")).collect();
+
+                if let Some(call) = self.contract_check(
+                    &function,
+                    &place,
+                    &parameters,
+                    expected.preconditions,
+                    &passed,
+                ) {
+                    writer.checked_call(&call);
+                }
+
                 if let Some(body) = &operation.body {
                     let value = writer.value_into("(*out)", body, &result);
                     if let Some(check) =

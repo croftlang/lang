@@ -83,6 +83,60 @@ fn reads_and_writes_files() {
     fs::remove_dir_all(output).ok();
 }
 
+/// Std.Random through SeededRandom: thousands of rolls each land in their
+/// range, whole range included, and every side of a die comes up. With
+/// `low` above `high`, known only while running, the program stops.
+#[test]
+fn rolls_within_range() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/random");
+    let output = generate(&source, "test", "random");
+
+    let built = compile(
+        &output,
+        &[
+            "croft_runtime.c",
+            "croft_random.c",
+            "program.c",
+            "-o",
+            "program",
+        ],
+    );
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    let run = |arguments: &[&str]| {
+        std::process::Command::new(output.join("program"))
+            .args(arguments)
+            .output()
+            .expect("it runs")
+    };
+
+    let rolled = run(&[]);
+    assert_eq!(String::from_utf8_lossy(&rolled.stdout), "ok\n");
+    assert!(rolled.status.success());
+
+    let once = run(&["4", "4"]);
+    assert_eq!(String::from_utf8_lossy(&once.stdout), "4\n");
+
+    let reversed = run(&["6", "1"]);
+    assert_eq!(reversed.status.code(), Some(1));
+
+    assert_eq!(
+        String::from_utf8_lossy(&reversed.stdout),
+        "SeededRandom.between: low <= high must hold\n"
+    );
+
+    fs::remove_dir_all(output).ok();
+}
+
 /// `Files.list` through StdioFiles: the names in a folder in order, each
 /// folder's ending in `/`; `NoRoom` for more names than a list holds, and
 /// `NotFound` for a folder that isn't there.
