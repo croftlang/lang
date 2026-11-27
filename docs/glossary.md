@@ -384,8 +384,10 @@ adapter, which uses C's stdio: `Files = "StdioFiles"` in `croft.toml`. Its
 `list` and `make_folder` need POSIX, so they fail with `Unreadable` on
 machines without it. It never cuts a path short: one longer than 255 bytes,
 or with a NUL byte in it, fails with `Unreadable`.
-`Std.Http` has the `Http` port, with `get`, `post`, `put` and `delete`, each
-giving a `Response` (its `status`, its `headers` as a map with names in
+`Std.Http` has the `Http` port, with `get`, `post`, `put` and `delete`. Each
+takes a URL of up to 1024 characters and a map of up to 8 headers to send,
+`[:]` for none, and `post` and `put` take a body after them. Each gives a
+`Response` (its `status`, its `headers` as a map with names in
 lower case, leaving out any longer than a string, and its `body`) or an
 `HttpError`:
 `Unreachable`, `TimedOut` or `TooLarge`. Its `CurlHttp` adapter uses libcurl,
@@ -393,6 +395,11 @@ which also handles HTTPS, so a program that binds it is linked with `-lcurl`.
 It follows at most 10 redirects and gives the last answer's status, headers
 and body. It speaks only http and https, redirects included: any other URL,
 such as `file:///etc/passwd`, and an eleventh redirect fail with `Unreachable`.
+A header whose name or value holds a carriage return, a line feed or a NUL,
+which could slip another header in, or whose name is empty or holds a colon,
+fails the request with `Unreachable` before anything is sent. The headers go
+with every redirect, except that libcurl leaves out `Authorization` and
+`Cookie` when a redirect leads to another host.
 `Std.Random` has the `Random` port, with `between(low, high)`, a whole number
 from `low` to `high` with both ends included, and the `SeededRandom` adapter:
 `Random = "SeededRandom"` in `croft.toml`. It is a xorshift32 generator,

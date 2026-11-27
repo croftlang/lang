@@ -10,7 +10,7 @@ context Headers {
     service Show(): Result<Unit, HttpError> {
         calls { Http, Console }
     } = {
-        let page = Http.get("http://SERVER/headers")?
+        let page = Http.get("http://SERVER/headers", [:])?
         Console.print(page.headers.keys.join(","))
         Console.print(page.headers.get("x-short").unwrap_or("none"))
         Console.print(page.headers.get("x-long").unwrap_or("none"))
