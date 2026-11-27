@@ -22,7 +22,7 @@ context Dice {
     service RollDie(sides: Int, count: Int): Result<Unit, Wrong> {
         calls { Random }
     } = {
-        let seen: List<Int> = []
+        let seen: List<Int> where Length(0, 20) = []
         loop (let turn where Range(1, 1000)) {
             if turn <= count {
                 let rolled = Random.between(1, sides)
