@@ -170,9 +170,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let numbers = numbers?;
 
                 match (constraint.name.text().as_str(), numbers.as_slice()) {
-                    ("Range", [low, high]) => {
-                        Some(format!("({value} >= {low}L && {value} <= {high}L)"))
-                    }
+                    ("Range", [low, high]) => int_range_test(value, ty, *low, *high),
                     ("Length", [exact]) => {
                         Some(format!("({value}.length == {})", c_number(*exact)))
                     }
@@ -189,6 +187,23 @@ impl<'g, 'a> Writer<'g, 'a> {
                 }
             }
         }
+    }
+}
+
+/// The C test of `value` against `Range(low, high)`. An `Int` can't go past
+/// its own 32 bits, so an end at the lowest or highest `Int` needs no test,
+/// and C compilers warn that one is always true; `None` when neither end
+/// does.
+fn int_range_test(value: &str, ty: &Type, low: i64, high: i64) -> Option<String> {
+    let int = matches!(ty, Type::Int);
+    let low_test = !(int && low <= i64::from(i32::MIN));
+    let high_test = !(int && high >= i64::from(i32::MAX));
+
+    match (low_test, high_test) {
+        (true, true) => Some(format!("({value} >= {low}L && {value} <= {high}L)")),
+        (true, false) => Some(format!("({value} >= {low}L)")),
+        (false, true) => Some(format!("({value} <= {high}L)")),
+        (false, false) => None,
     }
 }
 

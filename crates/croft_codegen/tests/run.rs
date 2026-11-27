@@ -288,6 +288,11 @@ fn sizes_reads_parts_of_and_renames_files() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/file_parts");
     let output = generate(&source, "test", "file_parts");
 
+    // An `Int` is never past 2147483647, so that end of `offset`'s range is
+    // not tested: GCC warns the test is always true.
+    let program = fs::read_to_string(output.join("program.c")).expect("the program");
+    assert!(program.contains("CROFT_CHECK((p_offset >= 0L), "));
+
     let built = compile(
         &output,
         &[
