@@ -305,7 +305,9 @@ void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u1
 
 croft_bool croft_string_to_int(croft_string_view text, croft_int *out)
 {
-    croft_int value = 0;
+    unsigned long value = 0;
+    unsigned long limit;
+    unsigned long digit;
     croft_u16 index = 0;
     croft_bool negative = text.length > 0 && text.text[0] == '-';
     if (negative) {
@@ -314,13 +316,27 @@ croft_bool croft_string_to_int(croft_string_view text, croft_int *out)
     if (index == text.length) {
         return 0;
     }
+
+    /* Int holds -2147483648 to 2147483647 on every target, so the number
+       is read as an unsigned long, which has at least 32 bits, and refused
+       as soon as it goes past what Int can hold. */
+    limit = negative ? 2147483648UL : 2147483647UL;
     for (; index < text.length; index++) {
         if (text.text[index] < '0' || text.text[index] > '9') {
             return 0;
         }
-        value = value * 10 + (text.text[index] - '0');
+        digit = (unsigned long) (text.text[index] - '0');
+        if (value > (limit - digit) / 10) {
+            return 0;
+        }
+        value = value * 10 + digit;
     }
-    *out = negative ? -value : value;
+
+    if (negative && value > 0) {
+        *out = -(croft_int) (value - 1) - 1;
+        return 1;
+    }
+    *out = (croft_int) value;
     return 1;
 }
 

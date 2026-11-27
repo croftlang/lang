@@ -12,7 +12,8 @@ use { Files, FileError } from Std.Files
 // Std.Text: strings, and text to and from bytes
 name.contains("Sir")   name.starts_with("Sir")   name.ends_with("!")
 name.to_upper()   name.to_lower()   name.trim()
-name.slice(0, 3)   line.split(",")   text.to_int()   // Option<Int>
+name.slice(0, 3)   line.split(",")
+text.to_int()   // Option<Int>: digits with an optional "-", None past Int's range
 name.index_of("Sir")   // Option<Int>
 text.lines()   // without "\n" or "\r\n", and no empty line after the last
 html.replace("&", "&amp;")   "-".repeat(8)
