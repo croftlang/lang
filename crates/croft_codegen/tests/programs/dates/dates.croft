@@ -1,9 +1,9 @@
 // Std.Time's days_between and add_days across leap years and centuries,
-// every day from 1 January of year 1 to 31 December 9999 in turn, and a
-// clock written in Croft.
+// every day from 1 January of year 1 to 31 December 9999 in turn,
+// is_leap_year on every year, and a clock written in Croft.
 context Calendar
 
-use { Date, Time, Clock, days_between, add_days } from Std.Time
+use { Date, Time, Clock, is_leap_year, days_between, add_days } from Std.Time
 
 error WrongAnswer
 
@@ -75,4 +75,8 @@ service Check(): Result<Unit, WrongAnswer> {
         set date = next
     }
     check(date == on(9999, 12, 31))?
+
+    loop (let year where Range(1, 9999)) {
+        check(is_leap_year(year) == leap(year))?
+    }
 }

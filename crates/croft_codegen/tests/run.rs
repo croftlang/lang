@@ -1582,8 +1582,8 @@ fn works_out_whole_numbers_in_32_bits() {
     fs::remove_dir_all(unchecked).ok();
 }
 
-/// Std.Time's days_between and add_days, on every date a Date holds, and a
-/// clock written in Croft.
+/// Std.Time's days_between and add_days, on every date a Date holds,
+/// is_leap_year on every year, and a clock written in Croft.
 #[test]
 fn counts_days_on_the_calendar() {
     run_program("dates");

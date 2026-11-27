@@ -4,7 +4,7 @@
 // an adapter for it in croft.toml: `SystemClock` on machines with C's time
 // and localtime, or one of its own, such as a fixed date for tests.
 context Time {
-    publish { Date, Time, Clock, days_between, add_days, SystemClock }
+    publish { Date, Time, Clock, DayInMonth, is_leap_year, days_between, add_days, SystemClock }
 
     // A day on the Gregorian calendar, carried back before 1582 as if it had
     // always been used, from 1 January of year 1 to 31 December 9999. The
