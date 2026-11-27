@@ -320,13 +320,12 @@ module.exports = grammar({
 
     port_declaration: $ => seq('port', field('name', $._type_name), '{', repeat($.function_declaration), '}'),
 
-    // `adapter SpectrumScreen for Screen = { ... }`
+    // `adapter SpectrumScreen for Screen { ... }`
     adapter_declaration: $ => seq(
       'adapter',
       field('name', $._type_name),
       'for',
       field('port', $.path),
-      '=',
       '{',
       repeat(choice($.function_declaration, $.field_declaration)),
       '}',

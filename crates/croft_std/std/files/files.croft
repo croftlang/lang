@@ -88,7 +88,7 @@ context Files {
     // `NotFound` for both. A path is never cut short: one longer than 255 bytes, or
     // with a NUL byte in it, makes every operation fail with `Unreadable`,
     // and `exists` give `false`.
-    adapter StdioFiles for Files = {
+    adapter StdioFiles for Files {
         fn read(path, most) = native croft_files_read(path, most)
         fn read_part(path, offset, length) = native croft_files_read_part(path, offset, length)
         fn size(path) = native croft_files_size(path)

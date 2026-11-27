@@ -75,7 +75,7 @@ port Keyboard {
     fn pressed(): Option<Key>
 }
 
-adapter SpectrumScreen for Screen = {
+adapter SpectrumScreen for Screen {
     fn draw_text(text, at) = native zx_print_at(at.y / 8, at.x / 8, text)
 }
 

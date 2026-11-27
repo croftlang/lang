@@ -101,7 +101,7 @@ fn keeps_a_factory_to_making_its_aggregate() {
 #[test]
 fn lets_a_repositorys_own_adapter_build_its_aggregate() {
     let adapter = "repository Saved for Room {\n fn first(): Result<Room, StorageError>\n}\n\
-                   adapter FixedRooms for Saved = {\n fn first() = Ok(Room { id: 1, lives: 3 })\n}";
+                   adapter FixedRooms for Saved {\n fn first() = Ok(Room { id: 1, lives: 3 })\n}";
 
     let found = errors(&game(adapter));
 

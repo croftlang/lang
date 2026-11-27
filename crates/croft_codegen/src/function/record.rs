@@ -8,7 +8,8 @@ use super::{Into, Writer};
 use crate::names::{c_name, error_code};
 
 impl<'g, 'a> Writer<'g, 'a> {
-    /// `Position { x: 10, y: 20 }`, or an error with fields.
+    /// `Position { x: 10, y: 20 }`, or an error with fields. A field left out
+    /// holds its starting value.
     pub fn record(&mut self, ty: &Type, fields: &[FieldValue]) -> String {
         if self.gen.model.is_error(ty) {
             let Type::Named(error) = ty else {
@@ -17,7 +18,15 @@ impl<'g, 'a> Writer<'g, 'a> {
 
             let temp = self.error_value(error);
             let prefix = format!("{temp}.fields.{}", c_name(error));
-            self.set_named_fields(&prefix, None, &self.field_types(error), fields);
+            let types = self.field_types(error);
+            self.set_named_fields(&prefix, None, &types, fields);
+
+            let starting = self.starting_values(error, fields);
+
+            self.in_context(&error.context, |writer| {
+                writer.set_named_fields(&prefix, None, &types, &starting)
+            });
+
             return temp;
         }
 
@@ -35,11 +44,42 @@ impl<'g, 'a> Writer<'g, 'a> {
         temp
     }
 
-    /// Sets each given field of `target`, a value of type `ty`.
+    /// Sets each given field of `target`, a value of type `ty`, and the
+    /// starting value of each field left out.
     pub fn set_fields(&mut self, target: &str, ty: &Type, fields: &[FieldValue]) {
         let Type::Named(named) = ty else { return };
         let types = self.field_types(named);
         self.set_named_fields(target, Some(named), &types, fields);
+
+        let starting = self.starting_values(named, fields);
+
+        self.in_context(&named.context, |writer| {
+            writer.set_named_fields(target, Some(named), &types, &starting)
+        });
+    }
+
+    /// The fields of `named` that `given` leaves out and that have a
+    /// starting value, as field values holding it.
+    pub fn starting_values(&self, named: &Resolved, given: &[FieldValue]) -> Vec<FieldValue> {
+        (self.gen.model.fields(named).into_iter())
+            .filter(|(name, _, _)| !given.iter().any(|g| &g.name.name == name))
+            .filter_map(|(_, _, field)| {
+                Some(FieldValue {
+                    name: field.name.clone(),
+                    value: Some(field.value.clone()?),
+                })
+            })
+            .collect()
+    }
+
+    /// Runs `write` with names looked up in `context`, such as a starting
+    /// value written where its type is declared, then goes back.
+    pub fn in_context<T>(&mut self, context: &str, write: impl FnOnce(&mut Self) -> T) -> T {
+        let previous = std::mem::replace(&mut self.context, context.to_string());
+        let result = write(self);
+
+        self.context = previous;
+        result
     }
 
     /// The fields of a value, entity, aggregate or event, with their types.

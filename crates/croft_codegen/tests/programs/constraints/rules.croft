@@ -62,7 +62,7 @@ context Clinic {
         fn dispense(amount: Int where Range(1, 50), doses: List<Int> where Length(0, 4), each Even): Int
     }
 
-    adapter CountingPharmacy for Pharmacy = {
+    adapter CountingPharmacy for Pharmacy {
         fn dispense(given, taken) = given + taken.length
     }
 

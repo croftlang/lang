@@ -127,7 +127,8 @@ impl<'a> Checker<'a> {
     }
 
     /// Each field is declared once, and its type and constraints are checked.
-    /// A field's constraints read only constants.
+    /// A field's constraints read only constants. Starting values are
+    /// checked with the bodies.
     pub(super) fn check_fields(&mut self, scope: &Scope<'a>, fields: &[Field]) {
         let mut seen = HashSet::new();
 
@@ -146,10 +147,6 @@ impl<'a> Checker<'a> {
 
             for constraint in &field.constraints {
                 body.check_arguments_of(constraint, &ty);
-            }
-
-            if let Some(value) = &field.value {
-                self.error("only an adapter's fields have starting values", value.span);
             }
         }
     }

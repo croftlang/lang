@@ -65,7 +65,7 @@ context Http {
     // carriage return, a line feed or a NUL, which could slip another
     // header or request into this one, or whose name is empty or holds a
     // colon, fails the request with `Unreachable` before anything is sent.
-    adapter CurlHttp for Http = {
+    adapter CurlHttp for Http {
         fn get(url, headers) = native croft_http_get(url, headers)
         fn post(url, headers, body) = native croft_http_post(url, headers, body)
         fn put(url, headers, body) = native croft_http_put(url, headers, body)

@@ -10,11 +10,7 @@ use crate::types::Type;
 impl<'a> Checker<'a> {
     /// An adapter operation's parameter and return types come from its port.
     pub(super) fn check_adapter_bodies(&mut self, scope: Scope<'a>, adapter: &'a AdapterDecl) {
-        for field in &adapter.fields {
-            let Some(value) = &field.value else { continue };
-            let ty = self.lower_type(&scope, &field.ty);
-            BodyChecker::new(self, scope, BodyKind::Constant, ty.clone()).expect(value, &ty);
-        }
+        self.check_starting_values(scope, &adapter.name.name, &adapter.fields);
 
         let Some(port) = self.resolve(&scope, &adapter.port) else {
             return;

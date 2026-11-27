@@ -646,6 +646,12 @@ fn makes_aggregates_through_factories() {
     run_program("factories");
 }
 
+/// A field left out of a record, an event or an error holds its starting value.
+#[test]
+fn fills_in_starting_values() {
+    run_program("starting_values");
+}
+
 /// Each broken constraint stops the program with a message naming it, and a
 /// target that sets `checks = false` doesn't check.
 #[test]

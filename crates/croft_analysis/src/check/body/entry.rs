@@ -23,6 +23,19 @@ impl<'a> Checker<'a> {
                 .expect(&constant.value, &ty);
         }
 
+        // A generic template's starting values are checked in each instance.
+        for value in context
+            .values
+            .iter()
+            .filter(|v| v.type_parameters.is_empty())
+        {
+            self.check_starting_values(scope, &value.name.name, &value.fields);
+        }
+
+        for error in &context.errors {
+            self.check_starting_values(scope, &error.name.name, &error.fields);
+        }
+
         for constraint in &context.constraints {
             let mut body = BodyChecker::new(self, scope, BodyKind::Constraint, Type::Bool);
             body.bind_parameters(&constraint.parameters);
@@ -48,6 +61,19 @@ impl<'a> Checker<'a> {
                 context,
                 aggregate: Some(&aggregate.name.name),
             };
+
+            let name = &aggregate.name.name;
+            self.check_starting_values(scope, name, &aggregate.fields);
+
+            for entity in &aggregate.entities {
+                let owner = format!("{name}.{}", entity.name.name);
+                self.check_starting_values(scope, &owner, &entity.fields);
+            }
+
+            for record in aggregate.errors.iter().chain(&aggregate.events) {
+                let owner = format!("{name}.{}", record.name.name);
+                self.check_starting_values(scope, &owner, &record.fields);
+            }
 
             for command in &aggregate.commands {
                 self.check_function_body(scope, BodyKind::Command(aggregate), command);

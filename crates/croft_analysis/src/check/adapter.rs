@@ -1,6 +1,6 @@
 //! Adapters: one port's operations, written for one target.
 
-use croft_syntax::ast::{AdapterDecl, Field, FunctionDecl};
+use croft_syntax::ast::{AdapterDecl, FunctionDecl};
 
 use super::{Checker, Scope};
 use crate::symbols::SymbolKind;
@@ -8,16 +8,7 @@ use crate::symbols::SymbolKind;
 impl<'a> Checker<'a> {
     /// An adapter provides every operation of its port, and nothing else.
     pub(super) fn check_adapter(&mut self, scope: &Scope<'a>, adapter: &AdapterDecl) {
-        let without_values: Vec<_> = adapter
-            .fields
-            .iter()
-            .map(|f| Field {
-                value: None,
-                ..f.clone()
-            })
-            .collect();
-
-        self.check_fields(scope, &without_values);
+        self.check_fields(scope, &adapter.fields);
 
         for field in adapter.fields.iter().filter(|f| f.value.is_none()) {
             let message = format!(
