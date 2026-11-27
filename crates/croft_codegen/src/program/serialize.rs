@@ -4,8 +4,8 @@
 //! a save means the same on every machine. Strings, bytes and lists start
 //! with their length in two bytes; an option starts with whether it is set.
 //! Reading checks what it reads: a number that doesn't fit its field, a tag
-//! that names no variant, a flag that is neither 0 nor 1, a map key read
-//! twice or a broken constraint makes it fail, so the repository gives back
+//! that names no variant, a flag that is neither 0 nor 1, a map key or set
+//! item read twice or a broken constraint makes it fail, so the repository gives back
 //! `StorageDamaged` rather than a value the program could never have made.
 
 use croft_analysis::symbols::SymbolKind;
@@ -119,6 +119,24 @@ impl<'a> Generator<'a> {
                     format!(
                         "    croft_u16 index;\n    croft_u16 other;\n\n    if (!croft_bytes_take_length(in, at, &value->length) || value->length > {capacity}) {{\n        return 0;\n    }}\n    \
                          for (index = 0; index < value->length; index++) {{\n{key_read}{value_read}        \
+                         for (other = 0; other < index; other++) {{\n            if ({same}) {{\n                return 0;\n            }}\n        }}\n    }}\n"
+                    ),
+                )
+            }
+            Type::Set(item) => {
+                let capacity = self.sizes.set_capacity(ty);
+                let same = self.same_key("value->items[index]", "value->items[other]", item);
+                let (write, read) =
+                    self.serialize_value("value->items[index]", item, None, "        ");
+
+                (
+                    format!(
+                        "    croft_u16 index;\n\n    if (!croft_bytes_put_length(out, value->length)) {{\n        return 0;\n    }}\n    \
+                         for (index = 0; index < value->length; index++) {{\n{write}    }}\n"
+                    ),
+                    format!(
+                        "    croft_u16 index;\n    croft_u16 other;\n\n    if (!croft_bytes_take_length(in, at, &value->length) || value->length > {capacity}) {{\n        return 0;\n    }}\n    \
+                         for (index = 0; index < value->length; index++) {{\n{read}        \
                          for (other = 0; other < index; other++) {{\n            if ({same}) {{\n                return 0;\n            }}\n        }}\n    }}\n"
                     ),
                 )

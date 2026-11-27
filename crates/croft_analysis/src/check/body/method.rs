@@ -1,5 +1,5 @@
 //! Method calls: port operations, repositories, and the built-in methods of
-//! strings, numbers, lists, options and results.
+//! strings, numbers, lists, maps, sets, options and results.
 
 use croft_syntax::ast::{Argument, Identifier};
 
@@ -52,8 +52,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             Type::Decimal(_) if name == "round" => {
                 self.fixed(name, arguments, &[], Type::Int, span)
             }
-            Type::List(item) => self.list_method(item, name, arguments, span),
+            Type::List(item) => self.list_method(item, name, arguments, span, expected),
             Type::Map(key, value) => self.map_method(key, value, name, arguments, span),
+            Type::Set(item) => self.set_method(item, name, arguments, span),
             Type::Option(item) => self.option_method(item, name, arguments, span, expected),
             Type::Result(value, error) => {
                 self.result_method((value, error), name, arguments, span, expected)

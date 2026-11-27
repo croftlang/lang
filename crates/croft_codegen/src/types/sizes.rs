@@ -9,12 +9,12 @@ use croft_syntax::ast::{ConstraintUse, TypeExpr};
 use super::bounds::unbounded;
 use super::constant::evaluate;
 
-/// How many items a list or map holds when no `Length` constraint says otherwise.
+/// How many items a list, set or map holds when no `Length` constraint says otherwise.
 pub const DEFAULT_LIST_CAPACITY: i64 = 16;
 /// How many characters a string holds when no `Length` constraint says otherwise.
 pub const DEFAULT_STRING_CAPACITY: i64 = 32;
 
-/// The capacities of strings, bytes, lists and maps for one program.
+/// The capacities of strings, bytes, lists, sets and maps for one program.
 pub struct Sizes {
     /// How many characters a string with no size of its own holds: the default, or the longest
     /// string any constraint allows if that is longer. A string field with a
@@ -35,6 +35,8 @@ pub struct Sizes {
     list_capacity: HashMap<Type, i64>,
     /// The most entries each type of map can hold.
     map_capacity: HashMap<Type, i64>,
+    /// The most items each type of set can hold.
+    set_capacity: HashMap<Type, i64>,
 }
 
 impl Sizes {
@@ -48,6 +50,7 @@ impl Sizes {
             bytes_largest: bytes_length,
             list_capacity: HashMap::new(),
             map_capacity: HashMap::new(),
+            set_capacity: HashMap::new(),
         };
 
         for (name, context) in &program.contexts {
@@ -174,13 +177,14 @@ impl Sizes {
                 model.lower_type(context, aggregate, key),
                 model.lower_type(context, aggregate, value),
             ),
+            ("Set", [item]) => Type::set(model.lower_type(context, aggregate, item)),
             _ => return,
         };
 
         self.grow(&lowered, longest, label);
     }
 
-    /// Grows the capacity for strings, bytes, lists or maps of `ty` so it
+    /// Grows the capacity for strings, bytes, lists, sets or maps of `ty` so it
     /// holds `longest`, as a `Length` on `label` asks.
     fn grow(&mut self, ty: &Type, longest: i64, label: String) {
         match ty {
@@ -210,6 +214,18 @@ impl Sizes {
                     *list = (*list).max(longest);
                 }
             }
+            Type::Set(item) => {
+                let capacity = self.set_capacity.entry(ty.clone()).or_insert(0);
+                *capacity = (*capacity).max(longest);
+
+                // `items` gives a list, which needs room for every item.
+                let list = self
+                    .list_capacity
+                    .entry((**item).clone())
+                    .or_insert(DEFAULT_LIST_CAPACITY);
+
+                *list = (*list).max(longest);
+            }
             _ => {}
         }
     }
@@ -218,6 +234,14 @@ impl Sizes {
     pub fn map_capacity(&self, map: &Type) -> i64 {
         self.map_capacity
             .get(&unbounded(map))
+            .copied()
+            .unwrap_or(DEFAULT_LIST_CAPACITY)
+    }
+
+    /// The most items a set of this type can hold.
+    pub fn set_capacity(&self, set: &Type) -> i64 {
+        self.set_capacity
+            .get(&unbounded(set))
             .copied()
             .unwrap_or(DEFAULT_LIST_CAPACITY)
     }

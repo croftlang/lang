@@ -237,6 +237,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             Type::Bytes | Type::SizedBytes(_) => Some(self.gen.bound(ty)),
             Type::List(_) | Type::SizedList(..) => Some(self.gen.capacity(ty)),
             Type::Map(..) => Some(sizes.map_capacity(ty)),
+            Type::Set(_) => Some(sizes.set_capacity(ty)),
             _ => None,
         }
     }

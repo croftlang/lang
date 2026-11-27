@@ -173,7 +173,7 @@
       "patterns": [
         {
           "name": "support.type.builtin.croft",
-          "match": "\\b(Int|Float|Decimal|Bool|String|Bytes|Unit|List|Map|Option|Result)\\b"
+          "match": "\\b(Int|Float|Decimal|Bool|String|Bytes|Unit|List|Map|Set|Option|Result)\\b"
         },
         {
           "comment": "SCREAMING_CASE, two letters or more: MAX_ENEMIES. A single capital is a type parameter.",

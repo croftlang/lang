@@ -62,7 +62,7 @@ impl<'a> Generator<'a> {
     /// The types a type's definition contains.
     fn dependencies(&self, ty: &Type) -> Vec<Type> {
         match ty {
-            Type::List(item) | Type::SizedList(item, _) | Type::Option(item) => {
+            Type::List(item) | Type::SizedList(item, _) | Type::Set(item) | Type::Option(item) => {
                 vec![(**item).clone()]
             }
             Type::Map(key, value) => vec![(**key).clone(), (**value).clone()],
@@ -98,6 +98,7 @@ impl<'a> Generator<'a> {
             Type::List(_)
             | Type::SizedList(..)
             | Type::Map(..)
+            | Type::Set(_)
             | Type::Option(_)
             | Type::Result(..) => self.generic_definition(ty),
             Type::Named(named) => match named.kind {

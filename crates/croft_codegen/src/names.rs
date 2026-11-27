@@ -97,6 +97,7 @@ impl<'a> Generator<'a> {
             Type::List(item) => format!("croft_list_{}", self.short(item)),
             Type::SizedList(item, length) => format!("croft_list{length}_{}", self.short(item)),
             Type::Map(key, value) => format!("croft_map_{}_{}", self.short(key), self.short(value)),
+            Type::Set(item) => format!("croft_set_{}", self.short(item)),
             Type::Option(item) => format!("croft_option_{}", self.short(item)),
             Type::Result(value, error) => {
                 format!("croft_result_{}_{}", self.short(value), self.short(error))
@@ -118,6 +119,7 @@ impl<'a> Generator<'a> {
                 self.list_type(self.canonical(item), i64::from(*length))
             }
             Type::Map(key, value) => Type::map(self.canonical(key), self.canonical(value)),
+            Type::Set(item) => Type::set(self.canonical(item)),
             Type::Option(item) => Type::option(self.canonical(item)),
             Type::Result(value, error) => {
                 Type::result(self.canonical(value), self.canonical(error))

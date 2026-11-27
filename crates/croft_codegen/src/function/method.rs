@@ -40,6 +40,10 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let map = self.value(receiver, &receiver_type);
                 self.map_method(&map, key, value, name, arguments, ty)
             }
+            Type::Set(item) => {
+                let set = self.value(receiver, &receiver_type);
+                self.set_method(&set, item, name, arguments)
+            }
             Type::Bytes => {
                 let (bytes, bounded) = self.bytes_place(receiver);
                 self.bytes_method((&bytes, &bounded), name, arguments, ty)

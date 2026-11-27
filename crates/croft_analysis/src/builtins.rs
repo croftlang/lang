@@ -54,6 +54,13 @@ pub fn built_in_doc(name: &str) -> Option<(&'static str, &'static str)> {
              `set` and `remove` give a changed copy. A map holds as many entries \
              as the largest `Length` on its type allows, 16 when there is none.",
         ),
+        "Set" => (
+            "Set<T>",
+            "Items of one type, each held once. `add` and `remove` give a changed \
+             copy, `contains` says whether an item is there and `items` lists \
+             them in the order they were added. A set holds as many items as \
+             the largest `Length` on its type allows, 16 when there is none.",
+        ),
         "Option" => (
             "Option<T>",
             "A value that may be missing: `Some(value)` or `None`.",

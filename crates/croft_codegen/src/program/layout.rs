@@ -35,6 +35,7 @@ impl<'a> Generator<'a> {
             Type::List(item) | Type::SizedList(item, _) => {
                 2 + self.capacity(&ty) * self.serialized_size(item)
             }
+            Type::Set(item) => 2 + self.sizes.set_capacity(&ty) * self.serialized_size(item),
             Type::Option(item) => 4 + self.serialized_size(item),
             Type::Map(key, value) => {
                 2 + self.sizes.map_capacity(&ty)
@@ -74,6 +75,7 @@ impl<'a> Generator<'a> {
             Type::SizedList(item, length) => format!("List<{},{length}>", self.layout(item)),
             Type::Option(item) => format!("Option<{}>", self.layout(item)),
             Type::Map(key, value) => format!("Map<{},{}>", self.layout(key), self.layout(value)),
+            Type::Set(item) => format!("Set<{}>", self.layout(item)),
             Type::Named(named) if named.kind == SymbolKind::Enum && !self.is_scalar(&ty) => {
                 let variants: Vec<String> = (self.variants(named).into_iter())
                     .map(|variant| {

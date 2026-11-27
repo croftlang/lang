@@ -103,6 +103,18 @@ impl<'a> Generator<'a> {
                      if (other == b->length || !{same_value}) {{\n            return 0;\n        }}\n    }}\n    return 1;\n"
                 )
             }
+            // The same items, in any order. A set holds each item once, so
+            // finding each of `a`'s items in `b` is enough.
+            Type::Set(item) => {
+                let same = self.compare("a->items[index]", "b->items[other]", item);
+
+                format!(
+                    "    croft_u16 index;\n    croft_u16 other;\n\n    if (a->length != b->length) {{\n        return 0;\n    }}\n    \
+                     for (index = 0; index < a->length; index++) {{\n        \
+                     for (other = 0; other < b->length && !{same}; other++) {{\n        }}\n        \
+                     if (other == b->length) {{\n            return 0;\n        }}\n    }}\n    return 1;\n"
+                )
+            }
             Type::Option(item) => {
                 let same = self.compare("a->value", "b->value", item);
                 format!("    return a->some == b->some && (!a->some || {same});\n")

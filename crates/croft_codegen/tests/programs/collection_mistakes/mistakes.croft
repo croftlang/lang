@@ -1,0 +1,30 @@
+// A list given an item at a place it doesn't have, and a set given more
+// items than its Length allows, chosen by the program's arguments. Checked,
+// each stops the program; unchecked, the item goes at the end of the list
+// and the set keeps the items it has room for.
+context Mistakes
+
+use { Set } from Std.Collections
+use { join } from Std.Text
+
+service Start(): Unit {
+    calls { Arguments, Console }
+} = {
+    let chosen = Arguments.all()
+    if chosen.contains("insert") {
+        let placed = [1, 2].insert(chosen.length * 5, 3)
+        Console.print(placed.map(n -> n.to_string()).join(","))
+    }
+    if chosen.contains("below") {
+        let placed = [1, 2].insert(0 - chosen.length, 3)
+        Console.print(placed.map(n -> n.to_string()).join(","))
+    }
+    if chosen.contains("full") {
+        let seen: Set<Int> where Length(0, 2) = []
+        loop (let room where Range(1, 3)) {
+            set seen = seen.add(room + chosen.length)
+        }
+        Console.print(seen.items.map(n -> n.to_string()).join(","))
+    }
+    Unit
+}

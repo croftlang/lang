@@ -36,6 +36,7 @@ impl<'a> Checker<'a> {
                 ..simple("Decimal")
             },
             Type::List(item) => generic("List", vec![self.type_expr_of(item, context)?]),
+            Type::Set(item) => generic("Set", vec![self.type_expr_of(item, context)?]),
             Type::Option(item) => generic("Option", vec![self.type_expr_of(item, context)?]),
             Type::Map(key, value) => generic(
                 "Map",
@@ -79,7 +80,9 @@ impl<'a> Checker<'a> {
         }
 
         let inner: Vec<Type> = match (name.as_str(), found) {
-            ("List", Type::List(item)) | ("Option", Type::Option(item)) => vec![(**item).clone()],
+            ("List", Type::List(item))
+            | ("Set", Type::Set(item))
+            | ("Option", Type::Option(item)) => vec![(**item).clone()],
             ("Map", Type::Map(key, value)) | ("Result", Type::Result(key, value)) => {
                 vec![(**key).clone(), (**value).clone()]
             }

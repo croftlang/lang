@@ -54,6 +54,7 @@ impl<'a> Generator<'a> {
                 2 + self.sizes.map_capacity(&map)
                     * (self.memory_size(key) + self.memory_size(value))
             }
+            Type::Set(item) => 2 + self.sizes.set_capacity(&ty) * self.memory_size(item),
             Type::Option(item) => 1 + self.memory_size(item),
             Type::Result(value, error) => 1 + self.memory_size(value) + self.memory_size(error),
             Type::Errors(_) => {

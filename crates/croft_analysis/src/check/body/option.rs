@@ -1,6 +1,6 @@
 //! The built-in methods of options, and the lambdas list and option methods take.
 
-use croft_syntax::ast::{Argument, ExprKind};
+use croft_syntax::ast::{Argument, Expr, ExprKind};
 
 use super::BodyChecker;
 use crate::types::Type;
@@ -57,18 +57,48 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             return Type::Unknown;
         };
 
-        let ExprKind::Lambda(parameters, body) = &argument.value.kind else {
+        let example = "e -> e.id";
+        self.lambda_with(name, &argument.value, std::slice::from_ref(item), example)
+    }
+
+    /// The type a lambda passed to `name` gives back, when its parameters
+    /// are given `parameters` in order. `example` is a lambda that fits, for
+    /// the message when the value isn't a lambda or has another number of
+    /// parameters.
+    pub(super) fn lambda_with(
+        &mut self,
+        name: &str,
+        lambda: &Expr,
+        parameters: &[Type],
+        example: &str,
+    ) -> Type {
+        let ExprKind::Lambda(written, body) = &lambda.kind else {
             self.error(
-                format!("`{name}` needs a lambda, such as `e -> e.id`"),
-                argument.value.span,
+                format!("`{name}` needs a lambda, such as `{example}`"),
+                lambda.span,
             );
 
             return Type::Unknown;
         };
 
+        if written.len() != parameters.len() {
+            let count = match parameters.len() {
+                1 => "1 parameter".to_string(),
+                count => format!("{count} parameters"),
+            };
+
+            let message = format!(
+                "the lambda passed to `{name}` takes {count}, such as `{example}`, found {}",
+                written.len()
+            );
+
+            self.error(message, lambda.span);
+            return Type::Unknown;
+        }
+
         self.nested(|checker| {
-            for parameter in parameters {
-                checker.bind(&parameter.name, item.clone(), false, Some(parameter.span));
+            for (parameter, ty) in written.iter().zip(parameters) {
+                checker.bind(&parameter.name, ty.clone(), false, Some(parameter.span));
             }
 
             checker.expr(body, None)

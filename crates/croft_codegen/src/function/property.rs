@@ -130,8 +130,9 @@ impl<'g, 'a> Writer<'g, 'a> {
         match (&inner_type, field) {
             (_, "length") if has_length => self.length_of(&c, &inner_type),
             (_, "is_empty") if has_length => format!("({c}.length == 0)"),
-            (Type::Map(..), "length") => self.length_of(&c, &inner_type),
-            (Type::Map(..), "is_empty") => format!("({c}.length == 0)"),
+            (Type::Map(..) | Type::Set(_), "length") => self.length_of(&c, &inner_type),
+            (Type::Map(..) | Type::Set(_), "is_empty") => format!("({c}.length == 0)"),
+            (Type::Set(item), "items") => self.set_items(&c, &inner_type, item),
             (Type::Map(key, value), "keys" | "values") => {
                 let item = if field == "keys" { key } else { value };
                 self.map_list(&c, &inner_type, item, field)
