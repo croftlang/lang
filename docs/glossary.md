@@ -472,6 +472,14 @@ needed: `Console.print("hello")` in a service or domain that lists it in
 Every target supplies it, so `croft.toml` names no adapter for it. A
 program's own port called `Console` replaces it.
 
+### Environment
+The port in `Std.Console` that reads the program's environment variables,
+with no import needed: `Environment.get("HOME")` gives an `Option<String>`,
+None when the variable isn't set. Every target supplies it, through C's
+`getenv`; targets without environment variables give None. With checks
+on, a value longer than a string stops the program rather than being cut
+short.
+
 ### Process
 The port in `Std.Console` for the running program, with no import needed:
 `Process.exit(code)` stops it at once with an exit code from 0 to 255.

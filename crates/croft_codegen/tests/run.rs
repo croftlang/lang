@@ -1741,3 +1741,85 @@ fn never_cuts_a_line_short_with_checks_on() {
 
     fs::remove_dir_all(unchecked).ok();
 }
+
+/// Environment variables to run a program with, as names and values.
+type Variables<'v> = &'v [(&'v str, &'v str)];
+
+/// Builds the `environment` program for a target, in a folder of its own,
+/// and gives a way to run it with environment variables and the names to
+/// look up.
+fn environment(
+    target: &str,
+    folder: &str,
+) -> (
+    std::path::PathBuf,
+    impl Fn(Variables, &[&str]) -> std::process::Output,
+) {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/environment");
+    let output = generate(&source, target, folder);
+    let built = compile(&output, &["croft_runtime.c", "program.c", "-o", "program"]);
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    let program = output.join("program");
+
+    let run = move |variables: Variables, names: &[&str]| {
+        std::process::Command::new(&program)
+            .env_clear()
+            .envs(variables.iter().copied())
+            .args(names)
+            .output()
+            .expect("it runs")
+    };
+
+    (output, run)
+}
+
+/// `Environment.get` gives a variable's value, an empty one included, and
+/// None for one that isn't set or a name no variable can have. With checks
+/// on, a value longer than a string stops the program; with checks off, it
+/// keeps what fits.
+#[test]
+fn reads_environment_variables() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let long = "v".repeat(300);
+    let (checked, run) = environment("test", "environment");
+
+    let found = run(
+        &[("CROFT_HOME", "/home/croft"), ("CROFT_EMPTY", "")],
+        &["CROFT_HOME", "CROFT_EMPTY", "CROFT_MISSING"],
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&found.stdout),
+        "11\n/home/croft\n0\n\nunset\n"
+    );
+    assert_eq!(found.status.code(), Some(0));
+
+    let odd_names = run(&[("CROFT_HOME", "x=y")], &["", "CROFT_HOME=x"]);
+    assert_eq!(String::from_utf8_lossy(&odd_names.stdout), "unset\nunset\n");
+
+    let too_long = run(&[("CROFT_LONG", &long)], &["CROFT_LONG"]);
+    assert_eq!(
+        String::from_utf8_lossy(&too_long.stderr),
+        "an environment value is longer than a string can hold\n"
+    );
+    assert_eq!(too_long.status.code(), Some(1));
+
+    fs::remove_dir_all(checked).ok();
+
+    let (unchecked, run) = environment("unchecked", "environment_unchecked");
+
+    let kept = run(&[("CROFT_LONG", &long)], &["CROFT_LONG"]);
+    let expected = format!("32\n{}\n", "v".repeat(32));
+    assert_eq!(String::from_utf8_lossy(&kept.stdout), expected);
+    assert_eq!(kept.status.code(), Some(0));
+
+    fs::remove_dir_all(unchecked).ok();
+}

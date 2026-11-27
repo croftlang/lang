@@ -428,6 +428,50 @@ void croft_console_read_line(croft_bool *present, char *out, croft_u16 *length, 
     *present = read;
 }
 
+/* The longest environment variable name getenv is given. */
+#define CROFT_ENVIRONMENT_NAME_CAPACITY 127
+
+/* The value of an environment variable, or *present 0 when it isn't set. A
+   name no variable can have, being empty, longer than
+   CROFT_ENVIRONMENT_NAME_CAPACITY, or holding '=' or a NUL byte, is never
+   set, so it is never cut short into the name of another variable. With
+   checks on, a value longer than the string stops the program rather than
+   being cut short. z88dk's C library has no getenv, so its machines have no
+   variables set. */
+void croft_environment_get(croft_string_view name, croft_bool *present, char *out, croft_u16 *length,
+                           croft_u16 capacity)
+{
+    char key[CROFT_ENVIRONMENT_NAME_CAPACITY + 1];
+    const char *value;
+    croft_u16 index;
+
+    *present = 0;
+    *length = 0;
+    if (name.length == 0 || name.length > CROFT_ENVIRONMENT_NAME_CAPACITY) {
+        return;
+    }
+    for (index = 0; index < name.length; index++) {
+        if (name.text[index] == '\0' || name.text[index] == '=') {
+            return;
+        }
+        key[index] = name.text[index];
+    }
+    key[name.length] = '\0';
+
+#ifdef __Z88DK
+    value = NULL;
+#else
+    value = getenv(key);
+#endif
+    if (value == NULL) {
+        return;
+    }
+
+    croft_string_set(value, out, length, capacity);
+    CROFT_CHECK(value[*length] == '\0', "an environment value is longer than a string can hold");
+    *present = 1;
+}
+
 /* Stops the program with an exit code. With checks off, a code outside 0
    to 255 keeps only its lowest 8 bits, as most systems do. */
 void croft_process_exit(croft_int code, croft_unit *out)
