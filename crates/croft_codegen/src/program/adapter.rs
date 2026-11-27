@@ -96,6 +96,7 @@ impl<'a> Generator<'a> {
                 let mut writer =
                     Writer::new(self, &adapter.context, Returns::Value(result.clone()));
 
+                writer.label = format!("{}.{}", adapter.name, operation.name.name);
                 writer.own = Some(OwnFields {
                     prefix: format!("{name}_state."),
                     fields: fields.clone(),

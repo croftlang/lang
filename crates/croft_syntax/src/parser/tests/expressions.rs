@@ -38,7 +38,7 @@ fn continues_a_chain_of_calls_across_lines() {
 fn reads_records_and_with() {
     let body = statements("let start = Position { x: 10, y: 20 }\nstart with { x: 11 }");
 
-    let Statement::Let(_, _, value) = &body[0] else {
+    let Statement::Let { value, .. } = &body[0] else {
         panic!("expected let")
     };
 
@@ -140,16 +140,46 @@ fn reads_a_counted_loop() {
 }
 
 #[test]
+fn reads_the_constraints_of_a_let() {
+    let body = statements("let items: List<Int> where Length(0, 200), each Positive = []");
+
+    let Statement::Let {
+        name,
+        ty,
+        constraints,
+        value,
+    } = &body[0]
+    else {
+        panic!("expected let")
+    };
+
+    assert_eq!(name.name, "items");
+    assert_eq!(
+        ty.as_ref().map(|ty| ty.text()),
+        Some("List<Int>".to_string())
+    );
+    assert_eq!(constraints.len(), 2);
+    assert_eq!(constraints[0].text(), "Length(0, 200)");
+    assert_eq!(constraints[1].text(), "each Positive");
+    assert!(matches!(value.kind, ExprKind::List(ref items) if items.is_empty()));
+
+    let body = statements("let left where Range(0, 9) = 3");
+    assert!(
+        matches!(&body[0], Statement::Let { ty: None, constraints, .. } if constraints.len() == 1)
+    );
+}
+
+#[test]
 fn reads_list_literals() {
     let body = statements("let empty = []\nlet three = [1, 2,\n    3]");
 
-    let Statement::Let(_, _, empty) = &body[0] else {
+    let Statement::Let { value: empty, .. } = &body[0] else {
         panic!("expected let")
     };
 
     assert!(matches!(empty.kind, ExprKind::List(ref items) if items.is_empty()));
 
-    let Statement::Let(_, _, three) = &body[1] else {
+    let Statement::Let { value: three, .. } = &body[1] else {
         panic!("expected let")
     };
 

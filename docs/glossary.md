@@ -210,10 +210,13 @@ has, `filter`, `map`, `drop`, `take`, `remove`, `reverse` and `sort` no more
 than the list they come from, `add` one more, `+` as many as both, `split`
 one more than its string has characters, `lines` as many, and `keys` and
 `values` as many as the map holds. A list with nothing to bound it holds the
-longest `Length` on any list of the same items, or 16 if none has one.
+longest `Length` on any list of the same items, or 16 if none has one. A
+`let` list or map that `set` changes must say its `Length`, as in
+`let items: List<Int> where Length(0, 200) = []`, since nothing else says
+how much it can grow.
 
 ### Where
-Attaches constraints to a type, on a field, parameter or return type:
+Attaches constraints to a type, on a field, parameter, return type or `let`:
 `deadline: Int where Range(0, 3650)`.
 
 ### Each
@@ -293,7 +296,8 @@ whose item type comes from where it is used.
 
 ### Set
 Changes an aggregate's field in a command, an adapter's field, or a
-service's own `let` name. Not allowed anywhere else.
+service's own `let` name. Not allowed anywhere else. A `let` name keeps the
+constraints its `let` wrote whatever `set` changes it to.
 
 ### Loop
 Repeats a block, in services and adapters only. `loop { ... }` runs until

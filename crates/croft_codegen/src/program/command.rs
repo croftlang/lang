@@ -67,6 +67,7 @@ impl<'a> Generator<'a> {
         prototypes.push(format!("{signature};"));
 
         let mut writer = Writer::new(self, &found.context, Returns::Command);
+        writer.label = format!("{}.{}", found.name, command.name.name);
         writer.aggregate = Some(found.name.clone());
 
         let fields = self
@@ -149,6 +150,7 @@ impl<'a> Generator<'a> {
         prototypes.push(format!("{signature};"));
 
         let mut writer = Writer::new(self, &found.context, Returns::Command);
+        writer.label = format!("{}.{}", found.name, factory.name.name);
         writer.aggregate = Some(found.name.clone());
         writer.factory = true;
 

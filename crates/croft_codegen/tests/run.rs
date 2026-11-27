@@ -586,7 +586,16 @@ fn checks_rules_in_every_build_by_default() {
         )
     );
 
+    assert_eq!(
+        run("checked", "let"),
+        (
+            Some(1),
+            "Start: let doses must satisfy Length(0, 3)".to_string()
+        )
+    );
+
     assert_eq!(run("unchecked", "argument"), (Some(0), String::new()));
+    assert_eq!(run("unchecked", "let"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "name"), (Some(0), String::new()));
     fs::remove_dir_all(output).ok();
     fs::remove_dir_all(unchecked_output).ok();
@@ -845,6 +854,13 @@ fn sizes_bytes_from_where_they_come_from() {
 /// Lists kept in the size they can need, through literals, `add`, `+`,
 /// `filter`, `map`, `split`, fields, variants, `with`, `set`, and an
 /// aggregate saved and found.
+/// A `let` list that a loop adds to gets room from its `Length`, not the 16
+/// items a list with nothing to bound it holds.
+#[test]
+fn grows_a_let_list_to_its_length() {
+    run_program("growing_lists");
+}
+
 #[test]
 fn keeps_lists_in_the_size_they_can_need() {
     run_program("bounded_lists");

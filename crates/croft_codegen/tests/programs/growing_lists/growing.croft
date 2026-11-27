@@ -1,0 +1,27 @@
+// A list and a map that a service's loop grows, each with room for as many
+// items as its `Length` says, well past the 16 of a list with no `Length`.
+context Counting
+
+use { Map } from Std.Collections
+
+error WrongAnswer
+
+fn check(holds: Bool): Result<Unit, WrongAnswer> = {
+    if holds {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+service Check(): Result<Unit, WrongAnswer> = {
+    let items: List<Int> where Length(0, 200) = []
+    loop (let i where Range(0, 199)) {
+        set items = items.add(i)
+    }
+    check(items.length == 200 && items.sum(i -> i) == 19900)?
+    let squares: Map<Int, Int> where Length(0, 40) = [0: 0]
+    loop (let i where Range(1, 39)) {
+        set squares = squares.set(i, i * i)
+    }
+    check(squares.length == 40 && squares.get(39) == Some(1521))
+}

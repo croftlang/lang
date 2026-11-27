@@ -124,6 +124,7 @@ impl<'a> Generator<'a> {
         prototypes.push(format!("{signature};"));
 
         let mut writer = Writer::new(self, &found.context, Returns::Value(result.clone()));
+        writer.label = found.name.clone();
         writer.bind_parameters(&parameters);
         writer.note_parameter_ranges(&parameters, &ranges);
 

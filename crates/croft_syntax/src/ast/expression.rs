@@ -90,8 +90,15 @@ pub struct LoopCounter {
 /// One step of a code block.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
-    /// `let name = value`, or `let name: Type = value`.
-    Let(Identifier, Option<TypeExpr>, Expr),
+    /// `let name = value`, `let name: Type = value`, or with constraints the
+    /// name must keep whatever `set` changes it to:
+    /// `let items: List<Int> where Length(0, 200) = []`.
+    Let {
+        name: Identifier,
+        ty: Option<TypeExpr>,
+        constraints: Vec<ConstraintUse>,
+        value: Expr,
+    },
     Set(Identifier, Expr),
     Expr(Expr),
 }

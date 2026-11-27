@@ -120,6 +120,11 @@ impl Sizes {
             }
         }
 
+        // A `Length` on a `let` counts as much as one on a field does.
+        for (name, ty, longest) in &program.facts.let_lengths {
+            sizes.grow(ty, *longest, format!("let {name}"));
+        }
+
         if sizes.bytes_capacity == 0 {
             sizes.bytes_capacity = DEFAULT_BYTES_CAPACITY;
         }
@@ -152,40 +157,45 @@ impl Sizes {
             return;
         };
 
-        match ty.path.text().as_str() {
-            "String" => {
+        let lowered = match (ty.path.text().as_str(), ty.arguments.as_slice()) {
+            ("String", _) => Type::String,
+            ("Bytes", _) => Type::Bytes,
+            ("List", [item]) => Type::list(model.lower_type(context, aggregate, item)),
+            ("Map", [key, value]) => Type::map(
+                model.lower_type(context, aggregate, key),
+                model.lower_type(context, aggregate, value),
+            ),
+            _ => return,
+        };
+
+        self.grow(&lowered, longest, label);
+    }
+
+    /// Grows the capacity for strings, bytes, lists or maps of `ty` so it
+    /// holds `longest`, as a `Length` on `label` asks.
+    fn grow(&mut self, ty: &Type, longest: i64, label: String) {
+        match ty {
+            Type::String => {
                 if longest > self.string_capacity.max(DEFAULT_STRING_CAPACITY) {
                     self.string_capacity_from = Some(label);
                 }
 
                 self.string_capacity = self.string_capacity.max(longest);
             }
-            "Bytes" => self.bytes_capacity = self.bytes_capacity.max(longest),
-            "List" => {
-                let Some(item) = ty.arguments.first() else {
-                    return;
-                };
-
-                let item = model.lower_type(context, aggregate, item);
-                let capacity = self.list_capacity.entry(item).or_insert(0);
+            Type::Bytes => self.bytes_capacity = self.bytes_capacity.max(longest),
+            Type::List(item) => {
+                let capacity = self.list_capacity.entry((**item).clone()).or_insert(0);
                 *capacity = (*capacity).max(longest);
             }
-            "Map" => {
-                let [key, value] = ty.arguments.as_slice() else {
-                    return;
-                };
-
-                let key = model.lower_type(context, aggregate, key);
-                let value = model.lower_type(context, aggregate, value);
-                let map = Type::map(key.clone(), value.clone());
-                let capacity = self.map_capacity.entry(map).or_insert(0);
+            Type::Map(key, value) => {
+                let capacity = self.map_capacity.entry(ty.clone()).or_insert(0);
                 *capacity = (*capacity).max(longest);
 
                 // `keys` and `values` give lists, which need room for every entry.
                 for item in [key, value] {
                     let list = self
                         .list_capacity
-                        .entry(item)
+                        .entry((**item).clone())
                         .or_insert(DEFAULT_LIST_CAPACITY);
 
                     *list = (*list).max(longest);

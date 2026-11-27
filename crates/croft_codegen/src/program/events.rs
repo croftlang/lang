@@ -85,6 +85,7 @@ impl<'a> Generator<'a> {
             prototypes.push(format!("{signature};"));
 
             let mut writer = Writer::new(self, &found.context, Returns::Nothing);
+            writer.label = found.name.clone();
             writer.parameter("p_event");
             writer.bind("event", "(*p_event)".to_string(), event_type);
             writer.value(&policy.body, &Type::Unit);

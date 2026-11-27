@@ -333,7 +333,7 @@ impl<'a> Checker<'a> {
         let (last, lines) = statements.split_last()?;
 
         for line in lines {
-            let Statement::Let(name, _, value) = line else {
+            let Statement::Let { name, value, .. } = line else {
                 return None;
             };
 

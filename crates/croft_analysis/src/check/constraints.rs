@@ -23,6 +23,9 @@ pub(super) enum ConstraintPlace {
     Result,
     Identity,
     LoopCounter,
+    /// A `let` name in a body, which must keep its constraints whatever
+    /// `set` changes it to.
+    Let,
 }
 
 impl ConstraintPlace {
@@ -39,6 +42,7 @@ impl ConstraintPlace {
             ConstraintPlace::LoopCounter => {
                 Some("a loop counter only takes the values its constraints allow")
             }
+            ConstraintPlace::Let => Some("a `let` name has nowhere to fail"),
         }
     }
 }

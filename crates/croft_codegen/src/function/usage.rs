@@ -6,7 +6,7 @@ use croft_syntax::ast::{Expr, ExprKind, Statement};
 /// Whether `name` is read in any of these statements.
 pub fn statements_use(statements: &[Statement], name: &str) -> bool {
     statements.iter().any(|statement| match statement {
-        Statement::Let(_, _, value) => uses(value, name),
+        Statement::Let { value, .. } => uses(value, name),
         Statement::Set(target, value) => target.name == name || uses(value, name),
         Statement::Expr(value) => uses(value, name),
     })
@@ -16,7 +16,7 @@ pub fn statements_use(statements: &[Statement], name: &str) -> bool {
 pub fn statements_set(statements: &[Statement], name: &str) -> bool {
     statements.iter().any(|statement| match statement {
         Statement::Set(target, value) => target.name == name || sets(value, name),
-        Statement::Let(_, _, value) | Statement::Expr(value) => sets(value, name),
+        Statement::Let { value, .. } | Statement::Expr(value) => sets(value, name),
     })
 }
 
