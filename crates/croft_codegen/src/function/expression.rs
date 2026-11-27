@@ -78,6 +78,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                 _ => self.name(value, &field.name, &ty),
             },
             ExprKind::Call(callee, arguments) => self.call(value, callee, arguments, &ty, None),
+            ExprKind::List(items) if matches!(ty, Type::Set(_)) => self.set_literal(items, &ty),
             ExprKind::List(items) => self.list_literal(items, &ty),
             ExprKind::Map(entries) => self.map_literal(entries, &ty),
             ExprKind::Record(_, fields) => self.record(&ty, fields),
@@ -202,9 +203,9 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         if self.is_empty(value, ty) {
-            match list_item(ty) {
-                Some(_) => self.line(format!("{target}.length = 0;")),
-                None => self.line(format!("croft_clear(&{target}, sizeof {target});")),
+            match (list_item(ty), ty) {
+                (Some(_), _) | (None, Type::Set(_)) => self.line(format!("{target}.length = 0;")),
+                (None, _) => self.line(format!("croft_clear(&{target}, sizeof {target});")),
             }
 
             let empty = self.gen.narrowest(ty);
@@ -238,10 +239,12 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
     }
 
-    /// Whether `value` is `[]` for a list of `ty`, or `None` for an option.
+    /// Whether `value` is `[]` for a list or set of `ty`, or `None` for an option.
     fn is_empty(&self, value: &Expr, ty: &Type) -> bool {
         match (&value.kind, ty) {
-            (ExprKind::List(items), Type::List(_) | Type::SizedList(..)) => items.is_empty(),
+            (ExprKind::List(items), Type::List(_) | Type::SizedList(..) | Type::Set(_)) => {
+                items.is_empty()
+            }
             (ExprKind::Name(_) | ExprKind::Field(..), Type::Option(_)) => {
                 matches!(self.gen.facts.meaning(value.id), Some(Meaning::NoneValue))
             }
@@ -322,6 +325,22 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.open("else");
                 let (error, given) = (format!("{target}.error"), format!("{source}.error"));
                 self.copy_into(&error, &given, from_error, to_error);
+                self.close();
+            }
+            (Type::Set(from), Type::Set(to)) => {
+                let index = self.index_variable();
+                self.line(format!("{target}.length = {source}.length;"));
+
+                self.open(format!(
+                    "for ({index} = 0; {index} < {source}.length; {index}++)"
+                ));
+
+                let (target, source) = (
+                    format!("{target}.items[{index}]"),
+                    format!("{source}.items[{index}]"),
+                );
+
+                self.copy_into(&target, &source, from, to);
                 self.close();
             }
             (Type::Map(from_key, from_value), Type::Map(to_key, to_value)) => {
@@ -430,7 +449,9 @@ impl<'g, 'a> Writer<'g, 'a> {
 fn has_unknown(ty: &Type) -> bool {
     match ty {
         Type::Unknown => true,
-        Type::List(item) | Type::SizedList(item, _) | Type::Option(item) => has_unknown(item),
+        Type::List(item) | Type::SizedList(item, _) | Type::Set(item) | Type::Option(item) => {
+            has_unknown(item)
+        }
         Type::Map(key, value) => has_unknown(key) || has_unknown(value),
         Type::Result(value, error) => has_unknown(value) || has_unknown(error),
         _ => false,

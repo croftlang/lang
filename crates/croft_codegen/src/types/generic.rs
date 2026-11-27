@@ -1,4 +1,4 @@
-//! Lists, maps, options and results: one C struct for each item type used.
+//! Lists, maps, sets, options and results: one C struct for each item type used.
 
 use croft_analysis::Type;
 
@@ -6,7 +6,7 @@ use super::define::struct_definition;
 use crate::Generator;
 
 impl<'a> Generator<'a> {
-    /// The C struct for a list, map, option or result type, or nothing for
+    /// The C struct for a list, map, set, option or result type, or nothing for
     /// any other type.
     pub fn generic_definition(&self, ty: &Type) -> String {
         let name = self.c_type(ty);
@@ -27,6 +27,14 @@ impl<'a> Generator<'a> {
                     "    croft_u16 length;\n    {} keys[{capacity}];\n    {} values[{capacity}];\n",
                     self.c_type(key),
                     self.c_type(value)
+                )
+            }
+            Type::Set(item) => {
+                let capacity = self.sizes.set_capacity(ty);
+
+                format!(
+                    "    croft_u16 length;\n    {} items[{capacity}];\n",
+                    self.c_type(item)
                 )
             }
             Type::Option(item) => {

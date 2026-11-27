@@ -6,7 +6,7 @@ use croft_analysis::{Meaning, Type};
 use croft_syntax::ast::{Argument, BinaryOp, Expr, ExprKind};
 
 use super::Writer;
-use crate::types::bounds::{is_bytes, list_item};
+use crate::types::bounds::{is_bytes, list_item, unbounded};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// `list.name(arguments)`, on `list`, a list of type `list_type`.
@@ -42,7 +42,8 @@ impl<'g, 'a> Writer<'g, 'a> {
                 self.gen.keep_bound(&Type::option(item.clone()), ty)
             }
             (
-                "remove" | "replace" | "drop" | "take" | "filter" | "reverse" | "sort" | "sort_by",
+                "remove" | "replace" | "drop" | "take" | "filter" | "reverse" | "sort" | "sort_by"
+                | "unique",
                 _,
             ) => self.gen.keep_bound(list_type, ty),
             ("map", Some(mapped)) => self.gen.with_item(list_type, mapped.clone()),
@@ -53,6 +54,14 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         if name == "add" {
             return self.add(list, list_type, arguments, ty);
+        }
+
+        if name == "insert" {
+            return self.insert(list, list_type, arguments, ty);
+        }
+
+        if name == "fold" {
+            return self.fold(list, item, arguments, ty);
         }
 
         if name == "join" {
@@ -141,6 +150,33 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                 self.close();
             }
+            "unique" => {
+                let seen = self.index_variable();
+                let earlier = format!("{temp}.items[{seen}]");
+
+                let same = match &identity {
+                    Some((field, _)) => format!("({earlier}.{field} == {current}.{field})"),
+                    None => self.equal(&earlier, &current, item),
+                };
+
+                self.line(format!("{temp}.length = 0;"));
+                self.open(&each);
+
+                self.open(format!(
+                    "for ({seen} = 0; {seen} < {temp}.length; {seen}++)"
+                ));
+
+                self.open(format!("if ({same})"));
+                self.line("break;");
+                self.close();
+                self.close();
+
+                self.line(format!(
+                    "if ({seen} == {temp}.length) {temp}.items[{temp}.length++] = {current};"
+                ));
+
+                self.close();
+            }
             "reverse" => {
                 self.line(format!("{temp}.length = {list}.length;"));
                 self.open(&each);
@@ -219,6 +255,121 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.close();
 
         temp
+    }
+
+    /// `list.insert(place, item)`: a list one item longer, with `item` at
+    /// `place` and the items from there on one place later. A place below
+    /// zero or past the end stops a checked build; otherwise the item goes
+    /// at the start or the end.
+    fn insert(
+        &mut self,
+        list: &str,
+        list_type: &Type,
+        arguments: &[Argument],
+        ty: &Type,
+    ) -> String {
+        let (Some(place), Some(argument), Some(item)) =
+            (arguments.first(), arguments.get(1), list_item(list_type))
+        else {
+            return "0".to_string();
+        };
+
+        // Read as a `croft_int`, so a place kept in an unsigned byte can be
+        // compared with zero without gcc warning that it is never below it.
+        let wanted = self.value(&place.value, &Type::Int);
+        let at = self.raw_variable("at", "croft_int");
+        self.line(format!("{at} = {wanted};"));
+
+        let (added, added_type) = self.eval(&argument.value, Some(item));
+        let wider = self.gen.wider(item, &added_type);
+        let longer = self.gen.list_type(wider, self.gen.capacity(list_type) + 1);
+        let ty = self.gen.keep_bound(&longer, ty);
+
+        let Some(kept) = list_item(&ty) else {
+            return "0".to_string();
+        };
+
+        let kept = kept.clone();
+        let given = self.gen.keep_bound(&added_type, &kept);
+        let added = self.convert(added, &added_type, &given);
+        let index = self.index_variable();
+
+        let capacity = self.gen.capacity(&ty);
+        let temp = self.temp(&ty);
+        self.copy_into(&temp, list, list_type, &ty);
+
+        self.line(format!(
+            "CROFT_CHECK({at} >= 0 && {at} <= (croft_int) {temp}.length, \"a list has no place to insert at\");"
+        ));
+
+        self.line(format!(
+            "CROFT_CHECK({temp}.length < {capacity}, \"a list is full\");"
+        ));
+
+        self.line(format!("if ({at} < 0) {at} = 0;"));
+
+        self.line(format!(
+            "if ({at} > (croft_int) {temp}.length) {at} = (croft_int) {temp}.length;"
+        ));
+
+        self.open(format!("if ({temp}.length < {capacity})"));
+
+        self.open(format!(
+            "for ({index} = {temp}.length; {index} > (croft_u16) {at}; {index}--)"
+        ));
+
+        self.line(format!(
+            "{temp}.items[{index}] = {temp}.items[{index} - 1];"
+        ));
+
+        self.close();
+
+        let slot = format!("{temp}.items[{at}]");
+        self.copy_into(&slot, &added, &given, &kept);
+        self.line(format!("{temp}.length++;"));
+        self.close();
+
+        temp
+    }
+
+    /// `list.fold(start, (total, item) -> ...)`: `total` starts as `start`,
+    /// and the lambda gives the next one for each item in turn. It is kept
+    /// in the full size of its type, since it can grow with every item.
+    fn fold(&mut self, list: &str, item: &Type, arguments: &[Argument], ty: &Type) -> String {
+        let (Some(start), Some(lambda)) = (arguments.first(), arguments.get(1)) else {
+            return "0".to_string();
+        };
+
+        let ExprKind::Lambda(parameters, body) = &lambda.value.kind else {
+            return "0".to_string();
+        };
+
+        let ty = self.gen.owned_type(&unbounded(ty));
+        let total = self.temp(&ty);
+        let index = self.index_variable();
+
+        self.assign(&total, &start.value, &ty);
+
+        self.open(format!(
+            "for ({index} = 0; {index} < {list}.length; {index}++)"
+        ));
+
+        self.push_scope();
+
+        if let [total_name, item_name] = parameters.as_slice() {
+            self.bind(&total_name.name, total.clone(), ty.clone());
+            self.bind(
+                &item_name.name,
+                format!("{list}.items[{index}]"),
+                item.clone(),
+            );
+        }
+
+        self.assign(&total, body, &ty);
+        self.pop_scope();
+        self.close();
+
+        total
     }
 
     /// `set items = items.add(item)` or `set items = items + more`, where

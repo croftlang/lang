@@ -50,6 +50,8 @@ mod repeat;
 mod result;
 /// Names, variables and temporaries in a function.
 mod scope;
+/// Set literals and methods.
+mod set;
 /// String methods.
 mod string;
 /// Fields kept in a size of their own.

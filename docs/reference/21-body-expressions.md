@@ -1,6 +1,6 @@
 # Body expressions
 
-Everything a body can contain. Lists are written in brackets: [a, b], or [] when empty; maps as [key: value], or [:] when empty. A last match arm of _ handles every variant the arms above it don't. There is no else: an if is a guard that returns its value when the condition holds, and the last line of a body is the result when no guard matched.
+Everything a body can contain. Lists are written in brackets: [a, b], or [] when empty, and so are sets where a set is expected; maps as [key: value], or [:] when empty. A lambda is a parameter, `->` and a value: `e -> e.id`. One with two parameters puts them in brackets: `(total, item) -> total + item`. A last match arm of _ handles every variant the arms above it don't. There is no else: an if is a guard that returns its value when the condition holds, and the last line of a body is the result when no guard matched.
 
 ```croft
 let gap = distance(player.position, enemy.position)
@@ -25,6 +25,8 @@ match kind {
 enemies.filter(e -> e.hit_points < 10).map(e -> e.position)
 
 items.sum(item -> points_for(item))
+
+items.fold(0, (total, item) -> total + points_for(item))
 
 player with { lives: player.lives - 1 }
 

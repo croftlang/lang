@@ -208,12 +208,12 @@ as many as `most`. A `Bytes` with nothing to bound it holds the target's
 the program has; a longer one going into it is cut short, and stops the
 program unless the target sets `checks = false`. Lists are kept the same way: a field, variant field, parameter or
 result with a `Length` holds that many items, a literal holds as many as it
-has, `filter`, `map`, `drop`, `take`, `remove`, `reverse` and `sort` no more
-than the list they come from, `add` one more, `+` as many as both, `split`
+has, `filter`, `map`, `drop`, `take`, `remove`, `reverse`, `sort` and
+`unique` no more than the list they come from, `add` and `insert` one more, `+` as many as both, `split`
 one more than its string has characters, `lines` as many, and `keys` and
-`values` as many as the map holds. A list with nothing to bound it holds the
+`values` as many as the map holds, and a set's `items` as many as it holds. A list with nothing to bound it holds the
 longest `Length` on any list of the same items, or 16 if none has one. A
-`let` list or map that `set` changes must say its `Length`, as in
+`let` list, set or map that `set` changes must say its `Length`, as in
 `let items: List<Int> where Length(0, 200) = []`, since nothing else says
 how much it can grow.
 
@@ -343,8 +343,9 @@ Functions and methods every program has, with no import. Functions: `Some`,
 `length`, `is_empty`, and joining with `+`. Numbers: `to_string`. Lists:
 `length`, `is_empty`, `first`, `last`, `contains`, `get`, `index_of`, `add`,
 `drop`, `take`, `reverse`, `filter`, `map`, `all`, `any`, `count`, `find`,
-`sum`, `min_by`, `max_by`, `sort_by`, `sort` for numbers and strings, and
-joining with `+`; a list of entities also has `get`, `contains`, `replace` and
+`sum`, `min_by`, `max_by`, `sort_by`, `sort` for numbers and strings,
+`unique`, `insert`, `fold`, whose lambda takes the total and each item
+(`(total, item) -> total + item`), and joining with `+`; a list of entities also has `get`, `contains`, `replace` and
 `remove` by identity. Options: `is_some`, `is_none`, `map`, `unwrap_or`.
 Results: `is_ok`, `is_err`, `map`, `map_err`, `unwrap_or`.
 
@@ -356,6 +357,15 @@ copy, and `contains`, `length`, `is_empty`, `keys` and `values` read it. Two
 maps are equal when they hold the same keys with the same values, in any
 order. A map holds as many entries as the largest `Length` constraint on its
 type allows, 16 when there is none.
+
+### Set
+Items of one type, each held once, imported with `use { Set } from
+Std.Collections`: `let seen: Set<Int> = [3, 1]`, or `[]` when empty, where a
+set is expected. `add` and `remove` give a changed copy, and `contains`,
+`length`, `is_empty` and `items`, a list in the order they were added, read
+it. Two sets are equal when they hold the same items, in any order. A set
+holds as many items as the largest `Length` constraint on its type allows, 16
+when there is none.
 
 ### Bytes
 A sequence of bytes, each from 0 to 255, for file contents, saves and network
@@ -377,7 +387,7 @@ A set of built-ins a context imports before using, like any other context:
 whole numbers, `from_code` and `from_hex`, `join` for a list of strings, and
 `to_text` for bytes. `Std.Numbers`
 has `Decimal`, `max`, `min`, `abs`, `clamp`, `pow`, `sign`, `checked_add`,
-`checked_subtract` and `checked_multiply`. `Std.Collections` has `Map`.
+`checked_subtract` and `checked_multiply`. `Std.Collections` has `Map` and `Set`.
 Each file of a context sees what any of them imports. Standard contexts need
 no arrow in the domain's `contexts`.
 

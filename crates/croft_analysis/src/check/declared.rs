@@ -26,6 +26,7 @@ impl<'a> Checker<'a> {
             "Unit" => Type::Unit,
             "List" => Type::list(argument(0)),
             "Map" => Type::map(argument(0), argument(1)),
+            "Set" => Type::set(argument(0)),
             "Option" => Type::option(argument(0)),
             "Result" => Type::result(argument(0), argument(1)),
             _ => match self.resolve(scope, &ty.path) {

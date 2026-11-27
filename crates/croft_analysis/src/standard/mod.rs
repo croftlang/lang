@@ -48,7 +48,7 @@ pub const STANDARD_CONTEXTS: [(&str, &[&str]); 3] = [
             "sign",
         ],
     ),
-    ("Std.Collections", &["Map"]),
+    ("Std.Collections", &["Map", "Set"]),
 ];
 
 /// The names a standard context provides, if `context` is one.

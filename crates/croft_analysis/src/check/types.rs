@@ -10,7 +10,7 @@ use crate::facts::BuiltinName;
 use crate::types::MAX_PLACES;
 
 /// The built-in types, each with how many type arguments it takes.
-const BUILTIN_TYPES: [(&str, usize); 11] = [
+const BUILTIN_TYPES: [(&str, usize); 12] = [
     ("Int", 0),
     ("Float", 0),
     ("Decimal", 0),
@@ -20,6 +20,7 @@ const BUILTIN_TYPES: [(&str, usize); 11] = [
     ("Unit", 0),
     ("List", 1),
     ("Map", 2),
+    ("Set", 1),
     ("Option", 1),
     ("Result", 2),
 ];
@@ -46,7 +47,7 @@ impl<'a> Checker<'a> {
         let span = ty.path.span();
         let found = ty.arguments.len();
 
-        if name == "Map" {
+        if name == "Map" || name == "Set" {
             self.check_standard(scope.context, &name, span);
         }
 

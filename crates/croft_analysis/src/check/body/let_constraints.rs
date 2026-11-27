@@ -1,7 +1,7 @@
 //! The constraints on a `let` name, as in `let items: List<Int> where
 //! Length(0, 200) = []`: checked on its first value and on each value `set`
-//! gives it, and required as a `Length` on a list or map that `set` changes,
-//! since nothing else says how much room it needs.
+//! gives it, and required as a `Length` on a list, set or map that `set`
+//! changes, since nothing else says how much room it needs.
 
 use croft_syntax::ast::{
     ConstraintUse, Expr, ExprKind, FieldValue, Identifier, LoopCounter, Statement, TypeExpr,
@@ -73,7 +73,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         let sized = matches!(
             ty,
-            Type::List(_) | Type::Map(..) | Type::String | Type::Bytes
+            Type::List(_) | Type::Map(..) | Type::Set(_) | Type::String | Type::Bytes
         );
 
         if !sized {
@@ -105,7 +105,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             .push((name.name.clone(), ty.clone(), longest));
     }
 
-    /// A list or map that `set` changes needs a `Length`, so the program
+    /// A list, set or map that `set` changes needs a `Length`, so the program
     /// keeps room for as many items as it can grow to.
     pub(super) fn require_length(
         &mut self,
@@ -115,7 +115,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         constraints: &[ConstraintUse],
     ) {
         let (what, inner) = match ty {
-            Type::List(item) => ("items", vec![&**item]),
+            Type::List(item) | Type::Set(item) => ("items", vec![&**item]),
             Type::Map(key, value) => ("entries", vec![&**key, &**value]),
             _ => return,
         };

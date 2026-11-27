@@ -49,6 +49,8 @@ pub enum Type {
     SizedList(Box<Type>, u16),
     /// Keys, each with a value, such as how many of each item the player holds.
     Map(Box<Type>, Box<Type>),
+    /// Items of one type, each held once, such as the rooms a player has seen.
+    Set(Box<Type>),
     Option(Box<Type>),
     Result(Box<Type>, Box<Type>),
     /// A value, entity, aggregate, enum, identity, error, error set or event.
@@ -72,6 +74,11 @@ impl Type {
     /// A `Map` from `key` to `value`.
     pub fn map(key: Type, value: Type) -> Type {
         Type::Map(Box::new(key), Box::new(value))
+    }
+
+    /// A `Set` of `item`.
+    pub fn set(item: Type) -> Type {
+        Type::Set(Box::new(item))
     }
 
     /// An `Option` of `item`.
@@ -118,6 +125,7 @@ impl fmt::Display for Type {
             Type::Unit => write!(f, "Unit"),
             Type::List(item) | Type::SizedList(item, _) => write!(f, "List<{item}>"),
             Type::Map(key, value) => write!(f, "Map<{key}, {value}>"),
+            Type::Set(item) => write!(f, "Set<{item}>"),
             Type::Option(item) => write!(f, "Option<{item}>"),
             Type::Result(value, error) => write!(f, "Result<{value}, {error}>"),
             Type::Named(named) | Type::Port(named) | Type::Repository(named) => {

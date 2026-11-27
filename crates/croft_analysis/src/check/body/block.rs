@@ -79,7 +79,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             self.require_length(name, written, &ty, constraints);
         }
 
-        let grows_from = (changed && only_adds_to(rest, &name.name))
+        // A set doesn't grow when it is given an item it already holds.
+        let grows_from = (changed && matches!(ty, Type::List(_)) && only_adds_to(rest, &name.name))
             .then(|| known.as_ref().and_then(Known::length))
             .flatten()
             .and_then(|length| match length {

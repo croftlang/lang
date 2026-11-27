@@ -152,7 +152,7 @@ impl<'a> Checker<'a> {
 fn other_aggregate<'t>(ty: &'t Type, own: &Resolved) -> Option<&'t Resolved> {
     match ty {
         Type::Named(named) if named.kind == SymbolKind::Aggregate && named != own => Some(named),
-        Type::List(item) | Type::Option(item) => other_aggregate(item, own),
+        Type::List(item) | Type::Set(item) | Type::Option(item) => other_aggregate(item, own),
         Type::Map(key, value) | Type::Result(key, value) => {
             other_aggregate(key, own).or_else(|| other_aggregate(value, own))
         }

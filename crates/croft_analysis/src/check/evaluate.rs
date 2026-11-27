@@ -16,7 +16,7 @@ use super::numbers::{number_fault, number_function};
 use super::{Checker, Scope};
 use crate::standard::standard_context_of;
 use crate::symbols::SymbolKind;
-use crate::types::Resolved;
+use crate::types::{Resolved, Type};
 
 /// How deep constraints and constants may refer to each other before the
 /// answer is left to runtime, so one that refers to itself cannot loop.
@@ -158,6 +158,10 @@ impl<'a> Checker<'a> {
             ExprKind::Float(text) => Known::decimal(text),
             ExprKind::String(text) => Some(Known::Text(text.clone())),
             ExprKind::Bool(value) => Some(Known::Bool(*value)),
+            // A set is in no order, so it is never compared as a list would be.
+            ExprKind::List(_) if matches!(self.facts.types.get(&value.id), Some(Type::Set(_))) => {
+                None
+            }
             ExprKind::List(items) => items
                 .iter()
                 .map(known)

@@ -72,6 +72,9 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             ExprKind::Call(callee, arguments) => {
                 self.call(value.id, callee, arguments, span, expected)
             }
+            ExprKind::List(items) if matches!(expected, Some(Type::Set(_))) => {
+                self.set_literal(items, expected)
+            }
             ExprKind::List(items) => self.list_literal(items, expected),
             ExprKind::Map(entries) => self.map_literal(entries, expected, span),
             ExprKind::Record(path, fields) => self.record(path, fields, expected),

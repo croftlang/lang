@@ -1,10 +1,11 @@
 //! The built-in methods of lists.
 
-use croft_syntax::ast::Argument;
+use croft_syntax::ast::{Argument, ExprKind};
 use croft_syntax::Span;
 
 use super::method::entity_of;
 use super::BodyChecker;
+use crate::check::known::Known;
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
@@ -15,6 +16,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         name: &str,
         arguments: &[Argument],
         span: Span,
+        expected: Option<&Type>,
     ) -> Option<Type> {
         let list = Type::list(item.clone());
 
@@ -63,8 +65,12 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 self.fixed(name, arguments, &[Type::String], Type::String, span)
             }
             "add" => self.fixed(name, arguments, std::slice::from_ref(item), list, span),
+            "insert" => {
+                self.check_insert_place(arguments);
+                self.fixed(name, arguments, &[Type::Int, item.clone()], list, span)
+            }
             "drop" | "take" => self.fixed(name, arguments, &[Type::Int], list, span),
-            "reverse" => self.fixed(name, arguments, &[], list, span),
+            "reverse" | "unique" => self.fixed(name, arguments, &[], list, span),
             // Numbers by size, and strings byte by byte.
             "sort" if item.is_number() || *item == Type::String => {
                 self.fixed(name, arguments, &[], list, span)
@@ -100,7 +106,78 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             "map" => Some(Type::list(
                 self.lambda_argument(name, arguments, item, span),
             )),
+            "fold" => Some(self.fold(arguments, item, expected, span)),
             _ => None,
+        }
+    }
+
+    /// `items.fold(start, (total, item) -> ...)`: the lambda is given the
+    /// total so far, `start` at first, and each item in turn, and gives back
+    /// the next total. The last total is the result.
+    fn fold(
+        &mut self,
+        arguments: &[Argument],
+        item: &Type,
+        expected: Option<&Type>,
+        span: Span,
+    ) -> Type {
+        let example = "(total, item) -> total + item";
+
+        let [start, lambda] = arguments else {
+            self.error(
+                format!("`fold` takes 2 arguments, a start and a lambda such as `{example}`"),
+                span,
+            );
+
+            return Type::Unknown;
+        };
+
+        let total = self.expr(&start.value, expected);
+
+        let empty = matches!(&start.value.kind, ExprKind::List(items) if items.is_empty());
+
+        if empty && matches!(&total, Type::List(item) if item.is_unknown()) {
+            self.error(
+                "an empty list to start `fold` with needs its type from where the result goes, \
+                 such as `let names: List<String> = items.fold([], ...)`",
+                start.value.span,
+            );
+
+            return Type::Unknown;
+        }
+
+        let found = self.lambda_with(
+            "fold",
+            &lambda.value,
+            &[total.clone(), item.clone()],
+            example,
+        );
+
+        if !self.checker.accepts(&total, &found) {
+            self.error(
+                format!("the lambda passed to `fold` must give back `{total}`, found `{found}`"),
+                span,
+            );
+        }
+
+        total
+    }
+
+    /// Reports `insert` at a place known to be below zero, which no list has.
+    fn check_insert_place(&mut self, arguments: &[Argument]) {
+        let Some(place) = arguments.first() else {
+            return;
+        };
+
+        let Some(Known::Number { units, places: 0 }) = self.known_local_value(&place.value) else {
+            return;
+        };
+
+        if units < 0 {
+            self.error(
+                format!("`insert` needs a place from 0 to the list's length, found {units}"),
+                place.value.span,
+            );
         }
     }
 

@@ -30,6 +30,7 @@ mod property;
 mod record;
 mod repeat;
 mod result;
+mod set;
 mod setup;
 mod string;
 mod type_path;

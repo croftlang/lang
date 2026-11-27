@@ -37,6 +37,7 @@ pub fn unbounded(ty: &Type) -> Type {
         Type::List(item) | Type::SizedList(item, _) => Type::list(unbounded(item)),
         Type::Option(item) => Type::option(unbounded(item)),
         Type::Map(key, value) => Type::map(unbounded(key), unbounded(value)),
+        Type::Set(item) => Type::set(unbounded(item)),
         Type::Result(value, error) => Type::result(unbounded(value), unbounded(error)),
         other => other.clone(),
     }
@@ -46,7 +47,7 @@ pub fn unbounded(ty: &Type) -> Type {
 pub fn has_bound(ty: &Type) -> bool {
     match ty {
         Type::Text(_) | Type::Borrowed(_) | Type::SizedBytes(_) | Type::SizedList(..) => true,
-        Type::List(item) | Type::Option(item) => has_bound(item),
+        Type::List(item) | Type::Set(item) | Type::Option(item) => has_bound(item),
         Type::Map(key, value) | Type::Result(key, value) => has_bound(key) || has_bound(value),
         _ => false,
     }
@@ -110,6 +111,7 @@ impl<'a> Generator<'a> {
             Type::List(item) | Type::SizedList(item, _) => self.list_type(self.narrowest(item), 1),
             Type::Option(item) => Type::option(self.narrowest(item)),
             Type::Map(key, value) => Type::map(self.narrowest(key), self.narrowest(value)),
+            Type::Set(item) => Type::set(self.narrowest(item)),
             Type::Result(value, error) => {
                 Type::result(self.narrowest(value), self.narrowest(error))
             }
@@ -127,6 +129,7 @@ impl<'a> Generator<'a> {
             }
             Type::Option(item) => Type::option(self.owned_type(item)),
             Type::Map(key, value) => Type::map(self.owned_type(key), self.owned_type(value)),
+            Type::Set(item) => Type::set(self.owned_type(item)),
             Type::Result(value, error) => {
                 Type::result(self.owned_type(value), self.owned_type(error))
             }
@@ -167,6 +170,7 @@ impl<'a> Generator<'a> {
             (Type::Map(ak, av), Type::Map(bk, bv)) => {
                 Type::map(self.wider(ak, bk), self.wider(av, bv))
             }
+            (Type::Set(a), Type::Set(b)) => Type::set(self.wider(a, b)),
             (Type::Result(av, ae), Type::Result(bv, be)) => {
                 Type::result(self.wider(av, bv), self.wider(ae, be))
             }

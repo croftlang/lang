@@ -1,0 +1,10 @@
+[package]
+name = "collection_mistakes"
+
+[target.test]
+main = "Start"
+
+# The same program with its checks turned off.
+[target.unchecked]
+main = "Start"
+checks = false

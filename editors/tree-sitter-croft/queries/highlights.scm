@@ -17,7 +17,7 @@
 (type_identifier) @type
 
 ((type_identifier) @type.builtin
-  (#match? @type.builtin "^(Int|Float|Decimal|Bool|String|Bytes|Unit|List|Map|Option|Result)$"))
+  (#match? @type.builtin "^(Int|Float|Decimal|Bool|String|Bytes|Unit|List|Map|Set|Option|Result)$"))
 
 (field_identifier) @property
 

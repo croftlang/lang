@@ -75,7 +75,9 @@ impl<'a> Checker<'a> {
                     && self.accepts(to_value, from_value)
                     && !matches!((&**to_value, &**from_value), (Type::Decimal(_), Type::Int))
             }
-            (Type::List(to), Type::List(from)) | (Type::Option(to), Type::Option(from)) => {
+            (Type::List(to), Type::List(from))
+            | (Type::Set(to), Type::Set(from))
+            | (Type::Option(to), Type::Option(from)) => {
                 self.accepts(to, from) && !matches!((&**to, &**from), (Type::Decimal(_), Type::Int))
             }
             (Type::Result(to_value, to_error), Type::Result(from_value, from_error)) => {

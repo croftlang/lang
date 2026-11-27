@@ -1,0 +1,5 @@
+[package]
+name = "collections"
+
+[target.test]
+main = "Check"

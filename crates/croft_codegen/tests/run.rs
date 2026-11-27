@@ -1629,6 +1629,83 @@ fn counts_the_arrays_a_sort_takes_in_the_frame() {
     assert!(report.contains("    5504  Sorting_by_key\n"), "{report}");
 }
 
+/// Sets: literals, add, remove, contains, items and equality in any order,
+/// and unique, insert and fold on lists.
+#[test]
+fn runs_sets_and_more_list_methods() {
+    run_program("collections");
+}
+
+/// Inserting at a place a list doesn't have, or adding to a full set, stops
+/// a checked build. Unchecked, the item goes at the nearest end of the list,
+/// and the set keeps the items it has room for.
+#[test]
+fn stops_at_a_missing_place_or_a_full_set() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/collection_mistakes");
+    let checked_output = generate(&source, "test", "collection_mistakes");
+    let unchecked_output = generate(&source, "unchecked", "collection_mistakes_unchecked");
+
+    for output in [&checked_output, &unchecked_output] {
+        let built = compile(output, &["croft_runtime.c", "program.c", "-o", "program"]);
+
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+    }
+
+    let run = |output: &Path, argument: &str| {
+        let ran = std::process::Command::new(output.join("program"))
+            .arg(argument)
+            .output()
+            .expect("it runs");
+
+        (
+            ran.status.code(),
+            String::from_utf8_lossy(&ran.stdout).trim().to_string(),
+            String::from_utf8_lossy(&ran.stderr).trim().to_string(),
+        )
+    };
+
+    let missing = "a list has no place to insert at".to_string();
+    let full = "a set is full".to_string();
+
+    assert_eq!(
+        run(&checked_output, "insert"),
+        (Some(1), String::new(), missing.clone())
+    );
+
+    assert_eq!(
+        run(&checked_output, "below"),
+        (Some(1), String::new(), missing)
+    );
+
+    assert_eq!(run(&checked_output, "full"), (Some(1), String::new(), full));
+
+    assert_eq!(
+        run(&unchecked_output, "insert"),
+        (Some(0), "1,2,3".to_string(), String::new())
+    );
+
+    assert_eq!(
+        run(&unchecked_output, "below"),
+        (Some(0), "3,1,2".to_string(), String::new())
+    );
+
+    assert_eq!(
+        run(&unchecked_output, "full"),
+        (Some(0), "2,3".to_string(), String::new())
+    );
+
+    fs::remove_dir_all(checked_output).ok();
+    fs::remove_dir_all(unchecked_output).ok();
+}
+
 /// is_ok, is_err, map, map_err and unwrap_or on results.
 #[test]
 fn runs_result_methods() {

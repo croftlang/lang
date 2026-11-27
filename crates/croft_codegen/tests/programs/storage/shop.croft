@@ -6,7 +6,7 @@ context Shop {
 
     use { Files, FileError } from Std.Files
     use { Decimal } from Std.Numbers
-    use { Map } from Std.Collections
+    use { Map, Set } from Std.Collections
     use { to_bytes } from Std.Text
 
     identity ShelfId for Shelf: Int where Range(1, 99)
@@ -24,6 +24,7 @@ context Shop {
         label: Label
         best: Option<Int>
         sizes: Map<String, Int> where Length(0, 3)
+        tags: Set<String> where Length(0, 3)
         items: List<Item> where Length(0, 4)
 
         entity Item {
@@ -42,6 +43,7 @@ context Shop {
             label: Label.Sale(percent: 20),
             best: Some(3),
             sizes: ["small": 2, "large": 9],
+            tags: ["new", "seeds"],
             items: [
                 Shelf.Item { id: 3, count: 200, open: true },
                 Shelf.Item { id: 7, count: 0, open: false }
@@ -95,6 +97,7 @@ context Shop {
         let found = Shelves.find(12)?
         check(found == shelf)?
         check(found.name == "Garden" && found.name.length == 6)?
+        check(found.tags.items == ["new", "seeds"])?
         let missing = match Shelves.find(13) {
             Ok(other) -> false
             Err(error) -> is_missing(error)

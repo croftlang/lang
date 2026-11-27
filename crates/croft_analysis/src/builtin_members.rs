@@ -1,6 +1,6 @@
 //! The fields and methods the language gives its own types, by name, for
 //! editors to offer. The checks in `check/body` (`property.rs`,
-//! `method.rs`, `string.rs`, `list.rs`, `map.rs`, `option.rs`,
+//! `method.rs`, `string.rs`, `list.rs`, `map.rs`, `set.rs`, `option.rs`,
 //! `result.rs` and `bytes.rs`) decide what each one takes and gives back;
 //! when one is added there, add it here too.
 
@@ -63,7 +63,7 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
 
             members.extend(methods(&[
                 "contains", "get", "add", "drop", "take", "filter", "all", "any", "count", "find",
-                "sum", "min_by", "max_by", "map", "reverse", "sort_by",
+                "sum", "min_by", "max_by", "map", "reverse", "sort_by", "unique", "insert", "fold",
             ]));
 
             if item.named(&[SymbolKind::Entity]).is_some() {
@@ -85,6 +85,11 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
         Type::Map(..) => {
             let mut members = fields(&["length", "is_empty", "keys", "values"]);
             members.extend(methods(&["get", "set", "remove", "contains"]));
+            members
+        }
+        Type::Set(_) => {
+            let mut members = fields(&["length", "is_empty", "items"]);
+            members.extend(methods(&["add", "remove", "contains"]));
             members
         }
         Type::Option(_) => {

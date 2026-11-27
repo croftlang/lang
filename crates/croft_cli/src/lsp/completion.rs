@@ -23,8 +23,9 @@ const CONTEXTUAL_WORDS: [&str; 8] = [
 ];
 
 /// The built-in types, offered anywhere.
-const BUILT_IN_TYPES: [&str; 11] = [
-    "Int", "Float", "Decimal", "Bool", "String", "Bytes", "Unit", "List", "Map", "Option", "Result",
+const BUILT_IN_TYPES: [&str; 12] = [
+    "Int", "Float", "Decimal", "Bool", "String", "Bytes", "Unit", "List", "Map", "Set", "Option",
+    "Result",
 ];
 
 /// The built-in functions and constraints, offered anywhere.

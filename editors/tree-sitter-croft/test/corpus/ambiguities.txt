@@ -227,3 +227,53 @@ service S(): Int = {
         (field_expression
           (identifier)
           (field_identifier))))))
+
+================================================================================
+A lambda with its parameters in brackets, beside a name in brackets
+================================================================================
+
+context A
+fn f(): Int = items.fold((start), (total, item) -> total + item)
+fn g(): List<Int> = items.map((item) -> item * 2)
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (function_declaration
+      (identifier)
+      (parameters)
+      (type
+        (type_identifier))
+      (call_expression
+        (field_expression
+          (identifier)
+          (field_identifier))
+        (arguments
+          (parenthesized_expression
+            (identifier))
+          (lambda_expression
+            (identifier)
+            (identifier)
+            (binary_expression
+              (identifier)
+              (identifier))))))
+    (function_declaration
+      (identifier)
+      (parameters)
+      (type
+        (type_identifier)
+        (type_arguments
+          (type
+            (type_identifier))))
+      (call_expression
+        (field_expression
+          (identifier)
+          (field_identifier))
+        (arguments
+          (lambda_expression
+            (identifier)
+            (binary_expression
+              (identifier)
+              (integer))))))))

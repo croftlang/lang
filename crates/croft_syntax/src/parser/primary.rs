@@ -1,4 +1,4 @@
-//! Literals, names, lambdas, brackets, and the `issue`, `emit` and `native` forms.
+//! Literals, names, lambdas (`e -> e.id`, `(total, item) -> total + item`), brackets, and the `issue`, `emit` and `native` forms.
 
 use super::{ParseResult, Parser};
 use crate::ast::{Expr, ExprKind, Issue};
@@ -17,6 +17,20 @@ impl Parser {
             TokenKind::String(value) => self.literal(ExprKind::String(value)),
             TokenKind::Keyword(Keyword::True) => self.literal(ExprKind::Bool(true)),
             TokenKind::Keyword(Keyword::False) => self.literal(ExprKind::Bool(false)),
+            TokenKind::LeftParen if self.starts_lambda_in_brackets() => {
+                self.advance();
+
+                let mut parameters = vec![self.expect_identifier()?];
+
+                while self.eat(&TokenKind::Comma) {
+                    parameters.push(self.expect_identifier()?);
+                }
+
+                self.expect(&TokenKind::RightParen)?;
+                self.expect(&TokenKind::Arrow)?;
+
+                ExprKind::Lambda(parameters, Box::new(self.parse_expression()?))
+            }
             TokenKind::LeftParen => {
                 self.advance();
 
@@ -60,6 +74,26 @@ impl Parser {
         };
 
         Ok(self.make_expr(kind, span))
+    }
+
+    /// Whether the next tokens are `(total, item) ->`: the parameters of a
+    /// lambda in brackets, which a lambda with more than one parameter needs.
+    fn starts_lambda_in_brackets(&self) -> bool {
+        let mut offset = 1;
+
+        loop {
+            if !matches!(self.peek_nth(offset).kind, TokenKind::Identifier(_)) {
+                return false;
+            }
+
+            match self.peek_nth(offset + 1).kind {
+                TokenKind::Comma => offset += 2,
+                TokenKind::RightParen => {
+                    return self.peek_nth(offset + 2).kind == TokenKind::Arrow;
+                }
+                _ => return false,
+            }
+        }
     }
 
     /// Reads the literal's token and gives back `kind`.
