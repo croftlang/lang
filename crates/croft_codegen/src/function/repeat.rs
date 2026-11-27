@@ -59,8 +59,15 @@ impl<'g, 'a> Writer<'g, 'a> {
                     bounds.get(1).cloned().unwrap_or_default(),
                 );
 
+                // A counter that ends at the highest whole number always
+                // keeps to it, so only the break at the end stops the loop.
+                let condition = match known {
+                    Some((_, high)) if high.low >= WHOLE_HIGH => String::new(),
+                    _ => format!(" {variable} <= {high}"),
+                };
+
                 self.open(format!(
-                    "for ({variable} = {low}; {variable} <= {high}; {variable}++)"
+                    "for ({variable} = {low};{condition}; {variable}++)"
                 ));
 
                 if known.is_none_or(|(_, high)| high.high >= WHOLE_HIGH) {
