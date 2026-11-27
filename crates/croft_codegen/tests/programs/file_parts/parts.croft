@@ -1,8 +1,9 @@
 // Runs the operation the first argument names on the path the last names,
 // so a failure stops the program with the error's name: `size` prints how
-// many bytes the file holds, `part` prints three of them from the sixth,
-// `past` how many there are past its end, `rename` moves it to moved.txt,
-// and `rename_to` moves short.txt to it.
+// many bytes the file holds, `part` prints three of them after the first
+// six, `long` how many of 100 there are after the first 50, more than a
+// `Bytes` without a `Length` holds, `past` how many there are past its end,
+// `rename` moves it to moved.txt, and `rename_to` moves short.txt to it.
 context Parts {
     publish { Run }
 
@@ -22,6 +23,10 @@ context Parts {
         if operation == "part" {
             let part = Files.read_part(path, 6, 3)?
             Console.print(part.to_text())
+        }
+        if operation == "long" {
+            let part = Files.read_part(path, 50, 100)?
+            Console.print(part.length.to_string())
         }
         if operation == "past" {
             let part = Files.read_part(path, 100, 3)?

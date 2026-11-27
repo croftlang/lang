@@ -274,7 +274,8 @@ fn makes_folders_and_copies_files() {
 }
 
 /// `Files.size` gives how many bytes a file holds, `Files.read_part` gives
-/// the bytes from an offset, fewer at the end and none past it, and
+/// the bytes from an offset, as many as its length asks even past what a
+/// `Bytes` without a `Length` holds, fewer at the end and none past it, and
 /// `Files.rename` moves a file; each fails with `NotFound` when there is
 /// nothing at the path, `rename` when there is no folder to move it into,
 /// and `size` with `Unreadable` for a folder.
@@ -307,6 +308,8 @@ fn sizes_reads_parts_of_and_renames_files() {
     fs::write(output.join("hello.txt"), "hello world").expect("a file");
     fs::write(output.join("short.txt"), "hello wo").expect("a file");
     fs::write(output.join("empty.txt"), "").expect("a file");
+    fs::write(output.join("long.txt"), "x".repeat(200)).expect("a file");
+    fs::write(output.join("tail.txt"), "x".repeat(120)).expect("a file");
     fs::create_dir_all(output.join("folder")).expect("a folder");
 
     let run = |operation: &str, path: &str| {
@@ -333,6 +336,8 @@ fn sizes_reads_parts_of_and_renames_files() {
     assert_eq!(run("part", "hello.txt"), printed("wor"));
     assert_eq!(run("part", "short.txt"), printed("wo"));
     assert_eq!(run("part", "empty.txt"), printed(""));
+    assert_eq!(run("long", "long.txt"), printed("100"));
+    assert_eq!(run("long", "tail.txt"), printed("70"));
     assert_eq!(run("past", "hello.txt"), printed("0"));
     assert_eq!(run("part", "missing.txt"), failed("NotFound"));
 
