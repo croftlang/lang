@@ -445,7 +445,9 @@ anything secret. `low` above `high` breaks `between`'s contract.
 on the Gregorian calendar, only ever a day its month has, so 30 February and
 29 February 2025 are no date, and `Time`, an `hour`, `minute` and `second` on a
 24-hour clock, the `Clock` port, with `today` and `now`, and the functions
-`days_between` and `add_days`, which count leap years. Its `SystemClock`
+`days_between` and `add_days`, which count leap years. It publishes the
+rules behind `Date` too, the constraint `DayInMonth` and the function
+`is_leap_year`, for a program's own constraints. Its `SystemClock`
 adapter uses C's `time` and `localtime`: `Clock = "SystemClock"` in
 `croft.toml`. A machine with no clock gives 1 January 1970 at midnight.
 
