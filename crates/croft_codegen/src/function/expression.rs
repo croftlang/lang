@@ -138,6 +138,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             Some(range) if *ty == Type::Int && range.low > WHOLE_LOW => {
                 format!("(-{})", self.widened(inner, whole, operand))
             }
+            _ if matches!(ty, Type::Decimal(_)) => format!("croft_decimal_negate({inner})"),
             _ => format!("croft_int_negate({inner})"),
         }
     }
@@ -146,7 +147,7 @@ impl<'g, 'a> Writer<'g, 'a> {
     /// into a successful `Result`. Every error is already `croft_error`.
     pub fn convert(&mut self, c: String, from: &Type, to: &Type) -> String {
         if let (Type::Decimal(places), Type::Int) = (to, from) {
-            return format!("croft_int_multiply({c}, {}L)", scale(*places));
+            return format!("croft_decimal_scale({c}, {}L)", scale(*places));
         }
 
         if let Some(inner) = self.gen.model.single_value_inner(to) {

@@ -8,7 +8,7 @@
    checked program. */
 static croft_int with_sign(unsigned long value, croft_bool negative, croft_bool over)
 {
-    CROFT_CHECK(!over && value <= (negative ? 0x80000000UL : 0x7FFFFFFFUL), "a whole number doesn't fit in 32 bits");
+    CROFT_CHECK(!over && value <= (negative ? 0x80000000UL : 0x7FFFFFFFUL), CROFT_DECIMAL_TOO_BIG);
     return croft_int_from_bits(negative ? 0UL - value : value);
 }
 

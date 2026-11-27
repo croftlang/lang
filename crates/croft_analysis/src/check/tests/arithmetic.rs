@@ -160,7 +160,8 @@ fn a_decimal_past_32_bits_of_hundredths_is_an_error() {
     assert_eq!(
         errors(&source),
         vec![
-            "`PRICE + 0.01` gives 21474836.48, which doesn't fit in a `Decimal<2>`".to_string(),
+            "`PRICE + 0.01` gives 21474836.48, which doesn't fit in 32 bits as a `Decimal<2>`"
+                .to_string(),
             "`PRICE / 0` divides by zero".to_string(),
         ]
     );
@@ -170,7 +171,10 @@ fn a_decimal_past_32_bits_of_hundredths_is_an_error() {
 fn a_decimal_literal_past_32_bits_of_hundredths_is_an_error() {
     let source = sums("fn price(): Decimal<2> = 30000000.00");
 
-    assert_error(&source, "`30000000.00` doesn't fit in a `Decimal<2>`");
+    assert_error(
+        &source,
+        "`30000000.00` doesn't fit in 32 bits as a `Decimal<2>`",
+    );
 }
 
 #[test]
