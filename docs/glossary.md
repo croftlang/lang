@@ -381,10 +381,12 @@ folder on the way, and `copy`, for a file of any size, its errors `NotFound`, `N
 `Unreadable`, the enum `FileError` that includes them, and the `StdioFiles`
 adapter, which uses C's stdio: `Files = "StdioFiles"` in `croft.toml`. Its
 `list` and `make_folder` need POSIX, so they fail with `Unreadable` on
-machines without it.
+machines without it. It never cuts a path short: one longer than 255 bytes,
+or with a NUL byte in it, fails with `Unreadable`.
 `Std.Http` has the `Http` port, with `get`, `post`, `put` and `delete`, each
 giving a `Response` (its `status`, its `headers` as a map with names in
-lower case, and its `body`) or an `HttpError`:
+lower case, leaving out any longer than a string, and its `body`) or an
+`HttpError`:
 `Unreachable`, `TimedOut` or `TooLarge`. Its `CurlHttp` adapter uses libcurl,
 which also handles HTTPS, so a program that binds it is linked with `-lcurl`.
 It follows at most 10 redirects and gives the last answer's status, headers
@@ -425,7 +427,9 @@ different version of the program, or damaged) and `StorageUnavailable`.
 The port in `Std.Console` that gives a program its command-line arguments,
 with no import needed. A service lists it in `calls`, then reads
 `Arguments.all()` for a `List<String>`. Every target supplies it; targets
-without a command line, such as the ZX Spectrum, give an empty list.
+without a command line, such as the ZX Spectrum, give an empty list. With
+checks on, an argument longer than a string, or more arguments than the
+list holds, stops the program rather than being cut short.
 
 ### Console
 The port in `Std.Console` that prints a line, with no import needed:

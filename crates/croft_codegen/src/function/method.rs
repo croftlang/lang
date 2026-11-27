@@ -132,7 +132,8 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.all_arguments(ty)
     }
 
-    /// `Arguments.all()`: the program's command-line arguments.
+    /// `Arguments.all()`: the program's command-line arguments. With checks
+    /// on, more of them than the list holds stops the program.
     fn all_arguments(&mut self, ty: &Type) -> String {
         let list = self.temp(ty);
         let index = self.index_variable();
@@ -140,6 +141,10 @@ impl<'g, 'a> Writer<'g, 'a> {
         self.line(format!("{list}.length = 0;"));
 
         let capacity = self.gen.capacity(ty);
+
+        self.line(format!(
+            "CROFT_CHECK(croft_argument_count() <= {capacity}, \"there are more arguments than a list can hold\");"
+        ));
 
         self.open(format!(
             "for ({index} = 0; {index} < croft_argument_count() && {index} < {capacity}; {index}++)"

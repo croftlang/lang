@@ -351,9 +351,13 @@ croft_int croft_argument_count(void)
     return argument_count > 0 ? argument_count - 1 : 0;
 }
 
+/* One command-line argument. With checks on, one longer than the string
+   stops the program, rather than being cut short. */
 void croft_argument(croft_int index, char *out, croft_u16 *length, croft_u16 capacity)
 {
-    croft_string_set(argument_values[index + 1], out, length, capacity);
+    const char *text = argument_values[index + 1];
+    croft_string_set(text, out, length, capacity);
+    CROFT_CHECK(text[*length] == '\0', "an argument is longer than a string can hold");
 }
 
 void croft_console_print(croft_string_view text, croft_unit *out)

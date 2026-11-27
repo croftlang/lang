@@ -1,0 +1,24 @@
+// Gets a page through Std.Http and CurlHttp, and prints the names of the
+// headers it kept and two of their values. The test replaces SERVER with
+// the address of a server it runs for the purpose.
+context Headers {
+    publish { Show }
+
+    use { Http, HttpError } from Std.Http
+    use { join } from Std.Text
+
+    service Show(): Result<Unit, HttpError> {
+        calls { Http, Console }
+    } = {
+        let page = Http.get("http://SERVER/headers")?
+        Console.print(page.headers.keys.join(","))
+        Console.print(page.headers.get("x-short").unwrap_or("none"))
+        Console.print(page.headers.get("x-long").unwrap_or("none"))
+        Unit
+    }
+}
+
+domain Program {
+    contexts { Headers }
+    use { Show } from Headers
+} = Show()?
