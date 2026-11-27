@@ -1112,10 +1112,15 @@ fn works_out_whole_numbers_in_32_bits() {
             .output()
             .expect("it runs");
 
-        (
-            ran.status.code(),
-            String::from_utf8_lossy(&ran.stdout).trim().to_string(),
-        )
+        // A failure prints nothing on standard output and its message on
+        // standard error, so the two together are whichever there is.
+        let printed = format!(
+            "{}{}",
+            String::from_utf8_lossy(&ran.stdout),
+            String::from_utf8_lossy(&ran.stderr)
+        );
+
+        (ran.status.code(), printed.trim().to_string())
     };
 
     // A small divisor that is never zero divides inline, with its sign tested.
