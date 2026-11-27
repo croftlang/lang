@@ -32,3 +32,5 @@ Screen = "NullScreen"
 Keyboard = "ScriptedKeyboard"
 Rooms = "MemoryStorage"
 ```
+
+`native` lists the project's own C files for a target. `croft compile` copies them beside the generated C, and `croft run` builds everything with the compiler named by `CC`, or `cc`, as optimised strict C89: `-std=c89 -pedantic -Wall -Wextra -Wdeclaration-after-statement -O2`. Every warning is an error in the C Croft writes, standard adapters included; in native files the warnings are shown but don't stop the build.

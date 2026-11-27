@@ -12,8 +12,10 @@ pub struct Output {
     pub target: String,
     /// `target/croft/<target>` in the project folder.
     pub folder: PathBuf,
-    /// The C files that make up the program, by file name inside `folder`.
+    /// The C files the compiler wrote, by file name inside `folder`.
     pub sources: Vec<String>,
+    /// The project's own native C files from `croft.toml`, copied into `folder`.
+    pub native: Vec<String>,
 }
 
 /// `croft compile`: writes C for one target and says where it went.
@@ -90,6 +92,8 @@ pub fn write_c(path: &Path, target: Option<String>) -> Result<Output, String> {
         }
     }
 
+    let mut native_sources = Vec::new();
+
     for native in manifest.target(&target).map_or(&[][..], |t| &t.native[..]) {
         let source = project.folder.join(&native.name);
         let name = Path::new(&native.name).file_name().unwrap_or_default();
@@ -99,7 +103,7 @@ pub fn write_c(path: &Path, target: Option<String>) -> Result<Output, String> {
         let name = name.to_string_lossy().into_owned();
 
         if name.ends_with(".c") {
-            sources.push(name);
+            native_sources.push(name);
         }
     }
 
@@ -108,6 +112,7 @@ pub fn write_c(path: &Path, target: Option<String>) -> Result<Output, String> {
         target,
         folder,
         sources,
+        native: native_sources,
     })
 }
 

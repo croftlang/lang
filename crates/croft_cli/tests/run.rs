@@ -90,6 +90,60 @@ domain Market {
 }
 ";
 
+/// A `croft.toml` whose desktop target fills `Keyboard` with native C.
+const NATIVE_MANIFEST: &str = "\
+[package]
+name = \"arcade\"
+
+[target.desktop]
+native = [\"keys.c\"]
+
+[target.desktop.adapters]
+Keyboard = \"NativeKeyboard\"
+";
+
+/// The domain from `KEYBOARD`, with an adapter calling a native function, and
+/// a line printed once the key is read.
+const NATIVE_KEYBOARD: &str = "\
+context Game {
+  publish { Read }
+
+  port Keyboard {
+    fn pressed(): Int
+  }
+
+  adapter NativeKeyboard for Keyboard = {
+    fn pressed() = native read_key()
+  }
+
+  service Read(): Int {
+    calls { Keyboard }
+  } = Keyboard.pressed()
+}
+
+domain Arcade {
+  contexts { Game }
+  use { Read } from Game
+  calls { Console }
+} = {
+  let pressed = Read()
+
+  Console.print(\"Read a key\")
+}
+";
+
+/// The native function for `NativeKeyboard`, with an unused variable so that
+/// `-Wall` warns about it.
+const KEYS_C: &str = "\
+#include \"program.h\"
+
+void read_key(croft_int *out)
+{
+    int unused;
+    *out = 7;
+}
+";
+
 /// Whether a C compiler named `cc` is installed.
 fn has_c_compiler() -> bool {
     Command::new("cc")
@@ -298,5 +352,63 @@ fn checks_contexts_with_nothing_to_run_but_does_not_run_them() {
         errors(&ran)
     );
 
+    fs::remove_dir_all(folder).ok();
+}
+
+#[cfg(unix)]
+#[test]
+fn builds_optimised_with_warnings_as_errors_except_in_native_c() {
+    use std::os::unix::fs::PermissionsExt;
+
+    if !has_c_compiler() {
+        return;
+    }
+
+    let folder = project_with("native", NATIVE_KEYBOARD, Some(NATIVE_MANIFEST));
+    fs::write(folder.join("keys.c"), KEYS_C).unwrap();
+
+    // A compiler that writes each command it is given to a log, then runs `cc`.
+    let log = folder.join("commands.log");
+    let compiler = folder.join("logging_cc");
+    let script = format!(
+        "#!/bin/sh\necho \"$*\" >> '{}'\nexec cc \"$@\"\n",
+        log.display()
+    );
+    fs::write(&compiler, script).unwrap();
+    fs::set_permissions(&compiler, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let ran = Command::new(env!("CARGO_BIN_EXE_croft"))
+        .arg("run")
+        .arg(&folder)
+        .env("CC", &compiler)
+        .output()
+        .expect("croft runs");
+
+    assert!(ran.status.success(), "{}", errors(&ran));
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "Read a key\n");
+
+    // The warning in the native C is shown but doesn't stop the build.
+    assert!(errors(&ran).contains("unused"), "{}", errors(&ran));
+
+    let commands = fs::read_to_string(&log).unwrap();
+    let ours = commands
+        .lines()
+        .find(|line| line.contains("program.c"))
+        .expect("program.c is compiled");
+    let native = commands
+        .lines()
+        .find(|line| line.contains("keys.c"))
+        .expect("keys.c is compiled");
+
+    let flags = ["-std=c89", "-pedantic", "-Wall", "-Wextra", "-O2"];
+    let has = |line: &str, flag: &str| line.split(' ').any(|word| word == flag);
+
+    for flag in flags {
+        assert!(has(ours, flag), "{flag}: {ours}");
+        assert!(has(native, flag), "{flag}: {native}");
+    }
+
+    assert!(has(ours, "-Werror"), "{ours}");
+    assert!(!has(native, "-Werror"), "{native}");
     fs::remove_dir_all(folder).ok();
 }
