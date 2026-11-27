@@ -13,7 +13,9 @@ impl<'a> Generator<'a> {
     ///
     /// It is called as `name(items, length, order, room)`: `order` comes
     /// back holding each item's place, first to last, and `room` is as long
-    /// and only used while it works.
+    /// and only used while it works. `items` is only read, but is not a
+    /// `const` pointer: gcc warns that the items of an empty list passed as
+    /// one may be read before they are set.
     pub fn sort_order_for(&self, item: &Type) -> String {
         let c_type = self.c_type(item);
         let name = format!("croft_order_{}", c_type.trim_start_matches("croft_"));
@@ -42,7 +44,7 @@ impl<'a> Generator<'a> {
 
         for (name, c_type, comes_first) in self.sorts.borrow().iter() {
             let signature = format!(
-                "void {name}(const {c_type} *items, croft_u16 length, croft_u16 *order, croft_u16 *room)"
+                "void {name}({c_type} *items, croft_u16 length, croft_u16 *order, croft_u16 *room)"
             );
 
             prototypes.push(format!("{signature};"));

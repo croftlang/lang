@@ -273,7 +273,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         let each = format!("for ({index} = 0; {index} < {list}.length; {index}++)");
 
         let keys = if arguments.is_empty() {
-            format!("{list}.items")
+            format!("({} *) {list}.items", self.gen.c_type(item))
         } else {
             let keys = self.array_variable("keys", "croft_int", &capacity);
             let current = format!("{list}.items[{index}]");
