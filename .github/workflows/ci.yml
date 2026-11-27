@@ -36,5 +36,26 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      # Without the z88dk image, the z88dk tests skip themselves here; the
+      # z88dk job runs them.
       - name: Test
         run: cargo test --workspace
+
+  z88dk:
+    name: z88dk, where int has 16 bits
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      # The tests build the generated C with z88dk's zsdcc and run it in
+      # z88dk-ticks, so a whole number is worked out where int has 16 bits.
+      - name: Pull z88dk
+        run: docker pull z88dk/z88dk
+
+      - name: Test
+        run: cargo test -p croft_codegen --test z88dk
