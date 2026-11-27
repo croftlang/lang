@@ -117,6 +117,18 @@ pub fn built_in_doc(name: &str) -> Option<(&'static str, &'static str)> {
             "fn checked_multiply(a: Int, b: Int): Option<Int>",
             "`Some(a * b)`, or `None` when the answer doesn't fit in 32 bits.",
         ),
+        "from_code" => (
+            "fn from_code(code: Int): String",
+            "The one character whose code is `code`, from 0 to 255. Any other \
+             code is a mistake.",
+        ),
+        "from_hex" => (
+            "fn from_hex(text: String): Option<Int>",
+            "The whole number written in hexadecimal, in either case, with no \
+             prefix or sign: `from_hex(\"FF\")` is `Some(255)`. Eight digits \
+             give the 32 bits of an `Int`, so `\"FFFFFFFF\"` is -1. `None` \
+             for anything else, and past 32 bits.",
+        ),
         "Some" => (
             "fn Some(value: T): Option<T>",
             "An `Option` that holds the value.",

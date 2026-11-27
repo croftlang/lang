@@ -373,7 +373,8 @@ A set of built-ins a context imports before using, like any other context:
 `use { trim, split } from Std.Text`. `Std.Text` has `contains`,
 `starts_with`, `ends_with`, `index_of`, `to_upper`, `to_lower`, `trim`,
 `slice`, `split`, `lines`, `replace`, `repeat`, `pad_left`, `pad_right`,
-`to_int` and `to_bytes` for strings, `join` for a list of strings, and
+`code_at`, `to_int`, `to_decimal` and `to_bytes` for strings, `to_hex` for
+whole numbers, `from_code` and `from_hex`, `join` for a list of strings, and
 `to_text` for bytes. `Std.Numbers`
 has `Decimal`, `max`, `min`, `abs`, `clamp`, `pow`, `sign`, `checked_add`,
 `checked_subtract` and `checked_multiply`. `Std.Collections` has `Map`.

@@ -141,18 +141,25 @@ void croft_string_to_lower(croft_string_view text, char *out, croft_u16 *length,
     }
 }
 
-/* The text without the spaces at either end, still borrowed from text.
-   The view is kept before it is returned: zsdcc, z88dk's compiler, fails on
-   returning another function's struct straight away. */
+/* Whether a character is a space, a tab, a carriage return or a line feed. */
+static croft_bool croft_is_blank(char character)
+{
+    return character == ' ' || character == '\t' || character == '\r' || character == '\n';
+}
+
+/* The text without the spaces, tabs, carriage returns and line feeds at
+   either end, still borrowed from text. The view is kept before it is
+   returned: zsdcc, z88dk's compiler, fails on returning another function's
+   struct straight away. */
 croft_string_view croft_string_trimmed(croft_string_view text)
 {
     croft_int start = 0;
     croft_int end = text.length;
     croft_string_view trimmed;
-    while (start < end && text.text[start] == ' ') {
+    while (start < end && croft_is_blank(text.text[start])) {
         start++;
     }
-    while (end > start && text.text[end - 1] == ' ') {
+    while (end > start && croft_is_blank(text.text[end - 1])) {
         end--;
     }
     trimmed = croft_string_part(text, start, end);
@@ -306,6 +313,88 @@ void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u1
         out[*length] = digits[count];
         (*length)++;
     }
+}
+
+/* The code of the character at index, from 0 to 255, or 0 when there is no
+   character there. */
+croft_bool croft_string_code_at(croft_string_view text, croft_int index, croft_int *out)
+{
+    if (index < 0 || index >= (croft_int) text.length) {
+        return 0;
+    }
+    *out = (croft_int) (unsigned char) text.text[index];
+    return 1;
+}
+
+/* The one character whose code is code. With checks on, a code that isn't
+   from 0 to 255 stops the program; with them off, its lowest 8 bits are
+   the code. */
+void croft_string_from_code(croft_int code, char *out, croft_u16 *length, croft_u16 capacity)
+{
+    CROFT_CHECK(code >= 0 && code <= 255, "a character code is from 0 to 255");
+    *length = 0;
+    if (capacity > 0) {
+        out[0] = (char) (unsigned char) ((unsigned long) code & 0xFFUL);
+        *length = 1;
+    }
+}
+
+/* The 32 bits of value in hexadecimal, in capitals with no leading zeros,
+   so a number below zero gives its two's complement: -1 is FFFFFFFF. */
+void croft_int_to_hex(croft_int value, char *out, croft_u16 *length, croft_u16 capacity)
+{
+    char digits[8];
+    int count = 0;
+    unsigned long remaining = (unsigned long) value & 0xFFFFFFFFUL;
+    do {
+        digits[count] = "0123456789ABCDEF"[remaining % 16];
+        remaining /= 16;
+        count++;
+    } while (remaining > 0);
+    *length = 0;
+    while (count > 0 && *length < capacity) {
+        count--;
+        out[*length] = digits[count];
+        (*length)++;
+    }
+}
+
+/* The value of one hexadecimal digit, in either case, or -1 for any other
+   character. */
+static int croft_hex_digit(char character)
+{
+    if (character >= '0' && character <= '9') {
+        return character - '0';
+    }
+    if (character >= 'A' && character <= 'F') {
+        return character - 'A' + 10;
+    }
+    if (character >= 'a' && character <= 'f') {
+        return character - 'a' + 10;
+    }
+    return -1;
+}
+
+/* A whole number written in hexadecimal, with no prefix or sign, read as
+   the 32 bits of an Int, so FFFFFFFF is -1. Text that isn't one, or needs
+   more than 32 bits, gives 0. */
+croft_bool croft_string_from_hex(croft_string_view text, croft_int *out)
+{
+    unsigned long value = 0;
+    int digit;
+    croft_u16 index;
+    if (text.length == 0) {
+        return 0;
+    }
+    for (index = 0; index < text.length; index++) {
+        digit = croft_hex_digit(text.text[index]);
+        if (digit < 0 || value > 0x0FFFFFFFUL) {
+            return 0;
+        }
+        value = value * 16 + (unsigned long) digit;
+    }
+    *out = croft_int_from_bits(value);
+    return 1;
 }
 
 croft_bool croft_string_to_int(croft_string_view text, croft_int *out)

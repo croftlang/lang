@@ -1,5 +1,5 @@
-//! Built-in functions: the numbers of `Std.Numbers`, `Some`, `Ok`, `Err`,
-//! `Range` and `Length`.
+//! Built-in functions: the numbers of `Std.Numbers`, `from_code` and
+//! `from_hex` of `Std.Text`, `Some`, `Ok`, `Err`, `Range` and `Length`.
 
 use croft_analysis::Type;
 use croft_syntax::ast::{Argument, ExprKind};
@@ -66,6 +66,30 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                 self.line(format!(
                     "{temp}.some = croft_int_{name}({a}, {b}, &{temp}.value);"
+                ));
+
+                temp
+            }
+            "from_code" => {
+                let code = value(self, 0, &Type::Int);
+                let temp = self.temp(&self.gen.text_type(1));
+
+                self.line(format!(
+                    "croft_string_from_code({code}, CROFT_OUT({temp}));"
+                ));
+
+                temp
+            }
+            "from_hex" => {
+                let text = match arguments.first() {
+                    Some(argument) => self.view(&argument.value),
+                    None => "croft_string_view_from(\"\", 0)".to_string(),
+                };
+
+                let temp = self.place_for(ty, into);
+
+                self.line(format!(
+                    "{temp}.some = croft_string_from_hex({text}, &{temp}.value);"
                 ));
 
                 temp

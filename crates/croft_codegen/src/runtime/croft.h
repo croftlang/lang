@@ -140,6 +140,10 @@ void croft_string_pad(croft_string_view text, croft_int width, croft_string_view
 croft_string_view croft_string_line(croft_string_view text, croft_u16 *at);
 int croft_string_compare(croft_string_view a, croft_string_view b);
 void croft_int_to_string(croft_int value, char *out, croft_u16 *length, croft_u16 capacity);
+croft_bool croft_string_code_at(croft_string_view text, croft_int index, croft_int *out);
+void croft_string_from_code(croft_int code, char *out, croft_u16 *length, croft_u16 capacity);
+void croft_int_to_hex(croft_int value, char *out, croft_u16 *length, croft_u16 capacity);
+croft_bool croft_string_from_hex(croft_string_view text, croft_int *out);
 
 /* Arithmetic that may go past 32 bits, or divide by zero. With checks on
    either stops the program; with them off the answer wraps around in 32
@@ -176,6 +180,7 @@ croft_int croft_divide_even(croft_int numerator, croft_int denominator);
 croft_int croft_decimal_multiply(croft_int a, croft_int b, croft_int scale);
 croft_int croft_decimal_divide(croft_int a, croft_int b, croft_int scale);
 void croft_decimal_to_string(croft_int value, croft_int places, char *out, croft_u16 *length, croft_u16 capacity);
+croft_bool croft_string_to_decimal(croft_string_view text, croft_int places, croft_int *out);
 
 croft_bytes_view croft_bytes_view_from(const unsigned char *items, croft_u16 length);
 croft_bool croft_bytes_copy(croft_bytes_view bytes, unsigned char *out, croft_u16 *length, croft_u16 capacity);

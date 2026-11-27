@@ -12,6 +12,9 @@ use crate::names::c_name;
 /// The most characters a whole number takes as text: `-2147483648`.
 const INT_DIGITS: i64 = 11;
 
+/// The most characters a whole number takes in hexadecimal: its 32 bits.
+const HEX_DIGITS: i64 = 8;
+
 impl<'g, 'a> Writer<'g, 'a> {
     /// `receiver.name(arguments)`, chosen by the type of `receiver`.
     pub fn method(
@@ -67,6 +70,13 @@ impl<'g, 'a> Writer<'g, 'a> {
                 let digits = self.gen.text_type(INT_DIGITS);
                 let temp = self.temp(&digits);
                 self.line(format!("croft_int_to_string({number}, CROFT_OUT({temp}));"));
+                temp
+            }
+            Type::Int if name == "to_hex" => {
+                let number = self.value(receiver, &Type::Int);
+                let digits = self.gen.text_type(HEX_DIGITS);
+                let temp = self.temp(&digits);
+                self.line(format!("croft_int_to_hex({number}, CROFT_OUT({temp}));"));
                 temp
             }
             Type::List(_) => {

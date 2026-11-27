@@ -30,7 +30,9 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
                 "slice",
                 "split",
                 "to_int",
+                "to_decimal",
                 "to_bytes",
+                "code_at",
                 "index_of",
                 "replace",
                 "lines",
@@ -95,7 +97,8 @@ pub fn built_in_members(ty: &Type) -> Vec<(&'static str, MemberKind)> {
             members.extend(methods(&["map", "map_err", "unwrap_or"]));
             members
         }
-        Type::Int | Type::Float => methods(&["to_string"]),
+        Type::Int => methods(&["to_string", "to_hex"]),
+        Type::Float => methods(&["to_string"]),
         Type::Decimal(_) => methods(&["to_string", "round"]),
         Type::Named(named) if named.kind == SymbolKind::Event => fields(&["source"]),
         _ => Vec::new(),

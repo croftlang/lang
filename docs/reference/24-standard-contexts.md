@@ -5,7 +5,7 @@ Two standard contexts need no import: Std.Console, with the `Console`, `Argument
 ```croft
 context Notes
 
-use { trim, split, to_upper, to_bytes, to_text, replace, join } from Std.Text
+use { trim, split, to_upper, to_bytes, to_text, replace, join, code_at, from_code, to_hex, from_hex, to_decimal } from Std.Text
 use { Decimal, max, min, abs, clamp, pow, sign, checked_add } from Std.Numbers
 use { Files, FileError } from Std.Files
 
@@ -18,7 +18,8 @@ Process.exit(1)   // stops the program with an exit code from 0 to 255
 
 // Std.Text: strings, and text to and from bytes
 name.contains("Sir")   name.starts_with("Sir")   name.ends_with("!")
-name.to_upper()   name.to_lower()   name.trim()
+name.to_upper()   name.to_lower()
+name.trim()   // without the spaces, tabs, "\r" and "\n" at either end
 name.slice(0, 3)   line.split(",")
 text.to_int()   // Option<Int>: digits with an optional "-", None past Int's range
 name.index_of("Sir")   // Option<Int>
@@ -27,6 +28,11 @@ html.replace("&", "&amp;")   "-".repeat(8)
 score.to_string().pad_left(5, "0")   name.pad_right(10, " ")
 names.join(", ")   // a List<String>
 "DN".to_bytes()   data.to_text()
+name.code_at(0)   // Option<Int>: the character's code from 0 to 255, None past the end
+from_code(65)   // "A"; a code that isn't from 0 to 255 is a mistake
+255.to_hex()   // "FF": capitals, no prefix; (-1).to_hex() is "FFFFFFFF", its 32 bits
+from_hex("ff")   // Some(255): either case, no prefix or sign, None past 32 bits
+let price: Option<Decimal<2>> = "12.5".to_decimal()   // Some(12.50): the places come from where it goes
 
 // Std.Numbers
 max(a, b)   min(a, b)   abs(n)   Decimal<2>
