@@ -73,8 +73,8 @@
 [
   "context"
   "domain"
-  "publish"
-  "use"
+  "export"
+  "import"
   "from"
   "as"
   "value"
