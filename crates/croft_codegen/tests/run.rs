@@ -1200,6 +1200,54 @@ fn runs_more_list_methods() {
     run_program("more_lists");
 }
 
+/// sort and sort_by on lists of 500 numbers, strings and values, with
+/// items that share a key kept in the order they came.
+#[test]
+fn sorts_long_lists_in_a_stable_order() {
+    run_program("sorting");
+}
+
+/// Sorting calls one merge sort function for each C item type, shared by
+/// every list of those items, and copies each item once: no item is moved
+/// along a list one place at a time.
+#[test]
+fn sorts_with_one_merge_sort_function_for_each_item_type() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/sorting");
+    let output = generate(&source, "test", "sorting_c");
+    let c = fs::read_to_string(output.join("program.c")).expect("program.c");
+
+    for name in [
+        "croft_order_int",
+        "croft_order_double",
+        "croft_order_string",
+    ] {
+        let definition = format!("void {name}(");
+        assert_eq!(c.matches(&definition).count(), 1, "{name}: {c}");
+    }
+
+    let start = c.find("void Sorting_by_key(").expect("by_key");
+    let body = &c[start..start + c[start..].find("\n}\n").expect("its end")];
+
+    assert!(body.contains("croft_order_int(keys, "), "{body}");
+    assert!(!body.contains("while"), "{body}");
+    assert!(!c.contains("held"), "{c}");
+
+    fs::remove_dir_all(output).ok();
+}
+
+/// `croft size` counts the arrays a sort keeps in its function's frame:
+/// two of item places and, for `sort_by`, one of keys, each as long as the
+/// list. `by_key` sorts a list of 500 three-byte entries, so its frame holds
+/// the list, an index, 2000 bytes of places and 2000 of keys.
+#[test]
+fn counts_the_arrays_a_sort_takes_in_the_frame() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/sorting");
+    let program = support::check_program(&source);
+    let report = croft_codegen::size_report(&program, "test").expect("a report");
+
+    assert!(report.contains("    5504  Sorting_by_key\n"), "{report}");
+}
+
 /// is_ok, is_err, map, map_err and unwrap_or on results.
 #[test]
 fn runs_result_methods() {

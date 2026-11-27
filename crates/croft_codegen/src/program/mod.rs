@@ -33,6 +33,8 @@ mod runtime;
 mod serialize;
 /// Parameters and C signatures.
 mod signature;
+/// Sort functions.
+mod sorting;
 
 use crate::{GeneratedFile, Generator};
 
@@ -66,6 +68,7 @@ impl<'a> Generator<'a> {
         let error_names = self.error_names(&mut prototypes);
         let event_definition = self.event_definition();
         let equalities = self.equality_functions(&mut prototypes);
+        let sorts = self.sort_functions(&mut prototypes);
         let (check_prototypes, checks) = self.check_functions();
         let types = self.type_definitions();
         let natives = self.native_prototypes();
@@ -82,7 +85,7 @@ impl<'a> Generator<'a> {
         );
 
         let source = format!(
-            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{checks}{equalities}{functions}{commands}{events}{storage}{adapters}{serializers}{repositories}{error_names}{main}"
+            "{banner}#include \"program.h\"\n\n{globals}\n{adapter_state}{init}{checks}{equalities}{sorts}{functions}{commands}{events}{storage}{adapters}{serializers}{repositories}{error_names}{main}"
         );
 
         let runtime_header = RUNTIME_HEADER

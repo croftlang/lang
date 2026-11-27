@@ -1,0 +1,5 @@
+[package]
+name = "sorting"
+
+[target.test]
+main = "Check"
