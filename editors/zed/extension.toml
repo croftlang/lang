@@ -11,7 +11,7 @@ repository = "https://github.com/croftlang/lang"
 # contains it. For local work, see editors/zed/README.md.
 [grammars.croft]
 repository = "https://github.com/croftlang/lang"
-rev = "fbdcc05e10dd7a46ae45a5b1dbbfc61d0bc55f48"
+rev = "b060a30803022cda1da89c62f41cf0d2cf7c2007"
 path = "editors/tree-sitter-croft"
 
 # `croft lsp`, from the `croft` command on your PATH: errors as you type,
