@@ -1,8 +1,10 @@
 //! Blocks and their statements: `let`, `set`, guards, loops and `break`.
 
-use croft_syntax::ast::{Expr, ExprKind, Identifier, Statement, TypeExpr};
+use croft_syntax::ast::{ConstraintUse, Expr, ExprKind, Identifier, Statement, TypeExpr};
 
+use super::let_constraints::only_adds_to;
 use super::{BodyChecker, BodyKind};
+use crate::check::known::Known;
 use crate::types::Type;
 
 impl<'c, 'a> BodyChecker<'c, 'a> {
@@ -17,7 +19,15 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
                 let is_last = index + 1 == statements.len();
 
                 result = match statement {
-                    Statement::Let(name, ty, value) => body.check_let(name, ty.as_ref(), value),
+                    Statement::Let {
+                        name,
+                        ty,
+                        constraints,
+                        value,
+                    } => {
+                        let rest = &statements[index + 1..];
+                        body.check_let(name, ty.as_ref(), constraints, value, rest)
+                    }
                     Statement::Set(name, value) => body.check_set(name, value),
                     Statement::Expr(value) => body.check_line(value, is_last, expected),
                 };
@@ -27,13 +37,16 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         })
     }
 
-    /// `let`: names a value, with the type written or the value's own. Only a
-    /// service's `let` can be changed with `set`.
+    /// `let`: names a value, with the type written or the value's own, and
+    /// the constraints it must keep. Only a service's `let` can be changed
+    /// with `set`; `rest` is the block after it, where those `set`s are.
     pub(super) fn check_let(
         &mut self,
         name: &Identifier,
         written: Option<&TypeExpr>,
+        constraints: &[ConstraintUse],
         value: &Expr,
+        rest: &[Statement],
     ) -> Type {
         if self.local(&name.name).is_some() {
             self.error(
@@ -57,21 +70,39 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         };
 
         let settable = matches!(self.kind, BodyKind::Service);
-        self.bind(&name.name, ty, settable, Some(name.span));
-
-        // A service's `let` can be changed with `set`, so its value is only
-        // known when nothing in the body changes it.
-        if settable && self.changed.contains(&name.name) {
-            return Type::Unit;
-        }
-
+        let changed = settable && self.changed.contains(&name.name);
         let known = self.known_local_value(value);
 
-        if let Some(local) = self
+        self.check_let_constraints(name, &ty, constraints, value, known.as_ref());
+
+        if changed {
+            self.require_length(name, written, &ty, constraints);
+        }
+
+        let grows_from = (changed && only_adds_to(rest, &name.name))
+            .then(|| known.as_ref().and_then(Known::length))
+            .flatten()
+            .and_then(|length| match length {
+                Known::Number { units, .. } => Some(units),
+                _ => None,
+            });
+
+        self.bind(&name.name, ty, settable, Some(name.span));
+
+        let Some(local) = self
             .locals
             .last_mut()
             .and_then(|scope| scope.get_mut(&name.name))
-        {
+        else {
+            return Type::Unit;
+        };
+
+        local.constraints = constraints.to_vec();
+        local.grows_from = grows_from;
+
+        // A service's `let` can be changed with `set`, so its value is only
+        // known when nothing in the body changes it.
+        if !changed {
             local.known = known;
         }
 
@@ -105,6 +136,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         match target {
             Some(ty) => {
                 self.expect(value, &ty);
+                self.check_set_constraints(name, value);
             }
             None => {
                 self.error(

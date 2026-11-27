@@ -12,6 +12,7 @@ mod failing_constraints;
 mod files;
 mod functions;
 mod known_constraints;
+mod let_constraints;
 mod manifest;
 mod references;
 mod standard;

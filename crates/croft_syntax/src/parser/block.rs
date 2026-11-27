@@ -29,7 +29,7 @@ impl Parser {
         Ok(self.make_expr(ExprKind::Block(statements), span))
     }
 
-    /// A `let`, a `set`, or an expression.
+    /// A `let`, with an optional type and `where` clause, a `set`, or an expression.
     fn parse_statement(&mut self) -> ParseResult<Statement> {
         let keyword = self.peek().kind.clone();
 
@@ -50,12 +50,23 @@ impl Parser {
             None
         };
 
+        let constraints = if is_let {
+            self.parse_constraints()?
+        } else {
+            Vec::new()
+        };
+
         self.expect(&TokenKind::Equal)?;
 
         let value = self.parse_expression()?;
 
         if is_let {
-            Ok(Statement::Let(name, ty, value))
+            Ok(Statement::Let {
+                name,
+                ty,
+                constraints,
+                value,
+            })
         } else {
             Ok(Statement::Set(name, value))
         }

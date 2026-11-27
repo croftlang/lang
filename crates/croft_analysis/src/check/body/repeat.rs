@@ -32,6 +32,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             body.loops += 1;
             body.block(statements, None);
             body.loops -= 1;
+
+            if let Some(counter) = counter {
+                body.check_loop_growth(counter, statements);
+            }
         });
 
         Type::Unit

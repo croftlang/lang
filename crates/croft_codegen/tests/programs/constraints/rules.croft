@@ -29,8 +29,10 @@ context Clinic {
         from != to
     } = to
 
-    // Its constraint is in the contract, which checks the same as writing it inline.
-    fn count(numbers: List<Int>): Int {
+    // Its constraint is in the contract, which checks the same as writing it
+    // inline. Its Length gives every list of whole numbers room for eight, so
+    // the three of `doses` below is what stops that list, not a full list.
+    fn count(numbers: List<Int> where Length(0, 8)): Int {
         numbers where each Even
     } = numbers.length
 
@@ -64,6 +66,14 @@ context Clinic {
         }
         if chosen.contains("join") {
             let joined = "a sentence of twenty " + "and another of twenty"
+        }
+        if chosen.contains("let") {
+            let doses: List<Int> where Length(0, 3) = []
+            loop (let dose where Range(1, 5)) {
+                if dose <= chosen.length * 5 {
+                    set doses = doses.add(dose)
+                }
+            }
         }
         if chosen.contains("shift") {
             let shifted = 1 << chosen.length * 40

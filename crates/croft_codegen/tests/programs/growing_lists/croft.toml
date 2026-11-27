@@ -1,0 +1,5 @@
+[package]
+name = "growing_lists"
+
+[target.test]
+main = "Check"

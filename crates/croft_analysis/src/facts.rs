@@ -55,6 +55,9 @@ pub struct Facts {
     /// Each built-in type, function or constraint named, such as the `Int`
     /// and the `Range` in `Int where Range(1, 9)`, for editors.
     pub builtins: Vec<BuiltinName>,
+    /// The name and type of each `let` with a `Length`, and the most that
+    /// `Length` allows, which sizes lists, maps and strings as a field's does.
+    pub let_lengths: Vec<(String, Type, i64)>,
 }
 
 /// A built-in type, function or constraint, where it is named.

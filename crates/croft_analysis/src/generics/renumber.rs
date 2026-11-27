@@ -76,9 +76,22 @@ pub fn renumber(
         ExprKind::Block(statements) => {
             for statement in statements {
                 match statement {
-                    Statement::Let(_, ty, value) => {
+                    Statement::Let {
+                        ty,
+                        constraints,
+                        value,
+                        ..
+                    } => {
                         if let Some(ty) = ty {
                             types(ty);
+                        }
+
+                        for constraint in constraints {
+                            constraint.arguments.iter_mut().for_each(&mut each);
+
+                            if let Some(error) = &mut constraint.error {
+                                each(error);
+                            }
                         }
 
                         each(value);

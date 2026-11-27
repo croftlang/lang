@@ -273,7 +273,7 @@ pub(super) fn changed_names(statements: &[Statement], changed: &mut HashSet<Stri
                 changed.insert(name.name.clone());
                 changed_in(value, changed);
             }
-            Statement::Let(_, _, value) | Statement::Expr(value) => changed_in(value, changed),
+            Statement::Let { value, .. } | Statement::Expr(value) => changed_in(value, changed),
         }
     }
 }

@@ -66,6 +66,7 @@ mod usage;
 use std::collections::{HashMap, HashSet};
 
 use croft_analysis::Type;
+use croft_syntax::ast::ConstraintUse;
 
 use crate::Generator;
 
@@ -129,6 +130,9 @@ pub struct Writer<'g, 'a> {
     /// C names holding a whole number whose values are known, such as a
     /// parameter with a `Range` or a `let` of a sum of two of them.
     pub(crate) ranges: HashMap<String, range::Span>,
+    /// The constraints each `let` name in the body wrote, checked on its
+    /// first value and on each value `set` gives it.
+    let_constraints: HashMap<String, Vec<ConstraintUse>>,
 }
 
 impl<'g, 'a> Writer<'g, 'a> {
@@ -156,6 +160,7 @@ impl<'g, 'a> Writer<'g, 'a> {
             handed: Vec::new(),
             free: Vec::new(),
             ranges: HashMap::new(),
+            let_constraints: HashMap::new(),
         }
     }
 }

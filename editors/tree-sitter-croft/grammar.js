@@ -465,10 +465,12 @@ module.exports = grammar({
 
     _statement: $ => choice($.let_statement, $.set_statement, $._expression),
 
+    // `let items: List<Int> where Length(0, 200) = []`
     let_statement: $ => prec.right(seq(
       'let',
       field('name', $._name),
       optional(seq(':', field('type', $.type))),
+      optional(field('constraints', $.where_clause)),
       '=',
       field('value', $._expression),
     )),

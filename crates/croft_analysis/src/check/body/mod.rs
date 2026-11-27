@@ -18,6 +18,7 @@ mod field;
 mod generic_call;
 mod issue;
 mod known_constraints;
+mod let_constraints;
 mod list;
 mod map;
 mod method;
@@ -70,6 +71,13 @@ pub(super) struct Local {
     /// Its value, when that is known when the program is compiled and nothing
     /// can change it, so constraints on where it goes can be worked out.
     pub(super) known: Option<crate::check::known::Known>,
+    /// The constraints a `let` name must keep, `where Length(0, 200)`, checked
+    /// on each value `set` gives it.
+    pub(super) constraints: Vec<croft_syntax::ast::ConstraintUse>,
+    /// How many items a service's list starts with, when that is known and
+    /// every `set` of it only adds to it, so a loop that adds more than its
+    /// `Length` allows can be found.
+    pub(super) grows_from: Option<i128>,
 }
 
 /// Checks one body: the type of each expression, and what its kind may do.
@@ -133,6 +141,8 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             settable,
             defined,
             known: None,
+            constraints: Vec::new(),
+            grows_from: None,
         };
 
         scope.insert(name.to_string(), local);

@@ -173,3 +173,57 @@ fn message(error: GameError): String = match error {
               (field_value
                 (field_identifier)
                 (integer)))))))))
+
+================================================================================
+Constraints on a `let` end before its `=`
+================================================================================
+
+context A
+service S(): Int = {
+    let items: List<Int> where Length(0, 200), each Positive = []
+    let left where Range(0, 9) = 3
+    items.length
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (context_declaration
+    (type_identifier)
+    (function_declaration
+      (identifier)
+      (parameters)
+      (type
+        (type_identifier))
+      (block
+        (let_statement
+          (identifier)
+          (type
+            (type_identifier)
+            (type_arguments
+              (type
+                (type_identifier))))
+          (where_clause
+            (constraint_use
+              (path
+                (identifier))
+              (arguments
+                (integer)
+                (integer)))
+            (constraint_use
+              (path
+                (identifier))))
+          (list_expression))
+        (let_statement
+          (identifier)
+          (where_clause
+            (constraint_use
+              (path
+                (identifier))
+              (arguments
+                (integer)
+                (integer))))
+          (integer))
+        (field_expression
+          (identifier)
+          (field_identifier))))))

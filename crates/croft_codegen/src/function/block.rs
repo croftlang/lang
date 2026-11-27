@@ -29,10 +29,20 @@ impl<'g, 'a> Writer<'g, 'a> {
             let is_last = index + 1 == statements.len();
 
             match statement {
-                Statement::Let(name, _, value) => {
+                Statement::Let {
+                    name,
+                    constraints,
+                    value,
+                    ..
+                } => {
                     let ty = self.gen.facts.kept_as(value.id).clone();
 
-                    if !usage::statements_use(&statements[index + 1..], &name.name) {
+                    self.let_constraints
+                        .insert(name.name.clone(), constraints.clone());
+
+                    if constraints.is_empty()
+                        && !usage::statements_use(&statements[index + 1..], &name.name)
+                    {
                         // Never read: work it out for its effects, with no variable.
                         self.eval(value, None);
                         continue;
@@ -56,6 +66,7 @@ impl<'g, 'a> Writer<'g, 'a> {
                         self.line(format!("{variable} = {c};"));
                         self.note_range(&variable, range);
                         self.bind(&name.name, variable, ty);
+                        self.check_let(&name.name);
                         continue;
                     }
 
@@ -78,12 +89,14 @@ impl<'g, 'a> Writer<'g, 'a> {
 
                     if fresh {
                         self.bind(&name.name, c, ty);
+                        self.check_let(&name.name);
                         continue;
                     }
 
                     let variable = self.variable(&format!("v_{}", name.name), &ty);
                     self.line(format!("{variable} = {c};"));
                     self.bind(&name.name, variable, ty);
+                    self.check_let(&name.name);
                 }
                 Statement::Set(name, value) => {
                     let (target, ty) = self.set_target(&name.name);
@@ -115,7 +128,10 @@ impl<'g, 'a> Writer<'g, 'a> {
                         Some((prefix, owner)) => {
                             self.write_field(owner.as_ref(), &prefix, &name.name, &c)
                         }
-                        None => self.line(format!("{target} = {c};")),
+                        None => {
+                            self.line(format!("{target} = {c};"));
+                            self.check_let(&name.name);
+                        }
                     }
                 }
                 Statement::Expr(value) => match &value.kind {
@@ -146,6 +162,22 @@ impl<'g, 'a> Writer<'g, 'a> {
         }
 
         result
+    }
+
+    /// Checks a `let` name against the constraints its `let` wrote, once it
+    /// has its first value and after each `set`, when checks are on.
+    fn check_let(&mut self, name: &str) {
+        let Some(constraints) = self.let_constraints.get(name).cloned() else {
+            return;
+        };
+
+        let Some((value, ty)) = self.lookup(name) else {
+            return;
+        };
+
+        for constraint in &constraints {
+            self.check_constraint(&value, &ty, constraint, &format!("let {name}"));
+        }
     }
 
     /// What `set name` changes: an own field, or a service's `let` name.
