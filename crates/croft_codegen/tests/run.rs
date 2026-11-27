@@ -217,6 +217,87 @@ fn makes_folders_and_copies_files() {
     fs::remove_dir_all(output).ok();
 }
 
+/// StdioFiles never cuts a path short: one longer than it can pass on, or
+/// with a NUL byte in it, is not there and can't be written, even when the
+/// file it would be cut to is. An argument longer than a string, or more
+/// arguments than a list holds, stop the program.
+#[test]
+fn fails_instead_of_cutting_paths_and_arguments_short() {
+    if !has_c_compiler() {
+        return;
+    }
+
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/paths");
+    let output = generate(&source, "test", "paths");
+
+    let built = compile(
+        &output,
+        &[
+            "croft_runtime.c",
+            "croft_files.c",
+            "program.c",
+            "-o",
+            "program",
+        ],
+    );
+
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+
+    let cut = "a".repeat(255);
+    fs::write(output.join("a"), "kept").expect("a file");
+    fs::write(output.join(&cut), "kept").expect("a file");
+
+    let run = |arguments: &[String]| {
+        std::process::Command::new(output.join("program"))
+            .args(arguments)
+            .current_dir(&output)
+            .output()
+            .expect("it runs")
+    };
+
+    let fits = run(&["b".repeat(20)]);
+    assert_eq!(String::from_utf8_lossy(&fits.stdout), "written\n");
+    assert_eq!(fits.status.code(), Some(0));
+
+    let with_nul = run(&[]);
+    assert_eq!(
+        String::from_utf8_lossy(&with_nul.stdout),
+        "Std.Files.Unreadable\n"
+    );
+    assert_eq!(with_nul.status.code(), Some(1));
+
+    let too_long = run(&["a".repeat(300)]);
+    assert_eq!(
+        String::from_utf8_lossy(&too_long.stdout),
+        "Std.Files.Unreadable\n"
+    );
+    assert_eq!(too_long.status.code(), Some(1));
+
+    assert_eq!(fs::read_to_string(output.join("a")).unwrap(), "kept");
+    assert_eq!(fs::read_to_string(output.join(&cut)).unwrap(), "kept");
+
+    let long_argument = run(&["c".repeat(301)]);
+    assert_eq!(
+        String::from_utf8_lossy(&long_argument.stdout),
+        "an argument is longer than a string can hold\n"
+    );
+    assert_eq!(long_argument.status.code(), Some(1));
+
+    let many: Vec<String> = (0..17).map(|index| format!("{index}.txt")).collect();
+    let too_many = run(&many);
+    assert_eq!(
+        String::from_utf8_lossy(&too_many.stdout),
+        "there are more arguments than a list can hold\n"
+    );
+    assert_eq!(too_many.status.code(), Some(1));
+
+    fs::remove_dir_all(output).ok();
+}
+
 /// A shelf saved through FileStorage comes back the same, a missing one is
 /// `NotFound`, and a damaged file is `StorageDamaged`.
 #[test]

@@ -16,7 +16,9 @@ context Console {
     // The words the program was run with, after its own name.
     port Arguments {
         // Each of them, in order. Targets without a command line, such as
-        // the ZX Spectrum, give an empty list.
+        // the ZX Spectrum, give an empty list. None is ever cut short: with
+        // checks on, an argument longer than a string, or more arguments
+        // than the list holds, stops the program.
         fn all(): List<String>
     }
 }

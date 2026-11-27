@@ -21,15 +21,25 @@
 /* The longest path fopen is given. */
 #define CROFT_PATH_CAPACITY 255
 
-/* A Croft string as a C string, for fopen. A longer path is cut short. */
-static void to_path(croft_string_view path, char *out)
+/* A Croft string as a C string, for fopen. Gives 0 for a path longer than
+   CROFT_PATH_CAPACITY, or with a NUL byte in it, which would end it early,
+   so a path is never cut short into the name of another file. */
+static croft_bool to_path(croft_string_view path, char *out)
 {
     croft_u16 index;
-    croft_u16 length = path.length < CROFT_PATH_CAPACITY ? path.length : CROFT_PATH_CAPACITY;
-    for (index = 0; index < length; index++) {
+    out[0] = '\0';
+    if (path.length > CROFT_PATH_CAPACITY) {
+        return 0;
+    }
+    for (index = 0; index < path.length; index++) {
+        if (path.text[index] == '\0') {
+            out[0] = '\0';
+            return 0;
+        }
         out[index] = path.text[index];
     }
-    out[length] = '\0';
+    out[path.length] = '\0';
+    return 1;
 }
 
 static void fail(croft_error *error, croft_u16 code)
@@ -43,7 +53,10 @@ void croft_files_read(croft_string_view path, croft_result_bytes_error *out)
     char name[CROFT_PATH_CAPACITY + 1];
     FILE *file;
     croft_clear(out, sizeof *out);
-    to_path(path, name);
+    if (!to_path(path, name)) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
     file = fopen(name, "rb");
     if (file == 0) {
         fail(&out->error, CROFT_ERROR_Std_Files_NotFound);
@@ -67,7 +80,10 @@ static void put(croft_string_view path, const croft_bytes *data, const char *mod
     FILE *file;
     size_t written;
     croft_clear(out, sizeof *out);
-    to_path(path, name);
+    if (!to_path(path, name)) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
     file = fopen(name, mode);
     if (file == 0) {
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
@@ -95,7 +111,10 @@ void croft_files_exists(croft_string_view path, croft_bool *out)
 {
     char name[CROFT_PATH_CAPACITY + 1];
     FILE *file;
-    to_path(path, name);
+    if (!to_path(path, name)) {
+        *out = 0;
+        return;
+    }
     file = fopen(name, "rb");
     *out = file != 0;
     if (file != 0) {
@@ -108,12 +127,15 @@ void croft_files_remove(croft_string_view path, croft_result_unit_error *out)
     char name[CROFT_PATH_CAPACITY + 1];
     croft_bool exists;
     croft_clear(out, sizeof *out);
+    if (!to_path(path, name)) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
     croft_files_exists(path, &exists);
     if (!exists) {
         fail(&out->error, CROFT_ERROR_Std_Files_NotFound);
         return;
     }
-    to_path(path, name);
     if (remove(name) != 0) {
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
         return;
@@ -133,14 +155,16 @@ void croft_files_copy(croft_string_view from, croft_string_view to, croft_result
     size_t count;
     croft_bool written = 1;
     croft_clear(out, sizeof *out);
-    to_path(from, name);
+    if (!to_path(from, name)) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
     source = fopen(name, "rb");
     if (source == 0) {
         fail(&out->error, CROFT_ERROR_Std_Files_NotFound);
         return;
     }
-    to_path(to, name);
-    copy = fopen(name, "wb");
+    copy = to_path(to, name) ? fopen(name, "wb") : 0;
     if (copy == 0) {
         fclose(source);
         fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
@@ -182,7 +206,10 @@ void croft_files_make_folder(croft_string_view path, croft_result_unit_error *ou
     size_t length;
     char kept;
     croft_clear(out, sizeof *out);
-    to_path(path, name);
+    if (!to_path(path, name)) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
     length = strlen(name);
     for (at = 1; at <= length; at++) {
         if (name[at] != '/' && name[at] != '\0') {
@@ -245,7 +272,10 @@ void croft_files_list(croft_string_view folder, croft_result_list_string_error *
     DIR *dir;
     struct dirent *entry;
     croft_clear(out, sizeof *out);
-    to_path(folder, name);
+    if (!to_path(folder, name)) {
+        fail(&out->error, CROFT_ERROR_Std_Files_Unreadable);
+        return;
+    }
     dir = opendir(name);
     if (dir == 0) {
         fail(&out->error, CROFT_ERROR_Std_Files_NotFound);

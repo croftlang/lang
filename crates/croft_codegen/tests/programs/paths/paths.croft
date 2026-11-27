@@ -1,0 +1,30 @@
+// Looks for and writes to the path named on the command line, or to a path
+// with a NUL byte in it when there is none, through Std.Files and StdioFiles.
+context Paths {
+    publish { Write, Path }
+
+    use { Files, FileError } from Std.Files
+    use { to_bytes, to_text } from Std.Text
+
+    // Room for a path longer than StdioFiles can pass on.
+    value Path {
+        text: String where Length(1, 300)
+    }
+
+    service Write(): Result<Unit, FileError> {
+        calls { Files, Console, Arguments }
+    } = {
+        let nul: Bytes = [0x61, 0, 0x62]
+        let path = Arguments.all().first.unwrap_or(nul.to_text())
+        if Files.exists(path) {
+            Console.print("there")
+        }
+        Files.write(path, "x".to_bytes())?
+        Console.print("written")
+    }
+}
+
+domain Program {
+    contexts { Paths }
+    use { Write } from Paths
+} = Write()?
