@@ -55,7 +55,7 @@ croft run hello.croft
 
 ## Reference
 
-See [docs/reference](./docs/reference) for the language, the `croft` command
+See [croftlang.com/learn](https://croftlang.com/learn) for the language, the `croft` command
 and `croft.toml`, and [editors](./editors) for VS Code and Zed.
 
 ## Contributing
