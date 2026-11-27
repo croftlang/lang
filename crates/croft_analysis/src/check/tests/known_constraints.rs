@@ -474,3 +474,59 @@ fn a_field_constraint_reads_only_constants() {
         Vec::<String>::new()
     );
 }
+
+/// `outer` passes one more than it is given to `inner`, whose parameter
+/// must be at most 10.
+fn nested(extra: &str) -> String {
+    clinic(&format!(
+        "fn inner(n: Int where Range(0, 10)): Int = n\n\
+         fn outer(n: Int): Int = inner(n + 1)\n\
+         {extra}"
+    ))
+}
+
+#[test]
+fn a_constraint_broken_by_a_call_in_a_body_is_reported_at_the_call_that_leads_there() {
+    assert_error(
+        &nested("fn f(): Int = outer(10)"),
+        "`outer(10)` calls `inner(11)`, whose `n` breaks `Range(0, 10)`",
+    );
+
+    assert_eq!(
+        errors(&nested("fn f(): Int = outer(9)")),
+        Vec::<String>::new()
+    );
+
+    // Only once, at the first call on the way.
+    assert_error(
+        &nested("fn middle(): Int = outer(10)\nfn f(): Int = middle()"),
+        "`outer(10)` calls `inner(11)`, whose `n` breaks `Range(0, 10)`",
+    );
+
+    // A call that breaks it itself is reported as usual, once.
+    assert_error(
+        &nested("fn f(): Int = inner(11)"),
+        "`inner` is given `11` for `n`, which breaks `Range(0, 10)`",
+    );
+}
+
+#[test]
+fn values_made_with_their_fields_and_guards_are_worked_out_through_calls() {
+    let source = clinic(
+        "value Day { number: Int }\n\
+         fn inner(n: Int where Range(0, 10)): Int = n\n\
+         fn next(day: Day): Int = {\n\
+             if day.number > 5 {\n\
+                 inner(day.number * 2)\n\
+             }\n\
+             inner(day.number)\n\
+         }\n\
+         fn early(): Int = next(Day { number: 3 })\n\
+         fn late(): Int = next(Day { number: 7 })",
+    );
+
+    assert_error(
+        &source,
+        "`next(Day { number: 7 })` calls `inner(14)`, whose `n` breaks `Range(0, 10)`",
+    );
+}

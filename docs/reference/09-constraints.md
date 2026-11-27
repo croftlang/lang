@@ -68,6 +68,8 @@ fn give(mg: Int where Overdose(4000)): Int = mg
 let given = give(5000)
 ```
 
+A call that a function makes in its own body is followed too, when the arguments it was given make that call's arguments known, and a constraint broken there is an error at the call that led to it: with `fn outer(n: Int): Int = inner(n + 1)` and `inner(n: Int where Range(0, 10))`, `outer(10)` is "`outer(10)` calls `inner(11)`, whose `n` breaks `Range(0, 10)`". Values made with their fields, such as `Date { year: 9999, month: 12, day: 31 }`, and guards whose condition is known are followed as well.
+
 A constraint that reads another parameter is worked out with the value given for it: `span(5, 2)` is an error, "`span` is given `2` for `high`, which breaks `AtLeast(low)`, with `low` given `5`". When either value is only known while the program runs, it is checked then.
 
 A value that is only known while the program runs, such as input or something read from a port, is checked when it reaches the constraint, and a broken one stops the program with exit code 1 and a message on standard error naming it: `give: mg must satisfy Overdose(4000)`. This happens on every target unless its section of `croft.toml` sets `checks = false`.

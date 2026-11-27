@@ -179,3 +179,26 @@ fn reports_a_known_date_that_does_not_exist() {
         assert_eq!(errors(&calendar(date)), Vec::<String>::new(), "{date}");
     }
 }
+
+/// Std.Time's `add_days`, called with `date` and `days`.
+fn adding_days(date: &str, days: &str) -> String {
+    format!(
+        "context Calendar {{\n\
+         use {{ Date, add_days }} from Std.Time\n\
+         fn later(): Int = add_days({date}, {days}).year\n\
+         }}"
+    )
+}
+
+#[test]
+fn a_date_past_the_calendar_from_known_values_is_an_error_at_the_call() {
+    assert_error(
+        &adding_days("Date { year: 9999, month: 12, day: 31 }", "1"),
+        "`add_days(Date { year: 9999, month: 12, day: 31 }, 1)` calls `date_from_day_number(3652365)`, whose `number` breaks `Range(306, LAST_DAY)`",
+    );
+
+    assert_eq!(
+        errors(&adding_days("Date { year: 2026, month: 12, day: 31 }", "1")),
+        Vec::<String>::new()
+    );
+}
