@@ -28,6 +28,9 @@ pub struct Generator<'a> {
     pub(crate) used_types: RefCell<(Vec<Type>, HashSet<Type>)>,
     /// Types that need an equality function.
     pub(crate) equalities: RefCell<(Vec<Type>, HashSet<Type>)>,
+    /// Sort functions asked for: each one's name, C item type, and test that
+    /// one item comes before another.
+    pub(crate) sorts: RefCell<Vec<(String, String, String)>>,
     /// Debug-build constraint checks: each one's prototype and definition.
     pub(crate) checks: RefCell<Vec<(String, String)>>,
     /// Types whose field-constraint check has been generated.
@@ -117,6 +120,7 @@ impl<'a> Generator<'a> {
             sizes,
             used_types: RefCell::default(),
             equalities: RefCell::default(),
+            sorts: RefCell::default(),
             checks: RefCell::default(),
             checked_types: RefCell::default(),
             texts: RefCell::default(),
@@ -154,6 +158,7 @@ pub(crate) struct SavedState {
     serialized: (Vec<Type>, HashSet<Type>),
     used_types: (Vec<Type>, HashSet<Type>),
     equalities: (Vec<Type>, HashSet<Type>),
+    sorts: Vec<(String, String, String)>,
     checks: Vec<(String, String)>,
     checked_types: HashSet<Resolved>,
     texts: std::collections::BTreeSet<i64>,
@@ -168,6 +173,7 @@ impl<'a> Generator<'a> {
             serialized: self.serialized.borrow().clone(),
             used_types: self.used_types.borrow().clone(),
             equalities: self.equalities.borrow().clone(),
+            sorts: self.sorts.borrow().clone(),
             checks: self.checks.borrow().clone(),
             checked_types: self.checked_types.borrow().clone(),
             texts: self.texts.borrow().clone(),
@@ -181,6 +187,7 @@ impl<'a> Generator<'a> {
         *self.serialized.borrow_mut() = saved.serialized.clone();
         *self.used_types.borrow_mut() = saved.used_types.clone();
         *self.equalities.borrow_mut() = saved.equalities.clone();
+        *self.sorts.borrow_mut() = saved.sorts.clone();
         *self.checks.borrow_mut() = saved.checks.clone();
         *self.checked_types.borrow_mut() = saved.checked_types.clone();
         *self.texts.borrow_mut() = saved.texts.clone();

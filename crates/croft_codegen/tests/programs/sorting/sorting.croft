@@ -1,0 +1,68 @@
+// sort and sort_by on lists of 500: every item kept, in order, and items
+// with the same key in the order they came.
+context Sorting
+
+use { repeat } from Std.Text
+
+error WrongAnswer
+
+value Entry {
+    key: Int where Range(0, 9)
+    place: Int where Range(0, 499)
+}
+
+fn check(ok: Bool): Result<Unit, WrongAnswer> = {
+    if ok {
+        Ok(Unit)
+    }
+    Err(WrongAnswer)
+}
+
+fn total(numbers: List<Int> where Length(0, 500)): Int = numbers.sum(n -> n)
+
+fn by_key(entries: List<Entry> where Length(0, 500)): List<Entry> = entries.sort_by(e -> e.key)
+
+fn names(words: List<String> where Length(0, 500)): List<String> = words.sort()
+
+service Check(): Result<Unit, WrongAnswer> = {
+    let numbers: List<Int> = []
+    let entries: List<Entry> = []
+    let words: List<String> = []
+    loop (let i where Range(0, 499)) {
+        set numbers = numbers.add((i * 7919) % 1000 - 500)
+        set entries = entries.add(Entry { key: (i * 31) % 10, place: i })
+        set words = words.add("w".repeat((i * 13) % 7))
+    }
+
+    let sorted = numbers.sort()
+    check(sorted.length == 500 && total(sorted) == total(numbers))?
+    let ordered = by_key(entries)
+    check(ordered.length == 500)?
+    let alphabetical = names(words)
+    check(alphabetical.length == 500)?
+    loop (let i where Range(1, 499)) {
+        let low = sorted.get(i - 1).unwrap_or(0)
+        let high = sorted.get(i).unwrap_or(0)
+        check(low <= high)?
+        let before = ordered.get(i - 1).unwrap_or(Entry { key: 0, place: 0 })
+        let after = ordered.get(i).unwrap_or(Entry { key: 0, place: 0 })
+        check(before.key < after.key || (before.key == after.key && before.place < after.place))?
+        let shorter = alphabetical.get(i - 1).unwrap_or("")
+        let longer = alphabetical.get(i).unwrap_or("")
+        check(shorter.length <= longer.length)?
+    }
+
+    check([2, 1].sort() == [1, 2] && [7].sort() == [7])?
+    check([1.5, -2.0, 0.25].sort() == [-2.0, 0.25, 1.5])?
+    check([3, 1, 3, 2, 1].sort() == [1, 1, 2, 3, 3])?
+    check(["b", "", "ab", "a"].sort() == ["", "a", "ab", "b"])?
+    let pairs = [
+        Entry { key: 2, place: 0 },
+        Entry { key: 1, place: 1 },
+        Entry { key: 2, place: 2 },
+        Entry { key: 1, place: 3 },
+        Entry { key: 0, place: 4 }
+    ]
+    check(pairs.sort_by(e -> e.key).map(e -> e.place) == [4, 1, 3, 0, 2])?
+    check(pairs.sort_by(e -> 0 - e.key).map(e -> e.place) == [0, 2, 1, 3, 4])
+}

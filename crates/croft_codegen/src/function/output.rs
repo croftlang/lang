@@ -50,12 +50,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         let mut out = format!("{signature}\n{{\n");
 
         let used = |declaration: &&String| {
-            let name = declaration
-                .trim_end_matches(';')
-                .rsplit(' ')
-                .next()
-                .unwrap_or_default();
-
+            let name = declared_name(declaration);
             self.lines.iter().any(|line| mentions(line, name))
         };
 
@@ -87,11 +82,7 @@ impl<'g, 'a> Writer<'g, 'a> {
         // A variable a build without checks only writes to, such as a value built
         // just to be checked when checks are on, is marked as used.
         for declaration in &declarations {
-            let name = declaration
-                .trim_end_matches(';')
-                .rsplit(' ')
-                .next()
-                .unwrap_or_default();
+            let name = declared_name(declaration);
 
             if unchecked
                 .iter()
@@ -105,4 +96,16 @@ impl<'g, 'a> Writer<'g, 'a> {
 
         out
     }
+}
+
+/// The name a declaration such as `croft_int total;` or
+/// `croft_u16 order[16];` declares.
+fn declared_name(declaration: &str) -> &str {
+    let before_length = declaration.split('[').next().unwrap_or_default();
+
+    before_length
+        .trim_end_matches(';')
+        .rsplit(' ')
+        .next()
+        .unwrap_or_default()
 }

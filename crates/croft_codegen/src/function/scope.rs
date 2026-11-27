@@ -100,6 +100,23 @@ impl<'g, 'a> Writer<'g, 'a> {
         name
     }
 
+    /// A new C array of `length` items of `c_type`, whose name starts with
+    /// `base`. `length` is a constant C expression.
+    pub fn array_variable(&mut self, base: &str, c_type: &str, length: &str) -> String {
+        let mut name = base.to_string();
+        let mut count = 1;
+
+        while !self.names.insert(name.clone()) {
+            count += 1;
+            name = format!("{base}_{count}");
+        }
+
+        self.declarations
+            .push(format!("    {c_type} {name}[{length}];"));
+
+        name
+    }
+
     /// A temporary. Options and results start cleared, so a `None` or a
     /// failure never carries an unset value around.
     pub fn temp(&mut self, ty: &Type) -> String {

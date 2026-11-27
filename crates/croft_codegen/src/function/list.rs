@@ -6,7 +6,7 @@ use croft_analysis::Type;
 use croft_syntax::ast::Argument;
 
 use super::Writer;
-use crate::types::bounds::{is_bytes, is_string, list_item};
+use crate::types::bounds::{is_bytes, list_item};
 
 impl<'g, 'a> Writer<'g, 'a> {
     /// `list.name(arguments)`, on `list`, a list of type `list_type`.
@@ -260,49 +260,46 @@ impl<'g, 'a> Writer<'g, 'a> {
 
     /// `sort` and `sort_by`: a copy in order, numbers by size and strings
     /// byte by byte, or by what the lambda gives each item. Items that are
-    /// the same keep their order. An insertion sort: lists are short, and it
-    /// needs no room but one item.
+    /// the same keep their order. A merge sort puts the items' places in
+    /// order, so each item is copied once, however long it is; `sort_by`
+    /// works out each item's key once, first.
     fn sort(&mut self, list: &str, item: &Type, arguments: &[Argument], ty: &Type) -> String {
         let sorted = self.temp(ty);
         let index = self.index_variable();
-        let at = self.index_variable();
-        let held = self.variable("held", item);
-        let before = format!("{sorted}.items[{at} - 1]");
+        let capacity = format!("sizeof {sorted}.items / sizeof {sorted}.items[0]");
+        let order = self.array_variable("order", "croft_u16", &capacity);
+        let room = self.array_variable("room", "croft_u16", &capacity);
 
-        self.line(format!("{sorted} = {list};"));
-        self.open(format!(
-            "for ({index} = 1; {index} < {sorted}.length; {index}++)"
-        ));
-        self.line(format!("{held} = {sorted}.items[{index}];"));
+        let each = format!("for ({index} = 0; {index} < {list}.length; {index}++)");
 
-        let key = if arguments.is_empty() {
-            None
+        let keys = if arguments.is_empty() {
+            format!("{list}.items")
         } else {
-            let key = self.variable("key", &Type::Int);
-            let value = self.lambda(arguments, held.clone(), item, &Type::Int);
-            self.line(format!("{key} = {value};"));
-            Some(key)
+            let keys = self.array_variable("keys", "croft_int", &capacity);
+            let current = format!("{list}.items[{index}]");
+
+            self.open(&each);
+            let value = self.lambda(arguments, current, item, &Type::Int);
+            self.line(format!("{keys}[{index}] = {value};"));
+            self.close();
+
+            keys
         };
 
-        self.line(format!("{at} = {index};"));
-        self.open(format!("while ({at} > 0)"));
-
-        let comes_first = match &key {
-            Some(key) => {
-                let other = self.lambda(arguments, before.clone(), item, &Type::Int);
-                format!("{key} < {other}")
-            }
-            None if is_string(item) => {
-                format!("croft_string_compare(CROFT_VIEW({held}), CROFT_VIEW({before})) < 0")
-            }
-            None => format!("{held} < {before}"),
+        let order_of = if arguments.is_empty() {
+            self.gen.sort_order_for(item)
+        } else {
+            self.gen.sort_order_for(&Type::Int)
         };
 
-        self.line(format!("if (!({comes_first})) break;"));
-        self.line(format!("{sorted}.items[{at}] = {before};"));
-        self.line(format!("{at}--;"));
-        self.close();
-        self.line(format!("{sorted}.items[{at}] = {held};"));
+        self.line(format!(
+            "{order_of}({keys}, {list}.length, {order}, {room});"
+        ));
+        self.line(format!("{sorted}.length = {list}.length;"));
+        self.open(&each);
+        self.line(format!(
+            "{sorted}.items[{index}] = {list}.items[{order}[{index}]];"
+        ));
         self.close();
 
         sorted
