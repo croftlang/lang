@@ -122,7 +122,12 @@ impl<'g, 'a> Writer<'g, 'a> {
                         _ => ty.clone(),
                     };
 
+                    // A `let` added to in place is still checked against its constraints.
                     if self.append_in_place(&target, &place_type, &name.name, value) {
+                        if own.is_none() {
+                            self.check_let(&name.name);
+                        }
+
                         continue;
                     }
 

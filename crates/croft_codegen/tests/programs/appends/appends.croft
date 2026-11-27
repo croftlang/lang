@@ -44,7 +44,7 @@ fn no_words(): List<String> where Length(0, 8) = []
 service Check(): Result<Unit, Failure> {
     calls { Bags }
 } = {
-    let numbers = no_numbers()
+    let numbers: List<Int> where Length(0, 120) = no_numbers()
     loop (let i where Range(0, 99)) {
         set numbers = numbers.add(i * 2)
     }
@@ -53,7 +53,7 @@ service Check(): Result<Unit, Failure> {
     set numbers = numbers.add(numbers.length)
     set numbers = numbers + [numbers.first.unwrap_or(7), 5]
     check(numbers.length == 103 && numbers.drop(100) == [100, 0, 5])?
-    let words = no_words()
+    let words: List<String> where Length(0, 8) = no_words()
     set words = words.add("up")
     set words = words + ["the", "hill"]
     set words = words + words
