@@ -275,3 +275,27 @@ fn reads_map_literals() {
     let body = function_body("fn f(): Int = []");
     assert!(matches!(body.kind, ExprKind::List(items) if items.is_empty()));
 }
+
+#[test]
+fn prints_expressions_with_the_brackets_they_need() {
+    let cases = [
+        ("n % (2 - 2)", "n % (2 - 2)"),
+        ("(n % 2) - 2", "n % 2 - 2"),
+        ("a - (b - c)", "a - (b - c)"),
+        ("(a - b) - c", "a - b - c"),
+        ("(a + b) * c", "(a + b) * c"),
+        ("a + b * c", "a + b * c"),
+        ("-(a + b)", "-(a + b)"),
+        ("!(ready && done)", "!(ready && done)"),
+        ("(a + b).abs()", "(a + b).abs()"),
+        ("(-a).abs()", "(-a).abs()"),
+        ("(bits & FIRE) != 0", "bits & FIRE != 0"),
+        ("bits & (FIRE != 0)", "bits & (FIRE != 0)"),
+        ("Range(n, 0, (MAX - 1) * 2)", "Range(n, 0, (MAX - 1) * 2)"),
+    ];
+
+    for (written, printed) in cases {
+        let body = function_body(&format!("fn f(): Int = {written}"));
+        assert_eq!(body.text(), printed, "printing `{written}`");
+    }
+}

@@ -6,12 +6,13 @@
 use std::collections::{HashMap, HashSet};
 
 use croft_syntax::ast::{
-    Argument, BinaryOp, ConstraintUse, Expr, ExprId, ExprKind, FieldValue, Path, Statement, UnaryOp,
+    Argument, BinaryOp, ConstraintUse, Expr, ExprId, ExprKind, FieldValue, Parameter, Path,
+    Statement, UnaryOp,
 };
 use croft_syntax::Span;
 
 use super::data::expr_path;
-use super::known::{fault, negate_fault, Fault, Known};
+use super::known::{fault, negate_fault, Fault, Known, Outcome};
 use super::numbers::{number_fault, number_function};
 use super::{Checker, Scope};
 use crate::standard::standard_context_of;
@@ -25,19 +26,34 @@ const MAX_DEPTH: u32 = 32;
 /// The known values of the names in scope, such as a constraint's parameters.
 pub(crate) type Bindings = HashMap<String, Known>;
 
-/// Arithmetic with no 32-bit answer, found while checking. One in a body is
-/// reported where it is written. One found only by working out a call with
-/// known arguments is reported at the call, once every body is checked, and
-/// only when it was not reported in its body already.
+/// Arithmetic with no 32-bit answer, or a call breaking its parameter's
+/// constraint, found while checking. One in a body is reported where it is
+/// written. One found only by working out a call with known arguments is
+/// reported at the call, once every body is checked, and only when it was
+/// not reported in its body already, nor at the call that led to it.
 #[derive(Default)]
 pub(crate) struct Faults {
     /// The first fault found while a call is worked out, when one is.
-    recording: Option<Option<(ExprId, Fault)>>,
+    recording: Option<Option<FoundFault>>,
+    /// The calls being worked out inside the one being recorded, outermost
+    /// first, by where each is written.
+    calls: Vec<Span>,
     /// The expressions whose fault has been reported where it is written.
     reported: HashSet<ExprId>,
     /// Faults found through calls: the call as written, where it is, and
-    /// the expression that faults.
-    through_calls: Vec<(String, Span, ExprId, Fault)>,
+    /// the fault.
+    through_calls: Vec<(String, Span, FoundFault)>,
+}
+
+/// A fault found by working out a call.
+#[derive(Clone)]
+pub(crate) struct FoundFault {
+    /// The expression that faults.
+    id: ExprId,
+    fault: Fault,
+    /// Where the first call on the way to it is written, in the body of the
+    /// function called, when it is not the expression itself.
+    via: Option<Span>,
 }
 
 impl Faults {
@@ -48,20 +64,26 @@ impl Faults {
     }
 
     /// Keeps a fault found by working out `call`, written at `span`.
-    pub(crate) fn add_through_call(&mut self, call: String, span: Span, found: (ExprId, Fault)) {
-        let (id, fault) = found;
-        self.through_calls.push((call, span, id, fault));
+    pub(crate) fn add_through_call(&mut self, call: String, span: Span, found: FoundFault) {
+        self.through_calls.push((call, span, found));
     }
 
     /// Each fault found through a call and not reported in its body, as a
-    /// message and where to report it, once each.
+    /// message and where to report it, once each. One whose way leads
+    /// through a call reported with the same fault is left to that call.
     pub(crate) fn unreported(&mut self) -> Vec<(String, Span)> {
+        let through_calls = std::mem::take(&mut self.through_calls);
+
+        let reported_at = |span: Span, id: ExprId| {
+            (through_calls.iter()).any(|(_, at, found)| *at == span && found.id == id)
+        };
+
         let mut seen = HashSet::new();
 
-        std::mem::take(&mut self.through_calls)
-            .into_iter()
-            .filter(|(_, _, id, _)| !self.reported.contains(id))
-            .map(|(call, span, _, fault)| (fault.describe(&call), span))
+        (through_calls.iter())
+            .filter(|(_, _, found)| !self.reported.contains(&found.id))
+            .filter(|(_, _, found)| !found.via.is_some_and(|via| reported_at(via, found.id)))
+            .map(|(call, span, found)| (found.fault.describe(call), *span))
             .filter(|(message, span)| seen.insert((message.clone(), span.line, span.column)))
             .collect()
     }
@@ -79,15 +101,18 @@ impl<'a> Checker<'a> {
     }
 
     /// Whether `value` keeps `used`, a constraint written in `scope`; `None`
-    /// when that depends on what happens while the program runs.
+    /// when that depends on what happens while the program runs. `bindings`
+    /// are the known values of the names its arguments can read, such as the
+    /// other parameters of a call.
     pub(super) fn keeps_constraint(
         &self,
         scope: &Scope,
+        bindings: &Bindings,
         used: &ConstraintUse,
         value: &Known,
     ) -> Option<bool> {
         let arguments: Vec<Known> = (used.arguments.iter())
-            .map(|argument| self.known_value(scope, &Bindings::new(), argument))
+            .map(|argument| self.known_value(scope, bindings, argument))
             .collect::<Option<_>>()?;
 
         if !used.each {
@@ -119,9 +144,9 @@ impl<'a> Checker<'a> {
         bindings: &Bindings,
         found: &Resolved,
         arguments: &[Argument],
-    ) -> Option<(ExprId, Fault)> {
+    ) -> Option<FoundFault> {
         self.faults.borrow_mut().recording = Some(None);
-        self.known_call_at(scope, bindings, found, arguments, 0);
+        self.known_call_at(scope, bindings, (found, None), arguments, 0);
 
         self.faults.borrow_mut().recording.take().flatten()
     }
@@ -133,8 +158,10 @@ impl<'a> Checker<'a> {
             return;
         };
 
+        let via = faults.calls.first().copied();
+
         if let Some(first @ None) = &mut faults.recording {
-            *first = Some((id, fault));
+            *first = Some(FoundFault { id, fault, via });
         }
     }
 
@@ -240,7 +267,8 @@ impl<'a> Checker<'a> {
                 let found = self.find_path(scope, &path);
 
                 if let Some(found) = found.clone().filter(is_pure_function) {
-                    return self.known_call_at(scope, bindings, &found, arguments, depth);
+                    let call = Some((value.id, value.span));
+                    return self.known_call_at(scope, bindings, (&found, call), arguments, depth);
                 }
 
                 let arguments: Vec<Known> = (arguments.iter())
@@ -325,15 +353,18 @@ impl<'a> Checker<'a> {
         found: &Resolved,
         arguments: &[Argument],
     ) -> Option<Known> {
-        self.known_call_at(scope, bindings, found, arguments, 0)
+        self.known_call_at(scope, bindings, (found, None), arguments, 0)
     }
 
     /// `known_call`, `depth` references deep: past `MAX_DEPTH` it gives up.
+    /// `call` is the call's own expression when it is written in a body being
+    /// worked out, so a parameter constraint its known arguments break is
+    /// kept as a fault of the call that led there.
     fn known_call_at(
         &self,
         scope: &Scope,
         bindings: &Bindings,
-        found: &Resolved,
+        (found, call): (&Resolved, Option<(ExprId, Span)>),
         arguments: &[Argument],
         depth: u32,
     ) -> Option<Known> {
@@ -365,7 +396,59 @@ impl<'a> Checker<'a> {
             return None;
         }
 
-        self.known_at(&owner, &given, function.body.as_ref()?, depth + 1)
+        let Some((call, span)) = call else {
+            return self.known_at(&owner, &given, function.body.as_ref()?, depth + 1);
+        };
+
+        self.note_broken_parameter(&owner, &given, (found, call), parameters);
+
+        self.faults.borrow_mut().calls.push(span);
+        let answer = function
+            .body
+            .as_ref()
+            .and_then(|body| self.known_at(&owner, &given, body, depth + 1));
+        self.faults.borrow_mut().calls.pop();
+
+        answer
+    }
+
+    /// Keeps, as a fault of `call`, the first constraint without `or` on
+    /// `parameters` that the known arguments in `given` break.
+    fn note_broken_parameter(
+        &self,
+        owner: &Scope,
+        given: &Bindings,
+        (found, call): (&Resolved, ExprId),
+        parameters: &[Parameter],
+    ) {
+        for parameter in parameters {
+            let value = &given[&parameter.name.name];
+
+            let broken = (parameter.constraints.iter())
+                .filter(|constraint| constraint.error.is_none())
+                .find(|constraint| {
+                    self.keeps_constraint(owner, given, constraint, value) == Some(false)
+                });
+
+            let Some(constraint) = broken else {
+                continue;
+            };
+
+            let written: Vec<String> = (parameters.iter())
+                .map(|parameter| given[&parameter.name.name].describe())
+                .collect();
+
+            let fault = Fault {
+                operation: format!("{}({})", found.name, written.join(", ")),
+                outcome: Outcome::BreaksConstraint {
+                    parameter: parameter.name.name.clone(),
+                    constraint: constraint.text(),
+                },
+            };
+
+            self.note_fault(call, Some(fault));
+            return;
+        }
     }
 
     /// A block of `let` lines ending in its value. One that changes a name or
@@ -381,6 +464,19 @@ impl<'a> Checker<'a> {
         let (last, lines) = statements.split_last()?;
 
         for line in lines {
+            // A guard whose condition holds gives back its block.
+            if let Statement::Expr(Expr {
+                kind: ExprKind::If(condition, block),
+                ..
+            }) = line
+            {
+                match self.known_at(scope, &bindings, condition, depth)? {
+                    Known::Bool(true) => return self.known_at(scope, &bindings, block, depth),
+                    Known::Bool(false) => continue,
+                    _ => return None,
+                }
+            }
+
             let Statement::Let { name, value, .. } = line else {
                 return None;
             };

@@ -102,7 +102,9 @@ impl ConstraintUse {
 
 impl Expr {
     /// The expression as written, for messages: `MAX_ENEMIES - 1` or
-    /// `!numbers.is_empty`. Blocks, matches and the like are `...`.
+    /// `!numbers.is_empty`. Blocks, matches and the like are `...`. The
+    /// tree keeps no brackets, so they are put back wherever the operators
+    /// need them: `n % (2 - 2)`.
     pub fn text(&self) -> String {
         let list = |values: &mut dyn Iterator<Item = &Expr>| {
             values.map(Expr::text).collect::<Vec<_>>().join(", ")
@@ -114,7 +116,9 @@ impl Expr {
             ExprKind::String(text) => format!("{text:?}"),
             ExprKind::Bool(value) => value.to_string(),
             ExprKind::Name(name) => name.clone(),
-            ExprKind::Field(receiver, field) => format!("{}.{}", receiver.text(), field.name),
+            ExprKind::Field(receiver, field) => {
+                format!("{}.{}", receiver.operand_text(), field.name)
+            }
             ExprKind::Call(callee, arguments) => {
                 let arguments: Vec<String> = (arguments.iter())
                     .map(|argument| match &argument.name {
@@ -123,21 +127,82 @@ impl Expr {
                     })
                     .collect();
 
-                format!("{}({})", callee.text(), arguments.join(", "))
+                format!("{}({})", callee.operand_text(), arguments.join(", "))
             }
             ExprKind::List(items) => format!("[{}]", list(&mut items.iter())),
-            ExprKind::Unary(UnaryOp::Not, inner) => format!("!{}", inner.text()),
-            ExprKind::Unary(UnaryOp::Negate, inner) => format!("-{}", inner.text()),
-            ExprKind::Unary(UnaryOp::BitNot, inner) => format!("~{}", inner.text()),
+            ExprKind::Unary(op, inner) => format!("{}{}", op.symbol(), inner.unary_operand_text()),
             ExprKind::Binary(op, left, right) => {
-                format!("{} {} {}", left.text(), op.symbol(), right.text())
+                let left = left.binary_operand_text(op.precedence());
+                let right = right.binary_operand_text(op.precedence() + 1);
+
+                format!("{left} {} {right}", op.symbol())
             }
             _ => "...".to_string(),
+        }
+    }
+
+    /// The text of an expression before `.` or `(`, bracketed when it is an
+    /// operator: `(a + b).abs()`.
+    fn operand_text(&self) -> String {
+        match &self.kind {
+            ExprKind::Unary(..) | ExprKind::Binary(..) => format!("({})", self.text()),
+            _ => self.text(),
+        }
+    }
+
+    /// The text of an expression after `!`, `-` or `~`, bracketed when it is
+    /// a binary operator: `-(a + b)`.
+    fn unary_operand_text(&self) -> String {
+        match &self.kind {
+            ExprKind::Binary(..) => format!("({})", self.text()),
+            _ => self.text(),
+        }
+    }
+
+    /// The text of one side of a binary operator, bracketed when its own
+    /// operator binds less tightly than `min_precedence`. The right side asks
+    /// for one more than the operator's own, since operators group from the
+    /// left: `a - (b - c)`.
+    fn binary_operand_text(&self, min_precedence: u8) -> String {
+        match &self.kind {
+            ExprKind::Binary(op, ..) if op.precedence() < min_precedence => {
+                format!("({})", self.text())
+            }
+            _ => self.text(),
+        }
+    }
+}
+
+impl UnaryOp {
+    /// The operator as written: `!`, `-` or `~`.
+    pub fn symbol(&self) -> &'static str {
+        match self {
+            UnaryOp::Not => "!",
+            UnaryOp::Negate => "-",
+            UnaryOp::BitNot => "~",
         }
     }
 }
 
 impl BinaryOp {
+    /// How tightly the operator binds: higher binds tighter. Bit operators bind
+    /// tighter than comparisons, so `bits & FIRE != 0` means `(bits & FIRE) != 0`,
+    /// unlike in C.
+    pub fn precedence(&self) -> u8 {
+        match self {
+            BinaryOp::Or => 1,
+            BinaryOp::And => 2,
+            BinaryOp::Equal | BinaryOp::NotEqual => 3,
+            BinaryOp::Less | BinaryOp::LessEqual | BinaryOp::Greater | BinaryOp::GreaterEqual => 4,
+            BinaryOp::BitOr => 5,
+            BinaryOp::BitXor => 6,
+            BinaryOp::BitAnd => 7,
+            BinaryOp::ShiftLeft | BinaryOp::ShiftRight => 8,
+            BinaryOp::Add | BinaryOp::Subtract => 9,
+            BinaryOp::Multiply | BinaryOp::Divide | BinaryOp::Remainder => 10,
+        }
+    }
+
     /// The operator as written: `+`, `<=`, `&&`.
     pub fn symbol(&self) -> &'static str {
         match self {

@@ -55,6 +55,12 @@ pub(crate) enum Outcome {
     ExponentBelowZero,
     /// `clamp` with its low above its high.
     LowAboveHigh,
+    /// A call, made with known arguments in the body of the function called,
+    /// whose argument for `parameter` breaks `constraint`.
+    BreaksConstraint {
+        parameter: String,
+        constraint: String,
+    },
 }
 
 impl Fault {
@@ -90,6 +96,12 @@ impl Fault {
             Outcome::LowAboveHigh => {
                 format!("`{written}` works out `{operation}`, which has a low above its high")
             }
+            Outcome::BreaksConstraint {
+                parameter,
+                constraint,
+            } => format!(
+                "`{written}` calls `{operation}`, whose `{parameter}` breaks `{constraint}`"
+            ),
         }
     }
 }

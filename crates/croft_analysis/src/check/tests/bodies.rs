@@ -138,6 +138,27 @@ fn checks_bit_operators() {
 }
 
 #[test]
+fn reads_arithmetic_on_decimal_literals_as_the_decimal_expected() {
+    let source = game(
+        "fn change(): Decimal<2> = 0.01 - 0.02\n\
+         fn left(): Decimal<2> = 2 - 0.01\n\
+         fn steps(): Decimal<2> = (1.5 - 0.25) * 2 + 0.01\n\
+         fn owed(): Decimal<2> = {\n let owed: Decimal<2> = 0.10 - 0.25\n owed\n}",
+    );
+    assert_eq!(errors(&source), Vec::<String>::new());
+
+    assert_error(
+        &game("fn change(): Decimal<2> = 0.123 - 0.1"),
+        "`0.123` has more than 2 decimal places",
+    );
+
+    assert_error(
+        &game("fn change(): Decimal<2> = 21474836.47 + 0.01"),
+        "`21474836.47 + 0.01` gives 21474836.48, which doesn't fit in 32 bits as a `Decimal<2>`",
+    );
+}
+
+#[test]
 fn checks_decimals() {
     let source = game(
         "fn f(price: Decimal<2>, count: Int): Decimal<2> = {\n let tax: Decimal<2> = 0.2\n price * count + price * tax - 1\n}",
@@ -365,4 +386,20 @@ fn checks_the_newer_text_list_and_result_methods() {
         "context Shop {\n error Late\n fn f(r: Result<Int, Late>): Result<Int, Late> = r.map_err(e -> 3)\n}",
         "the lambda passed to `map_err` must give back an error, found `Int`",
     );
+}
+
+#[test]
+fn calls_methods_and_reads_fields_on_constants() {
+    let constants = "const BIG: Int = 100\n\
+                     const START: Position = Position { x: 3, y: 4 }\n\
+                     const NAME: String = \"  croft  \"\n";
+
+    let source = game(&format!(
+        "{constants}fn label(): String = BIG.to_string()\n\
+         fn sum(): Int = START.x + START.x.to_string().length + NAME.trim().length"
+    ));
+    assert_eq!(errors(&source), Vec::<String>::new());
+
+    let source = game(&format!("{constants}fn label(): Int = BIG.to_string()"));
+    assert_error(&source, "expected `Int`, found `String`");
 }

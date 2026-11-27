@@ -74,8 +74,10 @@ impl<'a> Checker<'a> {
 
         // A port operation's contract reads only its parameters.
         for operation in context.ports.iter().flat_map(|port| &port.operations) {
+            let parameters = operation.parameters.as_deref().unwrap_or(&[]);
             let mut body = BodyChecker::new(self, scope, BodyKind::Function, Type::Bool);
-            body.bind_parameters(operation.parameters.as_deref().unwrap_or(&[]));
+            body.bind_parameters(parameters);
+            body.check_constraint_arguments(parameters);
 
             for line in &operation.preconditions {
                 body.expect(line, &Type::Bool);
@@ -122,8 +124,19 @@ impl<'a> Checker<'a> {
             (_, None) => Type::Unit,
         };
 
+        let parameters = function.parameters.as_deref().unwrap_or(&[]);
+
+        // A result's constraints read no parameters: they are checked where
+        // the result is given back, once the parameters are gone.
+        let mut results = BodyChecker::new(self, scope, BodyKind::Constant, result.clone());
+
+        for constraint in &function.return_constraints {
+            results.check_result_constraint_arguments(constraint, &result, parameters);
+        }
+
         let mut body = BodyChecker::new(self, scope, kind, result.clone());
-        body.bind_parameters(function.parameters.as_deref().unwrap_or(&[]));
+        body.bind_parameters(parameters);
+        body.check_constraint_arguments(parameters);
 
         if matches!(function.kind, FunctionKind::Service | FunctionKind::Domain) {
             body.bind_calls(&function.calls);

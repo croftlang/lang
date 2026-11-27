@@ -220,3 +220,17 @@ fn checks_a_known_argument_against_a_port_parameter() {
         "`Dice.roll` is given `1` for `sides`, which breaks `Range(2, 20)`",
     );
 }
+
+/// A port's parameter constraint can read another parameter.
+#[test]
+fn checks_a_port_parameter_constraint_that_reads_another_parameter() {
+    let source = dungeon(
+        "port Dice {\n fn between(low: Int, high: Int where Range(low, 99)): Int\n}\n\
+         service Play(): Int {\n calls { Dice }\n} = Dice.between(6, 1)",
+    );
+
+    assert_error(
+        &source,
+        "`Dice.between` is given `1` for `high`, which breaks `Range(low, 99)`, with `low` given `6`",
+    );
+}

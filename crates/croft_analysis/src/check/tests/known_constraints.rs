@@ -395,3 +395,138 @@ fn a_contract_line_with_an_error_is_a_failure_the_caller_handles() {
 
     assert_eq!(errors(&source), Vec::<String>::new());
 }
+
+/// A span whose `high` must be at least its `low`.
+fn spans(extra: &str) -> String {
+    clinic(&format!(
+        "constraint AtLeast(number: Int, low: Int) = number >= low\n\
+         fn span(low: Int, high: Int where AtLeast(low)): Int = high - low\n\
+         {extra}"
+    ))
+}
+
+#[test]
+fn a_constraint_that_reads_another_parameter_is_checked_with_its_value() {
+    assert_error(
+        &spans("fn f(): Int = span(5, 2)"),
+        "`span` is given `2` for `high`, which breaks `AtLeast(low)`, with `low` given `5`",
+    );
+
+    assert_error(
+        &spans("fn f(): Int = span(high: 2, low: 5)"),
+        "`span` is given `2` for `high`, which breaks `AtLeast(low)`, with `low` given `5`",
+    );
+
+    assert_eq!(
+        errors(&spans("fn f(): Int = span(2, 5)")),
+        Vec::<String>::new()
+    );
+
+    // With `low` only known while running, the check is left to then.
+    assert_eq!(
+        errors(&spans("fn f(n: Int): Int = span(n, 2)")),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn a_built_in_constraint_can_read_other_parameters() {
+    let source = clinic(
+        "fn pick(low: Int, high: Int, middle: Int where Range(low + 1, high - 1)): Int = middle\n\
+         fn f(): Int = pick(1, 5, 5)",
+    );
+
+    assert_error(
+        &source,
+        "`pick` is given `5` for `middle`, which breaks `Range(low + 1, high - 1)`, with `low` given `1` and `high` given `5`",
+    );
+}
+
+#[test]
+fn a_constraint_argument_must_name_something_in_scope() {
+    assert_error(
+        &clinic("fn span(low: Int, high: Int where Range(lowe, 10)): Int = high"),
+        "cannot find `lowe` here",
+    );
+
+    assert_error(
+        &clinic("fn sized(name: String, count: Int where Range(0, name)): Int = count"),
+        "expected `Int`, found `String`",
+    );
+
+    assert_error(
+        &clinic("fn top(low: Int): Int where Range(low, 10) = low"),
+        "`Range(low, 10)` on the result reads the parameter `low`, which only a parameter's constraint can",
+    );
+}
+
+#[test]
+fn a_field_constraint_reads_only_constants() {
+    assert_error(
+        &clinic("value Box {\n size: Int\n count: Int where Range(0, size)\n}"),
+        "cannot find `size` here",
+    );
+
+    assert_eq!(
+        errors(&clinic(
+            "const MOST: Int = 9\nvalue Box {\n count: Int where Range(0, MOST - 1)\n}"
+        )),
+        Vec::<String>::new()
+    );
+}
+
+/// `outer` passes one more than it is given to `inner`, whose parameter
+/// must be at most 10.
+fn nested(extra: &str) -> String {
+    clinic(&format!(
+        "fn inner(n: Int where Range(0, 10)): Int = n\n\
+         fn outer(n: Int): Int = inner(n + 1)\n\
+         {extra}"
+    ))
+}
+
+#[test]
+fn a_constraint_broken_by_a_call_in_a_body_is_reported_at_the_call_that_leads_there() {
+    assert_error(
+        &nested("fn f(): Int = outer(10)"),
+        "`outer(10)` calls `inner(11)`, whose `n` breaks `Range(0, 10)`",
+    );
+
+    assert_eq!(
+        errors(&nested("fn f(): Int = outer(9)")),
+        Vec::<String>::new()
+    );
+
+    // Only once, at the first call on the way.
+    assert_error(
+        &nested("fn middle(): Int = outer(10)\nfn f(): Int = middle()"),
+        "`outer(10)` calls `inner(11)`, whose `n` breaks `Range(0, 10)`",
+    );
+
+    // A call that breaks it itself is reported as usual, once.
+    assert_error(
+        &nested("fn f(): Int = inner(11)"),
+        "`inner` is given `11` for `n`, which breaks `Range(0, 10)`",
+    );
+}
+
+#[test]
+fn values_made_with_their_fields_and_guards_are_worked_out_through_calls() {
+    let source = clinic(
+        "value Day { number: Int }\n\
+         fn inner(n: Int where Range(0, 10)): Int = n\n\
+         fn next(day: Day): Int = {\n\
+             if day.number > 5 {\n\
+                 inner(day.number * 2)\n\
+             }\n\
+             inner(day.number)\n\
+         }\n\
+         fn early(): Int = next(Day { number: 3 })\n\
+         fn late(): Int = next(Day { number: 7 })",
+    );
+
+    assert_error(
+        &source,
+        "`next(Day { number: 7 })` calls `inner(14)`, whose `n` breaks `Range(0, 10)`",
+    );
+}

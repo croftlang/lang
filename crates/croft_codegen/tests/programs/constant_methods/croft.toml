@@ -1,0 +1,5 @@
+[package]
+name = "constant_methods"
+
+[target.test]
+main = "Check"

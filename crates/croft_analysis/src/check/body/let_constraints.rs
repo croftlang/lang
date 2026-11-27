@@ -47,7 +47,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         for constraint in constraints.iter().filter(|c| c.error.is_none()) {
             if self
                 .checker
-                .keeps_constraint(&self.scope, constraint, known)
+                .keeps_constraint(&self.scope, &Bindings::new(), constraint, known)
                 != Some(false)
             {
                 continue;
@@ -156,7 +156,7 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         for constraint in &constraints {
             if self
                 .checker
-                .keeps_constraint(&self.scope, constraint, &known)
+                .keeps_constraint(&self.scope, &Bindings::new(), constraint, &known)
                 != Some(false)
             {
                 continue;
