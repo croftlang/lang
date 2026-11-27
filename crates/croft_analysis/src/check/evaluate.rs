@@ -79,15 +79,18 @@ impl<'a> Checker<'a> {
     }
 
     /// Whether `value` keeps `used`, a constraint written in `scope`; `None`
-    /// when that depends on what happens while the program runs.
+    /// when that depends on what happens while the program runs. `bindings`
+    /// are the known values of the names its arguments can read, such as the
+    /// other parameters of a call.
     pub(super) fn keeps_constraint(
         &self,
         scope: &Scope,
+        bindings: &Bindings,
         used: &ConstraintUse,
         value: &Known,
     ) -> Option<bool> {
         let arguments: Vec<Known> = (used.arguments.iter())
-            .map(|argument| self.known_value(scope, &Bindings::new(), argument))
+            .map(|argument| self.known_value(scope, bindings, argument))
             .collect::<Option<_>>()?;
 
         if !used.each {

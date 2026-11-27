@@ -755,6 +755,19 @@ fn checks_rules_in_every_build_by_default() {
     );
 
     assert_eq!(
+        run("checked", "between"),
+        (
+            Some(1),
+            "span: middle must satisfy Range(low, high)".to_string()
+        )
+    );
+
+    assert_eq!(
+        run("checked", "backwards"),
+        (Some(1), "span: high must satisfy AtLeast(low)".to_string())
+    );
+
+    assert_eq!(
         run("checked", "shift"),
         (Some(1), "shift by less than 0 or more than 31".to_string())
     );
@@ -810,6 +823,7 @@ fn checks_rules_in_every_build_by_default() {
 
     assert_eq!(run("unchecked", "argument"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "invariant"), (Some(0), String::new()));
+    assert_eq!(run("unchecked", "backwards"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "let"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "full"), (Some(0), String::new()));
     assert_eq!(run("unchecked", "name"), (Some(0), String::new()));

@@ -395,3 +395,82 @@ fn a_contract_line_with_an_error_is_a_failure_the_caller_handles() {
 
     assert_eq!(errors(&source), Vec::<String>::new());
 }
+
+/// A span whose `high` must be at least its `low`.
+fn spans(extra: &str) -> String {
+    clinic(&format!(
+        "constraint AtLeast(number: Int, low: Int) = number >= low\n\
+         fn span(low: Int, high: Int where AtLeast(low)): Int = high - low\n\
+         {extra}"
+    ))
+}
+
+#[test]
+fn a_constraint_that_reads_another_parameter_is_checked_with_its_value() {
+    assert_error(
+        &spans("fn f(): Int = span(5, 2)"),
+        "`span` is given `2` for `high`, which breaks `AtLeast(low)`, with `low` given `5`",
+    );
+
+    assert_error(
+        &spans("fn f(): Int = span(high: 2, low: 5)"),
+        "`span` is given `2` for `high`, which breaks `AtLeast(low)`, with `low` given `5`",
+    );
+
+    assert_eq!(
+        errors(&spans("fn f(): Int = span(2, 5)")),
+        Vec::<String>::new()
+    );
+
+    // With `low` only known while running, the check is left to then.
+    assert_eq!(
+        errors(&spans("fn f(n: Int): Int = span(n, 2)")),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn a_built_in_constraint_can_read_other_parameters() {
+    let source = clinic(
+        "fn pick(low: Int, high: Int, middle: Int where Range(low + 1, high - 1)): Int = middle\n\
+         fn f(): Int = pick(1, 5, 5)",
+    );
+
+    assert_error(
+        &source,
+        "`pick` is given `5` for `middle`, which breaks `Range(low + 1, high - 1)`, with `low` given `1` and `high` given `5`",
+    );
+}
+
+#[test]
+fn a_constraint_argument_must_name_something_in_scope() {
+    assert_error(
+        &clinic("fn span(low: Int, high: Int where Range(lowe, 10)): Int = high"),
+        "cannot find `lowe` here",
+    );
+
+    assert_error(
+        &clinic("fn sized(name: String, count: Int where Range(0, name)): Int = count"),
+        "expected `Int`, found `String`",
+    );
+
+    assert_error(
+        &clinic("fn top(low: Int): Int where Range(low, 10) = low"),
+        "`Range(low, 10)` on the result reads the parameter `low`, which only a parameter's constraint can",
+    );
+}
+
+#[test]
+fn a_field_constraint_reads_only_constants() {
+    assert_error(
+        &clinic("value Box {\n size: Int\n count: Int where Range(0, size)\n}"),
+        "cannot find `size` here",
+    );
+
+    assert_eq!(
+        errors(&clinic(
+            "const MOST: Int = 9\nvalue Box {\n count: Int where Range(0, MOST - 1)\n}"
+        )),
+        Vec::<String>::new()
+    );
+}

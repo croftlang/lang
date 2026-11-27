@@ -158,7 +158,7 @@ impl<'a> Checker<'a> {
 
 /// A whole-number literal argument, such as the `4000000000` in
 /// `Range(0, 4000000000)`, that doesn't fit in 32 bits. `-2147483648` does.
-fn whole_literal_past_32_bits(argument: &Expr) -> Option<i128> {
+pub(super) fn whole_literal_past_32_bits(argument: &Expr) -> Option<i128> {
     let number = match &argument.kind {
         ExprKind::Int(number) => i128::from(*number),
         ExprKind::Unary(UnaryOp::Negate, operand) => match operand.kind {

@@ -43,6 +43,13 @@ aggregate Room {
 // on a parameter
 command Heal(amount: Int where Range(1, 50)) { ... }
 
+// on a parameter, reading the others: constants and the other parameters
+// can be the arguments of a parameter's constraint, but not of a field's or
+// a result's
+constraint AtLeast(number: Int, low: Int) = number >= low
+fn span(low: Int, high: Int where AtLeast(low)): Int = high - low
+fn pick(low: Int, high: Int, middle: Int where Range(low, high)): Int = middle
+
 // on a let, which keeps them whatever `set` changes it to; a list or map
 // that `set` changes needs a Length, which sizes it as a field's does
 let visited: List<RoomId> where Length(0, MAX_ROOMS) = []
@@ -60,6 +67,8 @@ fn give(mg: Int where Overdose(4000)): Int = mg
 // error: `give` is given `5000` for `mg`, which breaks `Overdose(4000)`
 let given = give(5000)
 ```
+
+A constraint that reads another parameter is worked out with the value given for it: `span(5, 2)` is an error, "`span` is given `2` for `high`, which breaks `AtLeast(low)`, with `low` given `5`". When either value is only known while the program runs, it is checked then.
 
 A value that is only known while the program runs, such as input or something read from a port, is checked when it reaches the constraint, and a broken one stops the program with exit code 1 and a message on standard error naming it: `give: mg must satisfy Overdose(4000)`. This happens on every target unless its section of `croft.toml` sets `checks = false`.
 

@@ -4,6 +4,7 @@ use std::collections::HashSet;
 
 use croft_syntax::ast::{Field, Parameter, TypeExpr};
 
+use super::body::{BodyChecker, BodyKind};
 use super::constraints::ConstraintPlace;
 use super::{Checker, Scope};
 use crate::facts::BuiltinName;
@@ -126,7 +127,8 @@ impl<'a> Checker<'a> {
     }
 
     /// Each field is declared once, and its type and constraints are checked.
-    pub(super) fn check_fields(&mut self, scope: &Scope, fields: &[Field]) {
+    /// A field's constraints read only constants.
+    pub(super) fn check_fields(&mut self, scope: &Scope<'a>, fields: &[Field]) {
         let mut seen = HashSet::new();
 
         for field in fields {
@@ -138,6 +140,13 @@ impl<'a> Checker<'a> {
             self.check_type(scope, &field.ty, false);
             let place = ConstraintPlace::Field;
             self.check_constraints(scope, &field.constraints, Some(&field.ty), place);
+
+            let ty = self.lower_type(scope, &field.ty);
+            let mut body = BodyChecker::new(self, *scope, BodyKind::Constant, ty.clone());
+
+            for constraint in &field.constraints {
+                body.check_arguments_of(constraint, &ty);
+            }
 
             if let Some(value) = &field.value {
                 self.error("only an adapter's fields have starting values", value.span);

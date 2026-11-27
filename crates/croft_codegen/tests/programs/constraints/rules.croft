@@ -46,6 +46,13 @@ context Clinic {
         numbers where each Even
     } = numbers.length
 
+    // Constraints that read another parameter, inline and through a
+    // constraint of its own.
+    constraint AtLeast(number: Int, low: Int) = number >= low
+
+    fn span(low: Int, high: Int where AtLeast(low), middle: Int where Range(low, high)): Int =
+        high - low
+
     // Room for two numbers, and no more.
     fn pair(): List<Int> where Length(0, 2) = []
 
@@ -133,6 +140,13 @@ context Clinic {
                 Ok(bed) -> Beds.keep(bed).is_ok
                 Err(_) -> false
             }
+        }
+        if chosen.contains("between") {
+            let fine = span(chosen.length, chosen.length + 2, chosen.length + 1)
+            let wide = span(chosen.length, chosen.length + 2, chosen.length + 3)
+        }
+        if chosen.contains("backwards") {
+            let backwards = span(chosen.length, chosen.length - 1, chosen.length)
         }
         if chosen.contains("shift") {
             let shifted = 1 << chosen.length * 40

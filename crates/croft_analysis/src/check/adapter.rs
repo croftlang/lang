@@ -7,7 +7,7 @@ use crate::symbols::SymbolKind;
 
 impl<'a> Checker<'a> {
     /// An adapter provides every operation of its port, and nothing else.
-    pub(super) fn check_adapter(&mut self, scope: &Scope, adapter: &AdapterDecl) {
+    pub(super) fn check_adapter(&mut self, scope: &Scope<'a>, adapter: &AdapterDecl) {
         let without_values: Vec<_> = adapter
             .fields
             .iter()

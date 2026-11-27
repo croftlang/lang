@@ -14,7 +14,7 @@ use crate::symbols::SymbolKind;
 impl<'a> Checker<'a> {
     /// A value's fields and invariants. Making a value can't fail, so each
     /// invariant must hold and names no error.
-    pub(super) fn check_value(&mut self, scope: &Scope, value: &ValueDecl) {
+    pub(super) fn check_value(&mut self, scope: &Scope<'a>, value: &ValueDecl) {
         self.check_fields(scope, &value.fields);
 
         for invariant in &value.invariants {
@@ -35,7 +35,7 @@ impl<'a> Checker<'a> {
 
     /// An entity's fields and invariants. Its identity is checked with its
     /// aggregate's.
-    pub(super) fn check_entity(&mut self, scope: &Scope, entity: &ValueDecl) {
+    pub(super) fn check_entity(&mut self, scope: &Scope<'a>, entity: &ValueDecl) {
         self.check_fields(scope, &entity.fields);
 
         for invariant in &entity.invariants {
@@ -63,7 +63,7 @@ impl<'a> Checker<'a> {
 
     /// An enum's variants are each declared once, and what it includes is an
     /// enum, an error or an error set.
-    pub(super) fn check_enum(&mut self, scope: &Scope, enum_decl: &EnumDecl) {
+    pub(super) fn check_enum(&mut self, scope: &Scope<'a>, enum_decl: &EnumDecl) {
         let mut seen = HashSet::new();
 
         for variant in &enum_decl.variants {

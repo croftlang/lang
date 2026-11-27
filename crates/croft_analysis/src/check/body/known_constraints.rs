@@ -18,7 +18,9 @@ use croft_syntax::Span;
 impl<'c, 'a> BodyChecker<'c, 'a> {
     /// Checks each argument whose value is known against the constraints of
     /// the parameter it is given for. Arguments are matched to parameters as
-    /// `check_arguments` matches them; mistakes there are reported there.
+    /// `check_arguments` matches them; mistakes there are reported there. A
+    /// constraint that names another parameter, `high: Int where AtLeast(low)`,
+    /// reads the value given for it, when that is known.
     pub(super) fn check_known_arguments(
         &mut self,
         arguments: &[Argument],
@@ -28,24 +30,42 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
     ) {
         let mut position = 0;
 
-        for argument in arguments {
-            let index = match &argument.name {
-                Some(name) => {
-                    (parameters.iter()).position(|(parameter, _)| *parameter == name.name)
-                }
-                None => {
-                    position += 1;
-                    Some(position - 1)
-                }
-            };
+        let matched: Vec<(&Argument, Option<usize>)> = (arguments.iter())
+            .map(|argument| {
+                let index = match &argument.name {
+                    Some(name) => {
+                        (parameters.iter()).position(|(parameter, _)| *parameter == name.name)
+                    }
+                    None => {
+                        position += 1;
+                        Some(position - 1)
+                    }
+                };
 
+                (argument, index)
+            })
+            .collect();
+
+        let given: Bindings = (matched.iter())
+            .filter_map(|(argument, index)| {
+                let (name, _) = parameters.get((*index)?)?;
+                Some((name.to_string(), self.known_local_value(&argument.value)?))
+            })
+            .collect();
+
+        for (argument, index) in matched {
             let Some((name, constraints)) = index.and_then(|index| parameters.get(index)) else {
                 continue;
             };
 
-            let given = format!("`{callee}` is given");
+            let place = KnownPlace {
+                owner,
+                given: &format!("`{callee}` is given"),
+                name,
+                bindings: &given,
+            };
 
-            self.check_known_value(&argument.value, constraints, owner, &given, name);
+            self.check_known_value_with(&argument.value, constraints, &place);
         }
     }
 
@@ -117,7 +137,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         for invariant in invariants {
             let constraint = &invariant.constraint;
 
-            if self.checker.keeps_constraint(&owner, constraint, &known) != Some(false) {
+            let keeps =
+                (self.checker).keeps_constraint(&owner, &Bindings::new(), constraint, &known);
+
+            if keeps != Some(false) {
                 continue;
             }
 
@@ -143,6 +166,25 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         given: &str,
         name: &str,
     ) {
+        let place = KnownPlace {
+            owner,
+            given,
+            name,
+            bindings: &Bindings::new(),
+        };
+
+        self.check_known_value_with(value, constraints, &place);
+    }
+
+    /// `check_known_value`, with the known values of the other parameters
+    /// a constraint can name. A constraint that names one says what it was
+    /// given: "which breaks `AtLeast(low)`, with `low` given `5`".
+    fn check_known_value_with(
+        &mut self,
+        value: &Expr,
+        constraints: &[ConstraintUse],
+        place: &KnownPlace<'_, 'a>,
+    ) {
         if constraints.is_empty() {
             return;
         }
@@ -153,15 +195,26 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
 
         // One with `or` is a failure the caller handles, not a mistake.
         for constraint in constraints.iter().filter(|c| c.error.is_none()) {
-            if self.checker.keeps_constraint(owner, constraint, &known) != Some(false) {
+            let keeps =
+                (self.checker).keeps_constraint(place.owner, place.bindings, constraint, &known);
+
+            if keeps != Some(false) {
                 continue;
             }
 
-            let message = format!(
-                "{given} `{}` for `{name}`, which breaks `{}`",
+            let mut message = format!(
+                "{} `{}` for `{}`, which breaks `{}`",
+                place.given,
                 known.describe(),
+                place.name,
                 constraint.text()
             );
+
+            let named = named_parameters(constraint, place.bindings);
+
+            if !named.is_empty() {
+                message.push_str(&format!(", with {}", named.join(" and ")));
+            }
 
             self.error(message, value.span);
         }
@@ -198,7 +251,10 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
         let written = self.written_arguments(arguments);
 
         for constraint in &function.return_constraints {
-            if self.checker.keeps_constraint(&owner, constraint, &result) != Some(false) {
+            let keeps =
+                (self.checker).keeps_constraint(&owner, &Bindings::new(), constraint, &result);
+
+            if keeps != Some(false) {
                 continue;
             }
 
@@ -295,6 +351,64 @@ impl<'c, 'a> BodyChecker<'c, 'a> {
             .flat_map(|scope| scope.iter())
             .filter_map(|(name, local)| Some((name.clone(), local.known.clone()?)))
             .collect()
+    }
+}
+
+/// Where a known value goes: the scope its constraints are written in, how
+/// messages say it was given, and the known values of the names they can read.
+struct KnownPlace<'p, 'a> {
+    owner: &'p Scope<'a>,
+    given: &'p str,
+    name: &'p str,
+    bindings: &'p Bindings,
+}
+
+/// "`low` given `5`" for each name in `bindings` that the constraint's
+/// arguments read, in the order they are written.
+fn named_parameters(constraint: &ConstraintUse, bindings: &Bindings) -> Vec<String> {
+    let mut names = Vec::new();
+
+    for argument in &constraint.arguments {
+        names_in(argument, &mut names);
+    }
+
+    let mut seen = HashSet::new();
+
+    (names.into_iter())
+        .filter(|name| seen.insert(name.clone()))
+        .filter_map(|name| {
+            let known = bindings.get(&name)?;
+            Some(format!("`{name}` given `{}`", known.describe()))
+        })
+        .collect()
+}
+
+/// Adds each bare name `value` reads to `names`, in the order written.
+pub(super) fn names_in(value: &Expr, names: &mut Vec<String>) {
+    match &value.kind {
+        ExprKind::Name(name) => names.push(name.clone()),
+        ExprKind::Field(receiver, _) => names_in(receiver, names),
+        ExprKind::Unary(_, operand) => names_in(operand, names),
+        ExprKind::Binary(_, left, right) => {
+            names_in(left, names);
+            names_in(right, names);
+        }
+        ExprKind::Call(callee, arguments) => {
+            // A function's own name is not a value it reads.
+            if let ExprKind::Field(receiver, _) = &callee.kind {
+                names_in(receiver, names);
+            }
+
+            for argument in arguments {
+                names_in(&argument.value, names);
+            }
+        }
+        ExprKind::List(items) => {
+            for item in items {
+                names_in(item, names);
+            }
+        }
+        _ => {}
     }
 }
 
