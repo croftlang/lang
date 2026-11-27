@@ -1,0 +1,158 @@
+name: Release
+
+# Pushing a tag such as v0.1.0 builds `croft` for each platform and publishes a
+# GitHub release with one archive per platform. A pull request that changes this
+# file runs the builds only, so the workflow is tried before a tag needs it.
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths: [".github/workflows/release.yml"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # musl links statically, so one Linux build runs on any distribution.
+          - name: linux-x86_64
+            os: ubuntu-latest
+            targets: x86_64-unknown-linux-musl
+          - name: linux-aarch64
+            os: ubuntu-24.04-arm
+            targets: aarch64-unknown-linux-musl
+          # macOS runners can sit queued for a long time, so the macOS builds
+          # are cross-compiled on Linux, with Zig as the linker.
+          - name: macos
+            os: ubuntu-latest
+            targets: aarch64-apple-darwin x86_64-apple-darwin
+            zig: true
+          - name: windows
+            os: windows-latest
+            targets: x86_64-pc-windows-msvc
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Add the targets
+        shell: bash
+        run: rustup target add ${{ matrix.targets }}
+
+      - name: Install musl
+        if: contains(matrix.targets, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - uses: mlugg/setup-zig@v2
+        if: matrix.zig
+
+      - uses: taiki-e/install-action@v2
+        if: matrix.zig
+        with:
+          tool: cargo-zigbuild
+
+      # The tag must name the version in Cargo.toml, so `croft version` agrees
+      # with the release it came from.
+      - name: Check the tag matches the version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match version ${version} in Cargo.toml"
+            exit 1
+          fi
+
+      - name: Build
+        shell: bash
+        run: |
+          build=build
+          if [ "${{ matrix.zig }}" = "true" ]; then
+            build=zigbuild
+          fi
+
+          for target in ${{ matrix.targets }}; do
+            cargo "$build" --release --locked -p croft_cli --target "$target"
+          done
+
+      # Archive names leave out the version, so
+      # releases/latest/download/croft-<target>.tar.gz always finds the newest.
+      - name: Package
+        shell: bash
+        run: |
+          mkdir dist
+
+          for target in ${{ matrix.targets }}; do
+            name="croft-$target"
+            mkdir "$name"
+            cp LICENSE-MIT LICENSE-APACHE COPYRIGHT README.md "$name/"
+
+            if [ "${{ runner.os }}" = "Windows" ]; then
+              cp "target/$target/release/croft.exe" "$name/"
+              7z a "dist/$name.zip" "$name" > /dev/null
+              archive="$name.zip"
+            else
+              cp "target/$target/release/croft" "$name/"
+              tar -czf "dist/$name.tar.gz" "$name"
+              archive="$name.tar.gz"
+            fi
+
+            if command -v sha256sum > /dev/null; then
+              (cd dist && sha256sum "$archive" > "$archive.sha256")
+            else
+              (cd dist && shasum -a 256 "$archive" > "$archive.sha256")
+            fi
+          done
+
+      # Run each packaged binary once, to catch a broken build. The macOS
+      # builds can't run on Linux; they are tried on a Mac before a release.
+      - name: Smoke test
+        if: ${{ !matrix.zig }}
+        shell: bash
+        run: |
+          printf 'domain Program {\n    calls { Console }\n} = Console.print("Hello, World")\n' > hello.croft
+
+          for target in ${{ matrix.targets }}; do
+            "./croft-$target/croft" version
+            "./croft-$target/croft" check hello.croft
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: croft-${{ matrix.name }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: publish the release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Croft ${GITHUB_REF_NAME#v}" \
+            --generate-notes
