@@ -1,10 +1,10 @@
 // Std.Time: dates on the calendar, times of day, and a clock to read them
-// from. A program imports what it needs with `use { Date, Clock } from
+// from. A program imports what it needs with `import { Date, Clock } from
 // Std.Time`, lists the port in its contract with `calls { Clock }`, and names
 // an adapter for it in croft.toml: `SystemClock` on machines with C's time
 // and localtime, or one of its own, such as a fixed date for tests.
 context Time {
-    publish { Date, Time, Clock, DayInMonth, is_leap_year, days_between, add_days, SystemClock }
+    export { Date, Time, Clock, DayInMonth, is_leap_year, days_between, add_days, SystemClock }
 
     // A day on the Gregorian calendar, carried back before 1582 as if it had
     // always been used, from 1 January of year 1 to 31 December 9999. The

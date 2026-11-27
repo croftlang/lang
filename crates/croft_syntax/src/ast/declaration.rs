@@ -16,8 +16,8 @@ pub struct ContextDecl {
 /// One declaration inside a context.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ContextItem {
-    Publish(Vec<Path>),
-    Use(UseDecl),
+    Export(Vec<Path>),
+    Import(ImportDecl),
     Value(ValueDecl),
     Enum(EnumDecl),
     Error(RecordDecl),
@@ -32,15 +32,15 @@ pub enum ContextItem {
     Repository(RepositoryDecl),
 }
 
-/// `use { Edge, Path } from Routing`: names imported from another context.
+/// `import { Edge, Path } from Routing`: names imported from another context.
 #[derive(Debug, Clone, PartialEq)]
-pub struct UseDecl {
+pub struct ImportDecl {
     pub names: Vec<ImportedName>,
     /// A context, or a standard context such as `Std.Text`.
     pub from: Path,
 }
 
-/// A name brought in by `use` or `calls`: `Keyboard`, or `Keyboard as keyboard`
+/// A name brought in by `import` or `calls`: `Keyboard`, or `Keyboard as keyboard`
 /// to call it something else here.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportedName {
@@ -161,7 +161,7 @@ pub struct ConstraintDecl {
 }
 
 /// `domain Game { ... } = { ... }`: the whole program. It lists the contexts
-/// the domain is divided into, uses what they publish, and its body runs first.
+/// the domain is divided into, imports what they export, and its body runs first.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DomainDecl {
     pub doc: Vec<String>,
@@ -169,10 +169,10 @@ pub struct DomainDecl {
     /// Every context named in `contexts`, once for each time it is written.
     pub contexts: Vec<Identifier>,
     /// The context map: `Dungeon -> Scoring` means Scoring is downstream of
-    /// Dungeon, so Scoring may use what Dungeon publishes.
+    /// Dungeon, so Scoring may import what Dungeon exports.
     pub relations: Vec<(Identifier, Identifier)>,
-    /// What it imports from contexts with `use { ... } from`.
-    pub uses: Vec<UseDecl>,
+    /// What it imports from contexts with `import { ... } from`.
+    pub imports: Vec<ImportDecl>,
     /// The ports the body calls, as a service lists them.
     pub calls: Vec<CalledPort>,
     pub body: Expr,

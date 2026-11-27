@@ -1,4 +1,4 @@
-//! What a context publishes, and what it imports from others.
+//! What a context exports, and what it imports from others.
 
 use croft_syntax::ast::{ImportedName, Path};
 use croft_syntax::Span;
@@ -8,14 +8,14 @@ use crate::standard::{standard_contexts_of, standard_names, SHARED_FUNCTIONS};
 use crate::types::Resolved;
 
 impl<'a> Checker<'a> {
-    /// A context can only publish names it declares itself.
-    pub(super) fn check_publish(&mut self, context: &Context) {
+    /// A context can only export names it declares itself.
+    pub(super) fn check_exports(&mut self, context: &Context) {
         let name = &context.name.name;
 
-        for path in &context.publish {
+        for path in &context.exports {
             if self.lookup(name, &path.text()).is_none() {
                 let message = format!(
-                    "cannot publish `{}`: context `{name}` does not declare it",
+                    "cannot export `{}`: context `{name}` does not declare it",
                     path.text()
                 );
 
@@ -24,19 +24,19 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `use { ... } from X` imports only what context `X` publishes, or what
+    /// `import { ... } from X` imports only what context `X` exports, or what
     /// a standard context such as `Std.Text` provides.
-    pub(super) fn check_uses(&mut self, context: &Context) {
-        for use_decl in &context.uses {
-            let names: Vec<&ImportedName> = use_decl.names.iter().collect();
-            self.check_import(context, &use_decl.from, &names);
+    pub(super) fn check_imports(&mut self, context: &Context) {
+        for import in &context.imports {
+            let names: Vec<&ImportedName> = import.names.iter().collect();
+            self.check_import(context, &import.from, &names);
         }
 
         self.check_shared_imports(context);
     }
 
-    /// Names brought in from `from`, by `use` or by `calls { ... } from`: each
-    /// must be published there, or provided by the standard context.
+    /// Names brought in from `from`, by `import` or by `calls { ... } from`: each
+    /// must be exported there, or provided by the standard context.
     pub(super) fn check_import(&mut self, context: &Context, from: &Path, names: &[&ImportedName]) {
         let span = from.span();
         let from = from.text();
@@ -72,7 +72,7 @@ impl<'a> Checker<'a> {
             let found = self.lookup(&from, &text);
 
             match found {
-                Some(target) if self.is_published(&from, &text) => {
+                Some(target) if self.is_exported(&from, &text) => {
                     let last = path.last();
 
                     self.references.get_mut().push(crate::facts::Reference {
@@ -82,7 +82,7 @@ impl<'a> Checker<'a> {
                     });
                 }
                 _ => {
-                    let message = format!("context `{from}` does not publish `{text}`");
+                    let message = format!("context `{from}` does not export `{text}`");
                     self.error(message, path.span());
                 }
             }
@@ -200,7 +200,7 @@ impl<'a> Checker<'a> {
         }
 
         let imports: Vec<String> = standard_contexts_of(name)
-            .map(|standard| format!("`use {{ {name} }} from {standard}`"))
+            .map(|standard| format!("`import {{ {name} }} from {standard}`"))
             .collect();
 
         let message = format!("`{name}` needs {}", imports.join(" or "));
@@ -211,14 +211,14 @@ impl<'a> Checker<'a> {
     /// what the context imports, so it can't be imported from both.
     fn check_shared_imports(&mut self, context: &Context) {
         for name in SHARED_FUNCTIONS {
-            let imported: Vec<(&Path, &ImportedName)> = (context.uses.iter())
-                .filter(|use_decl| {
-                    standard_names(&use_decl.from.text()).is_some_and(|names| names.contains(&name))
+            let imported: Vec<(&Path, &ImportedName)> = (context.imports.iter())
+                .filter(|import| {
+                    standard_names(&import.from.text()).is_some_and(|names| names.contains(&name))
                 })
-                .flat_map(|use_decl| {
-                    (use_decl.names.iter())
+                .flat_map(|import| {
+                    (import.names.iter())
                         .filter(|n| n.path.text() == name)
-                        .map(move |n| (&use_decl.from, n))
+                        .map(move |n| (&import.from, n))
                 })
                 .collect();
 
@@ -246,7 +246,7 @@ impl<'a> Checker<'a> {
 
     /// Reports that `name` needs importing from `standard`.
     fn report_missing_import(&mut self, standard: &str, name: &str, span: Span) {
-        let message = format!("`{name}` needs `use {{ {name} }} from {standard}`");
+        let message = format!("`{name}` needs `import {{ {name} }} from {standard}`");
         self.error(message, span);
     }
 }
@@ -257,9 +257,9 @@ pub(super) fn imported_standard(context: &Context, name: &str) -> Option<&'stati
     standard_contexts_of(name).find(|standard| imports(context, standard, name))
 }
 
-/// Whether `context` has `use { name } from standard`.
+/// Whether `context` has `import { name } from standard`.
 fn imports(context: &Context, standard: &str, name: &str) -> bool {
-    context.uses.iter().any(|use_decl| {
-        use_decl.from.text() == standard && use_decl.names.iter().any(|n| n.path.text() == name)
+    context.imports.iter().any(|import| {
+        import.from.text() == standard && import.names.iter().any(|n| n.path.text() == name)
     })
 }

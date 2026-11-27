@@ -13,6 +13,7 @@ mod data;
 mod declared;
 mod domain;
 mod evaluate;
+mod export;
 mod find;
 mod generics;
 mod identity;
@@ -24,7 +25,6 @@ mod names;
 mod numbers;
 mod operations;
 mod ports;
-mod publish;
 mod repository;
 mod resolve;
 mod rounds;
@@ -86,8 +86,8 @@ impl<'a> Checker<'a> {
         };
 
         self.check_names(context);
-        self.check_publish(context);
-        self.check_uses(context);
+        self.check_exports(context);
+        self.check_imports(context);
 
         for value in &context.values {
             if value.type_parameters.is_empty() {

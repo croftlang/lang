@@ -1,10 +1,10 @@
 // Looks for and writes to the path named on the command line, or to a path
 // with a NUL byte in it when there is none, through Std.Files and StdioFiles.
 context Paths {
-    publish { Write }
+    export { Write }
 
-    use { Files, FileError } from Std.Files
-    use { to_bytes, to_text } from Std.Text
+    import { Files, FileError } from Std.Files
+    import { to_bytes, to_text } from Std.Text
 
     service Write(): Result<Unit, FileError> {
         calls { Files, Console, Arguments }
@@ -21,5 +21,5 @@ context Paths {
 
 domain Program {
     contexts { Paths }
-    use { Write } from Paths
+    import { Write } from Paths
 } = Write()?

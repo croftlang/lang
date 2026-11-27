@@ -2,7 +2,7 @@
 // passed on, and parameters kept in a value, which copies them.
 context Words
 
-use { trim, split, to_lower, to_upper, starts_with, ends_with, contains, slice, to_int } from Std.Text
+import { trim, split, to_lower, to_upper, starts_with, ends_with, contains, slice, to_int } from Std.Text
 
 error WrongAnswer
 

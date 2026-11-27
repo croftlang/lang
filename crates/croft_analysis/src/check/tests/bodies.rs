@@ -6,8 +6,8 @@ use super::{assert_error, errors};
 fn game(extra: &str) -> String {
     format!(
         "context Game {{\n\
-         use {{ trim, starts_with }} from Std.Text\n\
-         use {{ Decimal, max, min, abs }} from Std.Numbers\n\
+         import {{ trim, starts_with }} from Std.Text\n\
+         import {{ Decimal, max, min, abs }} from Std.Numbers\n\
          identity RoomId for Room: Int where Range(1, 20)\n\
          identity EnemyId for Enemy: Int where Range(0, 9)\n\
          enum Direction {{ North, South }}\n\
@@ -206,26 +206,26 @@ fn checks_decimals() {
 fn checks_imports_from_standard_contexts() {
     assert_error(
         "context Shop {\n fn f(name: String): String = name.to_upper()\n}",
-        "`to_upper` needs `use { to_upper } from Std.Text`",
+        "`to_upper` needs `import { to_upper } from Std.Text`",
     );
 
     assert_error(
         "context Shop {\n fn f(a: Int): Int = abs(a)\n}",
-        "`abs` needs `use { abs } from Std.Numbers`",
+        "`abs` needs `import { abs } from Std.Numbers`",
     );
 
     assert_error(
-        "context Shop {\n use { shout } from Std.Text\n}",
+        "context Shop {\n import { shout } from Std.Text\n}",
         "`Std.Text` does not provide `shout`",
     );
 
-    let source = "context Shop {\n use { to_upper } from Std.Text\n fn f(names: List<String>): Bool = names.contains(\"A\") && names.length > 0\n fn g(name: String): String = name.to_upper()\n}";
+    let source = "context Shop {\n import { to_upper } from Std.Text\n fn f(names: List<String>): Bool = names.contains(\"A\") && names.length > 0\n fn g(name: String): String = name.to_upper()\n}";
     assert_eq!(errors(source), Vec::<String>::new());
 }
 
 #[test]
 fn checks_bytes() {
-    let source = "context Shop {\n use { to_text } from Std.Text\n fn f(): Option<Int> = {\n let data: Bytes = [1, 2, 0xFF]\n data.add(3).get(0)\n }\n fn g(data: Bytes where Length(0, 512)): String = data.to_text()\n}";
+    let source = "context Shop {\n import { to_text } from Std.Text\n fn f(): Option<Int> = {\n let data: Bytes = [1, 2, 0xFF]\n data.add(3).get(0)\n }\n fn g(data: Bytes where Length(0, 512)): String = data.to_text()\n}";
     assert_eq!(errors(source), Vec::<String>::new());
 
     assert_error(
@@ -235,7 +235,7 @@ fn checks_bytes() {
 
     assert_error(
         "context Shop {\n fn f(data: Bytes): String = data.to_text()\n}",
-        "`to_text` needs `use { to_text } from Std.Text`",
+        "`to_text` needs `import { to_text } from Std.Text`",
     );
 
     // `+` joins `Bytes`, with a literal on either side.
@@ -297,21 +297,21 @@ fn checks_single_value_types() {
 
 #[test]
 fn checks_maps() {
-    let source = "context Shop {\n use { Map } from Std.Collections\n fn f(stock: Map<String, Int> where Length(0, 8)): Option<Int> = stock.set(\"key\", 1).get(\"key\")\n fn g(): Map<Int, Bool> = [:]\n fn h(): Int = [\"a\": 1].keys.length\n}";
+    let source = "context Shop {\n import { Map } from Std.Collections\n fn f(stock: Map<String, Int> where Length(0, 8)): Option<Int> = stock.set(\"key\", 1).get(\"key\")\n fn g(): Map<Int, Bool> = [:]\n fn h(): Int = [\"a\": 1].keys.length\n}";
     assert_eq!(errors(source), Vec::<String>::new());
 
     assert_error(
         "context Shop {\n fn f(stock: Map<String, Int>): Int = 0\n}",
-        "`Map` needs `use { Map } from Std.Collections`",
+        "`Map` needs `import { Map } from Std.Collections`",
     );
 
     assert_error(
-        "context Shop {\n use { Map } from Std.Collections\n fn f(): Map<String, Int> = [\"a\": true]\n}",
+        "context Shop {\n import { Map } from Std.Collections\n fn f(): Map<String, Int> = [\"a\": true]\n}",
         "expected `Int`, found `Bool`",
     );
 
     assert_error(
-        "context Shop {\n use { Map } from Std.Collections\n fn f(): Int = [:].length\n}",
+        "context Shop {\n import { Map } from Std.Collections\n fn f(): Int = [:].length\n}",
         "an empty map needs its type from where it goes, such as `let stock: Map<String, Int> = [:]`",
     );
 }
@@ -347,16 +347,16 @@ fn checks_generics_through_their_instances() {
 fn checks_the_newer_text_list_and_result_methods() {
     assert_error(
         "context Shop {\n fn f(text: String): String = text.replace(\"a\", \"b\")\n}",
-        "`replace` needs `use { replace } from Std.Text`",
+        "`replace` needs `import { replace } from Std.Text`",
     );
 
     assert_error(
         "context Shop {\n fn f(names: List<String>): String = names.join(\",\")\n}",
-        "`join` needs `use { join } from Std.Text`",
+        "`join` needs `import { join } from Std.Text`",
     );
 
     assert_error(
-        "context Shop {\n use { join } from Std.Text\n fn f(counts: List<Int>): String = counts.join(\",\")\n}",
+        "context Shop {\n import { join } from Std.Text\n fn f(counts: List<Int>): String = counts.join(\",\")\n}",
         "`List<Int>` has no method `join`",
     );
 

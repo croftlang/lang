@@ -8,7 +8,7 @@ use super::{assert_error, errors};
 fn sums(extra: &str) -> String {
     format!(
         "context Sums {{\n\
-         use {{ Decimal }} from Std.Numbers\n\
+         import {{ Decimal }} from Std.Numbers\n\
          const MOST: Int = 2147483647\n\
          {extra}\n}}"
     )

@@ -302,7 +302,7 @@ fn offers_only_the_words_the_parser_reads() {
 }
 
 #[test]
-fn a_context_shows_what_it_publishes_and_goes_to_its_declaration() {
+fn a_context_shows_what_it_exports_and_goes_to_its_declaration() {
     let (session, path) = checked("logistics.croft", None);
     let state = session.project_for(&path).expect("checked");
 
@@ -390,7 +390,7 @@ fn a_domain_is_shown_as_the_domain() {
         "{hover}"
     );
 
-    assert!(hover.contains("    use { SetUpBooking,"), "{hover}");
+    assert!(hover.contains("    import { SetUpBooking,"), "{hover}");
     assert!(
         hover.contains("A shipping company's cargo system"),
         "{hover}"

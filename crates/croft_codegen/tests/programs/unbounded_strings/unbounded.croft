@@ -1,9 +1,9 @@
 // Strings with no `Length` hold the target's `strings_length`, 8 here,
 // while one with a `Length` is kept in a size of its own, longer or shorter.
 context Notes {
-    publish { Check }
+    export { Check }
 
-    use { repeat } from Std.Text
+    import { repeat } from Std.Text
 
     error WrongAnswer
 
@@ -49,5 +49,5 @@ context Notes {
 
 domain Program {
     contexts { Notes }
-    use { Check } from Notes
+    import { Check } from Notes
 } = Check()?

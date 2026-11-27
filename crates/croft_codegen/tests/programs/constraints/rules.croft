@@ -2,8 +2,8 @@
 // each kind of check stop the program. Each value depends on the arguments, so
 // it is only known while running; a value known when compiling is an error then.
 context Clinic {
-    use { Decimal } from Std.Numbers
-    use { trim } from Std.Text
+    import { Decimal } from Std.Numbers
+    import { trim } from Std.Text
 
     constraint Even(number: Int) = number % 2 == 0
 

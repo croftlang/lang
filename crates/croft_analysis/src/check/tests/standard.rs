@@ -3,14 +3,14 @@
 use super::{assert_error, errors};
 
 const NOTES: &str = "context Notes {\n\
-     publish { Keep }\n\
-     use { Files, FileError, NotFound } from Std.Files\n\
+     export { Keep }\n\
+     import { Files, FileError, NotFound } from Std.Files\n\
      service Keep(): Result<Unit, FileError> {\n calls { Files }\n} = {\n\
          let data = Files.read(\"notes.txt\", 4096)?\n\
          Files.write(\"copy.txt\", data)\n\
      }\n\
      }\n\
-     domain Program {\n contexts { Notes }\n use { Keep } from Notes\n} = Keep()?";
+     domain Program {\n contexts { Notes }\n import { Keep } from Notes\n} = Keep()?";
 
 #[test]
 fn joins_a_standard_context_when_it_is_imported() {
@@ -19,21 +19,21 @@ fn joins_a_standard_context_when_it_is_imported() {
 
 #[test]
 fn names_the_import_a_standard_name_needs() {
-    let source = NOTES.replace("use { Files, FileError, NotFound } from Std.Files", "");
+    let source = NOTES.replace("import { Files, FileError, NotFound } from Std.Files", "");
 
     assert_eq!(
         errors(&source),
         [
-            "`FileError` needs `use { FileError } from Std.Files`",
+            "`FileError` needs `import { FileError } from Std.Files`",
             "`Files` needs `calls { Files } from Std.Files`",
         ]
     );
 }
 
 #[test]
-fn reports_a_name_a_standard_context_does_not_publish() {
+fn reports_a_name_a_standard_context_does_not_export() {
     let source = NOTES.replace("NotFound }", "Missing }");
-    assert_error(&source, "context `Std.Files` does not publish `Missing`");
+    assert_error(&source, "context `Std.Files` does not export `Missing`");
 }
 
 /// `Files.read` says the most it reads, which sizes its result, so a
@@ -102,11 +102,11 @@ fn reads_part_of_a_file_of_a_known_length() {
 fn dice(roll: &str) -> String {
     format!(
         "context Dice {{\n\
-         publish {{ Roll }}\n\
-         use {{ Random }} from Std.Random\n\
+         export {{ Roll }}\n\
+         import {{ Random }} from Std.Random\n\
          service Roll(sides: Int): Int {{\n calls {{ Random }}\n}} = {{\n{roll}\n}}\n\
          }}\n\
-         domain Program {{\n contexts {{ Dice }}\n use {{ Roll }} from Dice\n}} = {{\n Roll(6)\n Unit\n}}"
+         domain Program {{\n contexts {{ Dice }}\n import {{ Roll }} from Dice\n}} = {{\n Roll(6)\n Unit\n}}"
     )
 }
 
@@ -143,11 +143,11 @@ fn reports_a_known_low_above_high() {
 fn calendar(date: &str) -> String {
     format!(
         "context Calendar {{\n\
-         publish {{ due }}\n\
-         use {{ Date }} from Std.Time\n\
+         export {{ due }}\n\
+         import {{ Date }} from Std.Time\n\
          fn due(): Date = {date}\n\
          }}\n\
-         domain Program {{\n contexts {{ Calendar }}\n use {{ due }} from Calendar\n}} = {{\n due()\n Unit\n}}"
+         domain Program {{\n contexts {{ Calendar }}\n import {{ due }} from Calendar\n}} = {{\n due()\n Unit\n}}"
     )
 }
 
@@ -184,7 +184,7 @@ fn reports_a_known_date_that_does_not_exist() {
 fn adding_days(date: &str, days: &str) -> String {
     format!(
         "context Calendar {{\n\
-         use {{ Date, add_days }} from Std.Time\n\
+         import {{ Date, add_days }} from Std.Time\n\
          fn later(): Int = add_days({date}, {days}).year\n\
          }}"
     )
@@ -203,18 +203,18 @@ fn a_date_past_the_calendar_from_known_values_is_an_error_at_the_call() {
     );
 }
 
-/// Games held in leap years, with the rules Std.Time publishes: a
+/// Games held in leap years, with the rules Std.Time exports: a
 /// constraint built on `is_leap_year`, and `DayInMonth` on a field.
 fn games(year: &str) -> String {
     format!(
         "context Calendar {{\n\
-         publish {{ held }}\n\
-         use {{ Date, DayInMonth, is_leap_year }} from Std.Time\n\
+         export {{ held }}\n\
+         import {{ Date, DayInMonth, is_leap_year }} from Std.Time\n\
          constraint LeapYear(year: Int) = is_leap_year(year)\n\
          value Games {{\n year: Int where LeapYear\n opening: Date where DayInMonth\n}}\n\
          fn held(): Games = Games {{ year: {year}, opening: Date {{ year: 2024, month: 7, day: 26 }} }}\n\
          }}\n\
-         domain Program {{\n contexts {{ Calendar }}\n use {{ held }} from Calendar\n}} = {{\n held()\n Unit\n}}"
+         domain Program {{\n contexts {{ Calendar }}\n import {{ held }} from Calendar\n}} = {{\n held()\n Unit\n}}"
     )
 }
 
@@ -222,7 +222,7 @@ fn games(year: &str) -> String {
 /// own rules can use them, and a known year that isn't a leap year is an
 /// error.
 #[test]
-fn uses_the_calendar_rules_std_time_publishes() {
+fn uses_the_calendar_rules_std_time_exports() {
     for year in ["2024", "2000", "1996"] {
         assert_eq!(errors(&games(year)), Vec::<String>::new(), "{year}");
     }

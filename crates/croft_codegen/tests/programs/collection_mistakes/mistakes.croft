@@ -4,8 +4,8 @@
 // and the set keeps the items it has room for.
 context Mistakes
 
-use { Set } from Std.Collections
-use { join } from Std.Text
+import { Set } from Std.Collections
+import { join } from Std.Text
 
 service Start(): Unit {
     calls { Arguments, Console }

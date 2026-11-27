@@ -7,7 +7,7 @@ use crate::types::Type;
 
 /// A context that uses `Set`, with `body` added to it.
 fn with_sets(body: &str) -> String {
-    format!("context Shop {{\n use {{ Set }} from Std.Collections\n{body}\n}}")
+    format!("context Shop {{\n import {{ Set }} from Std.Collections\n{body}\n}}")
 }
 
 #[test]
@@ -27,7 +27,7 @@ fn checks_sets() {
 fn needs_set_imported() {
     assert_error(
         "context Shop {\n fn f(seen: Set<Int>): Int = 0\n}",
-        "`Set` needs `use { Set } from Std.Collections`",
+        "`Set` needs `import { Set } from Std.Collections`",
     );
 }
 

@@ -1,10 +1,10 @@
 // Writes a file, adds to it, reads it back and removes it, through
 // Std.Files and its StdioFiles adapter.
 context Notes {
-    publish { Keep }
+    export { Keep }
 
-    use { Files, FileError } from Std.Files
-    use { to_bytes, to_text } from Std.Text
+    import { Files, FileError } from Std.Files
+    import { to_bytes, to_text } from Std.Text
 
     service Keep(): Result<Unit, FileError> {
         calls { Files, Console }
@@ -31,5 +31,5 @@ context Notes {
 
 domain Program {
     contexts { Notes }
-    use { Keep } from Notes
+    import { Keep } from Notes
 } = Keep()?

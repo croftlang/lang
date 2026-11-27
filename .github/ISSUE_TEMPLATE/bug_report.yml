@@ -42,7 +42,7 @@ body:
       description: Provide the smallest program, and its croft.toml, that reproduces the issue
       placeholder: |
         context Greeter {
-          publish { greet }
+          export { greet }
 
           // Your reproduction code here
         }

@@ -2,8 +2,8 @@
 // fold's lambda taking the total and each item.
 context Collections
 
-use { Set } from Std.Collections
-use { Decimal, max } from Std.Numbers
+import { Set } from Std.Collections
+import { Decimal, max } from Std.Numbers
 
 error WrongAnswer
 

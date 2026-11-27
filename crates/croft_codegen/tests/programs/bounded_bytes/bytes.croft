@@ -2,7 +2,7 @@
 // methods that make one `Bytes` from another. Nothing is ever cut short.
 context Packets
 
-use { to_bytes, to_text } from Std.Text
+import { to_bytes, to_text } from Std.Text
 
 error WrongAnswer
 

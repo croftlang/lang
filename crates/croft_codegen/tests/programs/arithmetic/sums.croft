@@ -4,8 +4,8 @@
 // exactly 32 bits, and an answer past them, or dividing by zero, stops the
 // program when its checks are on.
 context Sums {
-    use { Decimal, abs, clamp, pow, sign, checked_add, checked_subtract, checked_multiply } from Std.Numbers
-    use { starts_with, to_int } from Std.Text
+    import { Decimal, abs, clamp, pow, sign, checked_add, checked_subtract, checked_multiply } from Std.Numbers
+    import { starts_with, to_int } from Std.Text
 
     fn work_out(operation: String, a: Int, b: Int, c: Int): Int = {
         if operation == "add" {

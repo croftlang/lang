@@ -27,7 +27,7 @@ name = \"greeting\"
 /// A port the domain calls, with no adapter.
 const KEYBOARD: &str = "\
 context Game {
-  publish { Read }
+  export { Read }
 
   port Keyboard {
     fn pressed(): Int
@@ -40,7 +40,7 @@ context Game {
 
 domain Arcade {
   contexts { Game }
-  use { Read } from Game
+  import { Read } from Game
 } = {
   let pressed = Read()
 }
@@ -56,7 +56,7 @@ context Sums {
 /// A domain that prints a greeting through `Console`.
 const HELLO: &str = "\
 context Greeter {
-  publish { greet }
+  export { greet }
 
   fn greet(): String where Length(0, 12) = {
     \"Hello, World\"
@@ -65,7 +65,7 @@ context Greeter {
 
 domain Application {
   contexts { Greeter }
-  use { greet } from Greeter
+  import { greet } from Greeter
   calls { Console }
 } = {
   Console.print(greet())
@@ -75,7 +75,7 @@ domain Application {
 /// A domain whose body fails, so the program exits with 1.
 const FAILING: &str = "\
 context Shop {
-  publish { Open }
+  export { Open }
 
   error Closed
 
@@ -84,7 +84,7 @@ context Shop {
 
 domain Market {
   contexts { Shop }
-  use { Open } from Shop
+  import { Open } from Shop
 } = {
   Open()?
 }
@@ -106,7 +106,7 @@ Keyboard = \"NativeKeyboard\"
 /// a line printed once the key is read.
 const NATIVE_KEYBOARD: &str = "\
 context Game {
-  publish { Read }
+  export { Read }
 
   port Keyboard {
     fn pressed(): Int
@@ -123,7 +123,7 @@ context Game {
 
 domain Arcade {
   contexts { Game }
-  use { Read } from Game
+  import { Read } from Game
   calls { Console }
 } = {
   let pressed = Read()

@@ -40,7 +40,7 @@ const PREC = {
 // crates/croft_syntax/src/keyword.rs. A field name after `.` or in a record can
 // be any of these: `score.value`, `Score { value: 3 }`.
 const KEYWORDS = [
-  'context', 'domain', 'publish', 'use', 'value', 'entity', 'aggregate',
+  'context', 'domain', 'export', 'import', 'value', 'entity', 'aggregate',
   'identity', 'enum', 'const', 'constraint', 'invariant', 'error', 'event',
   'command', 'factory', 'policy', 'fn', 'service', 'port', 'adapter', 'repository',
   'translation', 'let', 'set', 'loop', 'break', 'emit', 'issue', 'if',
@@ -86,8 +86,8 @@ module.exports = grammar({
     declaration_list: $ => seq('{', repeat($._context_item), '}'),
 
     _context_item: $ => choice(
-      $.publish_declaration,
-      $.use_declaration,
+      $.export_declaration,
+      $.import_declaration,
       $.value_declaration,
       $.enum_declaration,
       $.error_declaration,
@@ -102,12 +102,12 @@ module.exports = grammar({
       $.repository_declaration,
     ),
 
-    publish_declaration: $ => seq('publish', $.path_list),
+    export_declaration: $ => seq('export', $.path_list),
 
-    // `use { EnemyId, Room.EnemyDefeated } from Dungeon`
-    use_declaration: $ => seq('use', $.import_list, 'from', field('from', $.path)),
+    // `import { EnemyId, Room.EnemyDefeated } from Dungeon`
+    import_declaration: $ => seq('import', $.import_list, 'from', field('from', $.path)),
 
-    // `{ Keyboard, Screen as screen }`: the names a `use` or `calls` brings in.
+    // `{ Keyboard, Screen as screen }`: the names an `import` or `calls` brings in.
     import_list: $ => seq('{', repeat(seq($.imported_name, optional(','))), '}'),
 
     imported_name: $ => seq($.path, optional(seq('as', field('alias', $.identifier)))),
@@ -121,7 +121,7 @@ module.exports = grammar({
       'domain',
       field('name', $._type_name),
       '{',
-      repeat(choice($.context_map, $.use_declaration, $.calls_clause)),
+      repeat(choice($.context_map, $.import_declaration, $.calls_clause)),
       '}',
       '=',
       field('body', $._expression),

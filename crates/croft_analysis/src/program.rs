@@ -26,12 +26,12 @@ pub struct Program {
 /// One context, with the declarations from every file's part of it.
 #[derive(Debug)]
 pub struct Context {
-    /// The doc comment above the part that publishes, or else above the
+    /// The doc comment above the part that exports, or else above the
     /// first part that has one.
     pub doc: Vec<String>,
     pub name: Identifier,
-    pub publish: Vec<Path>,
-    pub uses: Vec<UseDecl>,
+    pub exports: Vec<Path>,
+    pub imports: Vec<ImportDecl>,
     pub values: Vec<ValueDecl>,
     pub enums: Vec<EnumDecl>,
     pub errors: Vec<RecordDecl>,
@@ -44,7 +44,7 @@ pub struct Context {
     pub ports: Vec<PortDecl>,
     pub adapters: Vec<AdapterDecl>,
     pub repositories: Vec<RepositoryDecl>,
-    /// Made from the `domain`: its `use` lines, and one service, its body.
+    /// Made from the `domain`: its `import` lines, and one service, its body.
     pub is_domain: bool,
     /// Part of the standard library, such as `Std.Files`: it needs no place
     /// in the domain's `contexts`, and no arrow to be used.
@@ -68,11 +68,11 @@ impl Program {
                     .entry(name)
                     .or_insert_with(|| Context::new(part.name.clone()));
 
-                // The part that publishes says what other contexts see, so
+                // The part that exports says what other contexts see, so
                 // its comment is the context's doc. Others describe a file.
-                let publishes = (part.items.iter()).any(|i| matches!(i, ContextItem::Publish(_)));
+                let exports = (part.items.iter()).any(|i| matches!(i, ContextItem::Export(_)));
 
-                if !part.doc.is_empty() && (publishes || context.doc.is_empty()) {
+                if !part.doc.is_empty() && (exports || context.doc.is_empty()) {
                     context.doc = part.doc;
                 }
 

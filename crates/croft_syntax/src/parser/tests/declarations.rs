@@ -115,7 +115,7 @@ fn keeps_doc_comments() {
 
 #[test]
 fn reads_a_domain() {
-    let source = "domain Game {\n    contexts { Dungeon, Scoring }\n    use { PlayTurn } from Dungeon\n    calls { Keyboard }\n} = {\n    PlayTurn()?\n}";
+    let source = "domain Game {\n    contexts { Dungeon, Scoring }\n    import { PlayTurn } from Dungeon\n    calls { Keyboard }\n} = {\n    PlayTurn()?\n}";
     let file = parse_ok(source);
 
     let [domain] = &file.domains[..] else {
@@ -124,7 +124,7 @@ fn reads_a_domain() {
 
     assert_eq!(domain.name.name, "Game");
     assert_eq!(domain.contexts.len(), 2);
-    assert_eq!(domain.uses[0].from.text(), "Dungeon");
+    assert_eq!(domain.imports[0].from.text(), "Dungeon");
     assert_eq!(domain.calls[0].name.text(), "Keyboard");
 }
 
@@ -256,6 +256,26 @@ fn explains_that_ports_are_listed_with_calls() {
 }
 
 #[test]
+fn explains_that_publish_is_now_export() {
+    assert_eq!(
+        parse_error("context Dungeon {\n publish { RoomId, Room.EnemyDefeated }\n}"),
+        "`publish` is now `export`: `export { RoomId, Room.EnemyDefeated }`"
+    );
+}
+
+#[test]
+fn explains_that_use_is_now_import() {
+    assert_eq!(
+        parse_error("context Scoring {\n use { EnemyId as Enemy } from Dungeon\n}"),
+        "`use` is now `import`: `import { EnemyId as Enemy } from Dungeon`"
+    );
+    assert_eq!(
+        parse_error("domain Game {\n use { Play } from Dungeon\n} = Unit"),
+        "`use` is now `import`: `import { Play } from Dungeon`"
+    );
+}
+
+#[test]
 fn reads_calls_with_names_after_as_and_the_context_after_from() {
     let source = "context Dungeon {\n    service Play(from: Int, to: Int): Unit {\n        \
                   calls { Keyboard as keys, Screen } from Platform\n        calls { Console }\n        \
@@ -285,16 +305,16 @@ fn reads_calls_with_names_after_as_and_the_context_after_from() {
 }
 
 #[test]
-fn reads_names_after_as_in_use() {
+fn reads_names_after_as_in_import() {
     let file = parse_ok(
-        "context Scoring {\n use { Room.EnemyDefeated as Defeated, RoomId } from Dungeon\n}",
+        "context Scoring {\n import { Room.EnemyDefeated as Defeated, RoomId } from Dungeon\n}",
     );
 
-    let ContextItem::Use(use_decl) = &only_context(&file).items[0] else {
-        panic!("expected a use")
+    let ContextItem::Import(import) = &only_context(&file).items[0] else {
+        panic!("expected an import")
     };
 
-    let local: Vec<String> = use_decl.names.iter().map(|n| n.local_name()).collect();
+    let local: Vec<String> = import.names.iter().map(|n| n.local_name()).collect();
     assert_eq!(local, ["Defeated", "RoomId"]);
 }
 

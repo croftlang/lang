@@ -2,7 +2,7 @@
 // methods that make one string from another. Nothing is ever cut short.
 context Words
 
-use { trim, split, to_lower } from Std.Text
+import { trim, split, to_lower } from Std.Text
 
 error WrongAnswer
 

@@ -1,7 +1,7 @@
 // `Bytes` with no `Length` hold the target's `bytes_length`, 8 here, while
 // one with a `Length` is kept in a size of its own, longer or shorter.
 context Packets {
-    publish { Check }
+    export { Check }
 
     error WrongAnswer
 
@@ -47,5 +47,5 @@ context Packets {
 
 domain Program {
     contexts { Packets }
-    use { Check } from Packets
+    import { Check } from Packets
 } = Check()?

@@ -1,10 +1,10 @@
 // Std.Random: whole numbers picked at random. A program imports the port
-// with `use { Random } from Std.Random`, lists it in its contract with
+// with `import { Random } from Std.Random`, lists it in its contract with
 // `calls { Random }`, and names an adapter for it in croft.toml:
 // `SeededRandom` on any machine with C's `time`, or one of its own, such as
 // one that reads a machine's own noise.
 context Random {
-    publish { Random, SeededRandom }
+    export { Random, SeededRandom }
 
     port Random {
         // A whole number from `low` to `high`, both included. A `low` above

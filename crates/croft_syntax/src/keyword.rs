@@ -7,8 +7,8 @@
 pub enum Keyword {
     Context,
     Domain,
-    Publish,
-    Use,
+    Export,
+    Import,
     Value,
     Entity,
     Aggregate,
@@ -50,8 +50,8 @@ pub enum Keyword {
 const KEYWORDS: [(&str, Keyword); 39] = [
     ("context", Keyword::Context),
     ("domain", Keyword::Domain),
-    ("publish", Keyword::Publish),
-    ("use", Keyword::Use),
+    ("export", Keyword::Export),
+    ("import", Keyword::Import),
     ("value", Keyword::Value),
     ("entity", Keyword::Entity),
     ("aggregate", Keyword::Aggregate),

@@ -2,10 +2,10 @@
 // headers it kept and two of their values. The test replaces SERVER with
 // the address of a server it runs for the purpose.
 context Headers {
-    publish { Show }
+    export { Show }
 
-    use { Http, HttpError } from Std.Http
-    use { join } from Std.Text
+    import { Http, HttpError } from Std.Http
+    import { join } from Std.Text
 
     service Show(): Result<Unit, HttpError> {
         calls { Http, Console }
@@ -20,5 +20,5 @@ context Headers {
 
 domain Program {
     contexts { Headers }
-    use { Show } from Headers
+    import { Show } from Headers
 } = Show()?

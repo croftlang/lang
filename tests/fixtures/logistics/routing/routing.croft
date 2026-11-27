@@ -2,7 +2,7 @@
 // another team's system with a model of its own, of nodes, edges and paths,
 // and knows nothing of cargo. Shipping reaches it through a translation.
 context Routing {
-    publish { Edge, Path, find_path }
+    export { Edge, Path, find_path }
 
     const MAX_DAY: Int = 3650
     const MAX_EDGES: Int = 16

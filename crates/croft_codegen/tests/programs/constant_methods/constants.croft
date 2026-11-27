@@ -2,7 +2,7 @@
 // not a path to a declaration.
 context Constants
 
-use { trim } from Std.Text
+import { trim } from Std.Text
 
 error WrongAnswer
 

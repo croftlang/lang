@@ -14,14 +14,15 @@ Eric Evans' *Domain-Driven Design*. It is the test fixture in
 A bounded context: a named boundary inside which every term has one meaning.
 Everything in Croft is declared inside a context.
 
-### Publish
-The braced list of terms a context lets other contexts use. Aggregates are
-never published, only their identities, values and events.
+### Export
+The braced list of terms a context lets other contexts import:
+`export { Edge, Path }`. Aggregates are never exported, only their identities,
+values and events.
 
-### Use
-How a context imports published terms: `use { Edge, Path } from Routing`.
+### Import
+How a context brings in terms another context exports: `import { Edge, Path } from Routing`.
 An alias after `as` gives a term another name in the importing context, in
-place of its own: `use { Edge as Link } from Routing`.
+place of its own: `import { Edge as Link } from Routing`.
 
 ### Context level
 Declared directly inside a context rather than inside an aggregate. Values,
@@ -107,8 +108,8 @@ Anything in braces. Each kind holds different things:
 - A match block holds a `match`'s arms.
 - A declaration block holds the declarations inside a context, aggregate,
   port, repository or adapter.
-- A term block lists the terms a context publishes or uses:
-  `use { Edge, Path } from Routing`.
+- A term block lists the terms a context exports or imports:
+  `import { Edge, Path } from Routing`.
 - The contexts block is the domain's context map.
 
 ## Data
@@ -358,7 +359,7 @@ Functions and methods every program has, with no import. Functions: `Some`,
 Results: `is_ok`, `is_err`, `map`, `map_err`, `unwrap_or`.
 
 ### Map
-Keys, each with a value, imported with `use { Map } from Std.Collections`:
+Keys, each with a value, imported with `import { Map } from Std.Collections`:
 `let berths: Map<String, Int> = ["CNHKG": 4, "FIHEL": 2]`, or `[:]` when empty.
 `get` gives an `Option` of a key's value, `set` and `remove` give a changed
 copy, and `contains`, `length`, `is_empty`, `keys` and `values` read it. Two
@@ -367,7 +368,7 @@ order. A map holds as many entries as the largest `Length` constraint on its
 type allows, 16 when there is none.
 
 ### Set
-Items of one type, each held once, imported with `use { Set } from
+Items of one type, each held once, imported with `import { Set } from
 Std.Collections`: `let seen: Set<Int> = [3, 1]`, or `[]` when empty, where a
 set is expected. `add` and `remove` give a changed copy, and `contains`,
 `length`, `is_empty` and `items`, a list in the order they were added, read
@@ -389,7 +390,7 @@ it can need, as a string is; see Capacity.
 
 ### Standard context
 A set of built-ins a context imports before using, like any other context:
-`use { trim, split } from Std.Text`. `Std.Text` has `contains`,
+`import { trim, split } from Std.Text`. `Std.Text` has `contains`,
 `starts_with`, `ends_with`, `index_of`, `to_upper`, `to_lower`, `trim`,
 `slice`, `split`, `lines`, `replace`, `repeat`, `pad_left`, `pad_right`,
 `code_at`, `to_int`, `to_decimal` and `to_bytes` for strings, `to_hex` for
@@ -445,7 +446,7 @@ anything secret. `low` above `high` breaks `between`'s contract.
 on the Gregorian calendar, only ever a day its month has, so 30 February and
 29 February 2025 are no date, and `Time`, an `hour`, `minute` and `second` on a
 24-hour clock, the `Clock` port, with `today` and `now`, and the functions
-`days_between` and `add_days`, which count leap years. It publishes the
+`days_between` and `add_days`, which count leap years. It exports the
 rules behind `Date` too, the constraint `DayInMonth` and the function
 `is_leap_year`, for a program's own constraints. Its `SystemClock`
 adapter uses C's `time` and `localtime`: `Clock = "SystemClock"` in
@@ -553,15 +554,15 @@ instead of the domain. A project without one runs its domain on one
 The whole program: `domain Logistics { ... } = { ... }`, one per program, outside
 every context. Like a function, it has a contract and a body. The contract
 holds the context map, imports what the body needs from the contexts with
-`use`, and names the ports it calls with `calls`. The body runs
+`import`, and names the ports it calls with `calls`. The body runs
 first: it sets up each context's starting data through services those
-contexts publish, then runs the program. It can pass up any error with `?`;
+contexts export, then runs the program. It can pass up any error with `?`;
 the program then prints the error's name on standard error and stops with
 exit code 1.
 
 ### Context map
 The `contexts` block of the domain: every context, and arrows from upstream
-to downstream, `Routing -> Shipping`. A context may only `use` contexts
+to downstream, `Routing -> Shipping`. A context may only import from contexts
 directly upstream of it, and the arrows may not go round in a circle. A
 context with no relationships is written on its own.
 

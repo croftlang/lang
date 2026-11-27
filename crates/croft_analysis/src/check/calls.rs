@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 use croft_syntax::ast::{CalledPort, FunctionDecl, FunctionKind};
 
 use super::{Checker, Scope};
-use crate::standard::{standard_context_publishing, standard_names};
+use crate::standard::{standard_context_exporting, standard_names};
 use crate::symbols::SymbolKind;
 use crate::types::Resolved;
 
@@ -23,7 +23,7 @@ impl<'a> Checker<'a> {
         let (from, text) = (from.text(), path.text());
         let provided = standard_names(&from).is_some_and(|names| names.contains(&text.as_str()));
 
-        if !provided && !self.is_published(&from, &text) {
+        if !provided && !self.is_exported(&from, &text) {
             return None;
         }
 
@@ -59,7 +59,7 @@ impl<'a> Checker<'a> {
     }
 
     /// One `calls` entry names a port or repository, which a context after
-    /// `from` must publish.
+    /// `from` must export.
     fn check_called(&mut self, scope: &Scope, called: &CalledPort) {
         let path = &called.name.path;
         let text = path.text();
@@ -73,7 +73,7 @@ impl<'a> Checker<'a> {
                 let found = self.resolve(scope, path);
 
                 if found.is_none() {
-                    let message = match standard_context_publishing(&text) {
+                    let message = match standard_context_exporting(&text) {
                         Some(context) => {
                             format!("`{text}` needs `calls {{ {text} }} from {context}`")
                         }

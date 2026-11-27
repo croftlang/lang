@@ -2,7 +2,7 @@
 // methods that make one list from another. Nothing is ever cut short.
 context Packing
 
-use { split } from Std.Text
+import { split } from Std.Text
 
 error WrongAnswer
 

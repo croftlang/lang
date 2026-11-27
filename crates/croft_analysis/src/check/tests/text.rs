@@ -6,8 +6,8 @@ use super::{assert_error, errors};
 fn text(body: &str) -> String {
     format!(
         "context Shop {{\n\
-         use {{ code_at, from_code, to_hex, from_hex, to_decimal }} from Std.Text\n\
-         use {{ Decimal }} from Std.Numbers\n\
+         import {{ code_at, from_code, to_hex, from_hex, to_decimal }} from Std.Text\n\
+         import {{ Decimal }} from Std.Numbers\n\
          {body}\n}}"
     )
 }
@@ -41,10 +41,10 @@ fn names_the_import_each_one_needs() {
     assert_eq!(
         errors(source),
         [
-            "`code_at` needs `use { code_at } from Std.Text`",
-            "`from_code` needs `use { from_code } from Std.Text`",
-            "`to_hex` needs `use { to_hex } from Std.Text`",
-            "`from_hex` needs `use { from_hex } from Std.Text`",
+            "`code_at` needs `import { code_at } from Std.Text`",
+            "`from_code` needs `import { from_code } from Std.Text`",
+            "`to_hex` needs `import { to_hex } from Std.Text`",
+            "`from_hex` needs `import { from_hex } from Std.Text`",
         ]
     );
 }

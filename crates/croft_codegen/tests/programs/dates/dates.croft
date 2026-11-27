@@ -3,7 +3,7 @@
 // is_leap_year on every year, and a clock written in Croft.
 context Calendar
 
-use { Date, Time, Clock, is_leap_year, days_between, add_days } from Std.Time
+import { Date, Time, Clock, is_leap_year, days_between, add_days } from Std.Time
 
 error WrongAnswer
 

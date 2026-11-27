@@ -3,8 +3,8 @@
 // argument, it asks for a character code past 255, which stops it.
 context Codes
 
-use { code_at, from_code, to_hex, from_hex, to_decimal, trim } from Std.Text
-use { Decimal } from Std.Numbers
+import { code_at, from_code, to_hex, from_hex, to_decimal, trim } from Std.Text
+import { Decimal } from Std.Numbers
 
 error WrongAnswer
 

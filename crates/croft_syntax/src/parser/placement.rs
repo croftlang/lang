@@ -11,8 +11,8 @@ use crate::token::TokenKind;
 
 /// Declarations written directly in a context.
 const CONTEXT_ONLY: [Keyword; 15] = [
-    Keyword::Publish,
-    Keyword::Use,
+    Keyword::Export,
+    Keyword::Import,
     Keyword::Value,
     Keyword::Enum,
     Keyword::Const,

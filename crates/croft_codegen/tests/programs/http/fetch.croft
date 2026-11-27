@@ -1,10 +1,10 @@
 // Gets a page and posts to it through Std.Http and CurlHttp. The test
 // replaces SERVER with the address of a server it runs for the purpose.
 context Fetch {
-    publish { Talk }
+    export { Talk }
 
-    use { Http, HttpError } from Std.Http
-    use { to_bytes, to_text } from Std.Text
+    import { Http, HttpError } from Std.Http
+    import { to_bytes, to_text } from Std.Text
 
     service Talk(): Result<Unit, HttpError> {
         calls { Http, Console }
@@ -21,5 +21,5 @@ context Fetch {
 
 domain Program {
     contexts { Fetch }
-    use { Talk } from Fetch
+    import { Talk } from Fetch
 } = Talk()?

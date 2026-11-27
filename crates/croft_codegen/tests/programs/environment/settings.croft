@@ -1,7 +1,7 @@
 // Prints the value of each environment variable named on the command line,
 // with its length, or "unset" for one that isn't set.
 context Settings {
-    publish { Show }
+    export { Show }
 
     service Show(): Unit {
         calls { Console, Arguments, Environment }
@@ -24,5 +24,5 @@ context Settings {
 
 domain Program {
     contexts { Settings }
-    use { Show } from Settings
+    import { Show } from Settings
 } = Show()

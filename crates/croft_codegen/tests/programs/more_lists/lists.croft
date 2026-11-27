@@ -2,8 +2,8 @@
 // beside [0] + bytes, which still joins Bytes.
 context Lists
 
-use { Decimal } from Std.Numbers
-use { split } from Std.Text
+import { Decimal } from Std.Numbers
+import { split } from Std.Text
 
 error WrongAnswer
 
